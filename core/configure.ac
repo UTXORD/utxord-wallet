@@ -140,7 +140,7 @@ if test "$enable_wasm_binding" = "yes"; then
 
   CPPFLAGS="$DEBUG_CPPFLAGS $CPPFLAGS"
   CXXFLAGS="$DEBUG_CXXFLAGS $CXXFLAGS -fexceptions -Wno-unqualified-std-cast-call"
-  LDFLAGS="$LDFLAGS -fexceptions -sEXPORT_EXCEPTION_HANDLING_HELPERS -sLLD_REPORT_UNDEFINED  -sEXPORTED_FUNCTIONS=['_malloc'] -sEXPORT_NAME='L15' -sMODULARIZE=1 -sNO_FILESYSTEM=1"
+  LDFLAGS="$LDFLAGS -fexceptions -sEXPORT_EXCEPTION_HANDLING_HELPERS -sLLD_REPORT_UNDEFINED  -sEXPORTED_FUNCTIONS=['_malloc'] -sEXPORT_NAME='utxord' -sMODULARIZE=1 -sNO_FILESYSTEM=1"
 
   if test "$enable_debug" != "yes"; then
       CFLAGS=" -O3 $CFLAGS"
@@ -229,8 +229,12 @@ AS_IF([test $enable_build_tests = yes], [build_tools=--enable-build-tools],
   [build_tools=--disable-build-tools]
 )
 
+AS_IF([test $enable_wasm_binding = yes], [build_plugin_api=--enable-plugin-api],
+  [build_plugin_api=--disable-plugin-api]
+)
 
-AX_SUBDIRS_CONFIGURE([l15], [--with-blockchain-node=../bitcoin, --with-secp256k1=node, --disable-shared, --disable-build-frost-signer, $build_tools, --disable-build-services, $build_apis], [], [], [])
+
+AX_SUBDIRS_CONFIGURE([l15], [--with-blockchain-node=../bitcoin, --with-secp256k1=node, --disable-shared, --disable-build-frost-signer, $build_tools, --disable-build-services, $build_apis, $build_plugin_api], [], [], [])
 
 
 AC_OUTPUT
