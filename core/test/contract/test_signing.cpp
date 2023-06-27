@@ -7,10 +7,77 @@
 #include "util/translation.h"
 
 #include "channel_keys.hpp"
+#include "key.h"
+#include "util/spanparsing.h"
+#include "utils.hpp"
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 using namespace l15;
+
+static const std::vector<std::byte> seed = unhex<std::vector<std::byte>>(
+"b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+
+static const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
+static const std::string derive_path = "m/86'/2'/0'/0/0";
+
+TEST_CASE("Derive")
+{
+    ECC_Start();
+
+    auto bech = Bech32Coder<IBech32Coder::BTC, IBech32Coder::TESTNET>();
+
+    std::clog << "Seed: " << hex(seed) << std::endl;
+
+    CExtKey key;
+    key.SetSeed(seed);
+
+    auto branches = spanparsing::Split(derive_path, '/');
+
+//    std::clog << "Derivation branches: " << std::endl;
+//    for (const auto& branch: branches) {
+//        std::clog << std::string_view(branch.data(), branch.size()) << std::endl;
+//    }
+
+    if (branches.front()[0] == 'm') {
+        branches.erase(branches.begin());
+    }
+
+    seckey sk;
+    for (const auto& branch: branches) {
+        uint32_t index;
+        if (branch[branch.size()-1] == '\'') {
+            //hardened
+            auto conv_res = std::from_chars(branch.begin(), branch.end() - 1, index);
+            if (conv_res.ec == std::errc::invalid_argument) {
+                throw std::invalid_argument("Wrong hex string");
+            }
+            index += BIP32_HARDENED_KEY_LIMIT;
+        }
+        else {
+            // non hardened
+            auto conv_res = std::from_chars(branch.begin(), branch.end(), index);
+            if (conv_res.ec == std::errc::invalid_argument) {
+                throw std::invalid_argument("Wrong hex string");
+            }
+        }
+        if (!key.Derive(key, index)) {
+            throw std::runtime_error("Derivation error");
+        }
+
+        sk.assign(key.key.begin(), key.key.end());
+
+//        core::ChannelKeys derived_key(sk);
+//        std::clog << "Addr: " << bech.Encode(derived_key.GetLocalPubKey()) << std::endl;
+    }
+
+    core::ChannelKeys derived_key(sk);
+    auto res_key = derived_key.NewKeyAddTapTweak({});
+
+    CHECK(bech.Encode(res_key.first.GetLocalPubKey()) == "tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
+
+    ECC_Stop();
+}
 
 TEST_CASE("VerifySignature")
 {
