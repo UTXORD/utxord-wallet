@@ -19,6 +19,32 @@ interface ChannelKeys
     [Value] string SignSchnorr([Const] DOMString m);
 };
 
+
+[Prefix="l15::utxord::"]
+interface MasterKey
+{
+    void MasterKey([Const] DOMString seed);
+    ChannelKeys Derive([Const] DOMString path, boolean for_script);
+};
+
+
+enum NetworkMode
+{
+    "REGTEST",
+    "TESTNET",
+    "MAINNET"
+};
+
+
+[Prefix="l15::utxord::"]
+interface Bech32
+{
+    void Bech32(NetworkMode network);
+    [Value] string Encode([Const] DOMString pk);
+    [Value] string Decode([Const] DOMString addr);
+};
+
+
 [Prefix="l15::utxord::"]
 interface Exception
 {

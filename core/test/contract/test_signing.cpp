@@ -67,14 +67,16 @@ TEST_CASE("Derive")
 
         sk.assign(key.key.begin(), key.key.end());
 
-//        core::ChannelKeys derived_key(sk);
-//        std::clog << "Addr: " << bech.Encode(derived_key.GetLocalPubKey()) << std::endl;
+        core::ChannelKeys derived_key(sk);
+        std::clog << "Addr: " << bech.Encode(derived_key.GetLocalPubKey()) << std::endl;
     }
 
     core::ChannelKeys derived_key(sk);
-    auto res_key = derived_key.NewKeyAddTapTweak({});
+    derived_key.AddTapTweak();
 
-    CHECK(bech.Encode(res_key.first.GetLocalPubKey()) == "tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
+    std::clog << "Addr: " << bech.Encode(derived_key.GetLocalPubKey()) << std::endl;
+
+    CHECK(bech.Encode(derived_key.GetLocalPubKey()) == "tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
 
     ECC_Stop();
 }

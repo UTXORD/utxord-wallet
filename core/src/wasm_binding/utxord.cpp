@@ -3,6 +3,7 @@
 
 #include "common.hpp"
 #include "channel_keys.hpp"
+#include "master_key.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 
@@ -41,6 +42,9 @@ public:
     explicit ChannelKeys(const char* sk) : l15::core::ChannelKeys(GetSecp256k1(), l15::unhex<l15::seckey>(sk))
     {}
 
+    ChannelKeys(l15::core::ChannelKeys&& key) : l15::core::ChannelKeys(move(key))
+    {}
+
     std::string GetLocalPrivKey() const
     { return l15::hex(l15::core::ChannelKeys::GetLocalPrivKey()); }
 
@@ -49,6 +53,33 @@ public:
 
     std::string SignSchnorr(const char* m) const
     { return l15::hex(l15::core::ChannelKeys::SignSchnorr(uint256S(m))); }
+};
+
+class MasterKey : private l15::core::MasterKey
+{
+public:
+    explicit MasterKey(const char* seed) : l15::core::MasterKey(GetSecp256k1(), unhex<std::vector<std::byte>>(seed)) {}
+    ChannelKeys* Derive(const char* path, bool for_script) const
+    { return new ChannelKeys(l15::core::MasterKey::Derive(std::string(path), for_script)); }
+};
+
+enum NetworkMode {REGTEST, TESTNET, MAINNET};
+
+class Bech32
+{
+    std::unique_ptr<IBech32Coder> mBech32;
+public:
+    explicit Bech32(NetworkMode mode) : mBech32(mode == REGTEST ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::REGTEST>())
+                                                       : (mode == TESTNET ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::TESTNET>())
+                                                                          : mode == MAINNET ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::MAINNET>()) : std::unique_ptr<IBech32Coder>() ))
+    {}
+
+    std::string Encode(const char* pubkey)
+    { return mBech32->Encode(unhex<xonly_pubkey>(pubkey)); }
+
+    std::string Decode(const char* addr)
+    { return hex(mBech32->Decode(addr)); }
+
 };
 
 struct Exception
