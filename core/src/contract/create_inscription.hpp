@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 #include <memory>
+#include <list>
 
 #include "univalue.h"
 

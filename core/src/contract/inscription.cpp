@@ -1,4 +1,6 @@
 
+#include <list>
+
 #include "transaction.h"
 #include "streams.h"
 #include "version.h"

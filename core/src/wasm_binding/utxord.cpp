@@ -11,12 +11,19 @@
 namespace {
 
 secp256k1_context * CreateSecp256k1() {
-    RandomInit();
+    uint8_t vseed[32];
     secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
-    std::vector<unsigned char, secure_allocator<unsigned char>> vseed(32);
-    GetRandBytes(vseed);
-    int ret = secp256k1_context_randomize(ctx, vseed.data());
-    assert(ret);
+    try {
+        RandomInit();
+        GetRandBytes(vseed);
+        if (!secp256k1_context_randomize(ctx, vseed)) {
+            throw std::runtime_error("Secp256k1 context");
+        }
+    }
+    catch(...) {
+        memory_cleanse(vseed, sizeof(vseed));
+        std::rethrow_exception(std::current_exception());
+    }
     return ctx;
 }
 
@@ -58,7 +65,7 @@ public:
 class MasterKey : private l15::core::MasterKey
 {
 public:
-    explicit MasterKey(const char* seed) : l15::core::MasterKey(GetSecp256k1(), unhex<std::vector<std::byte>>(seed)) {}
+    explicit MasterKey(const char* seed) : l15::core::MasterKey(GetSecp256k1(), unhex<bytevector>(seed)) {}
     ChannelKeys* Derive(const char* path, bool for_script) const
     { return new ChannelKeys(l15::core::MasterKey::Derive(std::string(path), for_script)); }
 };
@@ -69,9 +76,11 @@ class Bech32
 {
     std::unique_ptr<IBech32Coder> mBech32;
 public:
-    explicit Bech32(NetworkMode mode) : mBech32(mode == REGTEST ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::REGTEST>())
-                                                       : (mode == TESTNET ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::TESTNET>())
-                                                                          : mode == MAINNET ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::MAINNET>()) : std::unique_ptr<IBech32Coder>() ))
+    explicit Bech32(NetworkMode mode)
+    : mBech32(mode == REGTEST ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::REGTEST>())
+                              : (mode == TESTNET ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::TESTNET>())
+                                                 : (mode == MAINNET ? std::unique_ptr<IBech32Coder>(new Bech32Coder<IBech32Coder::BTC, IBech32Coder::MAINNET>())
+                                                                    : std::unique_ptr<IBech32Coder>() )))
     {}
 
     std::string Encode(const char* pubkey)

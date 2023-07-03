@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <optional>
+#include <vector>
+
 
 #include "utils.hpp"
 #include "contract_error.hpp"
