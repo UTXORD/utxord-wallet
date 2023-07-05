@@ -1,0 +1,75 @@
+<template>
+  <div class="header w-full flex items-center px-5 py-2">
+    <span @click="copyToClipboard(fundAddress)" class="cursor-pointer"
+      >Fund: {{ formatAddress(fundAddress, 6, 6) }}</span
+    >
+    <div class="header-buttons flex ml-auto">
+      <router-link to="/password">
+        <img
+          class="header-settings mr-5"
+          src="/assets/settings.svg"
+          alt="Settings"
+          title="Manage account"
+        />
+      </router-link>
+      <Modal @on-submit="unload" title="Logout" submit-text="Yes">
+        <template #button="{ onClick }">
+          <img
+            class="header-logout"
+            src="/assets/logout.svg"
+            alt="Logout"
+            title="Change account"
+            @click="onClick"
+          />
+        </template>
+        <template #body>
+          <p class="text-base text-left leading-relaxed text-gray-500">
+            Do you want to unload your keys?
+          </p>
+        </template>
+      </Modal>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { toRefs } from 'vue'
+import { sendMessage } from 'webext-bridge'
+import { useRouter } from 'vue-router'
+import { UNLOAD_SEED } from '~/config/events'
+import Modal from '~/components/Modal.vue'
+import { useStore } from '~/popup/store'
+import { formatAddress, copyToClipboard } from '~/helpers/index'
+
+const { push } = useRouter()
+const store = useStore()
+const { fundAddress } = toRefs(store)
+
+async function unload() {
+  const success = await sendMessage(UNLOAD_SEED, {}, 'background')
+  if (success) {
+    store.clearStore()
+    push('/start')
+  }
+}
+</script>
+
+<style scoped>
+.header {
+  background: var(--primary);
+}
+
+.header span {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  color: black;
+}
+
+.header-buttons img {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+</style>

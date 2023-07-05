@@ -1,0 +1,140 @@
+<template>
+  <div class="password-screen flex flex-col h-full">
+    <Header />
+    <Logo />
+    <div class="password-screen_content h-full flex flex-col items-start px-5">
+      <p>Manage Password</p>
+      <!-- Inputs -->
+      <div
+        class="password-screen_form w-full flex flex-col bg-white rounded-lg px-3 pt-3 mb-5"
+      >
+        <div class="password-screen_form-input flex flex-col">
+          <span class="mb-2 w-full">Old Password:</span>
+          <CustomInput
+            autofocus
+            type="password"
+            v-model="oldPassword"
+            :rules="[
+              (val) => isASCII(val) || 'Please enter only Latin characters'
+            ]"
+          />
+        </div>
+        <div class="password-screen_form-input flex flex-col">
+          <span class="mb-2 w-full">New Password:</span>
+          <CustomInput
+            type="password"
+            v-model="password"
+            :rules="[
+              (val) => isASCII(val) || 'Please enter only Latin characters'
+            ]"
+          />
+        </div>
+        <div class="password-screen_form-input flex flex-col">
+          <span class="mb-2 w-full">Confirm Password:</span>
+          <CustomInput
+            type="password"
+            v-model="confirmPassword"
+            :rules="[
+              (val) => isASCII(val) || 'Please enter only Latin characters'
+            ]"
+          />
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex w-full mt-auto">
+        <Button
+          outline
+          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-[#EDEDED]"
+          @click="back"
+        >
+          <img src="/assets/arrow-left.svg" alt="Go Back" />
+        </Button>
+        <Button :disabled="isDisabled" class="w-full" @click="onStore"
+          >Store</Button
+        >
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { sendMessage } from 'webext-bridge'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { isASCII } from '~/helpers/index'
+
+const { back, push } = useRouter()
+
+const oldPassword = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+
+const isDisabled = computed(() => {
+  if (
+    !password.value.length ||
+    !confirmPassword.value.length ||
+    !oldPassword.value.length
+  )
+    return true
+  if (password.value !== confirmPassword.value) return true
+  if (
+    !isASCII(oldPassword.value) ||
+    !isASCII(password.value) ||
+    !isASCII(confirmPassword.value)
+  )
+    return true
+  return false
+})
+
+async function onStore() {
+  const saved = await sendMessage(
+    'UPDATE_PASSWORD',
+    {
+      old: oldPassword.value,
+      password: password.value
+    },
+    'background'
+  )
+  if (saved) {
+    push('/')
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.password-screen {
+  &_content {
+    padding-top: 22px;
+    padding-bottom: 22px;
+    border-top: 1px solid #e8e8e8;
+
+    p {
+      font-size: 18px;
+      line-height: 25px;
+      color: #000000;
+      margin-bottom: 15px;
+    }
+  }
+
+  &_form span {
+    text-align: left;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 18px;
+    letter-spacing: -0.154px;
+    color: #6d7885;
+  }
+
+  &_info {
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 20px;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    letter-spacing: -0.32px;
+    color: #1b46f5;
+  }
+}
+</style>
