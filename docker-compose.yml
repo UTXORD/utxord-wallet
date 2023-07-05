@@ -1,0 +1,24 @@
+version: "3.2"
+
+services:
+
+  common-config: &common_config
+    build:
+      context: ./toolchain-image
+    deploy:
+      resources:
+        limits:
+          memory: "4gb"
+          cpus: "0.75"
+    shm_size: "2gb"
+    env_file:
+      - .env
+    volumes:
+      - "./:/src"
+
+  toolchain-shell:
+    <<: *common_config
+    build:
+      context: ./toolchain-image
+      dockerfile: Dockerfile
+    image: arrowlabs/wallet-build-tools:latest
