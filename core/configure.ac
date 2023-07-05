@@ -230,6 +230,7 @@ AS_IF([test $enable_build_tests = yes], [build_tools=--enable-build-tools],
 )
 
 AS_IF([test $enable_wasm_binding = yes], [build_plugin_api=--enable-plugin-api],
+  [test $enable_python_binding = yes], [build_plugin_api=--enable-plugin-api],
   [build_plugin_api=--disable-plugin-api]
 )
 
