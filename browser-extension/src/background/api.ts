@@ -157,7 +157,6 @@ class Api {
         this.WinHelpers = new winHelpers();
         this.Rest = new rest();
         this.utxord = await utxord();
-        console.log(this.utxord);
         this.bip39 = await bip39;
         this.network = this.setUpNetWork(network);
         this.bech = new this.utxord.Bech32(this.network);
@@ -402,7 +401,6 @@ class Api {
   genRootKey(){
     if(!this.checkSeed()) return false;
     if (this.wallet.root.key) return this.wallet.root.key;
-    console.log('this.getSeed():',this.getSeed());
     this.wallet.root.key = new this.utxord.MasterKey(this.getSeed());
     return this.wallet.root.key;
   }
@@ -1743,7 +1741,6 @@ async createInscriptionContract(payload, theIndex = 0) {
 
     let collection;
     let flagsFundingOptions = "";
-    let pre_collection_utxo_key;
     let collection_utxo_key;
 
 
@@ -1776,9 +1773,8 @@ async createInscriptionContract(payload, theIndex = 0) {
         return outData;
      }
 
-      pre_collection_utxo_key = myself.selectKeyByOrdAddress(payload.collection.btc_owner_address);
-      collection_utxo_key = new myself.utxord.ChannelKeys(pre_collection_utxo_key?.privateKey?.toString('hex'));
-      console.log('SignCollection:', collection_utxo_key);
+      collection_utxo_key = myself.selectKeyByOrdAddress(payload.collection.btc_owner_address);
+      console.log('SignCollection:', collection_utxo_key.GetLocalPubKey().c_str());
 
       newOrd.AddToCollection(
         `${payload.collection.genesis_txid}i0`,
@@ -1845,10 +1841,9 @@ async createInscriptionContract(payload, theIndex = 0) {
       const script_key = new myself.utxord.ChannelKeys(myself.wallet.uns.privKeyStr);
 
       for(const id in utxo_list){
-        let utxo_keypair = utxo_list[id].key;
         await newOrd.SignCommit(
           id,
-          utxo_keypair.GetLocalPrivKey().c_str(),
+          utxo_list[id].key.GetLocalPrivKey().c_str(),
           script_key.GetLocalPubKey().c_str()
         );
       }
@@ -1879,7 +1874,6 @@ async createInscriptionContract(payload, theIndex = 0) {
       outData.sk = newOrd.getIntermediateTaprootSK().c_str();
       myself.destroy(destination_keypair);
       myself.destroy(change_keypair);
-      myself.destroy(collection_utxo_key);
       myself.destroy(script_key);
       return outData;
     } catch (exception){
@@ -1988,12 +1982,10 @@ async createInscription(payload) {
       sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
       console.log("myself.selectKeysByOrdAddress(utxoData.address)", utxoData?.address, myself.selectKeyByOrdAddress(utxoData.address), payload.addresses.length);
 
-      const ord_key_str_A = myself.selectKeyByOrdAddress(utxoData.address);
-      const ord_key_str = ord_key_str_A.privateKey.toString('hex');
-      const utxo_keypair = new myself.utxord.ChannelKeys(ord_key_str);
+      const utxo_keypair = myself.selectKeyByOrdAddress(utxoData.address);
       const swap_keypair_A = new myself.utxord.ChannelKeys(myself.wallet.fund.privKeyStr);
 
-      console.log("ord_key_str:",ord_key_str,"| myself.wallet.fund.privKeyStr:",myself.wallet.fund.privKeyStr);
+      console.log("| myself.wallet.fund.privKeyStr:",myself.wallet.fund.privKeyStr);
       console.log("utxo_pubkey:",utxo_keypair.GetLocalPubKey().c_str(),"swap_pubkey_A:",swap_keypair_A.GetLocalPubKey().c_str())
       sellOrd.OrdUTXO(
         txid,
@@ -2003,7 +1995,6 @@ async createInscription(payload) {
       sellOrd.SwapScriptPubKeyA(swap_keypair_A.GetLocalPubKey().c_str());
       sellOrd.SignOrdSwap(utxo_keypair.GetLocalPrivKey().c_str());
       const data = sellOrd.Serialize(myself.utxord.ORD_SWAP_SIG).c_str();
-      myself.destroy(utxo_keypair);
       myself.destroy(swap_keypair_A);
       (async (data, payload) => {
         console.log("SELL_DATA_RESULT:", data);
