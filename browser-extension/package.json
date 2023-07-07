@@ -2,7 +2,7 @@
   "name": "utxord-wallet",
   "displayName": "UTXORD Wallet",
   "description": "Open source Bitcoin authorization",
-  "version": "0.0.12",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "rimraf extension/dev && run-p dev:prepare dev:web dev:js",
