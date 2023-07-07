@@ -36,9 +36,8 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
     script << bytevector(content_type.begin(), content_type.end());
 
     if (collection_id) {
-        CheckCollectionId(*collection_id);
         script << COLLECTION_ID_TAG;
-        script << bytevector(collection_id->begin(), collection_id->end());
+        script << SerializeInscriptionId(*collection_id);
     }
 
     script << CONTENT_TAG;
@@ -58,8 +57,6 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
 
 CScript MakeCollectionScript(const xonly_pubkey& pk, const std::string& collection_id)
 {
-    CheckCollectionId(collection_id);
-
     CScript script;
     script << pk;
     script << OP_CHECKSIG;
@@ -67,7 +64,7 @@ CScript MakeCollectionScript(const xonly_pubkey& pk, const std::string& collecti
     script << OP_IF;
     script << ORD_PARENT_TAG;
     script << COLLECTION_ID_TAG;
-    script << bytevector(collection_id.begin(), collection_id.end());
+    script << SerializeInscriptionId(collection_id);
     script << OP_ENDIF;
 
     return script;
@@ -128,7 +125,7 @@ CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::s
                                                                     const std::string& utxo_txid, uint32_t utxo_nout, const std::string& utxo_amount,
                                                                     const std::string& collection_pk)
 {
-    CheckCollectionId(collection_id);
+    CheckInscriptionId(collection_id);
     m_parent_collection_id = collection_id;
     m_collection_utxo = {utxo_txid, utxo_nout, ParseAmount(utxo_amount), unhex<xonly_pubkey>(collection_pk)};
     return *this;
