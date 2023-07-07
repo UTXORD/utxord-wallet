@@ -8,13 +8,16 @@ services:
     deploy:
       resources:
         limits:
-          memory: "4gb"
-          cpus: "0.75"
+          memory: "8gb"
+          cpus: "4.0"
     shm_size: "2gb"
     env_file:
       - .env
+    environment:
+      - YARN_CACHE_FOLDER=/tmp/yarn_cache
     volumes:
       - "./:/src"
+      - "./.yarn_cache:/tmp/yarn_cache"
 
   toolchain-shell:
     <<: *common_config

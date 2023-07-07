@@ -1,41 +1,44 @@
 .PHONY: clean all core-clean core ext-clean ext-dev ext-qa ext-e2e ext-utxord ext
 
-ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+ROOT_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-CORE_DIR := ./core
-CORE_BUILD_DIR := $(CORE_DIR)/bild
+CORE_DIR = ./core
+CORE_BUILD_DIR = $(CORE_DIR)/build
+CORE_TARGET_DIR = $(CORE_BUILD_DIR)/src/wasm_binding
+CORE_TARGETS = $(CORE_TARGET_DIR)/utxord.wasm $(CORE_TARGET_DIR)/utxord.js
 
-EXT_DIR := ./browser-extension
-EXT_LIB_DIR := $(EXT_DIR)/src/libs
-EXT_BUILD_DIR := $(EXT_DIR)/extension
+EXT_DIR = ./browser-extension
+EXT_LIB_DIR = $(EXT_DIR)/src/libs
+EXT_BUILD_DIR = $(EXT_DIR)/extension
 
-CORE_TARGET := $(EXT_LIB_DIR)/utxord
 
-core: $(CORE_TARGET).wasm
+core: $(CORE_TARGET_DIR)/utxord.wasm
 core-clean:
 	rm -rf $(CORE_BUILD_DIR)
 
-$(CORE_TARGET).wasm: $(shell find $(CORE_DIR) -type f)
+$(CORE_TARGETS): $(shell find $(CORE_DIR) -type f)
 	(cd $(CORE_DIR) ; ./autogen.sh)
 	mkdir -p $(CORE_BUILD_DIR)
 	(cd $(CORE_BUILD_DIR) ; emconfigure ../configure --enable-wasm-binding)
-	(cd $(CORE_BUILD_DIR) ; emmake make -j2)
-	cp -f $(CORE_BUILD_DIR)/src/wasm_binding/utxord.wasm $(CORE_TARGET).wasm
-	cp -f $(CORE_BUILD_DIR)/src/wasm_binding/utxord.js $(CORE_TARGET).js
+	(cd $(CORE_BUILD_DIR) ; emmake make -j4)
 
 ext-clean:
-	rm -rf $(EXT_BUILD_DIR)/*
+	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_DIR)/utxord.wasm  $(EXT_LIB_DIR)/utxord.js
 
-ext-dev: core
+ext-core-lib: $(CORE_TARGETS)
+	cp -f $(CORE_TARGET_DIR)/utxord.wasm $(EXT_LIB_DIR)
+	sed 's/^var utxord = /self.utxord = /' $(CORE_TARGET_DIR)/utxord.js  > $(EXT_LIB_DIR)/utxord.js
+
+ext-dev: ext-core-lib
 	(cd $(EXT_DIR) ; yarn install && yarn dev)
 
-ext-qa: core
+ext-qa: ext-core-lib
 	(cd $(EXT_DIR) ; yarn install && yarn build-qa)
 
-ext-e2e:
+ext-e2e: ext-core-lib
 	(cd $(EXT_DIR) ; yarn install && yarn build-e2e)
 
-ext-utxord:
+ext-utxord: ext-core-lib
 	(cd $(EXT_DIR) ; yarn install && yarn build-utxord)
 
 ext: ext-e2e
