@@ -126,9 +126,7 @@ Inscription::Inscription(const std::string &hex_tx)
         else if (inscr_data.front().first == COLLECTION_ID_TAG) {
             if (!m_collection_id.empty()) throw InscriptionFormatError("second COLLECTION_ID tag");
 
-            std::string collection_id(inscr_data.front().second.begin(), inscr_data.front().second.end());
-            CheckCollectionId(collection_id);
-            m_collection_id = move(collection_id);
+            m_collection_id = DeserializeInscriptionId(inscr_data.front().second);
             inscr_data.pop_front();
         }
         else {
@@ -152,7 +150,7 @@ Inscription::Inscription(const std::string &hex_tx)
             }
             else if (inscr_data.front().first == COLLECTION_ID_TAG) {
                 collection_id.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
-                CheckCollectionId(collection_id);
+                CheckInscriptionId(collection_id);
                 inscr_data.pop_front();
             }
             else {
