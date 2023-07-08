@@ -1,0 +1,63 @@
+FROM ubuntu:22.04
+RUN ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && echo "Etc/UTC" > /etc/timezone
+RUN apt update && apt upgrade -y && \
+    apt install -y ca-certificates \
+                   libboost-all-dev \
+                   git \
+                   make \
+                   cmake \
+                   gcc \
+                   autotools-dev \
+                   autoconf \
+                   autoconf-archive \
+                   pkg-config \
+                   libtool \
+                   g++ \
+                   libtbb-dev \
+                   libzmq5-dev \
+                   bison \
+                   flex \
+                   python3.10 \
+                   python3.10-dev \
+                   libpcre2-dev \
+                   python-is-python3 \
+                   libdb-dev \
+                   libdb++-dev \
+                   libsqlite3-dev
+
+WORKDIR /utxord-wallet
+RUN cd /utxord-wallet && git clone https://github.com/zeromq/libzmq.git
+RUN cd libzmq/ && \
+      ./autogen.sh && \
+      ./configure --without-docs --enable-drafts && \
+      make -j8 && \
+      make install && \
+      cd /utxord-wallet
+
+RUN git clone https://github.com/swig/swig.git && \
+      cd swig && \
+      ./autogen.sh && \
+      ./configure && \
+      make -j8 && \
+      make install && \
+      cd /utxord-wallet
+
+RUN git clone https://github.com/zeromq/cppzmq.git && \
+      cd cppzmq && \
+      mkdir build && \
+      cd build && \
+      cmake .. && \
+      make -j8 && \
+      make install && \
+      cd /utxord-wallet
+
+COPY . /utxord-wallet/core
+WORKDIR /utxord-wallet/core
+RUN cd /utxord-wallet/core && ./autogen.sh
+RUN mkdir /utxord-wallet/core/build
+WORKDIR /utxord-wallet/core/build
+RUN cd /utxord-wallet/core/build && ../configure --enable-python-binding
+
+RUN make -j8
+WORKDIR /utxord-wallet/core/build/src/python_binding
+RUN cd /utxord-wallet/core/build/src/python_binding && make install-completed-library

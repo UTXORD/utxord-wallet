@@ -18,6 +18,7 @@
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "common_error.hpp"
+#include "inscription.hpp"
 
 const std::string build_time = __DATE__ " " __TIME__;
 
@@ -109,6 +110,7 @@ const std::string Version() {
 %include "swap_inscription.hpp"
 %include "transaction.hpp"
 %include "transaction.h"
+%include "inscription.hpp"
 
 %inline %{
     const std::string Version();
