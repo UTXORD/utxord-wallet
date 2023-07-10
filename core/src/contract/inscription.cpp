@@ -8,13 +8,15 @@
 
 #include "inscription.hpp"
 #include "inscription_common.hpp"
+#include "transaction.hpp"
 
 
 namespace l15::utxord {
 
 namespace {
 
-opcodetype GetNextScriptData(const CScript& script, CScript::const_iterator& it, bytevector& data, const std::string errtag) {
+opcodetype GetNextScriptData(const CScript &script, CScript::const_iterator &it, bytevector &data, const std::string errtag)
+{
     opcodetype opcode;
     if (it < script.end()) {
         if (!script.GetOp(it, opcode, data))
@@ -25,6 +27,8 @@ opcodetype GetNextScriptData(const CScript& script, CScript::const_iterator& it,
     }
 
     return opcode;
+}
+
 }
 
 std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script) {
@@ -90,22 +94,10 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
     return res;
 }
 
-}
 
-
-Inscription::Inscription(const std::string &hex_tx)
+template<class T>
+Inscription::Inscription(const T& tx)
 {
-    CDataStream stream(unhex<bytevector>(hex_tx), SER_NETWORK, PROTOCOL_VERSION);
-
-    CMutableTransaction tx;
-
-    try {
-        stream >> tx;
-    }
-    catch (const std::exception& e) {
-        std::throw_with_nested(TransactionError("TX parse error"));
-    }
-
     if (tx.vin[0].scriptWitness.stack.size() < 3) throw InscriptionFormatError("no witness script");
 
     const auto& witness_stack = tx.vin[0].scriptWitness.stack;
@@ -165,6 +157,13 @@ Inscription::Inscription(const std::string &hex_tx)
 
     m_inscription_id = tx.GetHash().GetHex() + "i0";
 }
+
+
+template Inscription::Inscription(const CTransaction &tx);
+template Inscription::Inscription(const CMutableTransaction &tx);
+
+Inscription::Inscription(const std::string &hex_tx) : Inscription(core::Deserialize(hex_tx))
+{ }
 
 
 } // utxord

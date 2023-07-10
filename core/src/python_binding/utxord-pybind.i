@@ -14,11 +14,14 @@
 
 %{
 
+#include "common.hpp"
 #include "transaction.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
+
+using namespace l15;
 
 const std::string build_time = __DATE__ " " __TIME__;
 
