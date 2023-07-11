@@ -69,38 +69,45 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
     while (it < end) {
         opcode = GetNextScriptData(script, it, data, "inscription envelope");
 
-        if (opcode == CONTENT_TAG) {
+        if (opcode == CONTENT_OP_TAG) {
             if (!fetching_content && !content.empty()) throw InscriptionFormatError("second CONTENT tag");
             fetching_content = true;
         }
-        else if ((opcode == CONTENT_TYPE_TAG.size() && data == CONTENT_TYPE_TAG)) {
+        else if (opcode == CONTENT_TYPE_OP_TAG || (opcode == CONTENT_TYPE_TAG.size() && data == CONTENT_TYPE_TAG)) {
             GetNextScriptData(script, it, data, "content type");
             res.emplace_back(CONTENT_TYPE_TAG, move(data));
+            fetching_content = false;
         }
-        else if (opcode == COLLECTION_ID_TAG.size() && data == COLLECTION_ID_TAG) {
+        else if (opcode == COLLECTION_ID_OP_TAG || (opcode == COLLECTION_ID_TAG.size() && data == COLLECTION_ID_TAG)) {
             GetNextScriptData(script, it, data, "collection id");
             res.emplace_back(COLLECTION_ID_TAG, move(data));
+            fetching_content = false;
         }
         else if (opcode == OP_ENDIF) {
             if (!content.empty()) {
-                res.emplace_back(CONTENT_ALIAS_TAG, move(content));
+                res.emplace_back(CONTENT_TAG, move(content));
             }
             break;
         }
         else if (fetching_content) {
             content.insert(content.end(), data.begin(), data.end());
         }
+        else {
+            GetNextScriptData(script, it, data, "unknown tag");
+            res.emplace_back(opcode, move(data));
+            fetching_content = false;
+            }
     }
     return res;
 }
 
 
 template<class T>
-Inscription::Inscription(const T& tx)
+Inscription::Inscription(const T& tx, uint32_t nin)
 {
     if (tx.vin[0].scriptWitness.stack.size() < 3) throw InscriptionFormatError("no witness script");
 
-    const auto& witness_stack = tx.vin[0].scriptWitness.stack;
+    const auto& witness_stack = tx.vin[nin].scriptWitness.stack;
     CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
 
     auto inscr_data = ParseEnvelopeScript(script);
@@ -110,7 +117,7 @@ Inscription::Inscription(const T& tx)
             m_content_type.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
             inscr_data.pop_front();
         }
-        else if (inscr_data.front().first == CONTENT_ALIAS_TAG) {
+        else if (inscr_data.front().first == CONTENT_TAG) {
             if (!m_content.empty()) throw InscriptionFormatError("second CONTENT tag");
             m_content = move(inscr_data.front().second);
             inscr_data.pop_front();
@@ -129,14 +136,14 @@ Inscription::Inscription(const T& tx)
 
     if (m_content.empty()) throw InscriptionError("no content");
 
-    if (m_collection_id.empty() && tx.vin.size() > 1 && tx.vin[1].scriptWitness.stack.size() >= 3) {
+    if (nin != 1 && (m_collection_id.empty() && tx.vin.size() > 1 && tx.vin[1].scriptWitness.stack.size() >= 3)) {
         const auto &witness_stack = tx.vin[1].scriptWitness.stack;
         CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
         std::string collection_id;
 
         auto inscr_data = ParseEnvelopeScript(script);
         while(!inscr_data.empty()) {
-            if (inscr_data.front().first == CONTENT_TYPE_TAG || inscr_data.front().first == CONTENT_ALIAS_TAG) {
+            if (inscr_data.front().first == CONTENT_TYPE_TAG || inscr_data.front().first == CONTENT_TAG) {
                 collection_id.clear();
                 break;
             }
@@ -155,14 +162,14 @@ Inscription::Inscription(const T& tx)
         }
     }
 
-    m_inscription_id = tx.GetHash().GetHex() + "i0";
+    m_inscription_id = tx.GetHash().GetHex() + "i" + std::to_string(nin);
 }
 
 
-template Inscription::Inscription(const CTransaction &tx);
-template Inscription::Inscription(const CMutableTransaction &tx);
+template Inscription::Inscription(const CTransaction &tx, uint32_t nin);
+template Inscription::Inscription(const CMutableTransaction &tx, uint32_t nin);
 
-Inscription::Inscription(const std::string &hex_tx) : Inscription(core::Deserialize(hex_tx))
+Inscription::Inscription(const std::string &hex_tx, uint32_t nin) : Inscription(core::Deserialize(hex_tx), nin)
 { }
 
 

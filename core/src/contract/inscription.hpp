@@ -37,8 +37,8 @@ class Inscription
 
 public:
     template<class T>
-    explicit Inscription(const T& tx);
-    explicit Inscription(const std::string& hex_tx);
+    explicit Inscription(const T& tx, uint32_t nin = 0);
+    explicit Inscription(const std::string& hex_tx, uint32_t nin = 0);
     Inscription(const Inscription& ) = default;
     Inscription(Inscription&& ) noexcept = default;
 

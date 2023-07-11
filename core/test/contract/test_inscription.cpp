@@ -57,6 +57,8 @@ static const std::string txid_text = "00112233445566778899aabbccddeeff0011223344
 
 //static const uint256 txid_sample = uint256S("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
 //static const std::string txids[] = {
+//        "fca48f7c79a947800f4aad96d7f8530901734953f3a73e6f28347ef9a2c341c5"
+//};
 //        "8f3e642289eda5d79c3212b7c5cd990a81bbeed8e768a28400a79b090adb3166",
 //        "0be0174fe9603f6e6bae628d35efb6a0ce413538287ca469d198a32f0ae226b7",
 //        "d4db73ed430c2e37ac1990cb37ee0be80a042f2152af605678b412eb0224bb6a",
@@ -217,7 +219,7 @@ static const std::string txid_text = "00112233445566778899aabbccddeeff0011223344
 //        "316b0e7b37cefe1c1afc972479fc29fc7f55e26659a858ec23dbe529158fc029",
 //        "0f0226818f3d8b4a3d1c4cb1d5e9c8ddce83603a16b365a960b6ef9576ec1b93",
 //};
-//
+
 //TEST_CASE("listtags")
 //{
 //    for (const auto& txid: txids) {
@@ -240,7 +242,7 @@ static const std::string txid_text = "00112233445566778899aabbccddeeff0011223344
 //                text = val.find("text") != std::string::npos;
 //            }
 //
-//            if (tag_value.first == CONTENT_ALIAS_TAG && !text) {
+//            if (tag_value.first == CONTENT_TAG && !text) {
 //                std::clog << hex(tag_value.first) << " -- " << hex(tag_value.second) << "\n";
 //            } else {
 //                std::clog << hex(tag_value.first) << " -- " << hex(tag_value.second) <<
@@ -252,6 +254,22 @@ static const std::string txid_text = "00112233445566778899aabbccddeeff0011223344
 //
 //    }
 //}
+
+TEST_CASE("parsebatch")
+{
+    const std::string txid = "9842f9ab1adf3870da7ebd695082c208364cd784490d09399a366dfef7498338";
+
+    CTransaction tx = w->btc().GetTx(txid);
+
+        for (uint32_t i = 0; i<64; ++i) {
+        Inscription inscr(tx, i);
+
+        std::clog << inscr.GetIscriptionId() << std::endl;
+
+        CHECK(inscr.GetIscriptionId() == (txid + 'i' + std::to_string(i)));
+
+    }
+}
 
 TEST_CASE("inscriptionid")
 {

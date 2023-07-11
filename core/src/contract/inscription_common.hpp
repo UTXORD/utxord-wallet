@@ -8,9 +8,11 @@ namespace l15::utxord {
 const size_t chunk_size = 520;
 const bytevector ORD_TAG {'o', 'r', 'd'};
 const bytevector ORD_PARENT_TAG {'o', 'r', 'p'};
-const opcodetype CONTENT_TAG {OP_0};
-const bytevector CONTENT_ALIAS_TAG {'\0'};
+const opcodetype CONTENT_OP_TAG {OP_0};
+const bytevector CONTENT_TAG {'\0'};
+const opcodetype CONTENT_TYPE_OP_TAG {OP_1};
 const bytevector CONTENT_TYPE_TAG {'\1'};
+const opcodetype COLLECTION_ID_OP_TAG {OP_3};
 const bytevector COLLECTION_ID_TAG {'\3'};
 
 inline void CheckInscriptionId(const std::string& inscription_id)
