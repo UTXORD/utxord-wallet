@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN embuilder build MINIMAL
+
 ENV VOLTA_HOME=${VOLTA_HOME}
 ENV PATH=${VOLTA_HOME}/bin:${PATH}:/emsdk/upstream/emscripten/tools
 
