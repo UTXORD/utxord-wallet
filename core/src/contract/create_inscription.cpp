@@ -40,7 +40,7 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
         script << SerializeInscriptionId(*collection_id);
     }
 
-    script << CONTENT_TAG;
+    script << CONTENT_OP_TAG;
     auto pos = data.begin();
     for ( ; pos + chunk_size < data.end(); pos += chunk_size) {
         script << bytevector(pos, pos + chunk_size);

@@ -25,6 +25,8 @@ public:
     { return "InscriptionFormatError"; }
 };
 
+std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script);
+
 class Inscription
 {
     std::string m_inscription_id;
@@ -34,7 +36,9 @@ class Inscription
 
 
 public:
-    explicit Inscription(const std::string& hex_tx);
+    template<class T>
+    explicit Inscription(const T& tx, uint32_t nin = 0);
+    explicit Inscription(const std::string& hex_tx, uint32_t nin = 0);
     Inscription(const Inscription& ) = default;
     Inscription(Inscription&& ) noexcept = default;
 
