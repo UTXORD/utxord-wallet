@@ -7,6 +7,7 @@
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 
+#include <emscripten/val.h>
 
 namespace {
 
@@ -104,6 +105,18 @@ struct Exception
 };
 
 }
+
+class TestClass
+{
+    int i = 0;
+public:
+    TestClass(void* data) {
+        emscripten::val val = emscripten::val::take_ownership((emscripten::EM_VAL)data);
+
+        val.set("testField2", "excellent");
+
+    }
+};
 
 using namespace l15;
 using namespace l15::utxord;

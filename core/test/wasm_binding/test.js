@@ -3,6 +3,20 @@
     const api = await utxord();
 
     try {
+        let data = {
+            testField: 'awesome'
+        };
+
+        let wow = new api.TestClass(api.Emval.toHandle(data));
+
+        console.log(data);
+    }
+    catch(e) {
+        console.log(e);
+    }
+
+
+    try {
         let bech = new api.Bech32(api.TESTNET);
         let pk = bech.Decode("tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
 

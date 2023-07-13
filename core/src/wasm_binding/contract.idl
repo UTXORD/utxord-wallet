@@ -131,3 +131,9 @@ interface SwapInscriptionBuilder
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
 };
+
+
+interface TestClass
+{
+    void TestClass(VoidPtr param);
+};
