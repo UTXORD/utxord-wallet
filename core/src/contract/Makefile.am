@@ -18,7 +18,8 @@ libutxord_contract_la_SOURCES = \
 	inscription.cpp \
 	contract_builder.cpp \
 	create_inscription.cpp \
-	swap_inscription.cpp
+	swap_inscription.cpp \
+	simple_transaction.cpp
 
 libutxord_contract_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--gc-sections
 libutxord_contract_la_CXXFLAGS = $(AM_CXXFLAGS) -ffunction-sections -fdata-sections
