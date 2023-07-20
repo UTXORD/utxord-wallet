@@ -3,14 +3,169 @@
 #include <string>
 #include <optional>
 #include <vector>
+#include <stdexcept>
 
+#include "univalue.h"
 
 #include "utils.hpp"
 #include "contract_error.hpp"
+#include "master_key.hpp"
+
 
 namespace utxord {
 
 using namespace l15;
+
+enum OutputType {
+    TAPROOT_DEFAULT, // m/86'/0'/0'/0/* or m/86'/0'/0'/1/*
+    TAPROOT_DEFAULT_SCRIPT, // m/86'/0'/0'/0/* w/o tweak
+    TAPROOT_OUTPUT, // m/86'/1'/0'/0/*
+    TAPROOT_SCRIPT, // m/86'/1'/0'/0/* w/o tweak
+    INSCRIPTION_OUTPUT // m/86'/2'/0'/0/*
+};
+
+struct IJsonSerializable
+{
+    static const std::string name_type;
+
+    virtual ~IJsonSerializable() = default;
+    virtual UniValue MakeJson() const = 0;
+    virtual void ReadJson(const UniValue& json) = 0;
+
+    virtual std::string Serialize() const
+    { return MakeJson().write(); }
+
+    virtual void Deserialize(const std::string& jsonStr)
+    {
+        UniValue json;
+        if (json.read(jsonStr)) {
+            ReadJson(json);
+        }
+        else {
+            throw ContractError("parse json");
+        }
+    }
+};
+
+class WitnessStack: public IJsonSerializable
+{
+    std::vector<bytevector> m_stack;
+public:
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json) override;
+    size_t size() const
+    { return m_stack.size(); }
+    const bytevector& operator[](size_t i) const
+    { return m_stack[i]; }
+    void Set(size_t i, bytevector data)
+    {
+        if (i >= m_stack.size())
+            m_stack.resize(i+1);
+
+        m_stack[i] = move(data);
+    }
+    operator const std::vector<bytevector>&() const
+    { return m_stack; }
+};
+
+class IContractDestination: public IJsonSerializable
+{
+public:
+    static const std::string name_witness;
+private:
+    WitnessStack m_witness;
+public:
+    virtual CAmount Amount() const = 0;
+    virtual xonly_pubkey DestinationPK() const = 0;
+    virtual CScript DestinationPubKeyScript() const = 0;
+    virtual core::ChannelKeys LookupKeyPair(const core::MasterKey& masterKey, l15::utxord::OutputType outType) const = 0;
+    virtual const WitnessStack& Witness() const
+    { return m_witness; }
+    virtual WitnessStack& Witness()
+    { return m_witness; }
+};
+
+class TapRootKeyPath: public IContractDestination
+{
+public:
+    static const std::string name_amount;
+    static const std::string name_pk;
+
+    static const char* type;
+
+private:
+    CAmount m_amount;
+    xonly_pubkey m_pk;
+
+public:
+    TapRootKeyPath() = default;
+    TapRootKeyPath(const TapRootKeyPath&) = default;
+    TapRootKeyPath(TapRootKeyPath&&) noexcept = default;
+
+    explicit TapRootKeyPath(CAmount amount, const xonly_pubkey& pk) : m_amount(amount), m_pk(pk) {}
+    explicit TapRootKeyPath(CAmount amount, xonly_pubkey&& pk) : m_amount(amount), m_pk(move(pk)) {}
+
+    ~TapRootKeyPath() override = default;
+
+    CAmount Amount() const final
+    { return m_amount; }
+
+    xonly_pubkey DestinationPK() const override
+    { return m_pk; }
+
+    CScript DestinationPubKeyScript() const override
+    { return CScript() << 1 << m_pk; }
+
+    core::ChannelKeys LookupKeyPair(const core::MasterKey& masterKey, l15::utxord::OutputType outType) const override;
+
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json) override;
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+class IContractOutput: public IJsonSerializable{
+public:
+    virtual std::string TxID() const = 0;
+    virtual uint32_t NOut() const = 0;
+    virtual const IContractDestination& Destination() const = 0;
+    virtual IContractDestination& Destination() = 0;
+};
+
+class UTXO: public IContractOutput
+{
+public:
+    static const std::string name_txid;
+    static const std::string name_nout;
+    static const std::string name_destination;
+
+    static const char* type;
+private:
+    std::string m_txid;
+    uint32_t m_nout = 0;
+    std::shared_ptr<IContractDestination> m_destination;
+public:
+    UTXO() = default;
+    UTXO(std::string txid, uint32_t nout, CAmount amount, const xonly_pubkey& pk)
+        : m_txid(move(txid)), m_nout(nout), m_destination(std::make_shared<TapRootKeyPath>(amount, pk))
+    { if (!m_destination) throw std::invalid_argument("null destination"); }
+
+    std::string TxID() const final
+    { return m_txid; }
+
+    uint32_t NOut() const final
+    { return  m_nout; }
+
+    const IContractDestination& Destination() const final
+    { return *m_destination; }
+    IContractDestination& Destination() final
+    { return *m_destination; }
+
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json) override;
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 struct Transfer
 {
@@ -29,6 +184,7 @@ public:
     static const std::string name_version;
     static const std::string name_mining_fee_rate;
 
+    static const char* name_utxo;
     static const std::string name_txid;
     static const std::string name_nout;
     static const std::string name_amount;
@@ -52,6 +208,8 @@ public:
     ContractBuilder() = default;
     ContractBuilder(const ContractBuilder&) = default;
     ContractBuilder(ContractBuilder&& ) noexcept = default;
+
+    virtual ~ContractBuilder() = default;
 
     ContractBuilder& operator=(const ContractBuilder& ) = default;
     ContractBuilder& operator=(ContractBuilder&& ) noexcept = default;

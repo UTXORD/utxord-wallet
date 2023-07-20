@@ -17,8 +17,6 @@ AM_CPPFLAGS = \
  -I$(top_srcdir)/src/contract
 
 
-AM_LDFLAGS=-L$(top_builddir)/bitcoin/src -L$(top_builddir)/bitcoin/src/crypto
-
 L15_LIBS = \
 $(top_builddir)/src/contract/libutxord-contract.la \
 $(top_builddir)/l15/src/api/libl15-api.la \
@@ -34,7 +32,18 @@ $(top_builddir)/bitcoin/src/secp256k1/libsecp256k1.la \
 $(top_builddir)/bitcoin/src/libunivalue.la \
 $(BOOST_FILESYSTEM_LIB)
 
-bin_PROGRAMS = test_contract_builder test_create_inscription test_swap_inscription test_signing test_inscription
+
+AM_LDFLAGS=-L$(top_builddir)/bitcoin/src
+
+
+bin_PROGRAMS = \
+test_contract_builder \
+test_create_inscription \
+test_swap_inscription \
+test_signing \
+test_inscription \
+test_simple_tx
+
 
 test_contract_builder_SOURCES = test_contract_builder.cpp
 test_contract_builder_LDADD = $(L15_LIBS)
@@ -51,3 +60,5 @@ test_swap_inscription_LDADD = $(L15_LIBS)
 test_inscription_SOURCES = test_inscription.cpp
 test_inscription_LDADD = $(L15_LIBS)
 
+test_simple_tx_SOURCES = test_simple_tx.cpp
+test_simple_tx_LDADD = $(L15_LIBS)
