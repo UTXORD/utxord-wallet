@@ -1,6 +1,7 @@
 <template>
   <div class="start-screen flex flex-col">
     <Logo />
+    <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="start-screen_content flex flex-col px-5 pb-5">
       <div class="start-screen_lock-key flex flex-col">
         <img
@@ -10,14 +11,20 @@
         />
         <span>Let’s get some keys...</span>
       </div>
-      <div class="start-screen_form bg-white rounded-lg p-4">
+      <div class="start-screen_form bg-[var(--section)] rounded-lg p-4">
         <div class="flex items-center">
-          <span class="mr-5 text-left">I want the new ones</span>
+          <span class="mr-5 text-left text-[var(--text-color)]"
+            >I want the new ones</span
+          >
           <Button to="/generate" class="ml-auto w-[100px]">Generate</Button>
         </div>
-        <div class="start-screen_form-separator" />
+        <div
+          class="w-full min-h-[1px] bg-[var(--border-color)] my-4 dark:bg-[#555555]"
+        />
         <div class="flex items-center">
-          <span class="mr-5 text-left">I have them</span>
+          <span class="mr-5 text-left text-[var(--text-color)]"
+            >I have them</span
+          >
           <Button to="/load" class="ml-auto w-[100px]" outline>Load</Button>
         </div>
       </div>
@@ -30,7 +37,6 @@
   &_lock-key {
     padding-top: 100px;
     padding-bottom: 115px;
-    border-top: 1px solid #e8e8e8;
   }
 
   &_lock-key_img {
@@ -42,7 +48,6 @@
     font-weight: 600;
     font-size: 20px;
     line-height: 27px;
-    color: #000;
   }
 
   &_form span {
@@ -50,14 +55,6 @@
     font-size: 15px;
     line-height: 20px;
     letter-spacing: -0.01em;
-    color: #000000;
-  }
-
-  &_form-separator {
-    width: 100%;
-    height: 1px;
-    background: #e8e8e8;
-    margin: 16px 0;
   }
 }
 </style>

@@ -2,15 +2,16 @@
   <div class="home-screen flex flex-col h-full">
     <Header />
     <Logo />
+    <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div
       class="home-screen_content h-full flex flex-col items-center px-5 pb-5"
     >
       <!-- Balance -->
       <div
-        class="home-screen_block w-full flex flex-col items-center bg-white rounded-lg px-3 py-5 mb-5"
+        class="home-screen_block w-full flex flex-col items-center bg-[var(--section)] rounded-lg px-3 py-5 mb-5"
       >
         <PriceComp
-          class="home-screen_balance"
+          class="home-screen_balance text-[var(--text-color)]"
           :price="balance?.confirmed || 0"
           :font-size-breakpoints="{
             1000000: '40px',
@@ -18,17 +19,19 @@
             1000000000: '20px'
           }"
         />
-        <span class="home-screen_balance-label text-center">
+        <span
+          class="home-screen_balance-label text-center text-[var(--text-grey-color)]"
+        >
           {{ status }}
         </span>
       </div>
 
       <!-- Balance -->
       <div
-        class="home-screen_block w-full flex flex-col bg-white rounded-lg p-3 mb-5 gap-3"
+        class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
       >
         <div class="flex items-center">
-          <span class="mr-2">Avaliable:</span>
+          <span class="mr-2 text-[var(--text-grey-color)]">Avaliable:</span>
           <PriceComp
             class="ml-auto"
             :price="balance?.confirmed || 0"
@@ -38,7 +41,7 @@
           />
         </div>
         <div class="flex items-center">
-          <span class="mr-2">Unconfirmed:</span>
+          <span class="mr-2 text-[var(--text-grey-color)]">Unconfirmed:</span>
           <PriceComp
             class="ml-auto"
             :price="(balance.unconfirmed < 0 ? 0 : balance.unconfirmed) || 0"
@@ -51,10 +54,12 @@
 
       <!-- Info -->
       <div
-        class="home-screen_block w-full flex flex-col bg-white rounded-lg p-3 mb-5 gap-3"
+        class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
       >
         <div class="flex items-center">
-          <span class="mr-2">Used for inscription:</span>
+          <span class="mr-2 text-[var(--text-grey-color)]"
+            >Used for inscription:</span
+          >
           <PriceComp
             class="ml-auto"
             :price="balance?.used_for_inscribtions || 0"
@@ -64,8 +69,10 @@
           />
         </div>
         <div class="flex items-center">
-          <span class="mr-2">Total inscriptions:</span>
-          <p class="p-0 ml-auto">
+          <span class="mr-2 text-[var(--text-grey-color)]"
+            >Total inscriptions:</span
+          >
+          <p class="p-0 ml-auto text-[var(--text-color)]">
             {{ balance?.inscriptions?.length || 0 }} Units
           </p>
         </div>
@@ -73,22 +80,26 @@
 
       <!-- Fund key -->
       <div
-        class="home-screen_block w-full flex flex-col bg-white rounded-lg p-3 gap-3 mt-auto"
+        class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 gap-3 mt-auto"
       >
-        <span class="mr-2 text-left">To Add Funds Use This Address</span>
+        <span class="mr-2 text-left text-[var(--text-grey-color)]"
+          >To Add Funds Use This Address</span
+        >
         <div class="flex items-center justify-between">
-          <p class="p-0 mr-auto">{{ formatAddress(fundAddress, 6, 6) }}</p>
+          <p class="p-0 mr-auto text-[var(--text-color)]">
+            {{ formatAddress(fundAddress, 6, 6) }}
+          </p>
           <Button
             outline
             @click="newFundAddress"
-            class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-white text-black"
+            class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
           >
             New
           </Button>
           <Button
             outline
             @click="copyToClipboard(fundAddress)"
-            class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-white text-black"
+            class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
           >
             Copy
           </Button>
@@ -139,7 +150,6 @@ const status = computed(() => {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
-    border-top: 1px solid #e8e8e8;
   }
 
   & p {
@@ -150,7 +160,6 @@ const status = computed(() => {
     align-items: center;
     text-align: right;
     letter-spacing: -0.32px;
-    color: #000000;
   }
 
   &_block span {
@@ -158,13 +167,11 @@ const status = computed(() => {
     font-size: 14px;
     line-height: 18px;
     letter-spacing: -0.154px;
-    color: #6d7885;
   }
 
   &_balance {
     font-weight: 600;
     line-height: 55px;
-    color: #000000;
 
     &-label {
       font-weight: 400;
@@ -173,7 +180,6 @@ const status = computed(() => {
       display: flex;
       align-items: left;
       letter-spacing: -0.32px;
-      color: #737375;
     }
   }
 }

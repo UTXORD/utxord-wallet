@@ -1,23 +1,27 @@
 <template>
   <div class="loading-screen flex flex-col h-full">
     <Logo />
+    <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div
       class="loading-screen_content h-full flex flex-col items-center px-5 pb-5"
     >
-      <img src="/assets/loader.svg" class="animate-spin" alt="Loading..." />
-      <span>Loading...</span>
+      <LoaderIcon class="loader animate-spin" />
+      <span class="text-[var(--text-grey-color)]">Loading...</span>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import LoaderIcon from '~/components/Icons/LoaderIcon.vue'
+</script>
 
 <style scoped>
 .loading-screen_content {
   padding-top: 22px;
   padding-bottom: 34px;
-  border-top: 1px solid #e8e8e8;
 }
 
-.loading-screen_content img {
+.loading-screen_content .loader {
   width: 56px;
   height: 56px;
   margin-top: 170px;
@@ -32,6 +36,5 @@
   align-items: center;
   text-align: center;
   letter-spacing: -0.32px;
-  color: #737375;
 }
 </style>

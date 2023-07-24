@@ -3,6 +3,7 @@
   <div v-else class="sign-screen h-full flex flex-col">
     <Header />
     <Logo />
+    <div class="w-full h-[1px] bg-[var(--border-color)]" />
     <div
       class="sign-screen_content h-full flex flex-col items-center px-5 pb-5"
     >
@@ -33,10 +34,12 @@
           <template #body>
             <!-- Inputs -->
             <div
-              class="password-screen_form w-full flex flex-col bg-[#EDEDED] rounded-lg px-3 pt-3"
+              class="password-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3"
             >
               <div class="password-screen_form-input flex text-left flex-col">
-                <span class="mb-2 w-full text-black">Password</span>
+                <span class="mb-2 w-full text-[var(--text-grey-color)]"
+                  >Password</span
+                >
                 <CustomInput
                   autofocus
                   type="password"
@@ -136,6 +139,5 @@ onMounted(() => {
 .sign-screen_content {
   padding-top: 22px;
   padding-bottom: 22px;
-  border-top: 1px solid #e8e8e8;
 }
 </style>

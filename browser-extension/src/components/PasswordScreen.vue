@@ -2,14 +2,17 @@
   <div class="password-screen flex flex-col h-full">
     <Header />
     <Logo />
+    <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="password-screen_content h-full flex flex-col items-start px-5">
-      <p>Manage Password</p>
+      <p class="text-[var(--text-color)]">Manage Password</p>
       <!-- Inputs -->
       <div
-        class="password-screen_form w-full flex flex-col bg-white rounded-lg px-3 pt-3 mb-5"
+        class="password-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
       >
         <div class="password-screen_form-input flex flex-col">
-          <span class="mb-2 w-full">Old Password:</span>
+          <span class="mb-2 w-full text-[var(--text-grey-color)]"
+            >Old Password:</span
+          >
           <CustomInput
             autofocus
             type="password"
@@ -20,7 +23,9 @@
           />
         </div>
         <div class="password-screen_form-input flex flex-col">
-          <span class="mb-2 w-full">New Password:</span>
+          <span class="mb-2 w-full text-[var(--text-grey-color)]"
+            >New Password:</span
+          >
           <CustomInput
             type="password"
             v-model="password"
@@ -30,7 +35,9 @@
           />
         </div>
         <div class="password-screen_form-input flex flex-col">
-          <span class="mb-2 w-full">Confirm Password:</span>
+          <span class="mb-2 w-full text-[var(--text-grey-color)]"
+            >Confirm Password:</span
+          >
           <CustomInput
             type="password"
             v-model="confirmPassword"
@@ -45,7 +52,7 @@
       <div class="flex w-full mt-auto">
         <Button
           outline
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-[#EDEDED]"
+          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
           @click="back"
         >
           <img src="/assets/arrow-left.svg" alt="Go Back" />
@@ -107,12 +114,10 @@ async function onStore() {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
-    border-top: 1px solid #e8e8e8;
 
     p {
       font-size: 18px;
       line-height: 25px;
-      color: #000000;
       margin-bottom: 15px;
     }
   }
@@ -123,7 +128,6 @@ async function onStore() {
     font-size: 14px;
     line-height: 18px;
     letter-spacing: -0.154px;
-    color: #6d7885;
   }
 
   &_info {
