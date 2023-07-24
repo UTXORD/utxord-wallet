@@ -10,8 +10,12 @@
 
 namespace l15::utxord {
 
-class SimpleTransaction: public ContractBuilder, IJsonSerializable
+class SimpleTransaction: public ContractBuilder, public IContractOutput
 {
+public:
+    static const std::string name_outputs;
+    static const char* const type;
+private:
     static const uint32_t m_protocol_version;
 
     std::vector<std::shared_ptr<IContractOutput>> m_inputs;
@@ -23,6 +27,9 @@ public:
     SimpleTransaction(const SimpleTransaction&) = default;
     SimpleTransaction(SimpleTransaction&&) noexcept = default;
 
+    explicit SimpleTransaction(const UniValue& json)
+    { SimpleTransaction::ReadJson(json); }
+
     ~SimpleTransaction() override = default;
 
     SimpleTransaction& operator=(const SimpleTransaction&) = default;
@@ -31,14 +38,15 @@ public:
     uint32_t GetProtocolVersion() const override
     { return 1; }
 
-    std::string GetMinFundingAmount(const std::string& params) const override
-    { return FormatAmount(546); }
+    CAmount GetMinFundingAmount(const std::string& params) const override;
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
     { m_inputs.emplace_back(move(prevout)); }
 
-    void AddDestination(std::shared_ptr<IContractDestination> destination)
+    void AddOutput(std::shared_ptr<IContractDestination> destination)
     { m_outputs.emplace_back(move(destination)); }
+
+    void AddChangeOutput(const xonly_pubkey& pk);
 
     void Sign(const core::MasterKey& master_key);
 
@@ -47,6 +55,16 @@ public:
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json) override;
 
+    std::string TxID() const override
+    { return MakeTx().GetHash().GetHex(); }
+    uint32_t NOut() const override
+    { return 0; }
+
+    const std::shared_ptr<IContractDestination>& Destination() const override
+    { return const_cast<SimpleTransaction*>(this)->Destination(); }
+
+    std::shared_ptr<IContractDestination>& Destination() override
+    { return m_outputs[NOut()]; }
 };
 
 } // l15::utxord

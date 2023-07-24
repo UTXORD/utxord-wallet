@@ -74,6 +74,7 @@ private:
     WitnessStack m_witness;
 public:
     virtual CAmount Amount() const = 0;
+    virtual void Amount(CAmount amount) = 0;
     virtual xonly_pubkey DestinationPK() const = 0;
     virtual CScript DestinationPubKeyScript() const = 0;
     virtual core::ChannelKeys LookupKeyPair(const core::MasterKey& masterKey, l15::utxord::OutputType outType) const = 0;
@@ -83,7 +84,7 @@ public:
     { return m_witness; }
 };
 
-class TapRootKeyPath: public IContractDestination
+class P2TR: public IContractDestination
 {
 public:
     static const std::string name_amount;
@@ -92,21 +93,27 @@ public:
     static const char* type;
 
 private:
-    CAmount m_amount;
+    CAmount m_amount = 0;
     xonly_pubkey m_pk;
 
 public:
-    TapRootKeyPath() = default;
-    TapRootKeyPath(const TapRootKeyPath&) = default;
-    TapRootKeyPath(TapRootKeyPath&&) noexcept = default;
+    P2TR() = default;
+    P2TR(const P2TR&) = default;
+    P2TR(P2TR&&) noexcept = default;
 
-    explicit TapRootKeyPath(CAmount amount, const xonly_pubkey& pk) : m_amount(amount), m_pk(pk) {}
-    explicit TapRootKeyPath(CAmount amount, xonly_pubkey&& pk) : m_amount(amount), m_pk(move(pk)) {}
+    P2TR(CAmount amount, xonly_pubkey pk) : m_amount(amount), m_pk(move(pk)) {}
+    P2TR(CAmount amount, xonly_pubkey&& pk) : m_amount(amount), m_pk(move(pk)) {}
 
-    ~TapRootKeyPath() override = default;
+    explicit P2TR(const UniValue& json)
+    { P2TR::ReadJson(json); }
+
+    ~P2TR() override = default;
 
     CAmount Amount() const final
     { return m_amount; }
+
+    void Amount(CAmount amount) override
+    { m_amount = amount; }
 
     xonly_pubkey DestinationPK() const override
     { return m_pk; }
@@ -126,8 +133,8 @@ class IContractOutput: public IJsonSerializable{
 public:
     virtual std::string TxID() const = 0;
     virtual uint32_t NOut() const = 0;
-    virtual const IContractDestination& Destination() const = 0;
-    virtual IContractDestination& Destination() = 0;
+    virtual const std::shared_ptr<IContractDestination>& Destination() const = 0;
+    virtual std::shared_ptr<IContractDestination>& Destination() = 0;
 };
 
 class UTXO: public IContractOutput
@@ -145,8 +152,14 @@ private:
 public:
     UTXO() = default;
     UTXO(std::string txid, uint32_t nout, CAmount amount, const xonly_pubkey& pk)
-        : m_txid(move(txid)), m_nout(nout), m_destination(std::make_shared<TapRootKeyPath>(amount, pk))
+        : m_txid(move(txid)), m_nout(nout), m_destination(std::make_shared<P2TR>(amount, pk))
     { if (!m_destination) throw std::invalid_argument("null destination"); }
+
+    explicit UTXO(const IContractOutput& out)
+        : m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
+
+    explicit UTXO(const UniValue& json)
+    { UTXO::ReadJson(json); }
 
     std::string TxID() const final
     { return m_txid; }
@@ -154,10 +167,10 @@ public:
     uint32_t NOut() const final
     { return  m_nout; }
 
-    const IContractDestination& Destination() const final
-    { return *m_destination; }
-    IContractDestination& Destination() final
-    { return *m_destination; }
+    const std::shared_ptr<IContractDestination>& Destination() const final
+    { return m_destination; }
+    std::shared_ptr<IContractDestination>& Destination() final
+    { return m_destination; }
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json) override;
@@ -211,7 +224,7 @@ public:
 
     ContractBuilder& operator=(const ContractBuilder& ) = default;
     ContractBuilder& operator=(ContractBuilder&& ) noexcept = default;
-    virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
+    virtual CAmount GetMinFundingAmount(const std::string& params) const = 0;
 
     std::string GetNewInputMiningFee();
     std::string GetNewOutputMiningFee();
@@ -222,6 +235,8 @@ public:
     void SetMiningFeeRate(const std::string& v) { m_mining_fee_rate = ParseAmount(v); }
 
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script);
+
+    std::shared_ptr<IContractDestination> ReadContractDestination(const UniValue& ) const;
 
 };
 
