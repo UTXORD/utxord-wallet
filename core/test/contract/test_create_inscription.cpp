@@ -170,17 +170,19 @@ TEST_CASE("single")
     auto content = hex(svg);
 
     CreateInscriptionBuilder test_inscription(INSCRIPTION, "0.00000546");
-    REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate).Data(content_type, content));
-    std::string inscription_amount = test_inscription.GetMinFundingAmount("");
+    REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(test_inscription.Data(content_type, content));
+    CAmount inscription_amount = test_inscription.GetMinFundingAmount("");
 
     CreateInscriptionBuilder test_collection(COLLECTION, "0.00000546");
-    REQUIRE_NOTHROW(test_collection.MiningFeeRate(fee_rate).Data(content_type, content));
-    std::string collection_amount = test_collection.GetMinFundingAmount("");
+    REQUIRE_NOTHROW(test_collection.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(test_collection.Data(content_type, content));
+    CAmount collection_amount = test_collection.GetMinFundingAmount("");
 
     CreateCondition inscription {{10000}, INSCRIPTION, true, false};
     CreateCondition collection {{10000}, COLLECTION, true, false};
-    CreateCondition exact_inscription {{ParseAmount(inscription_amount)}, INSCRIPTION, false, false};
-    CreateCondition exact_collection {{ParseAmount(collection_amount)}, COLLECTION, false, false};
+    CreateCondition exact_inscription {{inscription_amount}, INSCRIPTION, false, false};
+    CreateCondition exact_collection {{collection_amount}, COLLECTION, false, false};
 
     std::clog << "Inscription ord amount: " << inscription_amount << '\n';
     std::clog << "Collection root ord amount: " << collection_amount << std::endl;
@@ -191,11 +193,11 @@ TEST_CASE("single")
     auto prevout = w->btc().CheckOutput(funds_txid, addr);
 
     CreateInscriptionBuilder builder(INSCRIPTION/*condition.type*/, "0.00000546");
-    CHECK_NOTHROW(builder.MiningFeeRate(fee_rate)
-                         .Data(content_type, content)
-                         .InscribePubKey(hex((condition.type == INSCRIPTION) ? destination_pk : collection_key.GetLocalPubKey()))
-                         .ChangePubKey(hex(destination_pk))
-                         .AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, FormatAmount(condition.funds[0]), hex(utxo_key.GetLocalPubKey())));
+    CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+    CHECK_NOTHROW(builder.Data(content_type, content));
+    CHECK_NOTHROW(builder.InscribePubKey(hex((condition.type == INSCRIPTION) ? destination_pk : collection_key.GetLocalPubKey())));
+    CHECK_NOTHROW(builder.ChangePubKey(hex(destination_pk)));
+    CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, FormatAmount(condition.funds[0]), hex(utxo_key.GetLocalPubKey())));
 
 //    if (condition.type == COLLECTION) {
 //        CHECK_NOTHROW(builder.CollectionCommitPubKeys(hex(collection_script_key.GetLocalPubKey()), hex(collection_int_key.GetLocalPubKey())));
@@ -300,12 +302,12 @@ TEST_CASE("child")
 //    std::string collection_out_pk = Collection::GetCollectionTapRootPubKey(collection_id, hex(new_collection_script_key.GetLocalPrivKey()), hex(new_collection_int_key.GetLocalPrivKey()));
 
     CreateInscriptionBuilder builder(INSCRIPTION, "0.00000546");
-    CHECK_NOTHROW(builder.MiningFeeRate(fee_rate)
-                          .Data(content_type, content)
-                          .InscribePubKey(hex(destination_pk))
-                          .ChangePubKey(hex(destination_pk))
-                          .AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, FormatAmount(10000), hex(utxo_key.GetLocalPubKey()))
-                          .AddToCollection(collection_id, collection_utxo.m_txid, 0, FormatAmount(546),
+    CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+    CHECK_NOTHROW(builder.Data(content_type, content));
+    CHECK_NOTHROW(builder.InscribePubKey(hex(destination_pk)));
+    CHECK_NOTHROW(builder.ChangePubKey(hex(destination_pk)));
+    CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, FormatAmount(10000), hex(utxo_key.GetLocalPubKey())));
+    CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, 0, FormatAmount(546),
                                            hex(collection_key.GetLocalPubKey())/*, hex(collection_int_pk),
                                            collection_out_pk*/));
 
@@ -365,31 +367,34 @@ TEST_CASE("inscribe")
     auto content = hex(GenRandomString(2048));
 
     CreateInscriptionBuilder test_builder(INSCRIPTION, "0.00000546");
-    REQUIRE_NOTHROW(test_builder.MiningFeeRate(fee_rate).Data(content_type, content));
+    REQUIRE_NOTHROW(test_builder.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(test_builder.Data(content_type, content));
 
     std::clog << ">>>>> Estimate mining fee <<<<<" << std::endl;
 
-    std::string exact_amount = test_builder.GetMinFundingAmount("");
-    std::string exact_amount_w_collection = test_builder.GetMinFundingAmount("collection");
+    CAmount exact_amount = test_builder.GetMinFundingAmount("");
+    CAmount exact_amount_w_collection = test_builder.GetMinFundingAmount("collection");
 
     CreateInscriptionBuilder test_collection(INSCRIPTION, "0.00000546");
-    REQUIRE_NOTHROW(test_collection.MiningFeeRate(fee_rate).Data(content_type, content));
-    std::string exact_collection_root_amount = test_collection.GetMinFundingAmount("collection");
+    REQUIRE_NOTHROW(test_collection.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(test_collection.Data(content_type, content));
+    CAmount exact_collection_root_amount = test_collection.GetMinFundingAmount("collection");
 
     std::clog << "Amount for collection: " << exact_amount_w_collection << std::endl;
 
 
     CAmount vin_cost = ParseAmount(test_builder.GetNewInputMiningFee());
 
-    const CreateCondition parent = {{ParseAmount(exact_collection_root_amount)}, COLLECTION, false, true};
-    const CreateCondition fund = {{ParseAmount(exact_amount_w_collection)}, INSCRIPTION, false, true};
-    const CreateCondition multi_fund = {{ParseAmount(exact_amount_w_collection) - 800, 800 + vin_cost}, INSCRIPTION, false, true};
+    const CreateCondition parent = {{exact_collection_root_amount}, COLLECTION, false, true};
+    const CreateCondition fund = {{exact_amount_w_collection}, INSCRIPTION, false, true};
+    const CreateCondition multi_fund = {{exact_amount_w_collection - 800, 800 + vin_cost}, INSCRIPTION, false, true};
     const CreateCondition fund_change = {{10000}, INSCRIPTION, true, true};
 
     auto condition = GENERATE_REF(parent, fund, multi_fund, fund_change);
 
     CreateInscriptionBuilder builder(/*condition.type*/INSCRIPTION, "0.00000546");
-    REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate).Data(content_type, content));
+    REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(builder.Data(content_type, content));
     REQUIRE_NOTHROW(builder.InscribePubKey(hex(condition.type == COLLECTION ? new_collection_key.GetLocalPubKey() : destination_pk)));
     REQUIRE_NOTHROW(builder.ChangePubKey(hex(destination_pk)));
 

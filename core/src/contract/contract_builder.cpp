@@ -1,8 +1,9 @@
-#include "contract_builder.hpp"
 #include "interpreter.h"
 #include "feerate.h"
 #include "script_merkle_tree.hpp"
 #include "channel_keys.hpp"
+#include "contract_builder.hpp"
+#include "simple_transaction.hpp"
 
 #include <execution>
 #include <atomic>
@@ -43,12 +44,12 @@ const std::string IContractDestination::name_witness = "witness";
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-const std::string TapRootKeyPath::name_amount = "amount";
-const std::string TapRootKeyPath::name_pk = "pubkey";
+const std::string P2TR::name_amount = "amount";
+const std::string P2TR::name_pk = "pubkey";
 
-const char* TapRootKeyPath::type = "p2tr-keypath";
+const char* P2TR::type = "p2tr";
 
-UniValue TapRootKeyPath::MakeJson() const
+UniValue P2TR::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
     res.pushKV(name_type, type);
@@ -59,7 +60,7 @@ UniValue TapRootKeyPath::MakeJson() const
     return res;
 }
 
-void TapRootKeyPath::ReadJson(const UniValue &json)
+void P2TR::ReadJson(const UniValue &json)
 {
     if (json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
@@ -75,10 +76,11 @@ void TapRootKeyPath::ReadJson(const UniValue &json)
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-core::ChannelKeys TapRootKeyPath::LookupKeyPair(const core::MasterKey &masterKey, l15::utxord::OutputType outType) const
+core::ChannelKeys P2TR::LookupKeyPair(const core::MasterKey &masterKey, l15::utxord::OutputType outType) const
 {
     core::MasterKey masterCopy(masterKey);
     masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT + core::MasterKey::BIP86_TAPROOT_ACCOUNT);
+    masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT);
 
     switch (outType) {
     case TAPROOT_DEFAULT:
@@ -94,13 +96,12 @@ core::ChannelKeys TapRootKeyPath::LookupKeyPair(const core::MasterKey &masterKey
         break;
     }
 
-    masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT);
     masterCopy.DeriveSelf(0);
 
     const uint32_t step = 64;
     uint32_t indexes[step];
     std::atomic_uint32_t res_index = std::numeric_limits<uint32_t>::max();
-    for (uint32_t key_index = 0; key_index < core::MasterKey::BIP32_HARDENED_KEY_LIMIT; key_index += step) {
+    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; key_index += step) {
         std::iota(indexes, indexes + step, key_index);
         std::for_each(std::execution::par_unseq, indexes, indexes+step, [&](const auto& k){
             core::ChannelKeys keypair = masterCopy.Derive(std::vector<uint32_t >{k}, (outType == TAPROOT_DEFAULT_SCRIPT || outType == TAPROOT_SCRIPT) ? core::SUPPRESS : core::FORCE);
@@ -144,7 +145,7 @@ void UTXO::ReadJson(const UniValue &json)
 
     UniValue dest = json[name_destination];
     if (!dest.isNull()) {
-        m_destination = std::make_shared<TapRootKeyPath>();
+        m_destination = std::make_shared<P2TR>();
         m_destination->ReadJson(dest);
     }
 }
@@ -214,6 +215,24 @@ std::string ContractBuilder::GetNewInputMiningFee()
 std::string ContractBuilder::GetNewOutputMiningFee()
 {
     return FormatAmount(CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE));
+}
+
+std::shared_ptr<IContractDestination> ContractBuilder::ReadContractDestination(const UniValue & out) const
+{
+    if (!out.isObject()) {
+        throw ContractTermWrongFormat("not a object");
+    }
+
+    {   const UniValue& type = out[IJsonSerializable::name_type];
+        if (type.isNull()) throw ContractTermMissing(std::string(IJsonSerializable::name_type));
+        if (!type.isStr()) throw ContractTermWrongFormat(std::string(IJsonSerializable::name_type));
+
+        if (type.getValStr() == P2TR::type) {
+            return std::make_shared<P2TR>(out);
+        }
+        // TODO: Other types like p2wpkh will be here
+        else throw ContractTermWrongValue("destination: " + type.getValStr());
+    }
 }
 
 } // utxord

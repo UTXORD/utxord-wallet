@@ -86,7 +86,7 @@ std::string Collection::GetCollectionTapRootPubKey(const string &collection_id, 
     return hex(taproot.first);
 }
 
-const uint32_t CreateInscriptionBuilder::m_protocol_version = 7;
+const uint32_t CreateInscriptionBuilder::m_protocol_version = 8;
 
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
 const std::string CreateInscriptionBuilder::name_utxo = "utxo";
@@ -113,55 +113,48 @@ const std::string CreateInscriptionBuilder::FEE_OPT_HAS_CHANGE = "change";
 const std::string CreateInscriptionBuilder::FEE_OPT_HAS_COLLECTION = "collection";
 const std::string CreateInscriptionBuilder::FEE_OPT_HAS_XTRA_UTXO = "extra_utxo";
 
-CreateInscriptionBuilder &CreateInscriptionBuilder::AddUTXO(const std::string &txid, uint32_t nout,
+void CreateInscriptionBuilder::AddUTXO(const std::string &txid, uint32_t nout,
                                                             const std::string& amount,
                                                             const std::string& pk)
 {
     m_utxo.emplace_back(std::string(txid), nout, ParseAmount(amount), unhex<xonly_pubkey>(pk));
-    return *this;
 }
 
-CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::string& collection_id,
+void CreateInscriptionBuilder::AddToCollection(const std::string& collection_id,
                                                                     const std::string& utxo_txid, uint32_t utxo_nout, const std::string& utxo_amount,
                                                                     const std::string& collection_pk)
 {
     CheckInscriptionId(collection_id);
     m_parent_collection_id = collection_id;
     m_collection_utxo = {utxo_txid, utxo_nout, ParseAmount(utxo_amount), unhex<xonly_pubkey>(collection_pk)};
-    return *this;
 }
 
-CreateInscriptionBuilder &CreateInscriptionBuilder::AddFundMiningFee(const std::string &txid, uint32_t nout,
+void CreateInscriptionBuilder::AddFundMiningFee(const std::string &txid, uint32_t nout,
                                                                      const std::string& amount,
                                                                      const std::string& pk)
 {
     m_xtra_utxo.emplace_back(std::string(txid), nout, ParseAmount(amount), unhex<xonly_pubkey>(pk));
-    return *this;
 }
 
-CreateInscriptionBuilder &CreateInscriptionBuilder::MiningFeeRate(const std::string &rate)
+void CreateInscriptionBuilder::MiningFeeRate(const std::string &rate)
 {
     SetMiningFeeRate(rate);
-    return *this;
 }
 
-CreateInscriptionBuilder &CreateInscriptionBuilder::Data(const std::string& content_type, const std::string &hex_data)
+void CreateInscriptionBuilder::Data(const std::string& content_type, const std::string &hex_data)
 {
     m_content_type = content_type;
     m_content = unhex<bytevector>(hex_data);
-    return *this;
 }
 
-CreateInscriptionBuilder &CreateInscriptionBuilder::InscribePubKey(const std::string &pk)
+void CreateInscriptionBuilder::InscribePubKey(const std::string &pk)
 {
     m_destination_pk = unhex<xonly_pubkey>(pk);
-    return *this;
 }
 
-CreateInscriptionBuilder &CreateInscriptionBuilder::ChangePubKey(const std::string &pk)
+void CreateInscriptionBuilder::ChangePubKey(const std::string &pk)
 {
     m_change_pk = unhex<xonly_pubkey>(pk);
-    return *this;
 }
 
 
@@ -780,18 +773,18 @@ std::string CreateInscriptionBuilder::MakeInscriptionId() const
     return MakeGenesisTx(false).GetHash().GetHex() + "i0";
 }
 
-std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
+CAmount CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
     if(!m_content_type) throw l15::TransactionError("content type is empty");
     if(!m_content) throw l15::TransactionError("content is empty");
 
-    return FormatAmount(m_ord_amount + CalculateWholeFee(params));
+    return m_ord_amount + CalculateWholeFee(params);
 }
 
-std::string CreateInscriptionBuilder::GetGenesisTxMiningFee() const
+CAmount CreateInscriptionBuilder::GetGenesisTxMiningFee() const
 {
     CAmount fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate());
     if (m_parent_collection_id) fee += CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_KEYSPEND_VIN_VSIZE*2 + TAPROOT_VOUT_VSIZE);
-    return FormatAmount(fee);
+    return fee;
 }
 
 CAmount CreateInscriptionBuilder::CalculateWholeFee(const std::string& params) const
