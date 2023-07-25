@@ -1,5 +1,6 @@
 #include <iostream>
 #include <filesystem>
+#include <algorithm>
 
 #define CATCH_CONFIG_RUNNER
 #include "catch/catch.hpp"
@@ -176,3 +177,78 @@ TEST_CASE("2ins2outs")
 
     CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
 }
+
+TEST_CASE("txchain")
+{
+    MasterKey master_key(seed);
+    ChannelKeys utxo_key = master_key.Derive("m/86'/0'/1'/0/100");
+    ChannelKeys intermediate_key = master_key.Derive("m/86'/0'/1'/0/101");
+
+    string addr = w->bech32().Encode(utxo_key.GetLocalPubKey());
+    string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
+    auto prevout = w->btc().CheckOutput(funds_txid, addr);
+
+    xonly_pubkey destination_pk = w->bech32().Decode(w->btc().GetNewAddress());
+    xonly_pubkey change_pk = w->bech32().Decode(w->btc().GetNewAddress());
+
+    std::string fee_rate;
+    try {
+        fee_rate = w->btc().EstimateSmartFee("1");
+    }
+    catch(...) {
+        fee_rate = "0.00001";
+    }
+
+    std::clog << "Fee rate: " << fee_rate << std::endl;
+
+    std::shared_ptr<SimpleTransaction> tx_contract = std::make_shared<SimpleTransaction>();
+    std::shared_ptr<SimpleTransaction> tx1_contract = std::make_shared<SimpleTransaction>();
+    tx_contract->SetMiningFeeRate(fee_rate);
+    tx1_contract->SetMiningFeeRate(fee_rate);
+
+    REQUIRE_NOTHROW(tx1_contract->AddInput(tx_contract));
+    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(546, destination_pk)));
+
+    REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(funds_txid, get<0>(prevout).n, 10000, utxo_key.GetLocalPubKey())));
+    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(tx1_contract->GetMinFundingAmount(""), intermediate_key.GetLocalPubKey())));
+    REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_pk));
+
+    REQUIRE_NOTHROW(tx_contract->Sign(master_key));
+    REQUIRE_NOTHROW(tx1_contract->Sign(master_key));
+
+    std::string data, data1;
+    REQUIRE_NOTHROW(data = tx_contract->Serialize());
+    REQUIRE_NOTHROW(data1 = tx1_contract->Serialize());
+
+    std::clog << data << std::endl;
+    std::clog << data1 << std::endl;
+
+    SimpleTransaction tx_contract1;
+    REQUIRE_NOTHROW(tx_contract1.Deserialize(data));
+
+    SimpleTransaction tx1_contract1;
+    REQUIRE_NOTHROW(tx1_contract1.Deserialize(data1));
+
+    stringvector txs, txs1;
+    REQUIRE_NOTHROW(txs = tx_contract1.RawTransactions());
+    REQUIRE_NOTHROW(txs1 = tx1_contract1.RawTransactions());
+
+    CHECK(txs.size() == 1);
+    CHECK(txs1.size() == 1);
+
+    CMutableTransaction tx;
+    REQUIRE(DecodeHexTx(tx, txs[0]));
+
+    CHECK(tx.vin.size() == 1);
+    CHECK(tx.vout.size() == 2);
+
+    CMutableTransaction tx1;
+    REQUIRE(DecodeHexTx(tx1, txs1[0]));
+
+    CHECK(tx1.vin.size() == 1);
+    CHECK(tx1.vout.size() == 1);
+
+    CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
+    CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx1)));
+}
+

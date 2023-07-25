@@ -25,13 +25,13 @@ UniValue WitnessStack::MakeJson() const
 void WitnessStack::ReadJson(const UniValue &stack)
 {
     if (!stack.isArray()) {
-        throw ContractTermWrongValue(std::string(name_type));
+        throw ContractTermWrongValue("witness");
     }
 
     size_t i = 0;
     for (const auto& v: stack.getValues()) {
         if (!v.isStr()) {
-            throw ContractTermWrongValue(std::string(name_type) + '[' + std::to_string(i) + ']');
+            throw ContractTermWrongValue("witness[" + std::to_string(i) + ']');
         }
 
         m_stack.emplace_back(unhex<bytevector>(v.get_str()));
@@ -40,7 +40,27 @@ void WitnessStack::ReadJson(const UniValue &stack)
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-const std::string IContractDestination::name_witness = "witness";
+const std::string ContractInput::name_witness = "witness";
+
+UniValue ContractInput::MakeJson() const
+{
+    UTXO utxo_out(*output);
+    UniValue json = utxo_out.MakeJson();
+    json.pushKV(name_witness, witness.MakeJson());
+
+    return json;
+}
+
+void ContractInput::ReadJson(const UniValue &json)
+{
+    output = std::make_shared<UTXO>(json);
+
+    {   const UniValue& val = json[name_witness];
+        if (val.isNull()) throw ContractTermMissing(name_witness.c_str());
+        if (!val.isArray()) throw ContractTermWrongValue(name_witness.c_str());
+        witness.ReadJson(val);
+    }
+}
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
@@ -55,7 +75,6 @@ UniValue P2TR::MakeJson() const
     res.pushKV(name_type, type);
     res.pushKV(name_amount, m_amount);
     res.pushKV(name_pk, hex(m_pk));
-    if (Witness().size() != 0) res.pushKV(name_witness, Witness().MakeJson());
 
     return res;
 }
@@ -67,11 +86,6 @@ void P2TR::ReadJson(const UniValue &json)
     }
     m_amount = json[name_amount].getInt<CAmount>();
     m_pk = unhex<xonly_pubkey>(json[name_pk].get_str());
-
-    UniValue sig = json[name_witness];
-    if (!sig.isNull()) {
-        Witness().ReadJson(sig);
-    }
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/

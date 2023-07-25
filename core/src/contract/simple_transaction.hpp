@@ -18,7 +18,7 @@ public:
 private:
     static const uint32_t m_protocol_version;
 
-    std::vector<std::shared_ptr<IContractOutput>> m_inputs;
+    std::vector<ContractInput> m_inputs;
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
 
     CMutableTransaction MakeTx() const;
