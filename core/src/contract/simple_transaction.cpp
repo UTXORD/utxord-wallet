@@ -18,8 +18,8 @@ CMutableTransaction SimpleTransaction::MakeTx() const
     CMutableTransaction tx;
 
     for(const auto& input: m_inputs) {
-        tx.vin.emplace_back(uint256S(input->TxID()), input->NOut());
-        tx.vin.back().scriptWitness.stack = input->Destination()->Witness();
+        tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
+        tx.vin.back().scriptWitness.stack = input.witness;
         if (tx.vin.back().scriptWitness.stack.empty()) {
             tx.vin.back().scriptWitness.stack.emplace_back(signature());
         }
@@ -39,7 +39,7 @@ void SimpleTransaction::AddChangeOutput(const l15::xonly_pubkey &pk)
     AddOutput(std::make_shared<P2TR>(0, pk));
     CAmount required = GetMinFundingAmount("");
 
-    CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in->Destination()->Amount(); });
+    CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
     if (required > total) throw ContractStateError("inputs too small");
     CAmount change = total - required;
@@ -59,20 +59,20 @@ void SimpleTransaction::Sign(const core::MasterKey &master_key)
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
     for(auto& input: m_inputs) {
-        const auto& dest = input->Destination();
+        const auto& dest = input.output->Destination();
         spent_outs.emplace_back(dest->Amount(), dest->DestinationPubKeyScript());
     }
 
     uint32_t nin = 0;
     for(auto& input: m_inputs) {
-        auto& dest = input->Destination();
+        auto& dest = input.output->Destination();
         try {
             core::ChannelKeys keypair = dest->LookupKeyPair(master_key, TAPROOT_OUTPUT);
-            dest->Witness().Set(0, keypair.SignTaprootTx(tx, nin, spent_outs, {}));
+            input.witness.Set(0, keypair.SignTaprootTx(tx, nin, spent_outs, {}));
         }
         catch(const KeyError& e) {
             core::ChannelKeys keypair = dest->LookupKeyPair(master_key, TAPROOT_DEFAULT);
-            dest->Witness().Set(0, keypair.SignTaprootTx(tx, nin, spent_outs, {}));
+            input.witness.Set(0, keypair.SignTaprootTx(tx, nin, spent_outs, {}));
         }
         ++nin;
     }
@@ -94,8 +94,7 @@ UniValue SimpleTransaction::MakeJson() const
     for (const auto& input: m_inputs) {
         // Do not serialize underlying contract as transaction input: copy it as UTXO and write UTXO related values only
         // Lazy mode copy of an UTXO state is used to allow early-set of not completed contract as the input at any time
-        UTXO utxo(*input);
-        UniValue spend = utxo.MakeJson();
+        UniValue spend = input.MakeJson();
         utxo_arr.push_back(move(spend));
     }
     contract.pushKV(name_utxo, utxo_arr);
@@ -131,8 +130,8 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
         if (val.isNull() || val.empty()) throw ContractTermMissing(std::string(name_utxo));
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
 
-        for (const UniValue &utxo: val.getValues()) {
-            m_inputs.emplace_back(std::make_shared<UTXO>(utxo));
+        for (const UniValue &input: val.getValues()) {
+            m_inputs.emplace_back(input);
         }
     }
 

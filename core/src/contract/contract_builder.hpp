@@ -47,43 +47,15 @@ struct IJsonSerializable
     }
 };
 
-class WitnessStack: public IJsonSerializable
-{
-    std::vector<bytevector> m_stack;
-public:
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
-    size_t size() const
-    { return m_stack.size(); }
-    const bytevector& operator[](size_t i) const
-    { return m_stack[i]; }
-    void Set(size_t i, bytevector data)
-    {
-        if (i >= m_stack.size())
-            m_stack.resize(i+1);
-
-        m_stack[i] = move(data);
-    }
-    operator const std::vector<bytevector>&() const
-    { return m_stack; }
-};
 
 class IContractDestination: public IJsonSerializable
 {
-public:
-    static const std::string name_witness;
-private:
-    WitnessStack m_witness;
 public:
     virtual CAmount Amount() const = 0;
     virtual void Amount(CAmount amount) = 0;
     virtual xonly_pubkey DestinationPK() const = 0;
     virtual CScript DestinationPubKeyScript() const = 0;
     virtual core::ChannelKeys LookupKeyPair(const core::MasterKey& masterKey, l15::utxord::OutputType outType) const = 0;
-    virtual const WitnessStack& Witness() const
-    { return m_witness; }
-    virtual WitnessStack& Witness()
-    { return m_witness; }
 };
 
 class P2TR: public IContractDestination
@@ -176,6 +148,44 @@ public:
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json) override;
+};
+
+
+class WitnessStack
+{
+    std::vector<bytevector> m_stack;
+public:
+    UniValue MakeJson() const;
+    void ReadJson(const UniValue& json);
+    size_t size() const
+    { return m_stack.size(); }
+    const bytevector& operator[](size_t i) const
+    { return m_stack[i]; }
+    void Set(size_t i, bytevector data)
+    {
+        if (i >= m_stack.size())
+            m_stack.resize(i+1);
+
+        m_stack[i] = move(data);
+    }
+    operator const std::vector<bytevector>&() const
+    { return m_stack; }
+};
+
+
+struct ContractInput : public IJsonSerializable
+{
+    static const std::string name_witness;
+
+    std::shared_ptr<IContractOutput> output;
+    WitnessStack witness;
+
+    explicit ContractInput(std::shared_ptr<IContractOutput> prevout) : output(move(prevout)) {}
+    explicit ContractInput(const UniValue& json)
+    { ContractInput::ReadJson(json); }
+
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& data) override;
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
