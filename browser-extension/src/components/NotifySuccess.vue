@@ -16,7 +16,7 @@
           move-delay="delay-300"
         >
           <div
-            class="relative flex w-full max-w-sm mx-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md"
+            class="relative flex w-full max-w-sm mx-auto mt-4 overflow-hidden bg-[var(--bg-color)] rounded-lg shadow-md"
             v-for="notification in notifications"
             :key="notification.id"
           >
@@ -39,7 +39,9 @@
                 <span class="font-semibold text-[var(--primary)]">{{
                   notification.title
                 }}</span>
-                <p class="text-sm text-gray-600">{{ notification.text }}</p>
+                <p class="text-sm text-[var(--text-grey-color)]">
+                  {{ notification.text }}
+                </p>
               </div>
             </div>
 
@@ -49,7 +51,7 @@
               class="absolute top-[-2px] right-[-5px] px-4 py-3"
             >
               <svg
-                class="w-4 h-4 text-black fill-current"
+                class="w-4 h-4 text-[var(--text-color)] fill-current"
                 role="button"
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"

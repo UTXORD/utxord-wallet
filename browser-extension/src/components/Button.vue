@@ -33,9 +33,9 @@ const emit = defineEmits(['click'])
 
 const classes = computed(() => {
   if (props.outline) {
-    return 'text-gray-900 bg-[transparent] border border-black font-medium rounded-md text-sm px-5 py-2.5'
+    return 'text-gray-900 dark:text-white bg-[transparent] border border-black dark:border-white font-medium rounded-md text-sm px-5 py-2.5'
   }
-  return 'text-white bg-black active:bg-black-800 font-medium rounded-md text-sm px-5 py-2.5 text-center'
+  return 'text-white bg-black dark:bg-white dark:text-black active:bg-black-800 font-medium rounded-md text-sm px-5 py-2.5 text-center'
 })
 
 function onClick() {

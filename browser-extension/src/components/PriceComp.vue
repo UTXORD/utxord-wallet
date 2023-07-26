@@ -1,5 +1,5 @@
 <template>
-  <div :style="{ fontSize }" class="price-comp text-black">
+  <div :style="{ fontSize }" class="price-comp text-[var(--text-color)]">
     {{ resultPrice }} Sat
   </div>
 </template>
