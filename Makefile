@@ -23,25 +23,28 @@ $(CORE_TARGETS): $(shell find $(CORE_DIR) -not \( -path $(CORE_BUILD_DIR) -prune
 	(cd $(CORE_BUILD_DIR) ; emmake make -j4)
 
 ext-clean:
-	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_DIR)/utxord.wasm  $(EXT_LIB_DIR)/utxord.js
+	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_DIR)/utxord.wasm  $(EXT_LIB_DIR)/utxord.js $(EXT_DIR)/node_modules
 
 ext-core-lib: $(CORE_TARGETS)
 	cp -f $(CORE_TARGET_DIR)/utxord.wasm $(EXT_LIB_DIR)
 	sed 's/^var utxord = /self.utxord = /' $(CORE_TARGET_DIR)/utxord.js  > $(EXT_LIB_DIR)/utxord.js
 
-ext-dev: ext-core-lib
-	(cd $(EXT_DIR) ; yarn install && yarn dev)
+ext-deps: ext-core-lib
+	(cd $(EXT_DIR) ; yarn install)
 
-ext-qa: ext-core-lib
-	(cd $(EXT_DIR) ; yarn install && yarn build-qa)
+ext-dev: ext-deps
+	(cd $(EXT_DIR) ; yarn dev)
 
-ext-e2e: ext-core-lib
-	(cd $(EXT_DIR) ; yarn install && yarn build-e2e)
+ext-qa: ext-deps
+	(cd $(EXT_DIR) ; yarn build-qa)
 
-ext-utxord: ext-core-lib
-	(cd $(EXT_DIR) ; yarn install && yarn build-utxord)
+ext-e2e: ext-deps
+	(cd $(EXT_DIR) ; yarn build-e2e)
 
-ext: ext-e2e
+ext-utxord: ext-deps
+	(cd $(EXT_DIR) ; yarn build-utxord)
+
+ext: ext-qa
 
 clean: core-clean ext-clean
 

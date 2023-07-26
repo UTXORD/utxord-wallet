@@ -5,9 +5,9 @@
   "version": "0.0.12",
   "private": true,
   "scripts": {
-    "dev": "rimraf extension/dev && run-p dev:*",
+    "dev": "rimraf extension/dev && run-p dev:prepare dev:web dev:js",
     "dev:prepare": "esno scripts/prepare-dev.ts dev",
-    "dev:web": "vite",
+    "dev:web": "vite --no-open",
     "dev:js": "npm run build:dev -- --watch src",
     "build-qa": "cross-env NODE_ENV=production TARGET_ENV=qa run-s build",
     "build-e2e": "cross-env NODE_ENV=production TARGET_ENV=e2e run-s build",
