@@ -3,7 +3,16 @@
     class="custom-input flex flex-col items-start relative"
     :class="{ 'pb-4': rules?.length }"
   >
-    <div class="relative w-full">
+    <textarea
+      ref="customInput"
+      v-if="type === 'textarea'"
+      v-bind="$attrs"
+      :value="props.modelValue"
+      @input="onInput"
+      class="w-full bg-[var(--bg-color)] text-[var(--text-color)]"
+      :placeholder="placeholder"
+    ></textarea>
+    <div class="relative w-full" v-else>
       <input
         ref="customInput"
         v-bind="$attrs"
@@ -16,8 +25,8 @@
         "
         :model-value="props.modelValue"
         @input="onInput"
-        class="w-full"
-        placeholder="Enter here"
+        class="w-full bg-[var(--bg-color)] text-[var(--text-color)]"
+        :placeholder="placeholder"
         :class="{ 'custom-input--error': errors?.length }"
       />
       <div class="absolute inset-y-0 right-0 flex items-center px-2">
@@ -61,6 +70,10 @@ const props = defineProps({
     type: String,
     default: 'text'
   },
+  placeholder: {
+    type: String,
+    default: 'Enter here'
+  },
   autofocus: {
     type: Boolean,
     default: false
@@ -95,18 +108,17 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-input {
-  background: #fafafa;
-  border: 1px solid #ededed;
-  border-radius: 4px;
+input,
+textarea {
+  border-radius: 10px;
   padding: 12px;
-  color: #000000;
   font-size: 14px;
 }
 
 .custom-input {
   &--error {
-    outline: red auto 1px !important;
+    outline: none;
+    box-shadow: 0 0 0 2px red;
   }
 }
 </style>

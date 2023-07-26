@@ -1,9 +1,12 @@
 <template>
-  <div class="header w-full flex items-center px-5 py-2">
-    <span @click="copyToClipboard(fundAddress)" class="cursor-pointer"
+  <div class="header bg-[var(--primary)] w-full flex items-center px-5 py-2">
+    <span
+      @click="copyToClipboard(fundAddress)"
+      class="cursor-pointer text-black"
       >Fund: {{ formatAddress(fundAddress, 6, 6) }}</span
     >
     <div class="header-buttons flex ml-auto">
+      <ThemeBtn class="mr-5" />
       <router-link to="/password">
         <img
           class="header-settings mr-5"
@@ -23,7 +26,9 @@
           />
         </template>
         <template #body>
-          <p class="text-base text-left leading-relaxed text-gray-500">
+          <p
+            class="text-base text-left leading-relaxed text-[var(--text-grey-color)]"
+          >
             Do you want to unload your keys?
           </p>
         </template>
@@ -38,6 +43,7 @@ import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
 import { UNLOAD_SEED } from '~/config/events'
 import Modal from '~/components/Modal.vue'
+import ThemeBtn from '~/components/ThemeBtn.vue'
 import { useStore } from '~/popup/store'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 
@@ -55,16 +61,11 @@ async function unload() {
 </script>
 
 <style scoped>
-.header {
-  background: var(--primary);
-}
-
 .header span {
   font-weight: 600;
   font-size: 15px;
   line-height: 20px;
   letter-spacing: -0.01em;
-  color: black;
 }
 
 .header-buttons img {

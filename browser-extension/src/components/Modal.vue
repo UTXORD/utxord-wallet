@@ -9,10 +9,14 @@
     >
       <div class="absolute bottom-0 left-0 w-full max-w-2xl max-h-full">
         <!-- Modal content -->
-        <div class="relative bg-white rounded-tl-xl rounded-tr-xl shadow">
+        <div
+          class="relative bg-[var(--bg-color)] rounded-tl-xl rounded-tr-xl shadow"
+        >
           <!-- Modal header -->
-          <div class="flex items-center justify-between p-4 border-b rounded-t">
-            <div class="text-lg font-semibold text-gray-900">
+          <div
+            class="flex items-center justify-between p-4 border-b border-[var(--border-color)] rounded-t"
+          >
+            <div class="text-lg font-semibold text-[var(--text-color)]">
               {{ props.title }}
             </div>
             <button
@@ -40,9 +44,8 @@
             <slot name="body" />
           </div>
           <!-- Modal footer -->
-          <div
-            class="flex items-center p-4 space-x-2 border-t border-gray-200 rounded-b"
-          >
+          <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
+          <div class="flex items-center p-4 space-x-2 rounded-b">
             <Button @click="close" outline class="w-2/4">
               {{ props.cancelText }}
             </Button>

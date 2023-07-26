@@ -1,28 +1,34 @@
 <template>
   <div class="load-screen flex flex-col h-full">
     <Logo />
+    <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div
       class="load-screen_content h-full flex flex-col items-center px-5 pb-5"
     >
       <!-- Secret phrase -->
       <div
-        class="load-screen_form w-full flex flex-col bg-white rounded-lg p-3 mb-5"
+        class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
       >
-        <span class="mb-2 w-full">Paste your secret 12 words here:</span>
-        <textarea
-          v-model="textarea"
+        <span class="mb-2 w-full text-[var(--text-grey-color)]"
+          >Paste your secret 12 words here:</span
+        >
+        <CustomInput
+          type="textarea"
+          class="w-full"
           autofocus
           rows="3"
-          class="w-full"
-        ></textarea>
+          v-model="textarea"
+        />
       </div>
 
       <!-- Inputs -->
       <div
-        class="load-screen_form w-full flex flex-col bg-white rounded-lg px-3 pt-3 mb-5"
+        class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
       >
         <div class="load-screen_form-input flex flex-col">
-          <span class="mb-2 w-full">Enter your Password:</span>
+          <span class="mb-2 w-full text-[var(--text-grey-color)]"
+            >Enter your Password:</span
+          >
           <CustomInput
             type="password"
             v-model="password"
@@ -32,7 +38,9 @@
           />
         </div>
         <div class="load-screen_form-input flex flex-col">
-          <span class="mb-2 w-full">Confirm Password:</span>
+          <span class="mb-2 w-full text-[var(--text-grey-color)]"
+            >Confirm Password:</span
+          >
           <CustomInput
             type="password"
             v-model="confirmPassword"
@@ -47,7 +55,7 @@
       <div class="flex w-full mb-5 mt-auto">
         <Button
           outline
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-[#EDEDED]"
+          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
           @click="back"
         >
           <img src="/assets/arrow-left.svg" alt="Go Back" />
@@ -58,7 +66,7 @@
       </div>
 
       <!-- Info -->
-      <p class="load-screen_info">
+      <p class="load-screen_info text-[var(--text-blue)]">
         The data is stored locally in this extension
       </p>
     </div>
@@ -111,21 +119,6 @@ async function onStore() {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
-    border-top: 1px solid #e8e8e8;
-  }
-
-  &_form textarea {
-    background: #f2f3f5;
-    border: 0.5px solid rgba(0, 0, 0, 0.12);
-    border-radius: 4px;
-    font-weight: 400;
-    font-size: 15px;
-    line-height: 20px;
-    display: flex;
-    align-items: center;
-    letter-spacing: -0.32px;
-    color: #000000;
-    padding: 12px;
   }
 
   &_form span {
@@ -134,7 +127,6 @@ async function onStore() {
     font-size: 14px;
     line-height: 18px;
     letter-spacing: -0.154px;
-    color: #6d7885;
   }
 
   &_info {
@@ -145,7 +137,6 @@ async function onStore() {
     align-items: center;
     text-align: center;
     letter-spacing: -0.32px;
-    color: #1b46f5;
   }
 }
 </style>
