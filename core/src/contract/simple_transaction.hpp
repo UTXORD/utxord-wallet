@@ -38,7 +38,9 @@ public:
     uint32_t GetProtocolVersion() const override
     { return 1; }
 
-    CAmount GetMinFundingAmount(const std::string& params) const override;
+    void MiningFeeRate(const std::string& rate)
+    { SetMiningFeeRate(rate); }
+    std::string GetMinFundingAmount(const std::string& params) const override;
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
     { m_inputs.emplace_back(move(prevout)); }
@@ -46,7 +48,7 @@ public:
     void AddOutput(std::shared_ptr<IContractDestination> destination)
     { m_outputs.emplace_back(move(destination)); }
 
-    void AddChangeOutput(const xonly_pubkey& pk);
+    void AddChangeOutput(const std::string& pk);
 
     void Sign(const core::MasterKey& master_key);
 

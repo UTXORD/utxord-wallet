@@ -51,7 +51,7 @@ class IContractDestination: public IJsonSerializable
 public:
     virtual CAmount Amount() const = 0;
     virtual void Amount(CAmount amount) = 0;
-    virtual xonly_pubkey DestinationPK() const = 0;
+    virtual std::string DestinationPK() const = 0;
     virtual CScript DestinationPubKeyScript() const = 0;
     virtual core::ChannelKeys LookupKeyPair(const core::MasterKey& masterKey, l15::utxord::OutputType outType) const = 0;
 };
@@ -73,8 +73,7 @@ public:
     P2TR(const P2TR&) = default;
     P2TR(P2TR&&) noexcept = default;
 
-    P2TR(CAmount amount, xonly_pubkey pk) : m_amount(amount), m_pk(move(pk)) {}
-    P2TR(CAmount amount, xonly_pubkey&& pk) : m_amount(amount), m_pk(move(pk)) {}
+    P2TR(CAmount amount, const std::string& pk) : m_amount(amount), m_pk(unhex<xonly_pubkey>(pk)) {}
 
     explicit P2TR(const UniValue& json)
     { P2TR::ReadJson(json); }
@@ -87,8 +86,8 @@ public:
     void Amount(CAmount amount) override
     { m_amount = amount; }
 
-    xonly_pubkey DestinationPK() const override
-    { return m_pk; }
+    std::string DestinationPK() const override
+    { return hex(m_pk); }
 
     CScript DestinationPubKeyScript() const override
     { return CScript() << 1 << m_pk; }
@@ -123,9 +122,9 @@ private:
     std::shared_ptr<IContractDestination> m_destination;
 public:
     UTXO() = default;
-    UTXO(std::string txid, uint32_t nout, CAmount amount, const xonly_pubkey& pk)
+    UTXO(std::string txid, uint32_t nout, CAmount amount, const std::string& pk)
         : m_txid(move(txid)), m_nout(nout), m_destination(std::make_shared<P2TR>(amount, pk))
-    { if (!m_destination) throw std::invalid_argument("null destination"); }
+    {}
 
     explicit UTXO(const IContractOutput& out)
         : m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
@@ -234,7 +233,7 @@ public:
 
     ContractBuilder& operator=(const ContractBuilder& ) = default;
     ContractBuilder& operator=(ContractBuilder&& ) noexcept = default;
-    virtual CAmount GetMinFundingAmount(const std::string& params) const = 0;
+    virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
 
     std::string GetNewInputMiningFee();
     std::string GetNewOutputMiningFee();

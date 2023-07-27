@@ -773,18 +773,18 @@ std::string CreateInscriptionBuilder::MakeInscriptionId() const
     return MakeGenesisTx(false).GetHash().GetHex() + "i0";
 }
 
-CAmount CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
+std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
     if(!m_content_type) throw l15::TransactionError("content type is empty");
     if(!m_content) throw l15::TransactionError("content is empty");
 
-    return m_ord_amount + CalculateWholeFee(params);
+    return FormatAmount(m_ord_amount + CalculateWholeFee(params));
 }
 
-CAmount CreateInscriptionBuilder::GetGenesisTxMiningFee() const
+std::string CreateInscriptionBuilder::GetGenesisTxMiningFee() const
 {
     CAmount fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate());
     if (m_parent_collection_id) fee += CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_KEYSPEND_VIN_VSIZE*2 + TAPROOT_VOUT_VSIZE);
-    return fee;
+    return FormatAmount(fee);
 }
 
 CAmount CreateInscriptionBuilder::CalculateWholeFee(const std::string& params) const

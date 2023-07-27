@@ -112,9 +112,10 @@ core::ChannelKeys P2TR::LookupKeyPair(const core::MasterKey &masterKey, l15::utx
 
     masterCopy.DeriveSelf(0);
 
+#ifdef _LIBCPP_HAS_PARALLEL_ALGORITHMS
+    std::atomic_uint32_t res_index = std::numeric_limits<uint32_t>::max();
     const uint32_t step = 64;
     uint32_t indexes[step];
-    std::atomic_uint32_t res_index = std::numeric_limits<uint32_t>::max();
     for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; key_index += step) {
         std::iota(indexes, indexes + step, key_index);
         std::for_each(std::execution::par_unseq, indexes, indexes+step, [&](const auto& k){
@@ -127,6 +128,14 @@ core::ChannelKeys P2TR::LookupKeyPair(const core::MasterKey &masterKey, l15::utx
             return masterCopy.Derive(std::vector<uint32_t >{res_index}, (outType == TAPROOT_DEFAULT_SCRIPT || outType == TAPROOT_SCRIPT) ? core::SUPPRESS : core::FORCE);
         }
     }
+#else
+    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
+        core::ChannelKeys keypair = masterCopy.Derive(std::vector<uint32_t >{key_index}, (outType == TAPROOT_DEFAULT_SCRIPT || outType == TAPROOT_SCRIPT) ? core::SUPPRESS : core::FORCE);
+        if (keypair.GetLocalPubKey() == m_pk) {
+            return keypair;
+        }
+    }
+#endif
     throw KeyError("derivation lookup");
 }
 

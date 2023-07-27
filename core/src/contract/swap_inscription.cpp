@@ -236,7 +236,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
 {
     CMutableTransaction commit_tx = GetFundsCommitTxTemplate();
 
-    CAmount funds_required = GetMinFundingAmount("");
+    CAmount funds_required = ParseAmount(GetMinFundingAmount(""));
     CAmount funds_provided = 0;
     for (const auto &utxo: m_funds) {
         funds_provided += utxo.m_amount;
@@ -250,7 +250,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
     } else {
         commit_tx.vout.pop_back();
 
-        funds_required = GetMinFundingAmount(""); // Calculate again since one output was removed
+        funds_required = ParseAmount(GetMinFundingAmount("")); // Calculate again since one output was removed
     }
 
     if(funds_provided < funds_required) {
@@ -558,7 +558,7 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
 
                 ++n;
             }
-            if (funds_amount < GetMinFundingAmount("")) throw ContractTermMissing("Funds UTXO amount not enough");
+            if (funds_amount < ParseAmount(GetMinFundingAmount(""))) throw ContractTermMissing("Funds UTXO amount not enough");
         }
         if (!m_swap_script_pk_B) throw ContractTermMissing(std::string(name_swap_script_pk_B));
         if (!m_funds_unspendable_key_factor) throw ContractTermMissing(std::string(name_funds_unspendable_key));
@@ -904,9 +904,9 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
     }
 }
 
-CAmount SwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
+std::string SwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
 {
-    return m_ord_price + *m_market_fee + CalculateWholeFee(params);
+    return FormatAmount(m_ord_price + *m_market_fee + CalculateWholeFee(params));
 }
 
 void SwapInscriptionBuilder::CheckFundsSwapSig() const

@@ -1,11 +1,14 @@
+#include <memory>
 
 #include "random.h"
 
 #include "common.hpp"
 #include "channel_keys.hpp"
 #include "master_key.hpp"
+#include "contract_builder.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
+#include "simple_transaction.hpp"
 
 
 namespace {
@@ -35,7 +38,9 @@ const secp256k1_context * GetSecp256k1()
 
 }
 
-namespace l15::utxord {
+namespace l15::utxord::wasm {
+
+class SimpleTransaction;
 
 class ChannelKeys : private l15::core::ChannelKeys
 {
@@ -103,9 +108,116 @@ struct Exception
     }
 };
 
+struct IContractDestination
+{
+    virtual ~IContractDestination() = default;
+    virtual std::string Amount() const = 0;
+    virtual std::string DestinationPK() const = 0;
+    virtual std::shared_ptr<utxord::IContractDestination>& Share() = 0;
+};
+
+class ContractDestinationWrapper : public IContractDestination
+{
+    std::shared_ptr<utxord::IContractDestination> m_ptr;
+public:
+    ContractDestinationWrapper(std::shared_ptr<utxord::IContractDestination> ptr) : m_ptr(move(ptr))
+    {}
+
+    std::string Amount() const override
+    { return FormatAmount(m_ptr->Amount()); }
+    std::string DestinationPK() const override
+    { return m_ptr->DestinationPK(); }
+
+    std::shared_ptr<utxord::IContractDestination>& Share() final
+    { return m_ptr; }
+};
+
+class P2TR : public ContractDestinationWrapper
+{
+public:
+    P2TR(const std::string& amount, const std::string& pk) : ContractDestinationWrapper(std::make_shared<utxord::P2TR>(ParseAmount(amount), pk))
+    {}
+};
+
+struct IContractOutput
+{
+    virtual ~IContractOutput() = default;
+    virtual std::string TxID() const = 0;
+    virtual uint32_t NOut() const = 0;
+    virtual IContractDestination* Destination() = 0;
+    virtual std::shared_ptr<utxord::IContractOutput> Share() = 0;
+};
+
+class ContractOutputWrapper : public IContractOutput
+{
+    std::shared_ptr<utxord::IContractOutput> m_ptr;
+public:
+    ContractOutputWrapper(std::shared_ptr<utxord::IContractOutput> ptr) : m_ptr(move(ptr))
+    {}
+    std::string TxID() const final
+    { return m_ptr->TxID(); }
+
+    uint32_t NOut() const final
+    { return  m_ptr->NOut(); }
+
+    IContractDestination* Destination() final
+    { return new ContractDestinationWrapper(m_ptr->Destination()); }
+
+    std::shared_ptr<utxord::IContractOutput> Share() final
+    { return m_ptr; }
+
+};
+
+class UTXO : public ContractOutputWrapper
+{
+public:
+    UTXO(std::string txid, uint32_t nout, const std::string& amount, const char* pk)
+        : ContractOutputWrapper(std::make_shared<utxord::UTXO>(move(txid), nout, ParseAmount(amount), pk))
+    {}
+};
+
+class SimpleTransaction : public IContractOutput
+{
+    std::shared_ptr<utxord::SimpleTransaction> m_ptr;
+public:
+    SimpleTransaction() : m_ptr(std::make_shared<utxord::SimpleTransaction>())
+    {}
+
+    std::string TxID() const final
+    { return m_ptr->TxID(); }
+    uint32_t NOut() const final
+    { return  m_ptr->NOut(); }
+    IContractDestination* Destination() final
+    { return new ContractDestinationWrapper(m_ptr->Destination()); }
+
+    void MiningFeeRate(const std::string& rate)
+    { m_ptr->MiningFeeRate(rate); }
+    std::string GetMinFundingAmount() const
+    { return m_ptr->GetMinFundingAmount(""); }
+
+    void AddInput(IContractOutput* prevout)
+    { m_ptr->AddInput(prevout->Share()); }
+    void AddOutput(IContractDestination* out)
+    { m_ptr->AddOutput(out->Share()); }
+    void AddChangeOutput(std::string pk)
+    { m_ptr->AddChangeOutput(pk); }
+
+    void Sign(const MasterKey* master)
+    { m_ptr->Sign(*reinterpret_cast<const core::MasterKey*>(master)); }
+
+    std::string Serialize()
+    { return m_ptr->Serialize(); }
+    void Deserialize(std::string data)
+    { m_ptr->Deserialize(move(data)); }
+
+    std::shared_ptr<utxord::IContractOutput> Share() final
+    { return m_ptr; }
+};
+
 }
 
 using namespace l15;
 using namespace l15::utxord;
+using namespace l15::utxord::wasm;
 
 #include "contract.cpp"

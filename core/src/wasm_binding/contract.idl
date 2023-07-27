@@ -7,7 +7,7 @@ interface string
     [Const] DOMString c_str();
 };
 
-[Prefix="l15::utxord::"]
+[Prefix="l15::utxord::wasm::"]
 interface ChannelKeys
 {
     static void InitSecp256k1();
@@ -20,7 +20,7 @@ interface ChannelKeys
 };
 
 
-[Prefix="l15::utxord::"]
+[Prefix="l15::utxord::wasm::"]
 interface MasterKey
 {
     void MasterKey([Const] DOMString seed);
@@ -36,7 +36,7 @@ enum NetworkMode
 };
 
 
-[Prefix="l15::utxord::"]
+[Prefix="l15::utxord::wasm::"]
 interface Bech32
 {
     void Bech32(NetworkMode network);
@@ -45,11 +45,43 @@ interface Bech32
 };
 
 
-[Prefix="l15::utxord::"]
+[Prefix="l15::utxord::wasm::"]
 interface Exception
 {
     [Value] static string getMessage(any e);
 };
+
+
+[Prefix="l15::utxord::wasm::"]
+interface IContractDestination
+{
+    [Value] string Amount();
+    [Value] string DestinationPK();
+};
+
+[Prefix="l15::utxord::wasm::"]
+interface P2TR : IContractDestination
+{
+    void P2TR([Const] DOMString amount, [Const] DOMString pk);
+};
+
+[Prefix="l15::utxord::wasm::"]
+interface IContractOutput
+{
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+};
+
+[Prefix="l15::utxord::wasm::"]
+interface UTXO
+{
+    void UTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString pk);
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+};
+
 
 [Prefix="l15::utxord::"]
 interface Collection
@@ -67,15 +99,15 @@ enum InscribeType
 interface CreateInscriptionBuilder
 {
     void CreateInscriptionBuilder(InscribeType type, [Const] DOMString ordAmount);
-    [Ref] CreateInscriptionBuilder MiningFeeRate([Const] DOMString rate);
-    [Ref] CreateInscriptionBuilder AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pk);
-    [Ref] CreateInscriptionBuilder Data([Const] DOMString contentType, [Const] DOMString hexData);
-    [Ref] CreateInscriptionBuilder InscribePubKey([Const] DOMString inscribePK);
-    [Ref] CreateInscriptionBuilder ChangePubKey([Const] DOMString changePK);
+    void MiningFeeRate([Const] DOMString rate);
+    void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pk);
+    void Data([Const] DOMString contentType, [Const] DOMString hexData);
+    void InscribePubKey([Const] DOMString inscribePK);
+    void ChangePubKey([Const] DOMString changePK);
 
-    [Ref] CreateInscriptionBuilder AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
+    void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
                                                    [Const] DOMString collectionPK);
-    [Ref] CreateInscriptionBuilder AddFundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeePK);
+    void AddFundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeePK);
 
     void SignCommit(long n, [Const] DOMString sk, [Const] DOMString scriptPK);
     void SignInscription([Const] DOMString scriptSK);
@@ -111,11 +143,11 @@ interface SwapInscriptionBuilder
 {
     void SwapInscriptionBuilder([Const] DOMString ord_price, [Const] DOMString market_fee);
 
-    [Ref] SwapInscriptionBuilder OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount);
-    [Ref] SwapInscriptionBuilder AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pubkey);
+    void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount);
+    void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pubkey);
 
-    [Ref] SwapInscriptionBuilder SwapScriptPubKeyA([Const] DOMString v);
-    [Ref] SwapInscriptionBuilder SwapScriptPubKeyB([Const] DOMString v);
+    void SwapScriptPubKeyA([Const] DOMString v);
+    void SwapScriptPubKeyB([Const] DOMString v);
 
     void SignOrdSwap([Const] DOMString sk);
 
@@ -130,4 +162,27 @@ interface SwapInscriptionBuilder
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
+};
+
+
+[Prefix="l15::utxord::wasm::"]
+interface SimpleTransaction
+{
+    void SimpleTransaction();
+
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+
+    void MiningFeeRate([Const] DOMString rate);
+    [Value] string GetMinFundingAmount();
+
+    void AddInput(IContractOutput prevout);
+    void AddOutput(IContractDestination out);
+    void AddChangeOutput([Const] DOMString pk);
+
+    void Sign([Const] MasterKey master);
+
+    [Value] string Serialize();
+    void Deserialize([Const] DOMString data);
 };

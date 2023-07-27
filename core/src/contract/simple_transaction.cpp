@@ -32,12 +32,12 @@ CMutableTransaction SimpleTransaction::MakeTx() const
     return tx;
 }
 
-void SimpleTransaction::AddChangeOutput(const l15::xonly_pubkey &pk)
+void SimpleTransaction::AddChangeOutput(const std::string& pk)
 {
     if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
 
     AddOutput(std::make_shared<P2TR>(0, pk));
-    CAmount required = GetMinFundingAmount("");
+    CAmount required = ParseAmount(GetMinFundingAmount(""));
 
     CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
@@ -49,7 +49,7 @@ void SimpleTransaction::AddChangeOutput(const l15::xonly_pubkey &pk)
     }
     else {
        m_outputs.pop_back();
-    };
+    }
 }
 
 void SimpleTransaction::Sign(const core::MasterKey &master_key)
@@ -145,10 +145,10 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
     }
 }
 
-CAmount SimpleTransaction::GetMinFundingAmount(const string &params) const
+std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
-    return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx()) + total_out;
+    return FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx()) + total_out);
 }
 
 } // l15::utxord
