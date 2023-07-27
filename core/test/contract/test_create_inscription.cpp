@@ -172,12 +172,12 @@ TEST_CASE("single")
     CreateInscriptionBuilder test_inscription(INSCRIPTION, "0.00000546");
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(test_inscription.Data(content_type, content));
-    CAmount inscription_amount = test_inscription.GetMinFundingAmount("");
+    CAmount inscription_amount = ParseAmount(test_inscription.GetMinFundingAmount(""));
 
     CreateInscriptionBuilder test_collection(COLLECTION, "0.00000546");
     REQUIRE_NOTHROW(test_collection.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(test_collection.Data(content_type, content));
-    CAmount collection_amount = test_collection.GetMinFundingAmount("");
+    CAmount collection_amount = ParseAmount(test_collection.GetMinFundingAmount(""));
 
     CreateCondition inscription {{10000}, INSCRIPTION, true, false};
     CreateCondition collection {{10000}, COLLECTION, true, false};
@@ -372,13 +372,13 @@ TEST_CASE("inscribe")
 
     std::clog << ">>>>> Estimate mining fee <<<<<" << std::endl;
 
-    CAmount exact_amount = test_builder.GetMinFundingAmount("");
-    CAmount exact_amount_w_collection = test_builder.GetMinFundingAmount("collection");
+    CAmount exact_amount = ParseAmount(test_builder.GetMinFundingAmount(""));
+    CAmount exact_amount_w_collection = ParseAmount(test_builder.GetMinFundingAmount("collection"));
 
     CreateInscriptionBuilder test_collection(INSCRIPTION, "0.00000546");
     REQUIRE_NOTHROW(test_collection.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(test_collection.Data(content_type, content));
-    CAmount exact_collection_root_amount = test_collection.GetMinFundingAmount("collection");
+    CAmount exact_collection_root_amount = ParseAmount(test_collection.GetMinFundingAmount("collection"));
 
     std::clog << "Amount for collection: " << exact_amount_w_collection << std::endl;
 

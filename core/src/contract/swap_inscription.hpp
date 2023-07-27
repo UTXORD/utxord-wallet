@@ -166,7 +166,7 @@ public:
     std::string OrdSwapRawTransaction() const;
     std::string OrdPayoffRawTransaction() const;
 
-    CAmount GetMinFundingAmount(const std::string& params) const override;
+    std::string GetMinFundingAmount(const std::string& params) const override;
 };
 
 } // namespace l15::utxord

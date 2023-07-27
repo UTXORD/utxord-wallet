@@ -91,8 +91,8 @@ TEST_CASE("singleinout")
     SimpleTransaction tx_contract;
     tx_contract.SetMiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(funds_txid, get<0>(prevout).n, 10000, utxo_key.GetLocalPubKey())));
-    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(7000, destination_pk)));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(funds_txid, get<0>(prevout).n, 10000, hex(utxo_key.GetLocalPubKey()))));
+    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(7000, hex(destination_pk))));
 
     REQUIRE_NOTHROW(tx_contract.Sign(master_key));
 
@@ -149,10 +149,10 @@ TEST_CASE("2ins2outs")
     SimpleTransaction tx_contract;
     tx_contract.SetMiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(funds_txid, get<0>(prevout).n, 10000, utxo_key.GetLocalPubKey())));
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(funds_txid1, get<0>(prevout1).n, 546, utxo_key1.GetLocalPubKey())));
-    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(546, destination_pk)));
-    REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_pk1));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(funds_txid, get<0>(prevout).n, 10000, hex(utxo_key.GetLocalPubKey()))));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(funds_txid1, get<0>(prevout1).n, 546, hex(utxo_key1.GetLocalPubKey()))));
+    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(546, hex(destination_pk))));
+    REQUIRE_NOTHROW(tx_contract.AddChangeOutput(hex(destination_pk1)));
 
     REQUIRE_NOTHROW(tx_contract.Sign(master_key));
 
@@ -207,11 +207,11 @@ TEST_CASE("txchain")
     tx1_contract->SetMiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx1_contract->AddInput(tx_contract));
-    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(546, destination_pk)));
+    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(546, hex(destination_pk))));
 
-    REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(funds_txid, get<0>(prevout).n, 10000, utxo_key.GetLocalPubKey())));
-    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(tx1_contract->GetMinFundingAmount(""), intermediate_key.GetLocalPubKey())));
-    REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_pk));
+    REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(funds_txid, get<0>(prevout).n, 10000, hex(utxo_key.GetLocalPubKey()))));
+    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(ParseAmount(tx1_contract->GetMinFundingAmount("")), hex(intermediate_key.GetLocalPubKey()))));
+    REQUIRE_NOTHROW(tx_contract->AddChangeOutput(hex(change_pk)));
 
     REQUIRE_NOTHROW(tx_contract->Sign(master_key));
     REQUIRE_NOTHROW(tx1_contract->Sign(master_key));

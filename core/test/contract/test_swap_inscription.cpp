@@ -135,7 +135,7 @@ TEST_CASE("Swap")
     SwapInscriptionBuilder builderOrdBuyer(ORD_PRICE, MARKET_FEE);
     REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
 
-    CAmount min_funding = builderOrdBuyer.GetMinFundingAmount("");
+    CAmount min_funding = ParseAmount(builderOrdBuyer.GetMinFundingAmount(""));
     CAmount dust = Dust(3000);
 
     const SwapCondition fund_min_cond = {{min_funding}, false};
@@ -532,7 +532,7 @@ TEST_CASE("FundsNotEnough")
     builderOrdBuyer.Deserialize(marketFundsConditions);
 
     //Create insufficient funds utxo
-    std::string funds_amount = FormatAmount(builderOrdBuyer.GetMinFundingAmount("") - Dust(3000));
+    std::string funds_amount = FormatAmount(ParseAmount(builderOrdBuyer.GetMinFundingAmount("")) - Dust(3000));
     std::string funds_addr = w->bech32().Encode(funds_utxo_key.GetLocalPubKey());
     std::string funds_txid = w->btc().SendToAddress(funds_addr, funds_amount);
 

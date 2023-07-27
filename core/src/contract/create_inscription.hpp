@@ -146,7 +146,7 @@ public:
 
     std::string GetInscribeInternalPubKey() const;
 
-    CAmount GetGenesisTxMiningFee() const;
+    std::string GetGenesisTxMiningFee() const;
 
     void SignCommit(uint32_t n, const std::string& sk, const std::string& inscribe_script_pk);
     void SignInscription(const std::string& insribe_script_sk);
@@ -154,7 +154,7 @@ public:
     void SignCollection(const std::string& script_sk);
     void SignFundMiningFee(uint32_t n, const std::string& sk);
 
-    CAmount GetMinFundingAmount(const std::string& params) const override;
+    std::string GetMinFundingAmount(const std::string& params) const override;
 
     std::vector<std::string> RawTransactions() const;
 
