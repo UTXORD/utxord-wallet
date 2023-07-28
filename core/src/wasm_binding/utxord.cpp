@@ -199,16 +199,16 @@ public:
     { m_ptr->AddInput(prevout->Share()); }
     void AddOutput(IContractDestination* out)
     { m_ptr->AddOutput(out->Share()); }
-    void AddChangeOutput(std::string pk)
+    void AddChangeOutput(const std::string& pk)
     { m_ptr->AddChangeOutput(pk); }
 
     void Sign(const MasterKey* master)
     { m_ptr->Sign(*reinterpret_cast<const core::MasterKey*>(master)); }
 
-    std::string Serialize()
+    const char* Serialize()
     { return m_ptr->Serialize(); }
-    void Deserialize(std::string data)
-    { m_ptr->Deserialize(move(data)); }
+    void Deserialize(const std::string& data)
+    { m_ptr->Deserialize(data); }
 
     std::shared_ptr<utxord::IContractOutput> Share() final
     { return m_ptr; }

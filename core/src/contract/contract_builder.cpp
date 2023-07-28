@@ -44,6 +44,8 @@ const std::string ContractInput::name_witness = "witness";
 
 UniValue ContractInput::MakeJson() const
 {
+    // Do not serialize underlying contract as transaction input: copy it as UTXO and write UTXO related values only
+    // Lazy mode copy of an UTXO state is used to allow early-set of not completed contract as the input at any time
     UTXO utxo_out(*output);
     UniValue json = utxo_out.MakeJson();
     json.pushKV(name_witness, witness.MakeJson());
