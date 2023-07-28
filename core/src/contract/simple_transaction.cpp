@@ -92,19 +92,17 @@ UniValue SimpleTransaction::MakeJson() const
 
     UniValue utxo_arr(UniValue::VARR);
     for (const auto& input: m_inputs) {
-        // Do not serialize underlying contract as transaction input: copy it as UTXO and write UTXO related values only
-        // Lazy mode copy of an UTXO state is used to allow early-set of not completed contract as the input at any time
         UniValue spend = input.MakeJson();
         utxo_arr.push_back(move(spend));
     }
-    contract.pushKV(name_utxo, utxo_arr);
+    contract.pushKV(name_utxo, move(utxo_arr));
 
     UniValue out_arr(UniValue::VARR);
     for (const auto& out: m_outputs) {
         UniValue dest = out->MakeJson();
-        out_arr.push_back(dest);
+        out_arr.push_back(move(dest));
     }
-    contract.pushKV(name_outputs, out_arr);
+    contract.pushKV(name_outputs, move(out_arr));
     return contract;
 }
 

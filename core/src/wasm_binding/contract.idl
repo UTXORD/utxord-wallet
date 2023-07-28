@@ -182,6 +182,6 @@ interface SimpleTransaction
 
     void Sign([Const] MasterKey master);
 
-    [Value] string Serialize();
+    [Const] DOMString Serialize();
     void Deserialize([Const] DOMString data);
 };

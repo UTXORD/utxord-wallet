@@ -19,21 +19,26 @@ using namespace l15;
 enum OutputType {
     TAPROOT_DEFAULT, // m/86'/0'/0'/0/* or m/86'/0'/0'/1/*
     TAPROOT_DEFAULT_SCRIPT, // m/86'/0'/0'/0/* w/o tweak
-    TAPROOT_OUTPUT, // m/86'/1'/0'/0/*
-    TAPROOT_SCRIPT, // m/86'/1'/0'/0/* w/o tweak
-    INSCRIPTION_OUTPUT // m/86'/2'/0'/0/*
+    TAPROOT_OUTPUT, // m/86'/0'/1'/0/*
+    TAPROOT_SCRIPT, // m/86'/0'/1'/0/* w/o tweak
+    INSCRIPTION_OUTPUT // m/86'/0'/1'/0/*
 };
 
 struct IJsonSerializable
 {
     static const std::string name_type;
 
+    mutable std::string buf;
+
     virtual ~IJsonSerializable() = default;
     virtual UniValue MakeJson() const = 0;
     virtual void ReadJson(const UniValue& json) = 0;
 
-    virtual std::string Serialize() const
-    { return MakeJson().write(); }
+    const char* Serialize() const
+    {
+        buf = MakeJson().write();
+        return buf.c_str();
+    }
 
     virtual void Deserialize(const std::string& jsonStr)
     {

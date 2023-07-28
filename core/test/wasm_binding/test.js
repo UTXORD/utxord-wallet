@@ -68,9 +68,7 @@
         let contract = tx.Serialize();
         api.destroy(tx);
 
-        console.log(contract.c_str());
-
-        api.destroy(contract);
+        console.log(contract);
 
         console.log("SimpleTx - OK!");
 
@@ -123,17 +121,14 @@
         tx1.Sign(masterKey);
         api.destroy(masterKey);
 
-        let contract1 = tx1.Serialize();
         let contract = tx.Serialize();
+        let contract1 = tx1.Serialize();
 
         api.destroy(tx);
         api.destroy(tx1);
 
-        console.log(contract.c_str());
-        console.log(contract1.c_str());
-
-        // api.destroy(contract);
-        // api.destroy(contract1);
+        console.log(contract);
+        console.log(contract1);
 
         console.log("SimpleTx chain - OK!");
 
