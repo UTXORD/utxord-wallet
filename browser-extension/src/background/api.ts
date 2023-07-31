@@ -561,7 +561,12 @@ async genAllBranchKeys(type, deep = 0){
     let path = `m/86'/${this.wallet[type].coin_type}'/${this.wallet[type].account}'/${this.wallet[type].change}/${index}`;
     let for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
     let keypair = this.wallet.root.key.Derive(path, for_script);
-    const address = this.bech.Encode(keypair.GetLocalPubKey().c_str()).c_str();
+    let address = this.bech.Encode(keypair.GetLocalPubKey().c_str()).c_str();
+    addresses.push(address);
+    path = `m/86'/${this.wallet[type].account}'/${this.wallet[type].coin_type}'/${this.wallet[type].change}/${index}`;
+    for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
+    keypair = this.wallet.root.key.Derive(path, for_script);
+    address = this.bech.Encode(keypair.GetLocalPubKey().c_str()).c_str();
     addresses.push(address);
     keys.push(keypair);
       }
