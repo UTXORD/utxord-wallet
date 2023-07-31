@@ -60,8 +60,8 @@ const WALLET = {
   fund: { // funding
     index: 0,
     change: 0,
-    account: 0,
-    coin_type: 1,
+    account: 1,
+    coin_type: 0,
     key: null,
     p2tr: null,
     pubKeyStr: null,
@@ -70,8 +70,8 @@ const WALLET = {
   ord: { // ordinal
     index: 0,
     change: 0,
-    account: 0,
-    coin_type: 2,
+    account: 2,
+    coin_type: 0,
     key: null,
     p2tr: null,
     pubKeyStr: null,
@@ -80,8 +80,8 @@ const WALLET = {
   uns: { // unspendable
     index: 0,
     change: 0,
-    account: 0,
-    coin_type: 3,
+    account: 3,
+    coin_type: 0,
     key: null,
     p2tr: null,
     pubKeyStr: null,
@@ -90,8 +90,8 @@ const WALLET = {
   intsk:{ // internalSK
     index: 0,
     change: 0,
-    account: 0,
-    coin_type: 4,
+    account: 4,
+    coin_type: 0,
     key: null,
     p2tr: null,
     pubKeyStr: null,
@@ -100,8 +100,8 @@ const WALLET = {
   scrsk: { //scriptSK
     index: 0,
     change: 0,
-    account: 0,
-    coin_type: 5,
+    account: 5,
+    coin_type: 0,
     key: null,
     p2tr: null,
     pubKeyStr: null,
@@ -561,7 +561,12 @@ async genAllBranchKeys(type, deep = 0){
     let path = `m/86'/${this.wallet[type].coin_type}'/${this.wallet[type].account}'/${this.wallet[type].change}/${index}`;
     let for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
     let keypair = this.wallet.root.key.Derive(path, for_script);
-    const address = this.bech.Encode(keypair.GetLocalPubKey().c_str()).c_str();
+    let address = this.bech.Encode(keypair.GetLocalPubKey().c_str()).c_str();
+    addresses.push(address);
+    path = `m/86'/${this.wallet[type].account}'/${this.wallet[type].coin_type}'/${this.wallet[type].change}/${index}`;
+    for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
+    keypair = this.wallet.root.key.Derive(path, for_script);
+    address = this.bech.Encode(keypair.GetLocalPubKey().c_str()).c_str();
     addresses.push(address);
     keys.push(keypair);
       }
