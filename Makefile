@@ -17,6 +17,7 @@ core-clean:
 	rm -rf $(CORE_BUILD_DIR)
 
 $(CORE_TARGETS): $(shell find $(CORE_DIR) -not \( -path $(CORE_BUILD_DIR) -prune \) -type f)
+	pwd
 	(cd $(CORE_DIR) ; ./autogen.sh)
 	mkdir -p $(CORE_BUILD_DIR)
 	(cd $(CORE_BUILD_DIR) ; emconfigure ../configure --enable-wasm-binding)
