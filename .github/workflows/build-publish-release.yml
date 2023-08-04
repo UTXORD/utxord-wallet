@@ -1,4 +1,4 @@
-# https://github.com/marketplace/actions/docker-compose-action
+# https://github.com/marketplace/actions/docker-compose-run-action
 # https://github.com/marketplace/actions/zip-release
 # https://github.com/marketplace/actions/gh-release
 # https://github.com/marketplace/actions/publish-chrome-extension-to-chrome-web-store
@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v3
       -
         name: Build wallet
-        uses: isbang/compose-action@v1.5.0
+        uses: adrielcodeco/docker-compose-run-action@v1
         with:
           compose-file: "./docker-compose.yml"
           down-flags: "--volumes"
