@@ -62,8 +62,8 @@
         <PriceComp
           class="ml-auto"
           :price="
-            dataForSign?.data?.costs?.amount -
-              dataForSign?.data?.costs?.expect_amount || 0
+            Math.abs(dataForSign?.data?.costs?.amount -
+              dataForSign?.data?.costs?.expect_amount) || 0
           "
           :font-size-breakpoints="{
             1000000: '15px'
