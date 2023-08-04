@@ -3,25 +3,28 @@ version: "3.2"
 services:
 
   common-config: &common_config
-    build:
-      context: ./toolchain-image
+    image:  layer1dot5/utxord-wallet-toolchain:latest
     deploy:
       resources:
         limits:
-          memory: "8gb"
-          cpus: "4.0"
+          memory: "6gb"
+          cpus: "2.0"
     shm_size: "2gb"
     env_file:
       - .env
     environment:
       - YARN_CACHE_FOLDER=/tmp/yarn_cache
+      - NODE_OPTIONS=--max-old-space-size=4096
     volumes:
       - "./:/src"
-      - "./.yarn_cache:/tmp/yarn_cache"
 
   toolchain-shell:
+    profiles: ["donotstart"]
     <<: *common_config
-    build:
-      context: ./toolchain-image
-      dockerfile: Dockerfile
-    image: arrowlabs/wallet-build-tools:latest
+    command: "bash"
+
+  build-wallet:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make clean ext-utxord"
+
