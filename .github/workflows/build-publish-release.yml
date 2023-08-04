@@ -27,7 +27,8 @@ jobs:
         with:
           compose-file: "./docker-compose.yml"
           down-flags: "--volumes"
-          services: ["build-wallet"]
+          services: |
+            build-wallet
       -
         name: Extract tag value
         id: vars
