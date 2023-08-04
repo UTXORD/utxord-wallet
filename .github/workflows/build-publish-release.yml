@@ -1,0 +1,51 @@
+# https://github.com/marketplace/actions/docker-compose-action
+# https://github.com/marketplace/actions/zip-release
+# https://github.com/marketplace/actions/gh-release
+# https://github.com/marketplace/actions/publish-chrome-extension-to-chrome-web-store
+
+name: Build and publish release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  IMAGE_LABEL_NAME: layer1dot5
+  IMAGE_LABEL_APP: utxord-wallet-toolchain
+
+jobs:
+  build_publish_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        uses: actions/checkout@v3
+      -
+        name: Build wallet
+        uses: isbang/compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yml"
+          down-flags: "--volumes"
+          services: ["build-wallet"]
+      -
+        name: Extract tag value
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+        # accessible as ${{ steps.vars.outputs.tag }}
+        # run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        # accessible as $RELEASE_VERSION or ${{ env.RELEASE_VERSION }}
+      -
+        name: Archive Release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: utxord-wallet-${{ steps.vars.outputs.tag }}.zip
+      -
+        name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: utxord-wallet-${{ steps.vars.outputs.tag }}.zip
