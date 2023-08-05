@@ -26,5 +26,4 @@ services:
   build-wallet:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "make clean ext-utxord"
-
+    command: "make clean ext-qa"
