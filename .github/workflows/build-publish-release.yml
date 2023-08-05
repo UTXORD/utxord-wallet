@@ -28,7 +28,6 @@ jobs:
         uses: adrielcodeco/docker-compose-run-action@v1
         with:
           compose-file: "./docker-compose.yml"
-          down-flags: "--volumes"
           service: build-wallet
       -
         name: Extract tag value
