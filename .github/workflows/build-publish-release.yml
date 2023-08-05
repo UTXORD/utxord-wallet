@@ -21,6 +21,8 @@ jobs:
     steps:
       -
         uses: actions/checkout@v3
+        with:
+          set-safe-directory: '*'
       -
         name: Build wallet
         uses: adrielcodeco/docker-compose-run-action@v1
