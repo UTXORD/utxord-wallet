@@ -42,3 +42,8 @@ services:
     profiles: ["donotstart"]
     <<: *common_config
     command: "make ext-clean ext-utxord"
+
+  build-wallet:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make clean ext-utxord"

@@ -29,7 +29,6 @@ core-clean:
 ext-clean:
 	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_FILES) $(EXT_MODULE_FILES)
 
-
 ext-core-lib: $(CORE_TARGETS)
 	cp -f $(CORE_TARGET_DIR)/utxord.wasm $(EXT_LIB_DIR)
 	sed 's/^var utxord = /self.utxord = /' $(CORE_TARGET_DIR)/utxord.js  > $(EXT_LIB_DIR)/utxord.js
