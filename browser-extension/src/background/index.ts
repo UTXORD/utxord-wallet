@@ -28,6 +28,7 @@ import {
     SAVE_DATA_FOR_SIGN,
     SUBMIT_SIGN,
     PLUGIN_ID,
+    PLUGIN_PUBLIC_KEY,
     AUTH_STATUS,
     ADDRESSES_TO_SAVE,
     UNLOAD,
@@ -55,6 +56,7 @@ import {
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       await Api.genKeys();
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.pubKeyStr);
       return await Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {
@@ -260,8 +262,10 @@ import {
       // const [tab] = await chrome.tabs.query({ active: true });
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) return;
 
-      console.log('PLUGIN_ID', chrome.runtime.id);
+      console.log(PLUGIN_ID, chrome.runtime.id);
+      console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.pubKeyStr);
       return true;
     }
 
