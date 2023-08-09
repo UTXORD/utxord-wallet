@@ -13,7 +13,7 @@ EXT_BUILD_DIR = $(EXT_DIR)/extension
 
 
 $(CORE_TARGETS): $(shell find $(CORE_DIR) -not \( -path $(CORE_BUILD_DIR) -prune \) -type f)
-	(cd $(CORE_DIR) ; pwd ; ls -al ; ./autogen.sh)
+	(cd $(CORE_DIR) ; ./autogen.sh)
 	mkdir -p $(CORE_BUILD_DIR)
 	(cd $(CORE_BUILD_DIR) ; emconfigure ../configure --enable-wasm-binding)
 	(cd $(CORE_BUILD_DIR) ; emmake make -j4)
