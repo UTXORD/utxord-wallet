@@ -23,7 +23,22 @@ services:
     <<: *common_config
     command: "bash"
 
-  build-wallet:
+  clean-wallet:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "make clean ext-qa"
+    command: "make clean"
+
+  build-wallet-qa:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make ext-clean ext-qa"
+
+  build-wallet-e2e:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make ext-clean ext-e2e"
+
+  build-wallet-utxord:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make ext-clean ext-utxord"
