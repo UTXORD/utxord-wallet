@@ -34,19 +34,19 @@ ext-core-lib: $(CORE_TARGETS)
 	sed 's/^var utxord = /self.utxord = /' $(CORE_TARGET_DIR)/utxord.js  > $(EXT_LIB_DIR)/utxord.js
 
 ext-deps: ext-core-lib
-	(cd $(EXT_DIR) ; yarn install)
+	(cd $(EXT_DIR) ; npm install)
 
 ext-dev: ext-deps
-	(cd $(EXT_DIR) ; yarn dev)
+	(cd $(EXT_DIR) ; npm run dev)
 
 ext-qa: ext-deps
-	(cd $(EXT_DIR) ; yarn build-qa)
+	(cd $(EXT_DIR) ; npm run build-qa)
 
 ext-e2e: ext-deps
-	(cd $(EXT_DIR) ; yarn build-e2e)
+	(cd $(EXT_DIR) ; npm run build-e2e)
 
 ext-utxord: ext-deps
-	(cd $(EXT_DIR) ; yarn build-utxord)
+	(cd $(EXT_DIR) ; npm run build-utxord)
 
 ext: ext-utxord
 
