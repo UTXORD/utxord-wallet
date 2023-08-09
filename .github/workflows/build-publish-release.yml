@@ -32,11 +32,11 @@ jobs:
         # run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
         # accessible as $RELEASE_VERSION or ${{ env.RELEASE_VERSION }}
       -
-        name: Clean wallet build
+        name: Build wallet core
         uses: adrielcodeco/docker-compose-run-action@v1
         with:
           compose-file: "./docker-compose.yml"
-          service: clean-wallet
+          service: build-wasm-core
       -
         name: Build UTXORD wallet
         uses: adrielcodeco/docker-compose-run-action@v1

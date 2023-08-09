@@ -12,15 +12,16 @@ EXT_LIB_DIR = $(EXT_DIR)/src/libs
 EXT_BUILD_DIR = $(EXT_DIR)/extension
 
 
-core: $(CORE_TARGET_DIR)/utxord.wasm
-core-clean:
-	rm -rf $(CORE_BUILD_DIR)
-
 $(CORE_TARGETS): $(shell find $(CORE_DIR) -not \( -path $(CORE_BUILD_DIR) -prune \) -type f)
 	(cd $(CORE_DIR) ; pwd ; ls -al ; ./autogen.sh)
 	mkdir -p $(CORE_BUILD_DIR)
 	(cd $(CORE_BUILD_DIR) ; emconfigure ../configure --enable-wasm-binding)
 	(cd $(CORE_BUILD_DIR) ; emmake make -j4)
+
+core: $(CORE_TARGETS)
+
+core-clean:
+	rm -rf $(CORE_BUILD_DIR)
 
 ext-clean:
 	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_DIR)/utxord.wasm  $(EXT_LIB_DIR)/utxord.js $(EXT_DIR)/node_modules
@@ -44,7 +45,7 @@ ext-e2e: ext-deps
 ext-utxord: ext-deps
 	(cd $(EXT_DIR) ; yarn build-utxord)
 
-ext: ext-qa
+ext: ext-utxord
 
 clean: core-clean ext-clean
 
