@@ -1,8 +1,6 @@
 .DS_Store
 .idea
 core/build
-browser-extension/.yarn
-browser-extension/.yarnrc.yml
 .yarn_cache
 browser-extension/src/libs/utxord.wasm
 browser-extension/src/libs/utxord.js

@@ -11,6 +11,9 @@ EXT_DIR = ./browser-extension
 EXT_LIB_DIR = $(EXT_DIR)/src/libs
 EXT_BUILD_DIR = $(EXT_DIR)/extension
 
+EXT_MODULE_FILES = $(EXT_DIR)/node_modules $(EXT_DIR)/yarn.lock $(EXT_DIR)/package-lock.json
+EXT_LIB_FILES = $(EXT_LIB_DIR)/utxord.wasm  $(EXT_LIB_DIR)/utxord.js
+
 
 $(CORE_TARGETS): $(shell find $(CORE_DIR) -not \( -path $(CORE_BUILD_DIR) -prune \) -type f)
 	(cd $(CORE_DIR) ; ./autogen.sh)
@@ -24,7 +27,8 @@ core-clean:
 	rm -rf $(CORE_BUILD_DIR)
 
 ext-clean:
-	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_DIR)/utxord.wasm  $(EXT_LIB_DIR)/utxord.js $(EXT_DIR)/node_modules
+	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_FILES) $(EXT_MODULE_FILES)
+
 
 ext-core-lib: $(CORE_TARGETS)
 	cp -f $(CORE_TARGET_DIR)/utxord.wasm $(EXT_LIB_DIR)

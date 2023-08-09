@@ -5,6 +5,10 @@
 dist
 dist-ssr
 node_modules
+package-lock.json
+yarn.lock
+.yarn
+.yarnrc.yml
 components.d.ts
 .idea/
 .vscode/
