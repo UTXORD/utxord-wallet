@@ -1,4 +1,4 @@
-.PHONY: clean all core-clean core ext-clean ext-dev ext-qa ext-e2e ext-utxord ext
+.PHONY: clean all core-clean core ext-clean ext-build-clean ext-core-lib ext-deps ext-dev ext-qa ext-e2e ext-utxord ext
 
 ROOT_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -26,8 +26,11 @@ core: $(CORE_TARGETS)
 core-clean:
 	rm -rf $(CORE_BUILD_DIR)
 
-ext-clean:
-	rm -rf $(EXT_BUILD_DIR)/* $(EXT_LIB_FILES) $(EXT_MODULE_FILES)
+ext-build-clean:
+	rm -rf $(EXT_BUILD_DIR)/*
+
+ext-clean: ext-build-clean
+	rm -rf $(EXT_LIB_FILES) $(EXT_MODULE_FILES)
 
 ext-core-lib: $(CORE_TARGETS)
 	cp -f $(CORE_TARGET_DIR)/utxord.wasm $(EXT_LIB_DIR)

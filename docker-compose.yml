@@ -31,17 +31,17 @@ services:
   build-wallet-qa:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "make ext-clean ext-qa"
+    command: "make ext-build-clean ext-qa"
 
   build-wallet-e2e:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "make ext-clean ext-e2e"
+    command: "make ext-build-clean ext-e2e"
 
   build-wallet-utxord:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "make ext-clean ext-utxord"
+    command: "make ext-build-clean ext-utxord"
 
   build-wallet:
     profiles: ["donotstart"]
