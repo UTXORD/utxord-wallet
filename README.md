@@ -1,8 +1,8 @@
-# UTXORD Chrome extension
+# UTXORD Wallet
 
-Extension consists of core WASM module and extension itself. It uses a number submodules, so you have to  clone this
-repository using ```git clone --recurse-submodules``` command. In case you have already cloned this repository without
-submodules you need to run ```git submodule update --init``` command.
+UTXORD Wallet Chrome extension consists of core WASM module and extension itself. It uses a number submodules, so you
+have to  clone this repository using ```git clone --recurse-submodules``` command. In case you have already cloned this
+repository without submodules you need to run ```git submodule update --init``` command.
 
 ## Build sequence
 1) *docker compose build*
