@@ -1,7 +1,7 @@
 {
   "name": "utxord-wallet",
   "displayName": "UTXORD Wallet",
-  "description": "Open source Bitcoin authorization",
+  "description": "An open-source Chrome extension to interact with UTXORD.com marketplace",
   "version": "1.0.5",
   "private": true,
   "scripts": {
