@@ -33,8 +33,8 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
         matches: [
             'https://utxord.com/*',
             'https://*.utxord.com/*',
-            'http://localhost:*/*',
-            'http://127.0.0.1:*/*',
+            'http://localhost/*',
+            'http://127.0.0.1/*',
             '<all_urls>'
         ],
         js: ['./content/index.global.js']
@@ -43,8 +43,8 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     host_permissions: [
         'https://utxord.com/*',
         'https://*.utxord.com/*',
-        'http://localhost:*/*',
-        'http://127.0.0.1:*/*',
+        'http://localhost/*',
+        'http://127.0.0.1/*',
         '<all_urls>'
     ],
     web_accessible_resources: [{
