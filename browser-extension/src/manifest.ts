@@ -35,8 +35,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
             'https://qa.utxord.com/*',
             'https://e2e.utxord.com/*',
             'http://localhost/*',
-            'http://127.0.0.1/*',
-            '<all_urls>'
+            'http://127.0.0.1/*'
         ],
         js: ['./content/index.global.js']
       }
@@ -46,8 +45,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
         'https://qa.utxord.com/*',
         'https://e2e.utxord.com/*',
         'http://localhost/*',
-        'http://127.0.0.1/*',
-        '<all_urls>'
+        'http://127.0.0.1/*'
     ],
     web_accessible_resources: [{
       resources: [],
