@@ -14,6 +14,9 @@ env:
   IMAGE_LABEL_NAME: layer1dot5
   IMAGE_LABEL_APP: utxord-wallet-toolchain
 
+permissions:
+  contents: write
+
 jobs:
   build_publish_release:
     runs-on: ubuntu-latest
