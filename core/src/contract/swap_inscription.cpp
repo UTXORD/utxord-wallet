@@ -72,8 +72,12 @@ const std::string SwapInscriptionBuilder::name_ordpayoff_unspendable_key_factor 
 const std::string SwapInscriptionBuilder::name_ordpayoff_sig = "ordpayoff_sig";
 
 SwapInscriptionBuilder::SwapInscriptionBuilder(const string &ord_price, const string &market_fee)
-        : ContractBuilder(), m_ord_price(ParseAmount(ord_price)), m_market_fee(ParseAmount(market_fee)) {};
-
+        : ContractBuilder(), m_ord_price(ParseAmount(ord_price)), m_market_fee(ParseAmount(market_fee))
+{
+    if (*m_market_fee != 0 && *m_market_fee < Dust(3000)) {
+        throw ContractTermWrongValue(std::string(name_market_fee));
+    }
+}
 
 
 std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> SwapInscriptionBuilder::FundsCommitTapRoot() const
@@ -105,7 +109,9 @@ CMutableTransaction SwapInscriptionBuilder::GetSwapTxTemplate() const {
 
         swapTpl.vout.emplace_back(0, CScript() << 1 << *m_swap_script_pk_M);
         swapTpl.vout.emplace_back(m_ord_price, CScript() << 1 << xonly_pubkey());
-        swapTpl.vout.emplace_back(*m_market_fee, CScript() << 1 << *m_swap_script_pk_M);
+        if (*m_market_fee != 0) {
+            swapTpl.vout.emplace_back(*m_market_fee, CScript() << 1 << *m_swap_script_pk_M);
+        }
 
         swapTpl.vin.emplace_back(COutPoint(uint256(), 0));
         swapTpl.vin.back().scriptWitness.stack.emplace_back(65);
@@ -461,7 +467,8 @@ string SwapInscriptionBuilder::Serialize(SwapPhase phase)
     UniValue contract(UniValue::VOBJ);
 
     contract.pushKV(name_version, m_protocol_version);
-    contract.pushKV(name_ord_price, UniValue(FormatAmount(m_ord_price)));
+    contract.pushKV(name_market_fee, FormatAmount(*m_market_fee));
+    contract.pushKV(name_ord_price, FormatAmount(m_ord_price));
     contract.pushKV(name_swap_script_pk_M, hex(*m_swap_script_pk_M));
     contract.pushKV(name_ord_mining_fee_rate, FormatAmount(*m_ord_mining_fee_rate));
 
@@ -477,8 +484,8 @@ string SwapInscriptionBuilder::Serialize(SwapPhase phase)
     }
 
     if (phase == FUNDS_TERMS || phase == FUNDS_COMMIT_SIG || phase == MARKET_PAYOFF_SIG || phase == FUNDS_SWAP_SIG || phase == MARKET_SWAP_SIG) {
-        contract.pushKV(name_market_fee, UniValue(FormatAmount(*m_market_fee)));
-        contract.pushKV(name_mining_fee_rate, UniValue(FormatAmount(*m_mining_fee_rate)));
+        contract.pushKV(name_market_fee, FormatAmount(*m_market_fee));
+        contract.pushKV(name_mining_fee_rate, FormatAmount(*m_mining_fee_rate));
     }
     if (phase == FUNDS_COMMIT_SIG || phase == MARKET_PAYOFF_SIG || phase == FUNDS_SWAP_SIG || phase == MARKET_SWAP_SIG) {
         UniValue funds(UniValue::VARR);
@@ -606,11 +613,8 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
         m_ord_price = ParseAmount(contract[name_ord_price].getValStr());
 
     {   const auto &val = contract[name_market_fee];
-        if (!val.isNull()) {
-            if (m_market_fee) {
-                if (*m_market_fee != ParseAmount(val.getValStr())) throw ContractValueMismatch(std::string(name_market_fee));
-            }
-            m_market_fee = ParseAmount(val.getValStr());
+        if (!val.isNull()) { //throw ContractTermMissing(std::string(name_market_fee));
+            if (*m_market_fee != ParseAmount(val.getValStr())) throw ContractValueMismatch(std::string(name_market_fee));
         }
     }
     {   const auto& val = contract[name_swap_script_pk_A];
