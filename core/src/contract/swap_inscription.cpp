@@ -467,7 +467,6 @@ string SwapInscriptionBuilder::Serialize(SwapPhase phase)
     UniValue contract(UniValue::VOBJ);
 
     contract.pushKV(name_version, m_protocol_version);
-    contract.pushKV(name_market_fee, FormatAmount(*m_market_fee));
     contract.pushKV(name_ord_price, FormatAmount(m_ord_price));
     contract.pushKV(name_swap_script_pk_M, hex(*m_swap_script_pk_M));
     contract.pushKV(name_ord_mining_fee_rate, FormatAmount(*m_ord_mining_fee_rate));
