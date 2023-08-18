@@ -36,7 +36,8 @@ import {
     UPDATE_PASSWORD,
     CHECK_PASSWORD,
     SEND_BALANCES,
-    GET_NETWORK
+    GET_NETWORK,
+    OPEN_START_PAGE
 } from '~/config/events';
 
 (async () => {
@@ -251,9 +252,8 @@ import {
           Api.wallet.tmp = ''
         }
       }
-      if (payload.type === 'OPEN_HOME_PAGE') {
-        // if a window is open with focus, it breaks the signing
-        // winManager.openWindow('/');
+      if (payload.type === OPEN_START_PAGE) {
+        winManager.openWindow('start');
       }
     })
 
