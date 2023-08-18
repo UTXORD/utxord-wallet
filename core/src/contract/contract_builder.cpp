@@ -4,7 +4,7 @@
 #include "script_merkle_tree.hpp"
 #include "channel_keys.hpp"
 
-namespace l15::utxord {
+namespace utxord {
 
 const std::string ContractBuilder::name_contract_type = "contract_type";
 const std::string ContractBuilder::name_params = "params";

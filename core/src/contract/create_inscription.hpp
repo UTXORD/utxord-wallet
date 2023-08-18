@@ -12,7 +12,7 @@
 #include "common.hpp"
 #include "contract_builder.hpp"
 
-namespace l15::utxord {
+namespace utxord {
 
 class Collection
 {

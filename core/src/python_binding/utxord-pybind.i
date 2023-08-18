@@ -23,11 +23,6 @@
 
 using namespace l15;
 
-const std::string build_time = __DATE__ " " __TIME__;
-
-const std::string Version() {
-    return build_time;
-}
 %}
 
 %exception {
@@ -115,6 +110,3 @@ const std::string Version() {
 %include "transaction.h"
 %include "inscription.hpp"
 
-%inline %{
-    const std::string Version();
-%}

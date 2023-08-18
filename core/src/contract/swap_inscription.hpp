@@ -8,7 +8,7 @@
 
 #include "contract_builder.hpp"
 
-namespace l15::utxord {
+namespace utxord {
 
 enum SwapPhase {
     ORD_TERMS,

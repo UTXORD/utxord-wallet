@@ -8,7 +8,9 @@
 #include "utils.hpp"
 #include "contract_error.hpp"
 
-namespace l15::utxord {
+namespace utxord {
+
+using namespace l15;
 
 struct Transfer
 {

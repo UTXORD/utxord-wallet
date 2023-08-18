@@ -3,7 +3,9 @@
 #include "common.hpp"
 #include "contract_error.hpp"
 
-namespace l15::utxord {
+namespace utxord {
+
+using namespace l15;
 
 const size_t chunk_size = 520;
 const bytevector ORD_TAG {'o', 'r', 'd'};

@@ -7,7 +7,7 @@ interface string
     [Const] DOMString c_str();
 };
 
-[Prefix="l15::utxord::"]
+[Prefix="utxord::"]
 interface ChannelKeys
 {
     static void InitSecp256k1();
@@ -20,7 +20,7 @@ interface ChannelKeys
 };
 
 
-[Prefix="l15::utxord::"]
+[Prefix="utxord::"]
 interface MasterKey
 {
     void MasterKey([Const] DOMString seed);
@@ -36,7 +36,7 @@ enum NetworkMode
 };
 
 
-[Prefix="l15::utxord::"]
+[Prefix="utxord::"]
 interface Bech32
 {
     void Bech32(NetworkMode network);
@@ -45,13 +45,13 @@ interface Bech32
 };
 
 
-[Prefix="l15::utxord::"]
+[Prefix="utxord::"]
 interface Exception
 {
     [Value] static string getMessage(any e);
 };
 
-[Prefix="l15::utxord::"]
+[Prefix="utxord::"]
 interface Collection
 {
     [Value] string GetCollectionTapRootPubKey([Const] DOMString collectionId, [Const] DOMString scriptSK, [Const] DOMString internalSK);
@@ -63,7 +63,7 @@ enum InscribeType
     "COLLECTION"
 };
 
-[Prefix="l15::utxord::"]
+[Prefix="utxord::"]
 interface CreateInscriptionBuilder
 {
     void CreateInscriptionBuilder(InscribeType type, [Const] DOMString ordAmount);
@@ -106,7 +106,7 @@ enum SwapPhase
     "MARKET_SWAP_SIG",
 };
 
-[Prefix="l15::utxord::"]
+[Prefix="utxord::"]
 interface SwapInscriptionBuilder
 {
     void SwapInscriptionBuilder([Const] DOMString ord_price, [Const] DOMString market_fee);
