@@ -35,7 +35,7 @@ const secp256k1_context * GetSecp256k1()
 
 }
 
-namespace l15::utxord {
+namespace utxord {
 
 class ChannelKeys : private l15::core::ChannelKeys
 {
@@ -106,6 +106,6 @@ struct Exception
 }
 
 using namespace l15;
-using namespace l15::utxord;
+using namespace utxord;
 
 #include "contract.cpp"

@@ -2,9 +2,9 @@
 
 #include "common_error.hpp"
 
-namespace l15::utxord {
+namespace utxord {
 
-class ContractError : public Error {
+class ContractError : public l15::Error {
 public:
     explicit ContractError(std::string&& details) : Error(move(details)) {}
     ~ContractError() override = default;

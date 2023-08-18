@@ -21,7 +21,7 @@
 
 using namespace l15;
 using namespace l15::core;
-using namespace l15::utxord;
+using namespace utxord;
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 

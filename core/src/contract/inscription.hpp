@@ -5,7 +5,9 @@
 #include "common.hpp"
 #include "common_error.hpp"
 
-namespace l15::utxord {
+namespace utxord {
+
+using namespace l15;
 
 class InscriptionError : public Error {
 public:

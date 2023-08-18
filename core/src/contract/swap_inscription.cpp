@@ -1,5 +1,4 @@
 #include <ranges>
-//#include <format>
 
 #include "swap_inscription.hpp"
 
@@ -11,7 +10,7 @@
 
 #include "channel_keys.hpp"
 
-namespace l15::utxord {
+namespace utxord {
 
 namespace {
 

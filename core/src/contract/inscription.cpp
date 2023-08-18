@@ -11,7 +11,7 @@
 #include "transaction.hpp"
 
 
-namespace l15::utxord {
+namespace utxord {
 
 namespace {
 

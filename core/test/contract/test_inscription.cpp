@@ -11,7 +11,7 @@
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 using namespace l15;
-using namespace l15::utxord;
+using namespace utxord;
 
 std::unique_ptr<TestcaseWrapper> w;
 
