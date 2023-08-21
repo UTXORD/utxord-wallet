@@ -7,7 +7,7 @@
     >
       <!-- Secret phrase -->
       <div
-        class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
+        class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
         <span class="mb-2 w-full text-[var(--text-grey-color)]"
           >Paste your secret 12 words here:</span
@@ -23,7 +23,7 @@
 
       <!-- Inputs -->
       <div
-        class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
+        class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl px-3 pt-3 mb-5"
       >
         <div class="load-screen_form-input flex flex-col">
           <span class="mb-2 w-full text-[var(--text-grey-color)]"

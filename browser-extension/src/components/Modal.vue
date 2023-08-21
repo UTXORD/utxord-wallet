@@ -5,7 +5,7 @@
       v-if="opened"
       tabindex="-1"
       aria-hidden="true"
-      class="fixed top-0 left-0 right-0 z-50 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 max-h-full h-full bg-black bg-opacity-20"
+      class="absolute top-0 left-0 right-0 z-50 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 max-h-full h-full bg-black bg-opacity-20"
     >
       <div class="absolute bottom-0 left-0 w-full max-w-2xl max-h-full">
         <!-- Modal content -->

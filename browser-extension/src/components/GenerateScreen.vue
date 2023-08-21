@@ -1,11 +1,13 @@
 <template>
-  <div class="generate-screen flex flex-col">
+  <div class="generate-screen h-full flex flex-col">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="generate-screen_content flex flex-col items-center px-5 pb-5">
+    <div
+      class="generate-screen_content h-full flex flex-col items-center px-5 pb-5"
+    >
       <!-- Secret phrase -->
       <div
-        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
+        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
         <span class="mb-2 w-full text-[var(--text-grey-color)]"
           >Store these safely:</span
@@ -21,7 +23,7 @@
 
       <!-- Inputs -->
       <div
-        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
+        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl px-3 pt-3 mb-5"
       >
         <div class="generate-screen_form-input flex flex-col">
           <span class="mb-2 w-full text-[var(--text-grey-color)]"
