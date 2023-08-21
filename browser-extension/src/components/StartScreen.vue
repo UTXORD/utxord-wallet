@@ -1,8 +1,10 @@
 <template>
-  <div class="start-screen flex flex-col">
+  <div class="start-screen flex flex-col h-full">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="start-screen_content flex flex-col px-5 pb-5">
+    <div
+      class="start-screen_content h-full flex flex-col justify-between px-5 pb-5"
+    >
       <div class="start-screen_lock-key flex flex-col">
         <img
           class="start-screen_lock-key_img mb-5"
@@ -36,7 +38,7 @@
 .start-screen {
   &_lock-key {
     padding-top: 100px;
-    padding-bottom: 115px;
+    padding-bottom: 100px;
   }
 
   &_lock-key_img {

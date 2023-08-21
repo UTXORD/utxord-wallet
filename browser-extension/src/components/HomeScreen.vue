@@ -8,7 +8,7 @@
     >
       <!-- Balance -->
       <div
-        class="home-screen_block w-full flex flex-col items-center bg-[var(--section)] rounded-lg px-3 py-5 mb-5"
+        class="home-screen_block w-full flex flex-col items-center bg-[var(--section)] rounded-lg px-3 py-5 mb-4"
       >
         <PriceComp
           class="home-screen_balance text-[var(--text-color)]"
@@ -28,7 +28,7 @@
 
       <!-- Balance -->
       <div
-        class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
+        class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-4 gap-1"
       >
         <div class="flex items-center">
           <span class="mr-2 text-[var(--text-grey-color)]">Avaliable:</span>
@@ -54,7 +54,7 @@
 
       <!-- Info -->
       <div
-        class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
+        class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-4 gap-1"
       >
         <div class="flex items-center">
           <span class="mr-2 text-[var(--text-grey-color)]"

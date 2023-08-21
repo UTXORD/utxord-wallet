@@ -1,7 +1,7 @@
 import WinHelpers from '~/helpers/winHelpers'
 
-const WIDTH = 360;
-const HEIGHT = 602;
+const WIDTH = 350;
+const HEIGHT = 615;
 
 class WinManager {
   winHelpers = null;
