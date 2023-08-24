@@ -37,7 +37,8 @@ import {
     CHECK_PASSWORD,
     SEND_BALANCES,
     GET_NETWORK,
-    OPEN_START_PAGE
+    OPEN_START_PAGE,
+    EXPORT_INSCRIPTION_KEPAIR
 } from '~/config/events';
 
 (async () => {
@@ -111,6 +112,12 @@ import {
       const newKeys = Api.genKeys();
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
       return newKeys;
+    });
+
+    onMessage(EXPORT_INSCRIPTION_KEPAIR, async (payload) => {
+      const keypair = Api.selectByOrdOutput(payload.txid, payload.nout);
+      await Api.sendMessageToWebPage(EXPORT_INSCRIPTION_KEPAIR, keypair);
+      return keypair;
     });
 
     onMessage(SUBMIT_SIGN, async (payload) => {
