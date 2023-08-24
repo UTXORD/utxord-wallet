@@ -38,7 +38,7 @@ import {
     SEND_BALANCES,
     GET_NETWORK,
     OPEN_START_PAGE,
-    EXPORT_INSCRIPTION_KEPAIR
+    EXPORT_INSCRIPTION_KEYPAIR
 } from '~/config/events';
 
 (async () => {
@@ -114,10 +114,18 @@ import {
       return newKeys;
     });
 
-    onMessage(EXPORT_INSCRIPTION_KEPAIR, async (payload) => {
-      const keypair = Api.selectByOrdOutput(payload.txid, payload.nout);
-      await Api.sendMessageToWebPage(EXPORT_INSCRIPTION_KEPAIR, keypair);
+    onMessage(EXPORT_INSCRIPTION_KEYPAIR, async (payload) => {
+      const res = await Api.decryptedWallet(payload.data.password);
+      if(res){
+        const item = Api.selectByOrdOutput(payload.data.txid, payload.data.nout);
+      const keypair = {
+        publicKey: item.key.GetLocalPubKey().c_str(),
+        privateKey: item.key.GetLocalPrivKey().c_str()
+      };
+      await Api.encryptedWallet(payload.data.password);
       return keypair;
+    }
+    return false;
     });
 
     onMessage(SUBMIT_SIGN, async (payload) => {
