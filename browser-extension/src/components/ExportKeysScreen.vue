@@ -107,18 +107,20 @@ async function onExport() {
     payload,
     'background'
   )
-  const link = document.createElement('a')
-  const file = new Blob([JSON.stringify(keyPairs)], { type: 'text/plain' })
-  link.href = URL.createObjectURL(file)
-  link.download = 'key-pair.txt'
-  link.click()
-  URL.revokeObjectURL(link.href)
-  link.remove()
-  showSuccess('Success', 'File successfully downloaded')
+  if (keyPairs) {
+    const link = document.createElement('a')
+    const file = new Blob([JSON.stringify(keyPairs)], { type: 'text/plain' })
+    link.href = URL.createObjectURL(file)
+    link.download = 'key-pair.txt'
+    link.click()
+    URL.revokeObjectURL(link.href)
+    link.remove()
+    showSuccess('Success', 'File successfully downloaded')
 
-  setTimeout(() => {
-    cancel()
-  }, 5000)
+    setTimeout(() => {
+      cancel()
+    }, 5000)
+  }
 }
 
 function cancel() {
