@@ -12,6 +12,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('~/components/StartScreen.vue')
   },
   {
+    path: '/export-keys',
+    name: 'ExportKeys',
+    component: () => import('~/components/ExportKeysScreen.vue')
+  },
+  {
     path: '/generate',
     name: 'GenerateScreen',
     component: () => import('~/components/GenerateScreen.vue')

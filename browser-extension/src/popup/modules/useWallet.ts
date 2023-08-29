@@ -53,11 +53,16 @@ async function getNetWork(){
     store.setDataForSign(data || {})
   }
 
+  async function saveDataForExportKeyPair(data: {}) {
+    store.setDataForExportKeyPair(data || {})
+  }
+
   return {
     getFundAddress,
     getOrdAddress,
     getBalance,
     saveDataForSign,
+    saveDataForExportKeyPair,
     getNetWork,
   }
 }

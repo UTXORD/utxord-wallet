@@ -26,6 +26,8 @@ import {
     GET_ADDRESSES,
     GET_ALL_ADDRESSES,
     SAVE_DATA_FOR_SIGN,
+    SAVE_DATA_FOR_EXPORT_KEY_PAIR,
+    OPEN_EXPORT_KEY_PAIR_SCREEN,
     SUBMIT_SIGN,
     PLUGIN_ID,
     PLUGIN_PUBLIC_KEY,
@@ -38,7 +40,7 @@ import {
     SEND_BALANCES,
     GET_NETWORK,
     OPEN_START_PAGE,
-    EXPORT_INSCRIPTION_KEYPAIR
+    EXPORT_INSCRIPTION_KEY_PAIR
 } from '~/config/events';
 
 (async () => {
@@ -114,18 +116,18 @@ import {
       return newKeys;
     });
 
-    onMessage(EXPORT_INSCRIPTION_KEYPAIR, async (payload) => {
+    onMessage(EXPORT_INSCRIPTION_KEY_PAIR, async (payload) => {
       const res = await Api.decryptedWallet(payload.data.password);
-      if(res){
+      if (res) {
         const item = Api.selectByOrdOutput(payload.data.txid, payload.data.nout);
-      const keypair = {
-        publicKey: item.key.GetLocalPubKey().c_str(),
-        privateKey: item.key.GetLocalPrivKey().c_str()
-      };
-      await Api.encryptedWallet(payload.data.password);
-      return keypair;
-    }
-    return false;
+        const keypair = {
+          publicKey: item.key.GetLocalPubKey().c_str(),
+          privateKey: item.key.GetLocalPrivKey().c_str()
+        };
+        await Api.encryptedWallet(payload.data.password);
+        return keypair;
+      }
+      return false;
     });
 
     onMessage(SUBMIT_SIGN, async (payload) => {
@@ -255,6 +257,13 @@ import {
         winManager.openWindow('sign-commit-buy', async (id) => {
           setTimeout(async () => {
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+          }, 1000);
+        });
+      }
+      if (payload.type === OPEN_EXPORT_KEY_PAIR_SCREEN) {
+        winManager.openWindow('export-keys', async (id) => {
+          setTimeout(async () => {
+            await sendMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, payload.data, `popup@${id}`);
           }, 1000);
         });
       }
