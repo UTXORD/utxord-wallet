@@ -5,6 +5,13 @@ export const LOCAL_URL ='http://localhost:9000';
 export const TESTNET = 't';
 export const MAINNET = 'm';
 export const REGTEST = 'r';
+export const SIGNET = 's';
+export const NETWORK_LABELS = {
+  'm': 'mainnet',
+  't': 'testnet',
+  'r': 'regtest',
+  's': 'signet'
+};
 export const BACKEND_URL = STAGE_URL;
 
 // NOTE: Configure it before build

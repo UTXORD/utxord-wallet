@@ -1,6 +1,7 @@
 import type { Manifest } from 'webextension-polyfill'
 import pkg from '../package.json'
 import { IS_DEV, PORT } from '../scripts/utils'
+import { NETWORK, NETWORK_LABELS } from '~/config/index';
 
 export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
   // update this file to update this manifest.json
@@ -8,18 +9,18 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
 
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,
-    name: pkg.displayName || pkg.name,
+    name: `${(pkg.displayName || pkg.name)} ${NETWORK_LABELS[NETWORK]}`,
     version: pkg.version,
     description: pkg.description,
     action: {
-      default_icon: './assets/icon128.png',
+      default_icon: `./assets/${NETWORK}-128x128.png`,
       default_popup: './popup/index.html'
     },
     icons: {
-      16: './assets/icon16.png',
-      32: './assets/icon32.png',
-      48: './assets/icon48.png',
-      128: './assets/icon128.png'
+      16: `./assets/${NETWORK}-16x16.png`,
+      32: `./assets/${NETWORK}-32x32.png`,
+      48: `./assets/${NETWORK}-48x48.png`,
+      128: `./assets/${NETWORK}-128x128.png`
     },
     options_ui: {
       page: './options/index.html',
