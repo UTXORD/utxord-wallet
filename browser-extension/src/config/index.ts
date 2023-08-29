@@ -6,11 +6,15 @@ export const TESTNET = 't';
 export const MAINNET = 'm';
 export const REGTEST = 'r';
 export const SIGNET = 's';
-export const NETWORK_LABELS = {
-  'm': 'mainnet',
-  't': 'testnet',
-  'r': 'regtest',
-  's': 'signet'
+export const LABELS = {
+  '_utxord': '',
+  '_qa': 'testnet',
+  '_e2e': 'regtest'
+};
+export const NETWORKS = {
+  '_utxord': MAINNET,
+  '_qa': TESTNET,
+  '_e2e': REGTEST
 };
 export const BACKEND_URL = STAGE_URL;
 
