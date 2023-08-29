@@ -16,4 +16,4 @@ export const ETWOE_URL_PATTERN = 'https://e2e.utxord.com/*';
 export const LOCAL_URL_PATTERN = 'http://localhost:9000/*';
 
 // NOTE: Configure it before build
-export const BASE_URL_PATTERN = STAGE_URL_PATTERN;
+export const BASE_URL_PATTERN = LOCAL_URL_PATTERN;

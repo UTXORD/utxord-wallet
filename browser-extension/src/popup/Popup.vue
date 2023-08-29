@@ -12,16 +12,26 @@ import { onBeforeMount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import NotifySuccess from '~/components/NotifySuccess.vue'
 import NotifyError from '~/components/NotifyError.vue'
-import { CHECK_AUTH, EXCEPTION, SAVE_DATA_FOR_SIGN } from '~/config/events'
+import {
+  CHECK_AUTH,
+  EXCEPTION,
+  SAVE_DATA_FOR_SIGN,
+  SAVE_DATA_FOR_EXPORT_KEY_PAIR
+} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 import { showError } from '~/helpers'
 
 const { push } = useRouter()
-const { getFundAddress, getOrdAddress, getBalance, saveDataForSign } =
-  useWallet()
+const {
+  getFundAddress,
+  getOrdAddress,
+  getBalance,
+  saveDataForSign,
+  saveDataForExportKeyPair
+} = useWallet()
 
 async function checkAuth(): Promise<boolean> {
-  try{
+  try {
     const success = await sendMessage(CHECK_AUTH, {}, 'background')
     if (!success) {
       push('/start')
@@ -29,9 +39,9 @@ async function checkAuth(): Promise<boolean> {
     } else {
       return true
     }
-  }catch(error){
+  } catch (error) {
     showError(EXCEPTION, error.message)
-    console.log(error);
+    console.log(error)
   }
 }
 
@@ -62,6 +72,11 @@ onMessage(EXCEPTION, (payload: any) => {
 
 onMessage(SAVE_DATA_FOR_SIGN, (payload) => {
   saveDataForSign(payload.data)
+  return true
+})
+
+onMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, (payload) => {
+  saveDataForExportKeyPair(payload.data)
   return true
 })
 

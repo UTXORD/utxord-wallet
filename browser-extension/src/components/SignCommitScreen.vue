@@ -80,8 +80,6 @@
         />
       </div>
     </div>
-
-    <!-- Total -->
   </SignWrapper>
 </template>
 
