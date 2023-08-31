@@ -32,8 +32,7 @@ jobs:
       -
         name: Extract tag value
         id: vars
-        run: echo "tag=${GITHUB_REF#refs/*/}"
-        run: echo "${GITHUB_REF}"
+        run: echo "tag=${GITHUB_REF#refs/*/}" ; echo "${GITHUB_REF}"
         # run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
         # accessible as ${{ steps.vars.outputs.tag }}
         # run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
