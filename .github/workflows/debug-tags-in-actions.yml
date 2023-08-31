@@ -1,0 +1,37 @@
+# https://github.com/marketplace/actions/docker-compose-run-action
+# https://github.com/marketplace/actions/zip-release
+# https://github.com/marketplace/actions/gh-release
+# https://github.com/marketplace/actions/publish-chrome-extension-to-chrome-web-store
+
+name: Build and publish release
+
+on:
+  push:
+    tags:
+      - "ci_test*.*.*"
+
+env:
+  IMAGE_LABEL_NAME: layer1dot5
+  IMAGE_LABEL_APP: utxord-wallet-toolchain
+
+permissions:
+  contents: write
+
+jobs:
+  build_publish_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+          set-safe-directory: '*'
+      -
+        name: Extract tag value
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/*/}"
+        # run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+        # accessible as ${{ steps.vars.outputs.tag }}
+        # run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        # accessible as $RELEASE_VERSION or ${{ env.RELEASE_VERSION }}
