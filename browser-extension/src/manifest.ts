@@ -2,6 +2,7 @@ import type { Manifest } from 'webextension-polyfill'
 import pkg from '../package.json'
 import { IS_DEV, TARGET, PORT } from '../scripts/utils'
 import { LABELS, NETWORKS } from '~/config/index';
+console.log(TARGET);
 
 export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
   // update this file to update this manifest.json
