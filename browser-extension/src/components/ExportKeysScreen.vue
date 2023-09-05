@@ -109,7 +109,7 @@ async function onExport() {
   )
   if (keyPairs) {
     const link = document.createElement('a')
-    const file = new Blob([JSON.stringify(keyPairs)], { type: 'text/plain' })
+    const file = new Blob([keyPairs?.privateKey], { type: 'text/plain' })
     link.href = URL.createObjectURL(file)
     link.download = 'key-pair.txt'
     link.click()
