@@ -103,47 +103,51 @@ using namespace l15;
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
 
-%typemap(out) Inscription (PyObject* obj)
-%{
-    obj = PyDict_New();
+namespace utxord {
 
-    {
-        PyObject *id = PyUnicode_FromString($1.GetInscriptionId().c_str());
-        PyDict_SetItemString(obj, "id", id);
-        Py_XDECREF(id);
-    }
+        %typemap(out) Inscription (PyObject* obj)
+        %{
+            obj = PyDict_New();
 
-    {
-        PyObject *content_type = PyUnicode_FromString($1.GetContentType().c_str());
-        PyDict_SetItemString(obj, "content_type", content_type);
-        Py_XDECREF(content_type);
-    }
+            {
+                PyObject * id = PyUnicode_FromString($1.GetIscriptionId().c_str());
+                PyDict_SetItemString(obj, "id", id);
+                Py_XDECREF(id);
+            }
 
-    {
-        PyObject *content = PyBytes_FromStringAndSize($1.GetContent().data(), $1.GetContent().size());
-        PyDict_SetItemString(obj, "content", content);
-        Py_XDECREF(content);
-    }
+            {
+                PyObject * content_type = PyUnicode_FromString($1.GetContentType().c_str());
+                PyDict_SetItemString(obj, "content_type", content_type);
+                Py_XDECREF(content_type);
+            }
 
-    if ($1.HasParent) {
-        PyObject *collection_id = PyUnicode_FromString($1.GetCollectionId().c_str());
-        PyDict_SetItemString(obj, "collection_id", collection_id);
-        Py_XDECREF(collection_id);
-    }
+            {
+                PyObject * content = PyBytes_FromStringAndSize((const char*)($1.GetContent().data()), $1.GetContent().size());
+                PyDict_SetItemString(obj, "content", content);
+                Py_XDECREF(content);
+            }
 
-    if (!$1.GetMetadata().empty()) {
-        PyObject *metadata = PyDict_New();
-        for (const std::pair<std::string, std::string>& pair: $1.GetMetadata()) {
-            PyObject *data = PyUnicode_FromString(pair.second.c_str());
-            PyDict_SetItemString(metadata, pair.first.c_str(), data);
-            Py_XDECREF(data);
-        }
-        PyDict_SetItemString(obj, "metadata", metadata);
-        Py_XDECREF(metadata);
-    }
+            if ($1.HasParent()) {
+                PyObject * collection_id = PyUnicode_FromString($1.GetCollectionId().c_str());
+                PyDict_SetItemString(obj, "collection_id", collection_id);
+                Py_XDECREF(collection_id);
+            }
 
-    $result = SWIG_Python_AppendOutput($result, obj);
-%}
+            if (!$1.GetMetadata().empty()) {
+                PyObject * metadata = PyDict_New();
+                for (const std::pair<std::string, std::string>
+                &pair: $1.GetMetadata()) {
+                    PyObject * data = PyUnicode_FromString(pair.second.c_str());
+                    PyDict_SetItemString(metadata, pair.first.c_str(), data);
+                    Py_XDECREF(data);
+                }
+                PyDict_SetItemString(obj, "metadata", metadata);
+                Py_XDECREF(metadata);
+            }
+
+            $result = SWIG_Python_AppendOutput($result, obj);
+        %}
+}
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
