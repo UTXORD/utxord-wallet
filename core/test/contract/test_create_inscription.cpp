@@ -479,7 +479,7 @@ TEST_CASE("inscribe")
         CHECK_NOTHROW(inscription = Inscription(rawtx[1]));
         CHECK(inscription->GetIscriptionId() == genesis_tx.GetHash().GetHex() + "i" + std::to_string(0));
         CHECK(inscription->GetContentType() == content_type);
-        CHECK(inscription->GetContent() == content);
+        CHECK(hex(inscription->GetContent()) == content);
 
         if (condition.has_parent) {
             CHECK(inscription->GetCollectionId() == collection_id);

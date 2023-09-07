@@ -83,6 +83,16 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
             res.emplace_back(COLLECTION_ID_TAG, move(data));
             fetching_content = false;
         }
+        else if (opcode == METADATA_OP_TAG || (opcode == METADATA_TAG.size() && data == METADATA_TAG)) {
+            GetNextScriptData(script, it, data, "metadata key");
+            res.emplace_back(METADATA_TAG, move(data));
+            fetching_content = false;
+        }
+        else if (opcode == METADATA_OP_VALUE_TAG || (opcode == METADATA_VALUE_TAG.size() && data == METADATA_VALUE_TAG)) {
+            GetNextScriptData(script, it, data, "metadata key");
+            res.emplace_back(METADATA_VALUE_TAG, move(data));
+            fetching_content = false;
+        }
         else if (opcode == OP_ENDIF) {
             if (!content.empty()) {
                 res.emplace_back(CONTENT_TAG, move(content));
@@ -101,6 +111,11 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
     return res;
 }
 
+Inscription ParseInscription(const string &hex_tx)
+{
+    return Inscription(hex_tx);
+}
+
 
 template<class T>
 Inscription::Inscription(const T& tx, uint32_t nin)
@@ -109,6 +124,8 @@ Inscription::Inscription(const T& tx, uint32_t nin)
 
     const auto& witness_stack = tx.vin[nin].scriptWitness.stack;
     CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
+
+    std::vector<std::string> meta_data;
 
     auto inscr_data = ParseEnvelopeScript(script);
     while(!inscr_data.empty()) {
@@ -126,6 +143,16 @@ Inscription::Inscription(const T& tx, uint32_t nin)
             if (!m_collection_id.empty()) throw InscriptionFormatError("second COLLECTION_ID tag");
 
             m_collection_id = DeserializeInscriptionId(inscr_data.front().second);
+            inscr_data.pop_front();
+        }
+        else if (inscr_data.front().first == METADATA_TAG) {
+            meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
+            inscr_data.pop_front();
+        }
+        else if (inscr_data.front().first == METADATA_VALUE_TAG) {
+            if (meta_data.size() % 2 == 0) throw InscriptionFormatError("inconsistent meta-data tag");
+
+            meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
             inscr_data.pop_front();
         }
         else {

@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <boost/container/flat_map.hpp>
+
 #include "common.hpp"
 #include "common_error.hpp"
 
@@ -35,7 +37,7 @@ class Inscription
     std::string m_content_type;
     bytevector m_content;
     std::string m_collection_id;
-
+    boost::container::flat_map<std::string, std::string> m_metadata;
 
 public:
     template<class T>
@@ -52,8 +54,8 @@ public:
 
     const std::string& GetContentType() const
     { return m_content_type; }
-    std::string GetContent() const
-    { return hex(m_content); }
+    const bytevector& GetContent() const
+    { return m_content; }
 
     bool HasParent() const
     { return !m_collection_id.empty(); }
@@ -61,7 +63,11 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
+    const boost::container::flat_map<std::string, std::string>& GetMetadata() const
+    { return m_metadata; }
 };
+
+Inscription ParseInscription(const std::string& hex_tx);
 
 } // utxord
 

@@ -16,6 +16,10 @@ const opcodetype CONTENT_TYPE_OP_TAG {OP_1};
 const bytevector CONTENT_TYPE_TAG {'\1'};
 const opcodetype COLLECTION_ID_OP_TAG {OP_3};
 const bytevector COLLECTION_ID_TAG {'\3'};
+const opcodetype METADATA_OP_TAG {OP_5};
+const bytevector METADATA_TAG {'\5'};
+const opcodetype METADATA_OP_VALUE_TAG {OP_7};
+const bytevector METADATA_VALUE_TAG {'\7'};
 
 inline void CheckInscriptionId(const std::string& inscription_id)
 {

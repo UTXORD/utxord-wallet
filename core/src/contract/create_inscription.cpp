@@ -23,8 +23,11 @@ namespace {
 const std::string val_create_inscription("CreateInscription");
 const std::string val_create_collection("CreateCollection");
 
-
-CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content_type, const bytevector& data, const std::optional<std::string>& collection_id = {})
+template <std::ranges::range M>
+    requires std::same_as<std::ranges::range_value_t<M>, std::pair<std::string, std::string>>
+CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content_type, const bytevector& data,
+                              const std::optional<std::string>& collection_id,
+                              const M& metadata)
 {
     CScript script;
     script << pk;
@@ -38,6 +41,11 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
     if (collection_id) {
         script << COLLECTION_ID_TAG;
         script << SerializeInscriptionId(*collection_id);
+    }
+
+    for (const auto& pair: metadata) {
+        script << METADATA_TAG << bytevector(get<0>(pair).begin(), get<0>(pair).end());
+        script << METADATA_TAG << bytevector(get<1>(pair).begin(), get<1>(pair).end());
     }
 
     script << CONTENT_OP_TAG;
@@ -93,6 +101,7 @@ const std::string CreateInscriptionBuilder::name_utxo = "utxo";
 const std::string CreateInscriptionBuilder::name_xtra_utxo = "xtra_utxo";
 const std::string CreateInscriptionBuilder::name_collection = "collection";
 const std::string CreateInscriptionBuilder::name_collection_id = "collection_id";
+const std::string CreateInscriptionBuilder::name_metadata = "metadata";
 const std::string CreateInscriptionBuilder::name_collection_mining_fee_sig = "collection_mining_fee_sig";
 const std::string CreateInscriptionBuilder::name_content_type = "content_type";
 const std::string CreateInscriptionBuilder::name_content = "content";
@@ -128,6 +137,13 @@ CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::s
     CheckInscriptionId(collection_id);
     m_parent_collection_id = collection_id;
     m_collection_utxo = {utxo_txid, utxo_nout, ParseAmount(utxo_amount), unhex<xonly_pubkey>(collection_pk)};
+    return *this;
+}
+
+
+CreateInscriptionBuilder &CreateInscriptionBuilder::SetMetaData(const string &tag, const string &value)
+{
+    m_metadata[tag] = value;
     return *this;
 }
 
@@ -234,7 +250,7 @@ void CreateInscriptionBuilder::SignCommit(uint32_t n, const std::string& sk, con
 const CScript& CreateInscriptionBuilder::GetInscriptionScript() const
 {
     if (!mInscriptionScript) {
-        mInscriptionScript = MakeInscriptionScript(*m_inscribe_script_pk, *m_content_type, *m_content, m_parent_collection_id);
+        mInscriptionScript = MakeInscriptionScript(*m_inscribe_script_pk, *m_content_type, *m_content, m_parent_collection_id, m_metadata);
     }
     return *mInscriptionScript;
 }
@@ -373,6 +389,14 @@ std::string CreateInscriptionBuilder::Serialize() const
         contract.pushKV(name_collection, move(collection_val));
     }
 
+    if (!m_metadata.empty()) {
+        UniValue metadata_obj(UniValue::VOBJ);
+        for (const auto &pair: m_metadata) {
+            metadata_obj.pushKV(pair.first, pair.second);
+        }
+        contract.pushKV(name_metadata, move(metadata_obj));
+    }
+
     if (!m_xtra_utxo.empty()) {
         UniValue xtra_utxo_arr(UniValue::VARR);
         for (const auto &utxo: m_xtra_utxo) {
@@ -384,7 +408,7 @@ std::string CreateInscriptionBuilder::Serialize() const
 
             xtra_utxo_arr.push_back(move(utxo_val));
         }
-        contract.pushKV(name_xtra_utxo, xtra_utxo_arr);
+        contract.pushKV(name_xtra_utxo, move(xtra_utxo_arr));
     }
 
     contract.pushKV(name_content_type, *m_content_type);
@@ -490,6 +514,20 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data)
 
             m_collection_utxo = {move(txid), nout, amount, move(pk), move(sig)};
 
+        }
+    }
+    {   const auto &val = contract[name_metadata];
+        if (!val.isNull()) {
+            if (!val.isObject()) throw ContractTermWrongFormat(std::string(name_metadata));
+
+            std::map<std::string, UniValue> metadata_map;
+            val.getObjMap(metadata_map);
+
+            for (const auto& pair: metadata_map) {
+                if (!pair.second.isStr()) throw ContractTermWrongFormat(std::string(name_metadata) + '.' + pair.first);
+
+                m_metadata[pair.first] = pair.second.getValStr();
+            }
         }
     }
     {   const auto &val = contract[name_xtra_utxo];
@@ -739,7 +777,7 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
 
     auto emptyKey = xonly_pubkey();
 
-    CScript genesis_script = MakeInscriptionScript(m_inscribe_script_pk.value_or(emptyKey), *m_content_type, *m_content, m_parent_collection_id);
+    CScript genesis_script = MakeInscriptionScript(m_inscribe_script_pk.value_or(emptyKey), *m_content_type, *m_content, m_parent_collection_id, m_metadata);
     ScriptMerkleTree genesis_tap_tree(TreeBalanceType::WEIGHTED, {genesis_script});
     uint256 root = genesis_tap_tree.CalculateRoot();
 
