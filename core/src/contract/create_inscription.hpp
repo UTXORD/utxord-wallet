@@ -7,8 +7,6 @@
 #include <memory>
 #include <list>
 
-#include <boost/container/flat_map.hpp>
-
 #include "univalue.h"
 
 #include "common.hpp"
@@ -49,7 +47,7 @@ class CreateInscriptionBuilder: public ContractBuilder
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
 
-    boost::container::flat_map<std::string, std::string> m_metadata;
+    std::vector<std::pair<std::string, std::string>> m_metadata;
 
     std::optional<xonly_pubkey> m_inscribe_script_pk;
     std::optional<signature> m_inscribe_script_sig;

@@ -143,7 +143,7 @@ CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::s
 
 CreateInscriptionBuilder &CreateInscriptionBuilder::SetMetaData(const string &tag, const string &value)
 {
-    m_metadata[tag] = value;
+    m_metadata.emplace_back(tag, value);
     return *this;
 }
 
@@ -523,10 +523,12 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data)
             std::map<std::string, UniValue> metadata_map;
             val.getObjMap(metadata_map);
 
+            m_metadata.reserve(metadata_map.size());
+
             for (const auto& pair: metadata_map) {
                 if (!pair.second.isStr()) throw ContractTermWrongFormat(std::string(name_metadata) + '.' + pair.first);
 
-                m_metadata[pair.first] = pair.second.getValStr();
+                m_metadata.emplace_back(pair.first, pair.second.getValStr());
             }
         }
     }

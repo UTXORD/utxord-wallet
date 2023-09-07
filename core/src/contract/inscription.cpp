@@ -1,5 +1,6 @@
 
 #include <list>
+#include <ranges>
 
 #include "transaction.h"
 #include "streams.h"
@@ -100,6 +101,11 @@ void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
         if (!collection_id.empty()) {
             inscription.m_collection_id = move(collection_id);
         }
+    }
+
+    inscription.m_metadata.reserve(meta_data.size()/2);
+    for (size_t i = 1; i < meta_data.size(); i += 2) {
+        inscription.m_metadata.emplace_back(meta_data[i-1], meta_data[i]);
     }
 
     inscription.m_inscription_id = tx.GetHash().GetHex() + "i" + std::to_string(nin);

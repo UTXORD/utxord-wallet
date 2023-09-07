@@ -3,8 +3,6 @@
 #include <string>
 #include <concepts>
 
-#include <boost/container/flat_map.hpp>
-
 #include "common.hpp"
 #include "common_error.hpp"
 
@@ -43,7 +41,7 @@ class Inscription
     std::string m_content_type;
     bytevector m_content;
     std::string m_collection_id;
-    boost::container::flat_map<std::string, std::string> m_metadata;
+    std::vector<std::pair<std::string, std::string>> m_metadata;
 
     friend void ParseTransaction<CMutableTransaction>(Inscription& inscription, const CMutableTransaction& tx, uint32_t nin);
     friend void ParseTransaction<CTransaction>(Inscription& inscription, const CTransaction& tx, uint32_t nin);
@@ -72,7 +70,7 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
-    const boost::container::flat_map<std::string, std::string>& GetMetadata() const
+    const std::vector<std::pair<std::string, std::string>>& GetMetadata() const
     { return m_metadata; }
 };
 
