@@ -31,6 +31,81 @@ opcodetype GetNextScriptData(const CScript &script, CScript::const_iterator &it,
 
 }
 
+template<class T> /*requires std::same_as<T, CMutableTransaction> || std::same_as<T, CTransaction>*/
+void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
+    if (tx.vin[0].scriptWitness.stack.size() < 3) throw InscriptionFormatError("no witness script");
+
+    const auto& witness_stack = tx.vin[nin].scriptWitness.stack;
+    CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
+
+    std::vector<std::string> meta_data;
+
+    auto inscr_data = ParseEnvelopeScript(script);
+    while(!inscr_data.empty()) {
+        if (inscr_data.front().first == CONTENT_TYPE_TAG) {
+            if (!inscription.m_content_type.empty()) throw InscriptionFormatError("second CONTENT_TYPE tag");
+            inscription.m_content_type.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
+            inscr_data.pop_front();
+        }
+        else if (inscr_data.front().first == CONTENT_TAG) {
+            if (!inscription.m_content.empty()) throw InscriptionFormatError("second CONTENT tag");
+            inscription.m_content = move(inscr_data.front().second);
+            inscr_data.pop_front();
+        }
+        else if (inscr_data.front().first == COLLECTION_ID_TAG) {
+            if (!inscription.m_collection_id.empty()) throw InscriptionFormatError("second COLLECTION_ID tag");
+
+            inscription.m_collection_id = DeserializeInscriptionId(inscr_data.front().second);
+            inscr_data.pop_front();
+        }
+        else if (inscr_data.front().first == METADATA_TAG) {
+            meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
+            inscr_data.pop_front();
+        }
+        else if (inscr_data.front().first == METADATA_VALUE_TAG) {
+            if (meta_data.size() % 2 == 0) throw InscriptionFormatError("inconsistent meta-data tag");
+
+            meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
+            inscr_data.pop_front();
+        }
+        else {
+            // just skip unknown tag
+            inscr_data.pop_front();
+        }
+    }
+
+    if (inscription.m_content.empty()) throw InscriptionError("no content");
+
+    if (nin != 1 && (inscription.m_collection_id.empty() && tx.vin.size() > 1 && tx.vin[1].scriptWitness.stack.size() >= 3)) {
+        const auto &witness_stack = tx.vin[1].scriptWitness.stack;
+        CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
+        std::string collection_id;
+
+        auto inscr_data = ParseEnvelopeScript(script);
+        while(!inscr_data.empty()) {
+            if (inscr_data.front().first == CONTENT_TYPE_TAG || inscr_data.front().first == CONTENT_TAG) {
+                collection_id.clear();
+                break;
+            }
+            else if (inscr_data.front().first == COLLECTION_ID_TAG) {
+                collection_id.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
+                CheckInscriptionId(collection_id);
+                inscr_data.pop_front();
+            }
+            else {
+                // just skip unknown tag
+                inscr_data.pop_front();
+            }
+        }
+        if (!collection_id.empty()) {
+            inscription.m_collection_id = move(collection_id);
+        }
+    }
+
+    inscription.m_inscription_id = tx.GetHash().GetHex() + "i" + std::to_string(nin);
+}
+
+
 std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script) {
     std::list<std::pair<bytevector, bytevector>> res;
     bytevector content;
@@ -117,84 +192,16 @@ Inscription ParseInscription(const string &hex_tx)
 }
 
 
-template<class T>
-Inscription::Inscription(const T& tx, uint32_t nin)
+Inscription::Inscription(const CMutableTransaction& tx, uint32_t nin)
 {
-    if (tx.vin[0].scriptWitness.stack.size() < 3) throw InscriptionFormatError("no witness script");
-
-    const auto& witness_stack = tx.vin[nin].scriptWitness.stack;
-    CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
-
-    std::vector<std::string> meta_data;
-
-    auto inscr_data = ParseEnvelopeScript(script);
-    while(!inscr_data.empty()) {
-        if (inscr_data.front().first == CONTENT_TYPE_TAG) {
-            if (!m_content_type.empty()) throw InscriptionFormatError("second CONTENT_TYPE tag");
-            m_content_type.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
-            inscr_data.pop_front();
-        }
-        else if (inscr_data.front().first == CONTENT_TAG) {
-            if (!m_content.empty()) throw InscriptionFormatError("second CONTENT tag");
-            m_content = move(inscr_data.front().second);
-            inscr_data.pop_front();
-        }
-        else if (inscr_data.front().first == COLLECTION_ID_TAG) {
-            if (!m_collection_id.empty()) throw InscriptionFormatError("second COLLECTION_ID tag");
-
-            m_collection_id = DeserializeInscriptionId(inscr_data.front().second);
-            inscr_data.pop_front();
-        }
-        else if (inscr_data.front().first == METADATA_TAG) {
-            meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
-            inscr_data.pop_front();
-        }
-        else if (inscr_data.front().first == METADATA_VALUE_TAG) {
-            if (meta_data.size() % 2 == 0) throw InscriptionFormatError("inconsistent meta-data tag");
-
-            meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
-            inscr_data.pop_front();
-        }
-        else {
-            // just skip unknown tag
-            inscr_data.pop_front();
-        }
-    }
-
-    if (m_content.empty()) throw InscriptionError("no content");
-
-    if (nin != 1 && (m_collection_id.empty() && tx.vin.size() > 1 && tx.vin[1].scriptWitness.stack.size() >= 3)) {
-        const auto &witness_stack = tx.vin[1].scriptWitness.stack;
-        CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
-        std::string collection_id;
-
-        auto inscr_data = ParseEnvelopeScript(script);
-        while(!inscr_data.empty()) {
-            if (inscr_data.front().first == CONTENT_TYPE_TAG || inscr_data.front().first == CONTENT_TAG) {
-                collection_id.clear();
-                break;
-            }
-            else if (inscr_data.front().first == COLLECTION_ID_TAG) {
-                collection_id.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
-                CheckInscriptionId(collection_id);
-                inscr_data.pop_front();
-            }
-            else {
-                // just skip unknown tag
-                inscr_data.pop_front();
-            }
-        }
-        if (!collection_id.empty()) {
-            m_collection_id = move(collection_id);
-        }
-    }
-
-    m_inscription_id = tx.GetHash().GetHex() + "i" + std::to_string(nin);
+    ParseTransaction(*this, tx, nin);
 }
 
+Inscription::Inscription(const CTransaction& tx, uint32_t nin)
+{
+    ParseTransaction(*this, tx, nin);
+}
 
-template Inscription::Inscription(const CTransaction &tx, uint32_t nin);
-template Inscription::Inscription(const CMutableTransaction &tx, uint32_t nin);
 
 Inscription::Inscription(const std::string &hex_tx, uint32_t nin) : Inscription(core::Deserialize(hex_tx), nin)
 { }
