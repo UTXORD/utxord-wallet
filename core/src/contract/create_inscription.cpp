@@ -23,11 +23,9 @@ namespace {
 const std::string val_create_inscription("CreateInscription");
 const std::string val_create_collection("CreateCollection");
 
-template <std::ranges::range M>
-    requires std::same_as<std::ranges::range_value_t<M>, std::pair<std::string, std::string>>
 CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content_type, const bytevector& data,
                               const std::optional<std::string>& collection_id,
-                              const M& metadata)
+                              const std::optional<std::string>& metadata)
 {
     CScript script;
     script << pk;
@@ -43,9 +41,8 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
         script << SerializeInscriptionId(*collection_id);
     }
 
-    for (const auto& pair: metadata) {
-        script << METADATA_TAG << bytevector(get<0>(pair).begin(), get<0>(pair).end());
-        script << METADATA_TAG << bytevector(get<1>(pair).begin(), get<1>(pair).end());
+    if (metadata) {
+        script << METADATA_TAG << bytevector(metadata->begin(), metadata->end());
     }
 
     script << CONTENT_OP_TAG;
@@ -56,7 +53,6 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
     if (pos != data.end()) {
         script << bytevector(pos, data.end());
     }
-
 
     script << OP_ENDIF;
 
@@ -141,9 +137,9 @@ CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::s
 }
 
 
-CreateInscriptionBuilder &CreateInscriptionBuilder::SetMetaData(const string &tag, const string &value)
+CreateInscriptionBuilder &CreateInscriptionBuilder::SetMetaData(const string &metadata)
 {
-    m_metadata.emplace_back(tag, value);
+    m_metadata = metadata;
     return *this;
 }
 
@@ -389,11 +385,9 @@ std::string CreateInscriptionBuilder::Serialize() const
         contract.pushKV(name_collection, move(collection_val));
     }
 
-    if (!m_metadata.empty()) {
-        UniValue metadata_obj(UniValue::VOBJ);
-        for (const auto &pair: m_metadata) {
-            metadata_obj.pushKV(pair.first, pair.second);
-        }
+    if (m_metadata) {
+        UniValue metadata_obj;
+        metadata_obj.read(*m_metadata);
         contract.pushKV(name_metadata, move(metadata_obj));
     }
 
@@ -518,18 +512,7 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data)
     }
     {   const auto &val = contract[name_metadata];
         if (!val.isNull()) {
-            if (!val.isObject()) throw ContractTermWrongFormat(std::string(name_metadata));
-
-            std::map<std::string, UniValue> metadata_map;
-            val.getObjMap(metadata_map);
-
-            m_metadata.reserve(metadata_map.size());
-
-            for (const auto& pair: metadata_map) {
-                if (!pair.second.isStr()) throw ContractTermWrongFormat(std::string(name_metadata) + '.' + pair.first);
-
-                m_metadata.emplace_back(pair.first, pair.second.getValStr());
-            }
+            m_metadata = val.write();
         }
     }
     {   const auto &val = contract[name_xtra_utxo];

@@ -134,15 +134,22 @@ namespace utxord {
             }
 
             if (!$1.GetMetadata().empty()) {
-                PyObject * metadata = PyDict_New();
-                for (const std::pair<std::string, std::string>
-                &pair: $1.GetMetadata()) {
-                    PyObject * data = PyUnicode_FromString(pair.second.c_str());
-                    PyDict_SetItemString(metadata, pair.first.c_str(), data);
-                    Py_XDECREF(data);
+                if ($1.GetMetadata().size() == 1) {
+                    PyObject * metadata = PyUnicode_FromString($1.GetMetadata().front().c_str());
+                    PyDict_SetItemString(obj, "metadata", metadata);
+                    Py_XDECREF(metadata);
                 }
-                PyDict_SetItemString(obj, "metadata", metadata);
-                Py_XDECREF(metadata);
+                else {
+                    PyObject * metadata = PyList_New($1.GetMetadata().size());
+                    Py_ssize_t i = 0;
+                    for (const std::string &item: $1.GetMetadata()) {
+                        PyObject* itemdata = PyUnicode_FromString(item.c_str());
+                        PyList_SetItem(metadata, i, itemdata);
+                        Py_XDECREF(itemdata);
+                    }
+                    PyDict_SetItemString(obj, "metadata", metadata);
+                    Py_XDECREF(metadata);
+                }
             }
 
             $result = SWIG_Python_AppendOutput($result, obj);

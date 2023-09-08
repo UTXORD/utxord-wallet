@@ -39,7 +39,7 @@ void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
     const auto& witness_stack = tx.vin[nin].scriptWitness.stack;
     CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
 
-    std::vector<std::string> meta_data;
+    std::list<std::string> meta_data;
 
     auto inscr_data = ParseEnvelopeScript(script);
     while(!inscr_data.empty()) {
@@ -60,12 +60,6 @@ void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
             inscr_data.pop_front();
         }
         else if (inscr_data.front().first == METADATA_TAG) {
-            meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
-            inscr_data.pop_front();
-        }
-        else if (inscr_data.front().first == METADATA_VALUE_TAG) {
-            if (meta_data.size() % 2 == 0) throw InscriptionFormatError("inconsistent meta-data tag");
-
             meta_data.emplace_back(inscr_data.front().second.begin(), inscr_data.front().second.end());
             inscr_data.pop_front();
         }
@@ -103,12 +97,8 @@ void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
         }
     }
 
-    inscription.m_metadata.reserve(meta_data.size()/2);
-    for (size_t i = 1; i < meta_data.size(); i += 2) {
-        inscription.m_metadata.emplace_back(meta_data[i-1], meta_data[i]);
-    }
-
     inscription.m_inscription_id = tx.GetHash().GetHex() + "i" + std::to_string(nin);
+    inscription.m_metadata = move(meta_data);
 }
 
 
@@ -165,13 +155,8 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
             fetching_content = false;
         }
         else if (opcode == METADATA_OP_TAG || (opcode == METADATA_TAG.size() && data == METADATA_TAG)) {
-            GetNextScriptData(script, it, data, "metadata key");
+            GetNextScriptData(script, it, data, "met-adata");
             res.emplace_back(METADATA_TAG, move(data));
-            fetching_content = false;
-        }
-        else if (opcode == METADATA_OP_VALUE_TAG || (opcode == METADATA_VALUE_TAG.size() && data == METADATA_VALUE_TAG)) {
-            GetNextScriptData(script, it, data, "metadata key");
-            res.emplace_back(METADATA_VALUE_TAG, move(data));
             fetching_content = false;
         }
         else if (opcode == OP_ENDIF) {
