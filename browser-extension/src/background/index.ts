@@ -152,6 +152,7 @@ import {
         }
         return false;
       }
+      
       if (payload.data.type === COMMIT_BUY_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         Api.wallet.tmp = payload.data.password;
