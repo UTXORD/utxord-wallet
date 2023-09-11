@@ -2035,9 +2035,10 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
         );
         contract_list.push(JSON.parse(contractData));
       }
+
       return {
         contract_uuid: payload.swap_ord_terms.contract_uuid,
-        contract: data,
+//        contract: data,
         contracts: contract_list
       };
 
