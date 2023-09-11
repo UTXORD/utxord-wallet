@@ -70,7 +70,7 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
-    const std::list<std::string> GetMetadata() const
+    const std::list<std::string>& GetMetadata() const
     { return m_metadata; }
 };
 
