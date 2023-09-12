@@ -528,43 +528,84 @@ TEST_CASE("inscribe")
     w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
 }
 
+const string short_metadata = "{\"title\":\"sample inscription 1\"}";
+const string exact_520_metadata = "{\"name\":\"sample inscription 2\",\"description\":\"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}";
+const string long_metadata =
+        "{\"name\":\"sample inscription 3\","
+        "\"description\":\"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
+        "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
+        "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
+        "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}";
 
-//TEST_CASE("NotEnoughAmount")
-//{
-//    //get key pair
-//    ChannelKeys utxo_key;
-//    ChannelKeys script_key;
-//    ChannelKeys dest_key;
-//
-//    //create address from key pair
-//    string addr = w->bech32().Encode(utxo_key.GetLocalPubKey());
-//
-//    std::string fee_rate;
-//    try {
-//        fee_rate = w->btc().EstimateSmartFee("1");
-//    }
-//    catch (...) {
-//        fee_rate = "0.000011";
-//    }
-//    std::clog << "Fee rate: " << fee_rate << std::endl;
-//
-//    CreateInscriptionBuilder builder("0.00002");
-//
-//    std::string content_type = "text/ascii";
-//    auto content = hex(GenRandomString(1024));
-//
-//    CHECK_NOTHROW(builder.Data(content_type, content)
-//                          .MiningFeeRate(fee_rate));
-//
-//    std::string lesser_amount = FormatAmount(ParseAmount(builder.GetMinFundingAmount()) - 1);
-//
-//
-//    string txid = w->btc().SendToAddress(addr, lesser_amount);
-//    auto prevout = w->btc().CheckOutput(txid, addr);
-//
-//    CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, lesser_amount, hex(utxo_key.GetLocalPubKey()))
-//                         .DestinationPubKey(hex(dest_key.GetLocalPubKey())));
-//
-//    CHECK_THROWS_AS(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())), ContractError);
-//
-//}
+TEST_CASE("metadata") {
+    ChannelKeys utxo_key;
+    ChannelKeys script_key, inscribe_key;
+
+    string addr = w->bech32().Encode(utxo_key.GetLocalPubKey());
+
+    xonly_pubkey destination_pk = w->bech32().Decode(w->btc().GetNewAddress());
+
+    std::string fee_rate;
+    try {
+        fee_rate = w->btc().EstimateSmartFee("1");
+    }
+    catch(...) {
+        fee_rate = "0.00001";
+    }
+
+    std::clog << "Fee rate: " << fee_rate << std::endl;
+
+    std::string content_type = "image/svg+xml";
+
+    const string svg = "<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 118.078 275)\">Svg</text><text fill=\"#FFFFFF\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">svg</text><text fill=\"#000000\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 259.589 275)\">svg</text></g></g></svg>";
+    auto content = hex(svg);
+
+    const auto& metadata = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
+
+    CreateInscriptionBuilder builder(INSCRIPTION, "0.00000546");
+    CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+    CHECK_NOTHROW(builder.Data(content_type, content));
+    CHECK_NOTHROW(builder.SetMetaData(metadata));
+
+    std::string min_fund = builder.GetMinFundingAmount("");
+    string funds_txid = w->btc().SendToAddress(addr, min_fund);
+    auto prevout = w->btc().CheckOutput(funds_txid, addr);
+
+    CHECK_NOTHROW(builder.InscribePubKey(hex(destination_pk)));
+    CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, min_fund, hex(utxo_key.GetLocalPubKey())));
+
+    CHECK_NOTHROW(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())));
+    CHECK_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
+
+    std::string contract = builder.Serialize();
+    std::clog << contract << std::endl;
+
+    CreateInscriptionBuilder builder2(INSCRIPTION, "0.00000546");
+    builder2.Deserialize(contract);
+
+    stringvector rawtxs;
+    CHECK_NOTHROW(rawtxs = builder2.RawTransactions());
+
+    CMutableTransaction commitTx, revealTx;
+
+    REQUIRE(rawtxs.size() == 2);
+
+    Inscription inscr(rawtxs[1]);
+    const auto& result_metadata = inscr.GetMetadata();
+
+    CHECK(result_metadata == metadata);
+
+    REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
+    REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
+
+    CHECK(revealTx.vout[0].nValue == 546);
+
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+
+    std::clog << "Commit: ========================" << std::endl;
+    LogTx(commitTx);
+    std::clog << "Genesis: ========================" << std::endl;
+    LogTx(revealTx);
+    std::clog << "========================" << std::endl;
+}

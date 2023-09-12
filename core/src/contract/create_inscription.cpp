@@ -42,13 +42,18 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
     }
 
     if (metadata) {
-        script << METADATA_TAG << bytevector(metadata->begin(), metadata->end());
+        auto size = metadata->size();
+        const auto* end = metadata->data() + size;
+        for (const auto* p = metadata->data(); p < end; p += MAX_PUSH) {
+            script << METADATA_TAG << bytevector(p,  ((p + MAX_PUSH) < end) ? (p + MAX_PUSH) : end);
+        }
+        //script << METADATA_TAG << bytevector(metadata->begin(), metadata->end());
     }
 
     script << CONTENT_OP_TAG;
     auto pos = data.begin();
-    for ( ; pos + chunk_size < data.end(); pos += chunk_size) {
-        script << bytevector(pos, pos + chunk_size);
+    for ( ; pos + MAX_PUSH < data.end(); pos += MAX_PUSH) {
+        script << bytevector(pos, pos + MAX_PUSH);
     }
     if (pos != data.end()) {
         script << bytevector(pos, data.end());
