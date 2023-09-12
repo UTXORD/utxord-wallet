@@ -1970,44 +1970,95 @@ async createInscription(payload) {
     }
   }
   //------------------------------------------------------------------------------
+async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
+  const myself = this;
+  try {
+  const sellOrd = new myself.utxord.SwapInscriptionBuilder(
+    ord_price,
+    (myself.satToBtc(market_fee)).toFixed(8)
+  );
+  sellOrd.Deserialize(JSON.stringify(contract));
+  sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
+  // console.log("myself.selectKeysByOrdAddress(utxoData.address)",
+  // utxoData?.address,
+  // myself.selectKeyByOrdAddress(utxoData.address),
+  // payload.addresses.length);
 
-  async sellInscription(payload) {
+  // const utxo_keypair = myself.selectKeyByOrdAddress(utxoData.address);
+  // const swap_keypair_A = new myself.utxord.ChannelKeys(myself.wallet.fund.privKeyStr);
+
+  // console.log("| myself.wallet.fund.privKeyStr:",myself.wallet.fund.privKeyStr);
+  // console.log("utxo_pubkey:",utxo_keypair.GetLocalPubKey().c_str(),
+  // "swap_pubkey_A:",swap_keypair_A.GetLocalPubKey().c_str())
+
+  sellOrd.OrdUTXO(
+    txid,
+    nout,
+    (myself.satToBtc(utxoData.amount)).toFixed(8)
+  );
+  sellOrd.SwapScriptPubKeyA(myself.wallet.fund.key.GetLocalPubKey().c_str());
+  sellOrd.SignOrdSwap(utxoData.key.GetLocalPrivKey().c_str());
+  return sellOrd.Serialize(myself.utxord.ORD_SWAP_SIG).c_str();
+} catch (exception) {
+  this.sendExceptionMessage(SELL_INSCRIPTION, exception)
+}
+
+}
+  async sellInscriptionContract(payload) {
     const myself = this;
     try {
       const txid = payload.utxo_id.split(':')[0];
       const nout = Number(payload.utxo_id.split(':')[1]);
-      console.log('payload:',payload);
+       console.log('sellInscriptionContract->payload:',payload);
       console.log('txid:',txid, 'nout:', nout)
+
       const utxoData = myself.selectByOrdOutput(txid, nout);
       console.log('utxoData:',utxoData);
-      console.log("SwapInscriptionBuilder->args:", payload.ord_price, (myself.satToBtc(payload.swap_ord_terms.market_fee)).toFixed(8));
+      console.log("SwapInscriptionBuilder->args:", payload.ord_price,
+      (myself.satToBtc(payload.swap_ord_terms.market_fee)).toFixed(8));
 
-      const sellOrd = new myself.utxord.SwapInscriptionBuilder(payload.ord_price, (myself.satToBtc(payload.swap_ord_terms.market_fee)).toFixed(8));
-      sellOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
-      console.log("myself.selectKeysByOrdAddress(utxoData.address)", utxoData?.address, myself.selectKeyByOrdAddress(utxoData.address), payload.addresses.length);
-
-      const utxo_keypair = myself.selectKeyByOrdAddress(utxoData.address);
-      const swap_keypair_A = new myself.utxord.ChannelKeys(myself.wallet.fund.privKeyStr);
-
-      console.log("| myself.wallet.fund.privKeyStr:",myself.wallet.fund.privKeyStr);
-      console.log("utxo_pubkey:",utxo_keypair.GetLocalPubKey().c_str(),"swap_pubkey_A:",swap_keypair_A.GetLocalPubKey().c_str())
-      sellOrd.OrdUTXO(
-        txid,
-        nout,
-        (myself.satToBtc(utxoData.amount)).toFixed(8)
+      const data = await myself.sellSignContract(
+        utxoData,
+        payload.ord_price,
+        payload.swap_ord_terms.market_fee,
+        payload.swap_ord_terms.contract,
+        txid, nout
       );
-      sellOrd.SwapScriptPubKeyA(swap_keypair_A.GetLocalPubKey().c_str());
-      sellOrd.SignOrdSwap(utxo_keypair.GetLocalPrivKey().c_str());
-      const data = sellOrd.Serialize(myself.utxord.ORD_SWAP_SIG).c_str();
-      myself.destroy(swap_keypair_A);
-      (async (data, payload) => {
+      const contract_list = [];
+      for (const act of payload.swap_ord_terms.contracts) {
+        let contractData = await myself.sellSignContract(
+          utxoData,
+          payload.ord_price,
+          act.market_fee,
+          act.contract,
+          txid, nout
+        );
+        contract_list.push(JSON.parse(contractData));
+      }
+
+      return {
+        contract_uuid: payload.swap_ord_terms.contract_uuid,
+//        contract: data,
+        contracts: contract_list
+      };
+
+    } catch (exception) {
+      this.sendExceptionMessage(SELL_INSCRIPTION, exception)
+    }
+
+}
+
+async sellInscription(payload) {
+    const myself = this;
+    try {
+      const data = await myself.sellInscriptionContract(payload);
+      (async (data) => {
         console.log("SELL_DATA_RESULT:", data);
         myself.WinHelpers.closeCurrentWindow()
         myself.sendMessageToWebPage(
           SELL_INSCRIBE_RESULT,
-          { contract_uuid: payload.swap_ord_terms.contract_uuid, contract: data });
-      })(data, payload);
+          data);
+      })(data);
 
     } catch (exception) {
       this.sendExceptionMessage(SELL_INSCRIPTION, exception)
@@ -2070,7 +2121,7 @@ async createInscription(payload) {
     }
 
     let sum_addr = 0;
-console.log('selectKeysByFunds2->all_funds:',all_funds);
+    console.log('selectKeysByFunds2->all_funds:',all_funds);
     for(const utxo of all_funds) {
           sum_addr += utxo.amount;
           iter += 1;
@@ -2083,7 +2134,7 @@ console.log('selectKeysByFunds2->all_funds:',all_funds);
               amount: utxo?.amount,
               nout: utxo?.nout,
               txid: utxo?.txid,
-              path: utxo.path,
+              path: utxo?.path,
               address: utxo?.address,
               key: br?.key
             });
