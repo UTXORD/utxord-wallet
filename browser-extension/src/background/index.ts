@@ -132,11 +132,15 @@ import {
 
     onMessage(SUBMIT_SIGN, async (payload) => {
 
+      // console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
+      // console.debug("===== SUBMIT_SIGN: payload?.data?._tabId", payload?.data?._tabId)
+      // console.debug("===== SUBMIT_SIGN: payload?.data?.data?._tabId", payload?.data?.data?._tabId)
+
       if (payload.data.type === CREATE_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
           const success = await Api.createInscription(payload.data.data);
-          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
           await Api.encryptedWallet(payload.data.password);
           return success;
         }
@@ -158,7 +162,7 @@ import {
         Api.wallet.tmp = payload.data.password;
         if(res){
           const success = await Api.commitBuyInscription(payload.data.data);
-          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
           await Api.encryptedWallet(payload.data.password);
           return success;
         }
@@ -171,8 +175,10 @@ import {
     })
 
     chrome.runtime.onMessageExternal.addListener(async (payload, sender) => {
-
       let tabId = sender?.tab?.id;
+      if (typeof payload?.data === 'object' && payload?.data !== null) {
+        payload.data._tabId = tabId;
+      }
 
       if (payload.type === CONNECT_TO_PLUGIN) {
         await Api.signToChallenge(payload.data, tabId)
@@ -294,7 +300,7 @@ import {
       return true;
     }
 
-    // TODO: to implement usage of tabId
+    // TODO: to implement usage of tabId ? (unsure)
     chrome.tabs.onActivated.addListener(sendhello);
     chrome.tabs.onCreated.addListener(sendhello);
     chrome.tabs.onUpdated.addListener(sendhello);
