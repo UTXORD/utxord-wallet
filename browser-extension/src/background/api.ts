@@ -1907,57 +1907,57 @@ async createInscriptionContract(payload, theIndex = 0) {
     }
 }
 //------------------------------------------------------------------------------
-async createInscription(payload) {
+async createInscription(payload_data) {
   const myself = this;
-  if(!payload?.costs?.data) return;
+  if(!payload_data?.costs?.data) return;
 /*  let contract;
   if(payload?.type==='AVATAR'){
-    contract =  await myself.createIndependentCollectionContract(payload);
+    contract =  await myself.createIndependentCollectionContract(payload_data);
   }
   if(payload?.type==='INSCRIPTION'){
     if(payload?.collection?.genesis_txid){
-      contract =  await myself.createInscriptionInCollectionContract(payload);
+      contract =  await myself.createInscriptionInCollectionContract(payload_data);
     }else{
-      contract =  await myself.createIndependentInscriptionContract(payload); //int--
+      contract =  await myself.createIndependentInscriptionContract(payload_data); //int--
     }
   }
-  if(payload?.type==='COLLECTION'){
-    if(payload?.collection?.genesis_txid){
-      contract =  await myself.createCollectionWithParentContract(payload); //inckeys++
+  if(data?.type==='COLLECTION'){
+    if(data?.collection?.genesis_txid){
+      contract =  await myself.createCollectionWithParentContract(payload_data); //inckeys++
     }else{
-      contract =  await myself.createIndependentCollectionContract(payload);
+      contract =  await myself.createIndependentCollectionContract(payload_data);
     }
   }
 */
   try{
-      console.log("outData:", payload.costs.data);
-      if(payload.costs){
-        if(payload.costs?.xord){
-          myself.addToXordPubKey(payload.costs?.xord);
+      console.log("outData:", payload_data.costs.data);
+      if(payload_data.costs){
+        if(payload_data.costs?.xord){
+          myself.addToXordPubKey(payload_data.costs?.xord);
         }
-        if(payload.costs?.nxord){
-          myself.addToXordPubKey(payload.costs?.nxord);
+        if(payload_data.costs?.nxord){
+          myself.addToXordPubKey(payload_data.costs?.nxord);
         }
-        if(payload.costs?.sk){
-          myself.addToExternalKey(payload.costs?.sk);
-          console.log(" sk:", payload.costs?.sk);
+        if(payload_data.costs?.sk){
+          myself.addToExternalKey(payload_data.costs?.sk);
+          console.log(" sk:", payload_data.costs?.sk);
         }
 
         await myself.genKeys();
-        await myself.sendMessageToWebPage(ADDRESSES_TO_SAVE, myself.addresses);
+        await myself.sendMessageToWebPage(ADDRESSES_TO_SAVE, myself.addresses, payload_data._tabId);
       }
 
       setTimeout(async () => {
         myself.WinHelpers.closeCurrentWindow();
         await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, {
-          contract: JSON.parse(payload.costs.data),
-          name: payload.name,
-          description: payload?.description,
-          type: payload?.type
-        });
+          contract: JSON.parse(payload_data.costs.data),
+          name: payload_data.name,
+          description: payload_data?.description,
+          type: payload_data?.type
+        }, payload_data._tabId);
         await myself.generateNewIndex('ord');
         await myself.generateNewIndex('uns');
-        if(payload?.type!=='INSCRIPTION' && !payload?.collection?.genesis_txid && payload.costs?.xord){
+        if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord){
           await myself.generateNewIndex('intsk');
           await myself.generateNewIndex('scrsk');
         }
@@ -2048,16 +2048,17 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
 
 }
 
-async sellInscription(payload) {
+async sellInscription(payload_data) {
     const myself = this;
     try {
-      const data = await myself.sellInscriptionContract(payload);
-      (async (data) => {
+      const data = await myself.sellInscriptionContract(payload_data);
+      await (async (data) => {
         console.log("SELL_DATA_RESULT:", data);
         myself.WinHelpers.closeCurrentWindow()
         myself.sendMessageToWebPage(
           SELL_INSCRIBE_RESULT,
-          data);
+          data,
+          payload_data._tabId);
       })(data);
 
     } catch (exception) {
@@ -2249,18 +2250,18 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
     }
 }
 
-  async commitBuyInscription(payload) {
+  async commitBuyInscription(payload_data) {
       const myself = this;
-      if(!payload.costs.data) return;
-      if(!payload?.swap_ord_terms) return;
-      try{
-      console.log("data:",payload?.costs?.data," payload:",payload);
-      myself.WinHelpers.closeCurrentWindow()
+      if(!payload_data.costs.data) return;
+      if(!payload_data?.swap_ord_terms) return;
+      try {
+        console.log("data:", payload_data?.costs?.data," payload:", payload_data);
+        myself.WinHelpers.closeCurrentWindow()
         myself.sendMessageToWebPage(
           COMMIT_BUY_INSCRIBE_RESULT, {
-          contract_uuid: payload?.swap_ord_terms?.contract_uuid,
-          contract: JSON.parse(payload.costs.data)
-        });
+          contract_uuid: payload_data?.swap_ord_terms?.contract_uuid,
+          contract: JSON.parse(payload_data.costs.data)
+        }, payload_data?._tabId);
     } catch (exception) {
       this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
     }
