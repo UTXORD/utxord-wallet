@@ -922,6 +922,7 @@ async matchTapRootKey(payload, target, deep = 0){
   }
   async fetchExternalAddresses(){
     if(this.wallet.ext.keys.length<1) return;
+
     console.log('this.wallet.ext.keys:',this.wallet.ext.keys);
     for(const item of this.wallet.ext.keys){
       if(item.p2tr){
@@ -935,9 +936,16 @@ async matchTapRootKey(payload, target, deep = 0){
     }
   }
   async fetchBalance(address: string) {
-    this.fetchExternalAddresses();
+    // this.fetchExternalAddresses();
     // TODO: add to wallet balance and save address to server and use for creating and paying
-    const response = await this.fetchAddress(address);
+    // await this.fetchAddress(address);
+
+    const response = {
+      data: {
+        confirmed: 0,
+        unconfirmed: 0
+      }
+    };
 
     const my = this.inscriptions;
     const all_funds = this.fundings;
