@@ -36,13 +36,15 @@ async function getNetWork(){
   async function getBalance(address: string) {
     if(!address) return 0;
     try{
-      const success = await sendMessage(GET_BALANCE, {
-        address,
-      }, 'background')
-      if(success){
-        store.setBalance(success?.data)
-        return success?.data
-      }
+      setInterval(async () => {
+        const success = await sendMessage(GET_BALANCE, {
+          address,
+        }, 'background')
+        if(success){
+          store.setBalance(success?.data)
+          return success?.data
+        }
+      },2000);
     }catch(e){
       store.setBalance(0);
       console.log('getBalance->error:',e);

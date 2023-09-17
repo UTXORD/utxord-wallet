@@ -11,7 +11,7 @@
         class="home-screen_block w-full flex flex-col items-center bg-[var(--section)] rounded-lg px-3 py-5 mb-4"
       >
         <PriceComp
-          v-if="status!='Synchronizing...'"
+          v-show="status===3"
           class="home-screen_balance text-[var(--text-color)]"
           :price="balance?.confirmed || 0"
           :font-size-breakpoints="{
@@ -20,19 +20,16 @@
             1000000000: '20px'
           }"
         />
-        <span v-if="status!='Synchronizing...'"
+        <span
           class="home-screen_balance-label text-center text-[var(--text-grey-color)]"
         >
-          {{ status }}
+          {{ status_message }}
         </span>
-       <span v-else style="font-size: 40px" class="blink text-center text-[var(--text-color)]">
-          {{ status }}
-       </span>
-
       </div>
 
       <!-- Balance -->
       <div
+        v-show="status===3"
         class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-4 gap-1"
       >
         <div class="flex items-center">
@@ -59,6 +56,7 @@
 
       <!-- Info -->
       <div
+        v-show="status===3"
         class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-4 gap-1"
       >
         <div class="flex items-center">
@@ -143,26 +141,26 @@ async function newFundAddress() {
   )?.address
   store.setFundAddress(addr)
 }
+
 const status = computed(() => {
-  if (balance?.value?.confirmed > 0) return 'Synchronized.'
-  if (balance?.value?.sync) return 'Synchronizing...'
-  return 'On the site, press "Connect to wallet" button.'
+  if (!balance?.value?.connect) return 1
+  if (!balance?.value?.sync) return 2
+  if (balance?.value?.confirmed > 0 || balance?.value?.sync) return 3
+})
+
+const status_message = computed(() => {
+  if (!balance?.value?.connect) return 'On the site, press "Connect to wallet" button.'
+  if (!balance?.value?.sync) return 'Synchronizing...'
+  if (balance?.value?.confirmed > 0 || balance?.value?.sync) return 'Synchronized.'
 })
 </script>
 
 <style lang="scss" scoped>
-.blink{
-  color: red;
-  text-shadow: 0 0 5px #abc, 0 0 7px #abc;
-}
 .home-screen {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
   }
-
-
-
   & p {
     font-weight: 600;
     font-size: 15px;
