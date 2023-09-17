@@ -314,12 +314,27 @@ import {
       await Api.sendMessageToWebPage(AUTH_STATUS, success);
       await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
-
     }
-    let index = 0
-    chrome.alarms.create("listener", { periodInMinutes: 0.2 });
-    chrome.alarms.onAlarm.addListener(function() {
-      listener(index);
+    let index = 1
+    let lastListenIndex = 0;
+
+    function timeToListen(index, lastListenIndex) {
+      if((index - lastListenIndex) >= 10 ) {
+        lastListenIndex = index;
+        return true;
+      }
+    }
+
+    chrome.alarms.create("listener", { periodInMinutes: 0.1 });
+    chrome.alarms.onAlarm.addListener(async () => {
+      console.log('index:',index, '| lastListenIndex:',lastListenIndex);
+      if(timeToListen(index, lastListenIndex)){
+        await listener(index);
+      }
+      if((index - lastListenIndex) >= 10 ) {
+        lastListenIndex = index;
+        return true;
+      }
       index++;
     });
   }catch(e){
