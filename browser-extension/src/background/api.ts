@@ -171,6 +171,8 @@ class Api {
         this.fundings = [];
         this.inscriptions = [];
         this.all_addresses = [];
+        this.connect = false;
+        this.sync = false;
 
         await this.init(this);
         return this;
@@ -387,6 +389,8 @@ class Api {
     this.balances = [];
     this.fundings = [];
     this.inscriptions = [];
+    this.connect = false;
+    this.sync = false;
 
     await chrome.storage.sync.clear();
     chrome.runtime.reload()
@@ -952,10 +956,11 @@ async matchTapRootKey(payload, target, deep = 0){
 
     const total = await this.sumAllFunds(all_funds);
     const sum_my_inscr = await this.sumMyInscribtions(my);
-
+    console.log('this.all_addresses:',this.all_addresses);
     return {
       data: {
-        sync: (this.all_addresses?.length > 0 || total > 0),
+        sync: this.sync,
+        connect: this.connect,
         confirmed: total || 0,
         to_address: response?.data?.confirmed || 0,
         unconfirmed: response?.data?.unconfirmed || 0,
@@ -1015,6 +1020,8 @@ async matchTapRootKey(payload, target, deep = 0){
         publickey: myself.wallet.auth.pubKeyStr
       }, tabId);
     myself.destroy(keypair);
+    myself.connect = true;
+    myself.sync = false;
     } else {
       myself.sendMessageToWebPage(CONNECT_RESULT, null, tabId);
     }
