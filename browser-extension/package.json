@@ -2,7 +2,7 @@
   "name": "utxord-wallet",
   "displayName": "UTXORD Wallet",
   "description": "An open-source Chrome extension to interact with UTXORD.com marketplace",
-  "version": "1.0.15",
+  "version": "1.0.18",
   "private": true,
   "scripts": {
     "dev": "rimraf extension/dev && run-p dev:prepare dev:web dev:js",

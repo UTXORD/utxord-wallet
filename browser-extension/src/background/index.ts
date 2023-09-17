@@ -156,7 +156,7 @@ import {
         }
         return false;
       }
-      
+
       if (payload.data.type === COMMIT_BUY_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         Api.wallet.tmp = payload.data.password;
@@ -188,6 +188,8 @@ import {
         console.log('SEND_BALANCES:',payload.data)
         if(payload.data?.addresses && payload.data?.my_inscriptions?.results){
           Api.balances = payload.data;
+          Api.sync = true;
+          Api.connect = true;
           Api.fundings = await Api.getAllFunds(payload.data.addresses);
           console.log('Api.fundings:',Api.fundings);
           Api.inscriptions = await Api.getInscriptions(payload.data.my_inscriptions?.results, Api.balances.addresses);
