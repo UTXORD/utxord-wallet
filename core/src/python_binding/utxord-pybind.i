@@ -21,6 +21,7 @@
 #include "common_error.hpp"
 #include "inscription.hpp"
 
+using namespace utxord;
 using namespace l15;
 
 %}
@@ -101,6 +102,59 @@ using namespace l15;
 
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
+
+namespace utxord {
+
+        %typemap(out) Inscription (PyObject* obj)
+        %{
+            obj = PyDict_New();
+
+            {
+                PyObject * id = PyUnicode_FromString($1.GetIscriptionId().c_str());
+                PyDict_SetItemString(obj, "id", id);
+                Py_XDECREF(id);
+            }
+
+            {
+                PyObject * content_type = PyUnicode_FromString($1.GetContentType().c_str());
+                PyDict_SetItemString(obj, "content_type", content_type);
+                Py_XDECREF(content_type);
+            }
+
+            {
+                PyObject * content = PyBytes_FromStringAndSize((const char*)($1.GetContent().data()), $1.GetContent().size());
+                PyDict_SetItemString(obj, "content", content);
+                Py_XDECREF(content);
+            }
+
+            if ($1.HasParent()) {
+                PyObject * collection_id = PyUnicode_FromString($1.GetCollectionId().c_str());
+                PyDict_SetItemString(obj, "collection_id", collection_id);
+                Py_XDECREF(collection_id);
+            }
+
+            if (!$1.GetMetadata().empty()) {
+                if ($1.GetMetadata().size() == 1) {
+                    PyObject * metadata = PyUnicode_FromString($1.GetMetadata().front().c_str());
+                    PyDict_SetItemString(obj, "metadata", metadata);
+                    Py_XDECREF(metadata);
+                }
+                else {
+                    PyObject * metadata = PyList_New($1.GetMetadata().size());
+                    Py_ssize_t i = 0;
+                    for (const std::string &item: $1.GetMetadata()) {
+                        PyObject* itemdata = PyUnicode_FromString(item.c_str());
+                        PyList_SetItem(metadata, i, itemdata);
+                        Py_XDECREF(itemdata);
+                    }
+                    PyDict_SetItemString(obj, "metadata", metadata);
+                    Py_XDECREF(metadata);
+                }
+            }
+
+            $result = SWIG_Python_AppendOutput($result, obj);
+        %}
+}
 
 %include "common_error.hpp"
 %include "contract_error.hpp"

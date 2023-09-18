@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <concepts>
 
 #include "common.hpp"
 #include "common_error.hpp"
@@ -29,17 +30,25 @@ public:
 
 std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script);
 
+class Inscription;
+
+template<typename T> /*requires std::same_as<T, CMutableTransaction> || std::same_as<T, CTransaction>*/
+void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin);
+
 class Inscription
 {
     std::string m_inscription_id;
     std::string m_content_type;
     bytevector m_content;
     std::string m_collection_id;
+    std::string m_metadata;
 
+    friend void ParseTransaction<CMutableTransaction>(Inscription& inscription, const CMutableTransaction& tx, uint32_t nin);
+    friend void ParseTransaction<CTransaction>(Inscription& inscription, const CTransaction& tx, uint32_t nin);
 
 public:
-    template<class T>
-    explicit Inscription(const T& tx, uint32_t nin = 0);
+    explicit Inscription(const CMutableTransaction& tx, uint32_t nin = 0);
+    explicit Inscription(const CTransaction& tx, uint32_t nin = 0);
     explicit Inscription(const std::string& hex_tx, uint32_t nin = 0);
     Inscription(const Inscription& ) = default;
     Inscription(Inscription&& ) noexcept = default;
@@ -52,8 +61,8 @@ public:
 
     const std::string& GetContentType() const
     { return m_content_type; }
-    std::string GetContent() const
-    { return hex(m_content); }
+    const bytevector& GetContent() const
+    { return m_content; }
 
     bool HasParent() const
     { return !m_collection_id.empty(); }
@@ -61,7 +70,11 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
+    const std::string& GetMetadata() const
+    { return m_metadata; }
 };
+
+Inscription ParseInscription(const std::string& hex_tx);
 
 } // utxord
 
