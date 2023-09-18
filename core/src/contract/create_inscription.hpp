@@ -47,6 +47,8 @@ class CreateInscriptionBuilder: public ContractBuilder
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
 
+    std::optional<std::string> m_metadata;
+
     std::optional<xonly_pubkey> m_inscribe_script_pk;
     std::optional<signature> m_inscribe_script_sig;
 
@@ -91,6 +93,7 @@ public:
     static const std::string name_content;
     static const std::string name_collection;
     static const std::string name_collection_id;
+    static const std::string name_metadata;
     static const std::string name_collection_mining_fee_sig;
     static const std::string name_inscribe_script_pk;
     static const std::string name_inscribe_int_pk;
@@ -131,6 +134,7 @@ public:
     CreateInscriptionBuilder& AddToCollection(const std::string& collection_id,
                                               const std::string& utxo_txid, uint32_t utxo_nout, const std::string& utxo_amount,
                                               const std::string& collection_pk);
+    CreateInscriptionBuilder& SetMetaData(const std::string& data);
     CreateInscriptionBuilder& AddFundMiningFee(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
 
     std::string MakeInscriptionId() const;

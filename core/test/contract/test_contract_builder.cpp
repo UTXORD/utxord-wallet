@@ -73,7 +73,7 @@ TEST_CASE("svgscript")
 
     Inscription inscription(raw_tx);
 
-    std::clog << inscription.GetContent() << std::endl;
+    std::clog << hex(inscription.GetContent()) << std::endl;
     std::clog << "===========================================================\n"
               << inscription.GetCollectionId() << std::endl;
 }
@@ -86,7 +86,7 @@ TEST_CASE("parse")
 
     std::clog << inscription.GetIscriptionId() << std::endl;
     std::clog << inscription.GetContentType() << std::endl;
-    std::clog << inscription.GetContent() << std::endl;
+    std::clog << hex(inscription.GetContent()) << std::endl;
     std::clog << "===========================================================\n"
               << "collection: " << inscription.GetCollectionId() << std::endl;
 }

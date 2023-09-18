@@ -7,7 +7,7 @@ namespace utxord {
 
 using namespace l15;
 
-const size_t chunk_size = 520;
+const size_t MAX_PUSH = 520;
 const bytevector ORD_TAG {'o', 'r', 'd'};
 const bytevector ORD_PARENT_TAG {'o', 'r', 'p'};
 const opcodetype CONTENT_OP_TAG {OP_0};
@@ -16,6 +16,8 @@ const opcodetype CONTENT_TYPE_OP_TAG {OP_1};
 const bytevector CONTENT_TYPE_TAG {'\1'};
 const opcodetype COLLECTION_ID_OP_TAG {OP_3};
 const bytevector COLLECTION_ID_TAG {'\3'};
+const opcodetype METADATA_OP_TAG {OP_5};
+const bytevector METADATA_TAG {'\5'};
 
 inline void CheckInscriptionId(const std::string& inscription_id)
 {
