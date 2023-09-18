@@ -75,6 +75,7 @@ interface CreateInscriptionBuilder
 
     [Ref] CreateInscriptionBuilder AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
                                                    [Const] DOMString collectionPK);
+    [Ref] CreateInscriptionBuilder SetMetaData([Const] DOMString rate);
     [Ref] CreateInscriptionBuilder AddFundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeePK);
 
     void SignCommit(long n, [Const] DOMString sk, [Const] DOMString scriptPK);
