@@ -308,10 +308,11 @@ void CreateInscriptionBuilder::SignFundMiningFee(uint32_t n, const string &sk)
     xtra_it->m_sig = keypair.SignTaprootTx(genesis_tx, n_in, GetGenesisTxSpends(), {});
 }
 
-std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
+std::vector<std::string> CreateInscriptionBuilder::RawTransactions()
 {
     if (!mCommitTx || !mGenesisTx) {
-        throw ContractStateError("Transaction data unavailable");
+        RestoreTransactions();
+        //throw ContractStateError("Transaction data unavailable");
     }
 
     std::string funding_tx_hex = EncodeHexTx(CTransaction(*mCommitTx));
@@ -648,9 +649,9 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
         pubkey_script << get<0>(taproot);
     }
     else {
-        pubkey_script << xonly_pubkey();
+        //pubkey_script << xonly_pubkey();
+        throw ContractStateError("Inscribe keys are not set");
     }
-
 
     tx.vout.emplace_back(m_ord_amount, pubkey_script);
     CAmount genesis_fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate());
