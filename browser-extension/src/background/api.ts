@@ -1032,6 +1032,7 @@ async createIndependentInscriptionContract(payload, theIndex = 0) {
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1075,6 +1076,7 @@ async createIndependentInscriptionContract(payload, theIndex = 0) {
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1182,6 +1184,7 @@ async createIndependentCollectionContract(payload, theIndex = 0) {
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1225,6 +1228,7 @@ async createIndependentCollectionContract(payload, theIndex = 0) {
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1350,6 +1354,7 @@ async createInscriptionInCollectionContract(payload, theIndex = 0) {
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1414,6 +1419,7 @@ console.log("min_fund_amount_btc:",ordSim.GetMinFundingAmount(
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1536,6 +1542,7 @@ async createCollectionWithParentContract(payload, theIndex = 0) {
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1605,6 +1612,7 @@ async createCollectionWithParentContract(payload, theIndex = 0) {
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1817,6 +1825,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     ).c_str()))
     outData.amount = min_fund_amount;
     if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           'CREATE_INSCRIPTION',
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1830,6 +1839,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     outData.inputs_sum = inputs_sum;
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           'CREATE_INSCRIPTION',
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -2179,6 +2189,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
     try {
 
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           COMMIT_BUY_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -2231,6 +2242,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         outData.utxo_list = utxo_list;
         if (utxo_list?.length < 1) {
           setTimeout(() => {
+            // TODO: REWORK FUNDS EXCEPTION
             myself.sendExceptionMessage(
               BUY_INSCRIPTION,
               "There are no funds to buying of the Inscription, please replenish the amount: " +
