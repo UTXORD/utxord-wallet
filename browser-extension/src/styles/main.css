@@ -35,6 +35,7 @@ body {
   height: 100%;
   width: 350px;
   max-width: 350px;
+  min-height: 546px;
   max-height: 596px;
   position: relative;
   outline: 1px solid var(--border-color);

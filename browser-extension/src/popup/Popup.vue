@@ -62,6 +62,9 @@ async function init() {
     const address = await getFundAddress()
     await getOrdAddress()
     getBalance(address)
+    setInterval(async () => {
+      getBalance(address)
+    }, 60000)
   }
 }
 

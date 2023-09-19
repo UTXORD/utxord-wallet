@@ -1776,13 +1776,12 @@ async createInscriptionContract(payload, theIndex = 0) {
 
     const destination_keypair = new myself.utxord.ChannelKeys(myself.wallet.ord.privKeyStr);
     const change_keypair = new myself.utxord.ChannelKeys(myself.wallet.fund.privKeyStr);
-
     const newOrd = new myself.utxord.CreateInscriptionBuilder(
       myself.utxord.INSCRIPTION,
       (myself.satToBtc(payload.expect_amount)).toFixed(8)
     );
-    if(payload.metadata){
-      await newOrd.SetMetaData(payload.metadata);
+    if(payload.metadata) {
+      await newOrd.SetMetaData(JSON.stringify(payload.metadata));
     }
     await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8));
 
