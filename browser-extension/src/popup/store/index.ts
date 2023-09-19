@@ -29,6 +29,7 @@ export const useStore = defineStore('store', {
       to_address: 0,
       used_for_inscribtions: 0,
     },
+    refreshingBalance: false,
     fundAddress: null,
     ordAddress: null,
     dataForSign: null,
@@ -52,6 +53,12 @@ export const useStore = defineStore('store', {
     },
     setSyncToFalse() {
       this.balance.sync = false;
+    },
+    setRefreshingBalance() {
+      this.refreshingBalance = true;
+    },
+    unsetRefreshingBalance() {
+      this.refreshingBalance = false;
     },
     clearStore() {
       this.balance = {

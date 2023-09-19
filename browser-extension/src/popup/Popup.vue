@@ -12,6 +12,7 @@ import { onBeforeMount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import NotifySuccess from '~/components/NotifySuccess.vue'
 import NotifyError from '~/components/NotifyError.vue'
+import { useStore } from '~/popup/store/index'
 import {
   CHECK_AUTH,
   EXCEPTION,
@@ -29,6 +30,7 @@ const {
   saveDataForSign,
   saveDataForExportKeyPair
 } = useWallet()
+const store = useStore()
 
 async function checkAuth(): Promise<boolean> {
   try {
@@ -63,8 +65,12 @@ async function init() {
     await getOrdAddress()
     getBalance(address)
     setInterval(async () => {
-      getBalance(address)
-    }, 60000)
+      store.setRefreshingBalance()
+      setTimeout(() => {
+        getBalance(address)
+        store.unsetRefreshingBalance()
+      }, 1000)
+    }, 5000)
   }
 }
 
