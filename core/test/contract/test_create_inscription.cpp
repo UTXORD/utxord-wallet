@@ -534,9 +534,9 @@ struct InscribeWithMetadataCondition {
     bool has_parent;
 };
 
-const InscribeWithMetadataCondition short_metadata = {"{\"name\":\"sample inscription 1\"}", true, false};
+const InscribeWithMetadataCondition short_metadata = {R"({"name":"sample inscription 1"})", true, false};
 const InscribeWithMetadataCondition exact_520_metadata = {
-        "{\"name\":\"sample inscription 2\",\"description\":\"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}",
+        R"({"description":"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description","name":"sample inscription 2"})",
         false, true};
 const InscribeWithMetadataCondition long_metadata = {
         "{\"name\":\"sample inscription 3\","
@@ -597,7 +597,7 @@ TEST_CASE("metadata") {
     CHECK_NOTHROW(rawtxs0 = builder.RawTransactions());
 
     std::string contract = builder.Serialize();
-    std::clog << contract << std::endl;
+    std::clog << "Contract JSON: " << contract << std::endl;
 
     CreateInscriptionBuilder builder2(INSCRIPTION, "0.00000546");
     builder2.Deserialize(contract);

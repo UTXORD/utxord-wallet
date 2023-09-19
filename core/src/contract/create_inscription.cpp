@@ -144,6 +144,11 @@ CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::s
 
 CreateInscriptionBuilder &CreateInscriptionBuilder::SetMetaData(const string &metadata)
 {
+    UniValue check_metadata;
+    if (!check_metadata.read(metadata)) {
+        throw ContractTermWrongValue(std::string(name_metadata) + " is not JSON");
+    }
+
     m_metadata = metadata;
     return *this;
 }
@@ -392,9 +397,7 @@ std::string CreateInscriptionBuilder::Serialize() const
     }
 
     if (m_metadata) {
-        UniValue metadata_obj;
-        metadata_obj.read(*m_metadata);
-        contract.pushKV(name_metadata, move(metadata_obj));
+        contract.pushKV(name_metadata, *m_metadata);
     }
 
     if (!m_xtra_utxo.empty()) {
@@ -518,7 +521,12 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data)
     }
     {   const auto &val = contract[name_metadata];
         if (!val.isNull()) {
-            m_metadata = val.write();
+            m_metadata = val.get_str();
+
+            UniValue check_metadata;
+            if (!check_metadata.read(*m_metadata)) {
+                throw ContractTermWrongValue(std::string(name_metadata) + " is not JSON");
+            }
         }
     }
     {   const auto &val = contract[name_xtra_utxo];
