@@ -1,16 +1,33 @@
 <template>
-  <div :style="{ fontSize }" class="price-comp text-[var(--text-color)]">
-    {{ resultPrice }} Sat
+  <div
+    :style="{ fontSize }"
+    class="price-comp text-[var(--text-color)] flex items-center gap-[5px]"
+  >
+    <LoaderIcon
+      v-if="loading"
+      :class="`loader animate-spin w-${loadingSize} h-${loadingSize}`"
+    />
+    <template v-else> {{ resultPrice }} </template>
+    Sat
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, defineProps, ref, watch, toRefs } from 'vue'
+import LoaderIcon from '~/components/Icons/LoaderIcon.vue'
 
 const props = defineProps({
   price: {
     type: Number,
     default: 0
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  loadingSize: {
+    type: Number,
+    default: 4
   },
   fontSizeBreakpoints: {
     type: Object,

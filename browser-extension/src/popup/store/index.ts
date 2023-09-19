@@ -1,8 +1,13 @@
 import { defineStore } from 'pinia'
 
 interface IBalance {
-  confirmed: number,
-  unconfirmed: number,
+  confirmed: number;
+  unconfirmed: number;
+  connect: boolean;
+  inscriptions: any[];
+  sync: boolean;
+  to_address: number;
+  used_for_inscribtions: number;
 }
 
 interface IStore {
@@ -18,6 +23,11 @@ export const useStore = defineStore('store', {
     balance: {
       confirmed: 0,
       unconfirmed: 0,
+      inscriptions: [],
+      connect: false,
+      sync: false,
+      to_address: 0,
+      used_for_inscribtions: 0,
     },
     fundAddress: null,
     ordAddress: null,
@@ -40,10 +50,18 @@ export const useStore = defineStore('store', {
     setDataForExportKeyPair(data: {}) {
       this.dataForExportKeyPair = data
     },
+    setSyncToFalse() {
+      this.balance.sync = false;
+    },
     clearStore() {
       this.balance = {
         confirmed: 0,
         unconfirmed: 0,
+        inscriptions: [],
+        connect: false,
+        sync: false,
+        to_address: 0,
+        used_for_inscribtions: 0,
       }
       this.fundAddress = null
       this.ordAddress = null
