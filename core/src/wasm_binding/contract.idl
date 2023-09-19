@@ -85,6 +85,8 @@ interface CreateInscriptionBuilder
 
     [Value] string Serialize();
 
+    [Value] string RawTransaction(long n);
+
     [Value] string getIntermediateTaprootSK();
     [Value] string MakeInscriptionId();
 
