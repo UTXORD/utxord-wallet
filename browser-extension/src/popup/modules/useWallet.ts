@@ -50,7 +50,8 @@ async function getNetWork(){
   }
 
   async function saveDataForSign(data: {}) {
-    store.setDataForSign(data || {})
+    store.setDataForSign(data || {});
+    store.setErrorMessage(data['errorMessage'] || null);
   }
 
   async function saveDataForExportKeyPair(data: {}) {
