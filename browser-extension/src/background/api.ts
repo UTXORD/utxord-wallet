@@ -2199,6 +2199,15 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
     //const inscriptions = structuredClone(myself.inscriptions);
     //console.log("commitBuyInscription->payload",payload)
     try {
+      const swapSim = new myself.utxord.SwapInscriptionBuilder(
+        (myself.satToBtc(payload.ord_price)).toFixed(8),
+        (myself.satToBtc(payload.market_fee)).toFixed(8)
+      );
+      swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
+      swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+
+      const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("").c_str()))
+
 
       if(!myself.fundings.length ){
         // TODO: REWORK FUNDS EXCEPTION
@@ -2209,17 +2218,11 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
             "wait for several conformations or wait update on the server";
+            outData.min_fund_amount = min_fund_amount;
+            outData.mining_fee = Number(min_fund_amount) - Number(payload.market_fee) - Number(payload.ord_price);
         return outData;
       }
 
-      const swapSim = new myself.utxord.SwapInscriptionBuilder(
-        (myself.satToBtc(payload.ord_price)).toFixed(8),
-        (myself.satToBtc(payload.market_fee)).toFixed(8)
-      );
-      swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
-
-      const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("").c_str()))
       const utxo_list = await myself.selectKeysByFunds(min_fund_amount + 682);
       console.log("min_fund_amount:",min_fund_amount);
       console.log("utxo_list:",utxo_list);
