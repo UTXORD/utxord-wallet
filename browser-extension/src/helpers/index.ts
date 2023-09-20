@@ -34,7 +34,7 @@ export function formatAddress(address: string, start?: number, end?: number) {
   return '-';
 }
 
-export function copyToClipboard(text: string) {
+export function copyToClipboard(text: string, message?: string) {
   if (text) {
     const tempInput = document.createElement('input');
     tempInput.style.position = 'absolute';
@@ -47,7 +47,7 @@ export function copyToClipboard(text: string) {
     document.execCommand('copy');
     document.body.removeChild(tempInput);
 
-    showSuccess('Success', 'Address was copied!');
+    showSuccess('Success', message || 'Address was copied!');
     return text;
   }
   return null;
