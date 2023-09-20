@@ -1797,7 +1797,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       (myself.satToBtc(payload.expect_amount)).toFixed(8)
     );
     if(payload.metadata){
-      await newOrd.SetMetaData(payload.metadata);
+      await newOrd.SetMetaData(JSON.stringify(payload.metadata));
     }
     await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8));
 
