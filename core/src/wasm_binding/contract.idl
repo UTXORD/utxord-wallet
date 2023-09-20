@@ -63,27 +63,36 @@ enum InscribeType
     "COLLECTION"
 };
 
+enum InscribePhase
+{
+    "MARKET_TERMS",
+    "INSCRIPTION_SIGNATURE"
+};
+
 [Prefix="utxord::"]
 interface CreateInscriptionBuilder
 {
-    void CreateInscriptionBuilder(InscribeType type, [Const] DOMString ordAmount);
-    [Ref] CreateInscriptionBuilder MiningFeeRate([Const] DOMString rate);
-    [Ref] CreateInscriptionBuilder AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pk);
-    [Ref] CreateInscriptionBuilder Data([Const] DOMString contentType, [Const] DOMString hexData);
-    [Ref] CreateInscriptionBuilder InscribePubKey([Const] DOMString inscribePK);
-    [Ref] CreateInscriptionBuilder ChangePubKey([Const] DOMString changePK);
+    void CreateInscriptionBuilder(InscribeType type);
+    void MarketFee([Const] DOMString amount, [Const] DOMString pk);
+    void OrdAmount([Const] DOMString amount);
+    void MiningFeeRate([Const] DOMString rate);
+    void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pk);
+    void Data([Const] DOMString contentType, [Const] DOMString hexData);
+    void MetaData([Const] DOMString jsonData);
+    void InscribePubKey([Const] DOMString inscribePK);
+    void ChangePubKey([Const] DOMString changePK);
 
-    [Ref] CreateInscriptionBuilder AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
+    void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
                                                    [Const] DOMString collectionPK);
-    [Ref] CreateInscriptionBuilder SetMetaData([Const] DOMString rate);
-    [Ref] CreateInscriptionBuilder AddFundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeePK);
+    void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeePK);
 
     void SignCommit(long n, [Const] DOMString sk, [Const] DOMString scriptPK);
     void SignInscription([Const] DOMString scriptSK);
     void SignCollection([Const] DOMString collectionScriptSK);
     void SignFundMiningFee(long n, [Const] DOMString sk);
 
-    [Value] string Serialize();
+    [Value] string Serialize(InscribePhase phase);
+    void Deserialize([Const] DOMString data, InscribePhase phase);
 
     [Value] string RawTransaction(long n);
 
@@ -112,13 +121,16 @@ enum SwapPhase
 [Prefix="utxord::"]
 interface SwapInscriptionBuilder
 {
-    void SwapInscriptionBuilder([Const] DOMString ord_price, [Const] DOMString market_fee);
+    void SwapInscriptionBuilder();
 
-    [Ref] SwapInscriptionBuilder OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount);
-    [Ref] SwapInscriptionBuilder AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pubkey);
+    void OrdPrice([Const] DOMString price);
+    void MarketFee([Const] DOMString amount, [Const] DOMString pk);
 
-    [Ref] SwapInscriptionBuilder SwapScriptPubKeyA([Const] DOMString v);
-    [Ref] SwapInscriptionBuilder SwapScriptPubKeyB([Const] DOMString v);
+    void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount);
+    void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pubkey);
+
+    void SwapScriptPubKeyA([Const] DOMString v);
+    void SwapScriptPubKeyB([Const] DOMString v);
 
     void SignOrdSwap([Const] DOMString sk);
 

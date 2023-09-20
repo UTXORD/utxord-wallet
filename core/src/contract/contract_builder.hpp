@@ -35,6 +35,8 @@ public:
     static const std::string name_pk;
     static const std::string name_sig;
 
+    static const std::string name_market_fee;
+
 protected:
     static const CAmount TX_BASE_VSIZE = 10;
     static const CAmount TAPROOT_VOUT_VSIZE = 43;
@@ -42,6 +44,8 @@ protected:
     static const CAmount MIN_TAPROOT_TX_VSIZE = TX_BASE_VSIZE + TAPROOT_VOUT_VSIZE + TAPROOT_KEYSPEND_VIN_VSIZE;
 
     std::optional<CAmount> m_mining_fee_rate;
+    std::optional<CAmount> m_market_fee;
+    std::optional<xonly_pubkey> m_market_fee_pk;
 
     virtual CAmount CalculateWholeFee(const std::string& params) const;
 
@@ -55,6 +59,21 @@ public:
 
     ContractBuilder& operator=(const ContractBuilder& ) = default;
     ContractBuilder& operator=(ContractBuilder&& ) noexcept = default;
+
+    void MarketFee(const std::string& amount, const std::string& pk)
+    {
+        CAmount market_fee = ParseAmount(amount);
+        if (market_fee != 0 && market_fee < Dust(3000)) {
+            throw ContractTermWrongValue(std::string(name_market_fee));
+        }
+
+        m_market_fee = market_fee;
+        m_market_fee_pk = unhex<xonly_pubkey>(pk);
+    }
+
+    void MiningFeeRate(const std::string& rate)
+    { m_mining_fee_rate = ParseAmount(rate); }
+
     virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
 
     std::string GetNewInputMiningFee();
@@ -63,7 +82,6 @@ public:
     virtual uint32_t GetProtocolVersion() const = 0;
 
     std::string GetMiningFeeRate() const { return FormatAmount(m_mining_fee_rate.value()); }
-    void SetMiningFeeRate(const std::string& v) { m_mining_fee_rate = ParseAmount(v); }
 
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script);
 

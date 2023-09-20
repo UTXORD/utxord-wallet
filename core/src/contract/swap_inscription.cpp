@@ -41,7 +41,6 @@ CScript MakeRelTimeLockScript(uint32_t blocks_to_lock, const xonly_pubkey& pk)
 const uint32_t SwapInscriptionBuilder::m_protocol_version = 3;
 
 const std::string SwapInscriptionBuilder::name_ord_price = "ord_price";
-const std::string SwapInscriptionBuilder::name_market_fee = "market_fee";
 
 const std::string SwapInscriptionBuilder::name_ord_mining_fee_rate = "ord_mining_fee_rate";
 
@@ -69,14 +68,6 @@ const std::string SwapInscriptionBuilder::name_funds_swap_sig_M = "funds_swap_si
 
 const std::string SwapInscriptionBuilder::name_ordpayoff_unspendable_key_factor = "ordpayoff_unspendable_key_factor";
 const std::string SwapInscriptionBuilder::name_ordpayoff_sig = "ordpayoff_sig";
-
-SwapInscriptionBuilder::SwapInscriptionBuilder(const string &ord_price, const string &market_fee)
-        : ContractBuilder(), m_ord_price(ParseAmount(ord_price)), m_market_fee(ParseAmount(market_fee))
-{
-    if (*m_market_fee != 0 && *m_market_fee < Dust(3000)) {
-        throw ContractTermWrongValue(std::string(name_market_fee));
-    }
-}
 
 
 std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> SwapInscriptionBuilder::FundsCommitTapRoot() const
@@ -107,7 +98,7 @@ CMutableTransaction SwapInscriptionBuilder::GetSwapTxTemplate() const {
         swapTpl.vout.reserve(3);
 
         swapTpl.vout.emplace_back(0, CScript() << 1 << *m_swap_script_pk_M);
-        swapTpl.vout.emplace_back(m_ord_price, CScript() << 1 << xonly_pubkey());
+        swapTpl.vout.emplace_back(*m_ord_price, CScript() << 1 << xonly_pubkey());
         if (*m_market_fee != 0) {
             swapTpl.vout.emplace_back(*m_market_fee, CScript() << 1 << *m_swap_script_pk_M);
         }
@@ -466,7 +457,7 @@ string SwapInscriptionBuilder::Serialize(SwapPhase phase)
     UniValue contract(UniValue::VOBJ);
 
     contract.pushKV(name_version, m_protocol_version);
-    contract.pushKV(name_ord_price, FormatAmount(m_ord_price));
+    contract.pushKV(name_ord_price, FormatAmount(*m_ord_price));
     contract.pushKV(name_swap_script_pk_M, hex(*m_swap_script_pk_M));
     contract.pushKV(name_ord_mining_fee_rate, FormatAmount(*m_ord_mining_fee_rate));
 
@@ -823,18 +814,16 @@ std::vector<std::pair<CAmount,CMutableTransaction>> SwapInscriptionBuilder::GetT
     };
 }
 
-SwapInscriptionBuilder &SwapInscriptionBuilder::OrdUTXO(const string &txid, uint32_t nout, const string &amount)
+void SwapInscriptionBuilder::OrdUTXO(const string &txid, uint32_t nout, const string &amount)
 {
     m_ord_txid = txid;
     m_ord_nout = nout;
     m_ord_amount = ParseAmount(amount);
-    return *this;
 }
 
-SwapInscriptionBuilder &SwapInscriptionBuilder::AddFundsUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& pk)
+void SwapInscriptionBuilder::AddFundsUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& pk)
 {
     m_funds.emplace_back(txid, nout, ParseAmount(amount), unhex<xonly_pubkey>(pk));
-    return *this;
 }
 
 CMutableTransaction SwapInscriptionBuilder::CreatePayoffTxTemplate() const {
@@ -872,7 +861,7 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
 
 std::string SwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
 {
-    return FormatAmount(m_ord_price + *m_market_fee + CalculateWholeFee(params));
+    return FormatAmount(*m_ord_price + *m_market_fee + CalculateWholeFee(params));
 }
 
 void SwapInscriptionBuilder::CheckFundsSwapSig() const

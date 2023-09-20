@@ -100,39 +100,40 @@ TEST_CASE("Swap")
     // ORD side terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket(ORD_PRICE, MARKET_FEE);
-    builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2));
-    builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey()));
+    SwapInscriptionBuilder builderMarket;
+    CHECK_NOTHROW(builderMarket.MarketFee(MARKET_FEE, hex(swap_script_key_M.GetLocalPubKey())));
+    CHECK_NOTHROW(builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2)));
+    CHECK_NOTHROW(builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey())));
 
     string marketOrdConditions;
     REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(ORD_TERMS));
 
-    SwapInscriptionBuilder builderOrdSeller(ORD_PRICE, MARKET_FEE);
+    SwapInscriptionBuilder builderOrdSeller;
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions));
-
-    REQUIRE_NOTHROW(builderOrdSeller.CheckContractTerms(ORD_TERMS));
+    CHECK_NOTHROW(builderOrdSeller.CheckContractTerms(ORD_TERMS));
 
     //Create ord utxo
     string ord_addr = w->bech32().Encode(ord_utxo_key.GetLocalPubKey());
     string ord_txid = w->btc().SendToAddress(ord_addr, ORD_AMOUNT);
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
-    builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, FormatAmount(get<1>(ord_prevout).nValue));
-    builderOrdSeller.SwapScriptPubKeyA(hex(swap_script_key_A.GetLocalPubKey()));
+    CHECK_NOTHROW(builderOrdSeller.OrdPrice(ORD_PRICE));
+    CHECK_NOTHROW(builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, FormatAmount(get<1>(ord_prevout).nValue)));
+    CHECK_NOTHROW(builderOrdSeller.SwapScriptPubKeyA(hex(swap_script_key_A.GetLocalPubKey())));
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(hex(ord_utxo_key.GetLocalPrivKey())));
 
     string ordSellerTerms;
-    REQUIRE_NOTHROW(ordSellerTerms= builderOrdSeller.Serialize(ORD_SWAP_SIG));
+    REQUIRE_NOTHROW(ordSellerTerms = builderOrdSeller.Serialize(ORD_SWAP_SIG));
 
 
     // FUNDS side terms
     //--------------------------------------------------------------------------
-    builderMarket.SetMiningFeeRate(fee_rate);
+    builderMarket.MiningFeeRate(fee_rate);
     string marketFundsConditions;
-    REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS));
+    REQUIRE_NOTHROW(marketFundsConditions = builderOrdSeller.Serialize(FUNDS_TERMS));
 
-    SwapInscriptionBuilder builderOrdBuyer(ORD_PRICE, MARKET_FEE);
+    SwapInscriptionBuilder builderOrdBuyer;
     REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
 
     CAmount min_funding = ParseAmount(builderOrdBuyer.GetMinFundingAmount(""));
@@ -350,14 +351,14 @@ TEST_CASE("SwapNoFee")
     // ORD side terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket(ORD_PRICE, MARKET_FEE);
+    SwapInscriptionBuilder builderMarket;
     builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2));
     builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey()));
 
     string marketOrdConditions;
     REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(ORD_TERMS));
 
-    SwapInscriptionBuilder builderOrdSeller(ORD_PRICE, MARKET_FEE);
+    SwapInscriptionBuilder builderOrdSeller;
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions));
 
     REQUIRE_NOTHROW(builderOrdSeller.CheckContractTerms(ORD_TERMS));
@@ -378,11 +379,11 @@ TEST_CASE("SwapNoFee")
 
     // FUNDS side terms
     //--------------------------------------------------------------------------
-    builderMarket.SetMiningFeeRate(fee_rate);
+    builderMarket.MiningFeeRate(fee_rate);
     string marketFundsConditions;
     REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS));
 
-    SwapInscriptionBuilder builderOrdBuyer(ORD_PRICE, MARKET_FEE);
+    SwapInscriptionBuilder builderOrdBuyer;
     REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
 
     CAmount min_funding = ParseAmount(builderOrdBuyer.GetMinFundingAmount(""));
@@ -497,14 +498,14 @@ TEST_CASE("FundsNotEnough")
     // ORD side terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket(ORD_PRICE, MARKET_FEE);
-    builderMarket.SetMiningFeeRate(fee_rate);
+    SwapInscriptionBuilder builderMarket;
+    builderMarket.MiningFeeRate(fee_rate);
     builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey()));
     builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2));
 
     string marketOrdConditions = builderMarket.Serialize(ORD_TERMS);
 
-    SwapInscriptionBuilder builderOrdSeller(ORD_PRICE, MARKET_FEE);
+    SwapInscriptionBuilder builderOrdSeller;
     builderOrdSeller.Deserialize(marketOrdConditions);
 
     builderOrdSeller.CheckContractTerms(ORD_TERMS);
@@ -528,7 +529,7 @@ TEST_CASE("FundsNotEnough")
     //builderMarket.SetMiningFeeRate(fee_rate);
     string marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS);
 
-    SwapInscriptionBuilder builderOrdBuyer(ORD_PRICE, MARKET_FEE);
+    SwapInscriptionBuilder builderOrdBuyer;
     builderOrdBuyer.Deserialize(marketFundsConditions);
 
     //Create insufficient funds utxo

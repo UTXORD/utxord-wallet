@@ -23,13 +23,9 @@ enum SwapPhase {
 
 class SwapInscriptionBuilder : public ContractBuilder
 {
-    CAmount m_whole_fee = 0;
-    CAmount m_last_fee_rate = 0;
-
     static const uint32_t m_protocol_version;
 
-    CAmount m_ord_price;
-    std::optional<CAmount> m_market_fee;
+    std::optional<CAmount> m_ord_price;
 
     std::optional<CAmount> m_ord_mining_fee_rate;
 
@@ -90,7 +86,6 @@ public:
     const CMutableTransaction& GetPayoffTx() const;
 
     static const std::string name_ord_price;
-    static const std::string name_market_fee;
 
     static const std::string name_ord_mining_fee_rate;
 
@@ -119,24 +114,24 @@ public:
     static const std::string name_ordpayoff_unspendable_key_factor;
     static const std::string name_ordpayoff_sig;
 
-    explicit SwapInscriptionBuilder(): m_ord_price(0), m_market_fee(0) {}
+    SwapInscriptionBuilder() = default;
 
     SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
     SwapInscriptionBuilder(SwapInscriptionBuilder&&) noexcept = default;
-
-    explicit SwapInscriptionBuilder(const std::string& ord_price, const std::string& market_fee);
 
     SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
 
     uint32_t GetProtocolVersion() const override { return m_protocol_version; }
 
-    SwapInscriptionBuilder& MiningFeeRate(const std::string& fee_rate) { SetMiningFeeRate(fee_rate); return *this; }
-    SwapInscriptionBuilder& OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount);
-    SwapInscriptionBuilder& AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& pk);
+    void OrdPrice(const std::string& price)
+    { m_ord_price = ParseAmount(price); }
 
-    SwapInscriptionBuilder& SwapScriptPubKeyA(const std::string& v) { m_swap_script_pk_A = unhex<xonly_pubkey>(v); return *this; }
-    SwapInscriptionBuilder& SwapScriptPubKeyB(const std::string& v) { m_swap_script_pk_B = unhex<xonly_pubkey>(v); return *this; }
+    void OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount);
+    void AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& pk);
+
+    void SwapScriptPubKeyA(const std::string& v) { m_swap_script_pk_A = unhex<xonly_pubkey>(v); }
+    void SwapScriptPubKeyB(const std::string& v) { m_swap_script_pk_B = unhex<xonly_pubkey>(v); }
 
     std::string GetSwapScriptPubKeyA() const { return hex(m_swap_script_pk_A.value()); }
     std::string GetSwapScriptPubKeyB() const { return hex(m_swap_script_pk_B.value()); }

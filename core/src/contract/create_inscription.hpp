@@ -24,6 +24,7 @@ public:
 
 
 enum InscribeType { INSCRIPTION, COLLECTION };
+enum InscribePhase { MARKET_TERMS, INSCRIPTION_SIGNATURE };
 
 class CreateInscriptionBuilder: public ContractBuilder
 {
@@ -35,8 +36,10 @@ class CreateInscriptionBuilder: public ContractBuilder
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
     static const uint32_t m_protocol_version;
+    static const uint32_t m_protocol_version_no_market_fee;
+
     InscribeType m_type;
-    CAmount m_ord_amount;
+    std::optional<CAmount> m_ord_amount;
 
     std::list<Transfer> m_utxo;
     std::list<Transfer> m_xtra_utxo;
@@ -61,7 +64,6 @@ class CreateInscriptionBuilder: public ContractBuilder
     std::optional<xonly_pubkey> m_destination_pk;
     std::optional<xonly_pubkey> m_change_pk;
 
-
     mutable std::optional<CScript> mInscriptionScript;
     mutable std::optional<CMutableTransaction> mCommitTx;
     mutable std::optional<CMutableTransaction> mGenesisTx;
@@ -69,7 +71,7 @@ class CreateInscriptionBuilder: public ContractBuilder
 
 private:
     void CheckBuildArgs() const;
-    void CheckContractTerms() const;
+    void CheckContractTerms(InscribePhase phase) const;
 
     void RestoreTransactions();
 
@@ -99,6 +101,7 @@ public:
     static const std::string name_inscribe_int_pk;
     static const std::string name_inscribe_sig;
     static const std::string name_destination_pk;
+    static const std::string name_market_fee_pk;
     static const std::string name_change_pk;
 //    static const std::string name_parent_collection_script_pk;
 //    static const std::string name_parent_collection_int_pk;
@@ -108,11 +111,11 @@ public:
 //    static const std::string name_collection_commit_sig;
 //    static const std::string name_collection_out_pk;
 
-    CreateInscriptionBuilder() : m_type(INSCRIPTION), m_ord_amount(0) {}
+    CreateInscriptionBuilder() : m_type(INSCRIPTION) {}
     CreateInscriptionBuilder(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder(CreateInscriptionBuilder&&) noexcept = default;
 
-    explicit CreateInscriptionBuilder(InscribeType type, const std::string& amount) : m_type(type), m_ord_amount(ParseAmount(amount)) {}
+    explicit CreateInscriptionBuilder(InscribeType type) : m_type(type) {}
 
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
@@ -125,17 +128,27 @@ public:
 
     std::string GetIntermediateSecKey() const { return l15::hex(m_inscribe_taproot_sk.value()); }
 
-    CreateInscriptionBuilder& MiningFeeRate(const std::string& rate);
-    CreateInscriptionBuilder& AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
-    CreateInscriptionBuilder& Data(const std::string& content_type, const std::string& hex_data);
-    CreateInscriptionBuilder& InscribePubKey(const std::string& inscribe_pk);
-    CreateInscriptionBuilder& ChangePubKey(const std::string& change_pk);
-    //CreateInscriptionBuilder& CollectionCommitPubKeys(const std::string& script_pk, const std::string& int_pk);
-    CreateInscriptionBuilder& AddToCollection(const std::string& collection_id,
+    void OrdAmount(const std::string& amount)
+    { m_ord_amount = ParseAmount(amount); }
+
+    void AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
+    void Data(const std::string& content_type, const std::string& hex_data);
+
+    void MetaData(const std::string& metadata);
+
+    void InscribePubKey(const std::string& pk)
+    { m_destination_pk = unhex<xonly_pubkey>(pk); }
+
+    void ChangePubKey(const std::string& pk)
+    { m_change_pk = unhex<xonly_pubkey>(pk); }
+
+    //void CollectionCommitPubKeys(const std::string& script_pk, const std::string& int_pk);
+    void AddToCollection(const std::string& collection_id,
                                               const std::string& utxo_txid, uint32_t utxo_nout, const std::string& utxo_amount,
                                               const std::string& collection_pk);
-    CreateInscriptionBuilder& SetMetaData(const std::string& data);
-    CreateInscriptionBuilder& AddFundMiningFee(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
+
+
+    void FundMiningFee(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
 
     std::string MakeInscriptionId() const;
 
@@ -165,8 +178,8 @@ public:
     std::string RawTransaction(uint32_t n)
     { return RawTransactions()[n]; }
 
-    std::string Serialize() const;
-    void Deserialize(const std::string& data);
+    std::string Serialize(InscribePhase phase) const;
+    void Deserialize(const std::string& data, InscribePhase phase);
 
 };
 

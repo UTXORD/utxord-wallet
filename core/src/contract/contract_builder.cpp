@@ -15,6 +15,7 @@ const std::string ContractBuilder::name_nout = "nout";
 const std::string ContractBuilder::name_amount = "amount";
 const std::string ContractBuilder::name_pk = "pubkey";
 const std::string ContractBuilder::name_sig = "sig";
+const std::string ContractBuilder::name_market_fee = "market_fee";
 
 CAmount ContractBuilder::CalculateWholeFee(const std::string& params) const {
     auto txs = GetTransactions();
