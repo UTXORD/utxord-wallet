@@ -17,11 +17,7 @@
             class="home-screen_balance-refresh absolute top-2 right-2"
             @click="refreshBalance"
           >
-            <img
-              src="/assets/refresh.svg"
-              alt="Refresh"
-              :class="{ 'animate-spin': refreshingBalance }"
-            />
+            <img src="/assets/refresh.svg" alt="Refresh" />
           </Button>
           <PriceComp
             class="home-screen_balance text-[var(--text-color)]"
