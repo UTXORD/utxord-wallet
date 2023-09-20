@@ -17,7 +17,7 @@
             class="home-screen_balance-refresh absolute top-2 right-2"
             @click="refreshBalance"
           >
-            <img src="/assets/refresh.svg" alt="Refresh" />
+            <RefreshIcon />
           </Button>
           <PriceComp
             class="home-screen_balance text-[var(--text-color)]"
@@ -142,6 +142,7 @@
 import { toRefs } from 'vue'
 import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
+import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { NEW_FUND_ADDRESS } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
