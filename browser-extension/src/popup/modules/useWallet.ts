@@ -34,21 +34,19 @@ async function getNetWork(){
   }
 
   async function getBalance(address: string) {
-    if(!address) return 0;
-    try{
-      setInterval(async () => {
+    if (address) {
+      try {
         const success = await sendMessage(GET_BALANCE, {
           address,
         }, 'background')
-        if(success){
+        if (success) {
           store.setBalance(success?.data)
-          return success?.data
         }
-      },2000);
-    }catch(e){
-      store.setBalance(0);
-      console.log('getBalance->error:',e);
-    }
+      } catch(e){
+        store.setBalance(0);
+        console.log('getBalance->error:',e);
+      }
+    };
   }
 
   async function saveDataForSign(data: {}) {

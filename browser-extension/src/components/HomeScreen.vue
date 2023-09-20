@@ -8,18 +8,29 @@
     >
       <!-- Balance -->
       <div
-        class="home-screen_block w-full flex flex-col items-center bg-[var(--section)] rounded-lg px-3 py-5 mb-4"
+        class="home-screen_block relative w-full flex flex-col items-center bg-[var(--section)] rounded-lg px-3 py-5 mb-4"
       >
-        <PriceComp
-          v-show="status===3"
-          class="home-screen_balance text-[var(--text-color)]"
-          :price="balance?.confirmed || 0"
-          :font-size-breakpoints="{
-            1000000: '40px',
-            10000000: '30px',
-            1000000000: '20px'
-          }"
-        />
+        <template v-if="connected">
+          <Button
+            outline
+            :disabled="!isSynchronized"
+            class="home-screen_balance-refresh absolute top-2 right-2"
+            @click="refreshBalance"
+          >
+            <RefreshIcon />
+          </Button>
+          <PriceComp
+            class="home-screen_balance text-[var(--text-color)]"
+            :price="balance?.confirmed || 0"
+            :loading-size="6"
+            :loading="!isSynchronized"
+            :font-size-breakpoints="{
+              1000000: '40px',
+              10000000: '30px',
+              1000000000: '20px'
+            }"
+          />
+        </template>
         <span
           class="home-screen_balance-label text-center text-[var(--text-grey-color)]"
         >
@@ -29,7 +40,7 @@
 
       <!-- Balance -->
       <div
-        v-show="status===3"
+        v-if="connected"
         class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-4 gap-1"
       >
         <div class="flex items-center">
@@ -37,6 +48,7 @@
           <PriceComp
             class="ml-auto"
             :price="balance?.confirmed || 0"
+            :loading="!isSynchronized"
             :font-size-breakpoints="{
               1000000: '15px'
             }"
@@ -47,6 +59,7 @@
           <PriceComp
             class="ml-auto"
             :price="(balance.unconfirmed < 0 ? 0 : balance.unconfirmed) || 0"
+            :loading="!isSynchronized"
             :font-size-breakpoints="{
               1000000: '15px'
             }"
@@ -56,7 +69,7 @@
 
       <!-- Info -->
       <div
-        v-show="status===3"
+        v-if="connected"
         class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-4 gap-1"
       >
         <div class="flex items-center">
@@ -66,6 +79,7 @@
           <PriceComp
             class="ml-auto"
             :price="balance?.used_for_inscribtions || 0"
+            :loading="!isSynchronized"
             :font-size-breakpoints="{
               1000000: '15px'
             }"
@@ -128,11 +142,15 @@
 import { toRefs } from 'vue'
 import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
+import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { NEW_FUND_ADDRESS } from '~/config/events'
+import useWallet from '~/popup/modules/useWallet'
 
 const store = useStore()
-const { balance, fundAddress } = toRefs(store)
+const { balance, fundAddress, refreshingBalance } = toRefs(store)
+
+const { getBalance } = useWallet()
 
 async function newFundAddress() {
   const response = await sendMessage(NEW_FUND_ADDRESS, {}, 'background')
@@ -142,16 +160,22 @@ async function newFundAddress() {
   store.setFundAddress(addr)
 }
 
-const status = computed(() => {
-  if (!balance?.value?.connect) return 1
-  if (!balance?.value?.sync) return 2
-  if (balance?.value?.confirmed > 0 || balance?.value?.sync) return 3
-})
+function refreshBalance() {
+  store.setSyncToFalse()
+  setTimeout(() => {
+    getBalance(fundAddress)
+  }, 1000)
+}
+
+const isSynchronized = computed(() => balance?.value?.sync)
+const connected = computed(() => balance?.value?.connect)
 
 const status_message = computed(() => {
-  if (!balance?.value?.connect) return 'On the site, press "Connect to wallet" button.'
+  if (!balance?.value?.connect)
+    return 'On the site, press "Connect to wallet" button.'
   if (!balance?.value?.sync) return 'Synchronizing...'
-  if (balance?.value?.confirmed > 0 || balance?.value?.sync) return 'Synchronized.'
+  if (balance?.value?.confirmed > 0 || balance?.value?.sync)
+    return 'Synchronized.'
 })
 </script>
 
@@ -181,6 +205,12 @@ const status_message = computed(() => {
   &_balance {
     font-weight: 600;
     line-height: 55px;
+
+    &-refresh {
+      width: 25px;
+      height: 25px;
+      padding: 5px;
+    }
 
     &-label {
       font-weight: 400;
