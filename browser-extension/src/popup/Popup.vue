@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import { sendMessage, onMessage } from 'webext-bridge'
-import { onBeforeMount, onMounted } from 'vue'
+import { onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import NotifySuccess from '~/components/NotifySuccess.vue'
 import NotifyError from '~/components/NotifyError.vue'
@@ -32,22 +32,7 @@ const {
 } = useWallet()
 const store = useStore()
 
-async function checkAuth(): Promise<boolean> {
-  try {
-    const success = await sendMessage(CHECK_AUTH, {}, 'background')
-    if (!success) {
-      push('/start')
-      return false
-    } else {
-      return true
-    }
-  } catch (error) {
-    showError(EXCEPTION, error.message)
-    console.log(error)
-  }
-}
-
-function redirectTo() {
+function redirectByQuery() {
   const pageHref = window.location.search
   const searchParams = new URLSearchParams(
     pageHref.substring(pageHref.indexOf('?'))
@@ -58,19 +43,45 @@ function redirectTo() {
   }
 }
 
+async function checkAuth(): Promise<boolean> {
+  try {
+    const success = await sendMessage(CHECK_AUTH, {}, 'background')
+    if (!success) {
+      return false
+    } else {
+      return true
+    }
+  } catch (error) {
+    showError(EXCEPTION, error.message)
+    console.log(error)
+  }
+}
+
+async function updateBalance() {
+  const address = await getFundAddress()
+  await getOrdAddress()
+  getBalance(address)
+  setInterval(async () => {
+    store.setRefreshingBalance()
+    setTimeout(() => {
+      getBalance(address)
+      store.unsetRefreshingBalance()
+    }, 1000)
+  }, 5000)
+}
+
 async function init() {
   const success = await checkAuth()
   if (success) {
-    const address = await getFundAddress()
-    await getOrdAddress()
-    getBalance(address)
-    setInterval(async () => {
-      store.setRefreshingBalance()
-      setTimeout(() => {
-        getBalance(address)
-        store.unsetRefreshingBalance()
-      }, 1000)
-    }, 5000)
+    redirectByQuery()
+    updateBalance()
+  } else {
+    const tempMnemonic = localStorage?.getItem('temp-mnemonic')
+    if (tempMnemonic) {
+      push('/generate')
+    } else {
+      push('/start')
+    }
   }
 }
 
@@ -90,10 +101,6 @@ onMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, (payload) => {
 })
 
 onBeforeMount(() => {
-  redirectTo()
-})
-
-onMounted(() => {
   init()
 })
 </script>

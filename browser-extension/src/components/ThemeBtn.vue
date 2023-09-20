@@ -17,8 +17,8 @@ const comp = computed(() => {
 
 function toggle() {
   mode.value = isDark.value ? 'light' : 'dark'
-  if(LocalStorage){
-    LocalStorage.set('dark-theme', isDark)
+  if (localStorage) {
+    localStorage.set('dark-theme', isDark)
   }
 }
 </script>
