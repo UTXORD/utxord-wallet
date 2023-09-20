@@ -144,6 +144,11 @@ CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::s
 
 CreateInscriptionBuilder &CreateInscriptionBuilder::SetMetaData(const string &metadata)
 {
+    UniValue check_metadata;
+    if (!check_metadata.read(metadata)) {
+        throw ContractTermWrongValue(std::string(name_metadata) + " is not JSON");
+    }
+
     m_metadata = metadata;
     return *this;
 }
@@ -308,10 +313,11 @@ void CreateInscriptionBuilder::SignFundMiningFee(uint32_t n, const string &sk)
     xtra_it->m_sig = keypair.SignTaprootTx(genesis_tx, n_in, GetGenesisTxSpends(), {});
 }
 
-std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
+std::vector<std::string> CreateInscriptionBuilder::RawTransactions()
 {
     if (!mCommitTx || !mGenesisTx) {
-        throw ContractStateError("Transaction data unavailable");
+        RestoreTransactions();
+        //throw ContractStateError("Transaction data unavailable");
     }
 
     std::string funding_tx_hex = EncodeHexTx(CTransaction(*mCommitTx));
@@ -391,9 +397,7 @@ std::string CreateInscriptionBuilder::Serialize() const
     }
 
     if (m_metadata) {
-        UniValue metadata_obj;
-        metadata_obj.read(*m_metadata);
-        contract.pushKV(name_metadata, move(metadata_obj));
+        contract.pushKV(name_metadata, *m_metadata);
     }
 
     if (!m_xtra_utxo.empty()) {
@@ -517,7 +521,12 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data)
     }
     {   const auto &val = contract[name_metadata];
         if (!val.isNull()) {
-            m_metadata = val.write();
+            m_metadata = val.get_str();
+
+            UniValue check_metadata;
+            if (!check_metadata.read(*m_metadata)) {
+                throw ContractTermWrongValue(std::string(name_metadata) + " is not JSON");
+            }
         }
     }
     {   const auto &val = contract[name_xtra_utxo];
@@ -648,9 +657,9 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
         pubkey_script << get<0>(taproot);
     }
     else {
-        pubkey_script << xonly_pubkey();
+        //pubkey_script << xonly_pubkey();
+        throw ContractStateError("Inscribe keys are not set");
     }
-
 
     tx.vout.emplace_back(m_ord_amount, pubkey_script);
     CAmount genesis_fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate());
