@@ -1027,11 +1027,13 @@ async matchTapRootKey(payload, target, deep = 0){
     }
   }
 //----------------------------------------------------------------------------
+/*
 async createIndependentInscriptionContract(payload, theIndex = 0) {
   const myself = this;
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1075,6 +1077,7 @@ async createIndependentInscriptionContract(payload, theIndex = 0) {
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1124,15 +1127,15 @@ async createIndependentInscriptionContract(payload, theIndex = 0) {
       const data = newOrd.Serialize().c_str();
       const sk = newOrd.getIntermediateTaprootSK().c_str();
       const inscrId = newOrd.MakeInscriptionId().c_str();
-/*
-      console.log('inscrId:',inscrId);
-      const xord = this.utxord.Collection.prototype.GetCollectionTapRootPubKey(
-        inscrId,
-        collectionScriptSK.GetLocalPubKey().c_str(),
-        collectionIntSK.GetLocalPubKey().c_str()
-        ).c_str();
-      console.log('xord:',xord);
-*/
+
+      // console.log('inscrId:',inscrId);
+      // const xord = this.utxord.Collection.prototype.GetCollectionTapRootPubKey(
+      //   inscrId,
+      //   collectionScriptSK.GetLocalPubKey().c_str(),
+      //   collectionIntSK.GetLocalPubKey().c_str()
+      //   ).c_str();
+      // console.log('xord:',xord);
+
       myself.destroy(destination_keypair);
       myself.destroy(change_keypair);
       myself.destroy(script_key);
@@ -1176,12 +1179,15 @@ async createIndependentInscriptionContract(payload, theIndex = 0) {
 
     }
 } //
+*/
 //------------------------------------------------------------------------------
+/*
 async createIndependentCollectionContract(payload, theIndex = 0) {
   const myself = this;
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1225,6 +1231,7 @@ async createIndependentCollectionContract(payload, theIndex = 0) {
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1343,13 +1350,15 @@ async createIndependentCollectionContract(payload, theIndex = 0) {
 
     }
 } // √
+*/
 //------------------------------------------------------------------------------
-
+/*
 async createInscriptionInCollectionContract(payload, theIndex = 0) {
   const myself = this;
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1414,6 +1423,7 @@ console.log("min_fund_amount_btc:",ordSim.GetMinFundingAmount(
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1530,12 +1540,15 @@ console.log('min_fund_amount_final:',newOrd.GetMinFundingAmount(
 
     }
 } //√
+*/
 //------------------------------------------------------------------------------
+/*
 async createCollectionWithParentContract(payload, theIndex = 0) {
   const myself = this;
   try {
     console.log('createInscription payload: ', payload);
       if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
         myself.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
@@ -1605,6 +1618,7 @@ async createCollectionWithParentContract(payload, theIndex = 0) {
     console.log("utxo_list:",utxo_list);
 
     if(utxo_list?.length < 1){
+        // TODO: REWORK FUNDS EXCEPTION
         this.sendExceptionMessage(
           CREATE_INSCRIPTION,
           "There are no funds to create of the Inscription, please replenish the amount: "+
@@ -1738,6 +1752,7 @@ async createCollectionWithParentContract(payload, theIndex = 0) {
 
     }
 }
+*/
 //------------------------------------------------------------------------------
 async createInscriptionContract(payload, theIndex = 0) {
   const myself = this;
@@ -1753,8 +1768,8 @@ async createInscriptionContract(payload, theIndex = 0) {
     expect_amount: Number(payload.expect_amount),
     extra_amount: 0,
     fee_rate: payload.fee,
-    size: (payload.content.length+payload.content_type.length)
-
+    size: (payload.content.length+payload.content_type.length),
+    errorMessage: null as string | null
   };
   try {
     console.log('createInscription payload: ', payload);
@@ -1816,11 +1831,14 @@ async createInscriptionContract(payload, theIndex = 0) {
     ).c_str()))
     outData.amount = min_fund_amount;
     if(!myself.fundings.length ){
-        myself.sendExceptionMessage(
-          'CREATE_INSCRIPTION',
-          "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
-        );
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        // TODO: REWORK FUNDS EXCEPTION
+        // myself.sendExceptionMessage(
+        //   'CREATE_INSCRIPTION',
+        //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
+        // );
+        // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
+            "wait for several conformations or wait update on the server.";
         return outData;
      }
     const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
@@ -1829,12 +1847,15 @@ async createInscriptionContract(payload, theIndex = 0) {
     outData.inputs_sum = inputs_sum;
 
     if(utxo_list?.length < 1){
-        this.sendExceptionMessage(
-          'CREATE_INSCRIPTION',
-          "There are no funds to create of the Inscription, please replenish the amount: "+
+        // TODO: REWORK FUNDS EXCEPTION
+        // this.sendExceptionMessage(
+        //   'CREATE_INSCRIPTION',
+        //   "There are no funds to create of the Inscription, please replenish the amount: "+
+        //   `${min_fund_amount} sat`
+        // );
+        // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        outData.errorMessage = "There are no funds to create of the Inscription, please replenish the amount: "+
           `${min_fund_amount} sat`
-        );
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         return outData;
     }
 
@@ -2169,23 +2190,14 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       market_fee: payload.market_fee,
       ord_price: payload.ord_price,
       mining_fee: 0,
-      utxo_list: []
+      utxo_list: [],
+      errorMessage: null as string | null
     };
     //const balances = structuredClone(myself.balances);
     //const fundings = structuredClone(myself.fundings);
     //const inscriptions = structuredClone(myself.inscriptions);
     //console.log("commitBuyInscription->payload",payload)
     try {
-
-      if(!myself.fundings.length ){
-        myself.sendExceptionMessage(
-          COMMIT_BUY_INSCRIPTION,
-          "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
-        );
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        return outData;
-      }
-
       const swapSim = new myself.utxord.SwapInscriptionBuilder(
         (myself.satToBtc(payload.ord_price)).toFixed(8),
         (myself.satToBtc(payload.market_fee)).toFixed(8)
@@ -2194,6 +2206,22 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
 
       const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("").c_str()))
+
+
+      if(!myself.fundings.length ){
+        // TODO: REWORK FUNDS EXCEPTION
+        // myself.sendExceptionMessage(
+        //   COMMIT_BUY_INSCRIPTION,
+        //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
+        // );
+        // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
+            "wait for several conformations or wait update on the server";
+            outData.min_fund_amount = min_fund_amount;
+            outData.mining_fee = Number(min_fund_amount) - Number(payload.market_fee) - Number(payload.ord_price);
+        return outData;
+      }
+
       const utxo_list = await myself.selectKeysByFunds(min_fund_amount + 682);
       console.log("min_fund_amount:",min_fund_amount);
       console.log("utxo_list:",utxo_list);
@@ -2229,14 +2257,17 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
         outData.utxo_list = utxo_list;
         if (utxo_list?.length < 1) {
-          setTimeout(() => {
-            myself.sendExceptionMessage(
-              BUY_INSCRIPTION,
-              "There are no funds to buying of the Inscription, please replenish the amount: " +
-              `${min_fund_amount_final} sat`
-            );
-          setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-          }, 500);
+          // setTimeout(() => {
+          //   // TODO: REWORK FUNDS EXCEPTION
+          //   myself.sendExceptionMessage(
+          //     BUY_INSCRIPTION,
+          //     "There are no funds to buying of the Inscription, please replenish the amount: " +
+          //     `${min_fund_amount_final} sat`
+          //   );
+          // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+          // }, 500);
+          outData.errorMessage = "There are no funds to buying of the Inscription, please replenish the amount: " +
+              `${min_fund_amount_final} sat`;
           return outData;
         }
         outData.data = buyOrd.Serialize(myself.utxord.FUNDS_COMMIT_SIG).c_str();
