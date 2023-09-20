@@ -42,7 +42,10 @@
             type="password"
             v-model="confirmPassword"
             :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters'
+              (val) => isASCII(val) || 'Please enter only Latin characters',
+              (val) =>
+                val === password ||
+                'Confirm Password does not match the Password'
             ]"
           />
         </div>
