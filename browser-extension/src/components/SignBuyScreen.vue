@@ -1,6 +1,7 @@
 <template>
   <SignWrapper>
     <!-- To address -->
+    <!--
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
     >
@@ -20,7 +21,7 @@
         </CustomInput>
       </div>
     </div>
-
+    -->
     <!-- TX Info -->
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
@@ -49,7 +50,7 @@
         class="w-full min-h-[1px] bg-[var(--border-color)] dark:bg-[#555555]"
       />
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Total:</span>
+        <span class="mr-2 text-[var(--text-color)]">Total Needed:</span>
         <PriceComp
           class="ml-auto"
           :price="total || 0"
@@ -64,7 +65,7 @@
     <div
       class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
     >
-      <span class="mr-2 text-[var(--text-grey-color)]">Available Balance:</span>
+      <span class="mr-2 text-[var(--text-color)]">Available:</span>
       <PriceComp
         class="ml-auto"
         :price="balance?.confirmed || 0"
@@ -72,6 +73,12 @@
           1000000: '15px'
         }"
       />
+    </div>
+    <div v-show="isInsufficientBalance"
+      class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+    >
+      <span class="mr-2 text-[var(--text-color)]" style="font-size: 20px;">Insufficient funds. Please add.</span>
+
     </div>
   </SignWrapper>
 </template>
@@ -90,6 +97,11 @@ const total = computed(
     (dataForSign.value?.data?.ord_price || 0) +
     (dataForSign.value?.data?.market_fee || 0)
 )
+
+const isInsufficientBalance = computed(() => {
+  if (Number(total.value) > Number(balance.value?.confirmed)) return true
+  return false
+})
 </script>
 
 <style scoped>
