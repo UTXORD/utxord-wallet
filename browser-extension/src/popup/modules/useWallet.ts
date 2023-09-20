@@ -41,7 +41,6 @@ async function getNetWork(){
         }, 'background')
         if (success) {
           store.setBalance(success?.data)
-          console.log(success?.data);
         }
       } catch(e){
         store.setBalance(0);
