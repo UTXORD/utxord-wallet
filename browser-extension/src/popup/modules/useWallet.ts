@@ -42,8 +42,7 @@ async function getNetWork(){
         if (success) {
           store.setBalance(success?.data)
         }
-      } catch(e){
-        store.setBalance(0);
+      } catch(e) {
         console.log('getBalance->error:',e);
       }
     };

@@ -65,7 +65,7 @@ export const useStore = defineStore('store', {
     setErrorMessage(msg: string) {
       this.errorMessage = msg
     },
-    clearStore() {
+    clearBalance() {
       this.balance = {
         confirmed: 0,
         unconfirmed: 0,
@@ -75,6 +75,9 @@ export const useStore = defineStore('store', {
         to_address: 0,
         used_for_inscribtions: 0,
       }
+    },
+    clearStore() {
+      this.clearBalance()
       this.fundAddress = null
       this.ordAddress = null
       this.dataForSign = null
