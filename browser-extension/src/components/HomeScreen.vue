@@ -148,9 +148,7 @@ import { NEW_FUND_ADDRESS } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 
 const store = useStore()
-const { balance, fundAddress, refreshingBalance } = toRefs(store)
-
-const { getBalance } = useWallet()
+const { balance, fundAddress } = toRefs(store)
 
 const { getBalance } = useWallet()
 
