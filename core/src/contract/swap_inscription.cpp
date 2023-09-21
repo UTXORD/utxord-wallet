@@ -287,7 +287,7 @@ void SwapInscriptionBuilder::SignFundsCommitment(uint32_t n, const std::string& 
     if (!funds_it->m_pubkey)
         throw ContractTermMissing((std::ostringstream() << name_funds << '[' << n << "].pubkey").str());
     if (keypair.GetLocalPubKey() != funds_it->m_pubkey)
-        throw ContractValueMismatch((std::ostringstream() << name_funds << '[' << n << "].pubkey").str());
+        throw ContractTermMismatch((std::ostringstream() << name_funds << '[' << n << "].pubkey").str());
 
     if (!m_funds_unspendable_key_factor)
         m_funds_unspendable_key_factor = core::ChannelKeys::GetStrongRandomKey(keypair.Secp256k1Context());
@@ -458,6 +458,7 @@ string SwapInscriptionBuilder::Serialize(SwapPhase phase)
 
     contract.pushKV(name_version, m_protocol_version);
     contract.pushKV(name_ord_price, FormatAmount(*m_ord_price));
+    contract.pushKV(name_market_fee, FormatAmount(*m_market_fee));
     contract.pushKV(name_swap_script_pk_M, hex(*m_swap_script_pk_M));
     contract.pushKV(name_ord_mining_fee_rate, FormatAmount(*m_ord_mining_fee_rate));
 
@@ -473,7 +474,6 @@ string SwapInscriptionBuilder::Serialize(SwapPhase phase)
     }
 
     if (phase == FUNDS_TERMS || phase == FUNDS_COMMIT_SIG || phase == MARKET_PAYOFF_SIG || phase == FUNDS_SWAP_SIG || phase == MARKET_SWAP_SIG) {
-        contract.pushKV(name_market_fee, FormatAmount(*m_market_fee));
         contract.pushKV(name_mining_fee_rate, FormatAmount(*m_mining_fee_rate));
     }
     if (phase == FUNDS_COMMIT_SIG || phase == MARKET_PAYOFF_SIG || phase == FUNDS_SWAP_SIG || phase == MARKET_SWAP_SIG) {
@@ -515,8 +515,9 @@ string SwapInscriptionBuilder::Serialize(SwapPhase phase)
 
 void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
 {
-    if (!m_ord_mining_fee_rate) throw ContractTermMissing(std::string(name_ord_mining_fee_rate));
-    if (m_ord_price <= 0) throw ContractTermMissing(std::string(name_ord_price));
+    //if (!m_ord_mining_fee_rate) throw ContractTermMissing(std::string(name_ord_mining_fee_rate));
+    //if (m_ord_price <= 0) throw ContractTermMissing(std::string(name_ord_price));
+    if (!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
     if (!m_swap_script_pk_M) throw ContractTermMissing(std::string(name_swap_script_pk_M));
 
     switch (phase) {
@@ -532,6 +533,8 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
     case MARKET_PAYOFF_TERMS:
         CheckContractTerms(FUNDS_COMMIT_SIG);
     case ORD_SWAP_SIG:
+        if (!m_ord_price) throw ContractTermMissing(std::string(name_ord_price));
+        if (!m_ord_mining_fee_rate) throw ContractTermMissing(std::string(name_ord_mining_fee_rate));
         if (!m_ord_swap_sig_A) throw ContractTermMissing(std::string(name_ord_swap_sig_A));
         if (!m_ord_pk) throw ContractTermMissing(std::string(name_ord_pk));
         if (!m_ord_amount) throw ContractTermMissing(std::string(name_ord_amount));
@@ -596,20 +599,13 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
         throw ContractProtocolError("Wrong SwapInscription contract version: " + contract[name_version].getValStr());
     }
 
-    if (m_ord_price) {
-        if (m_ord_price != ParseAmount(contract[name_ord_price].getValStr())) throw ContractValueMismatch(std::string(name_ord_price));
-    } else
-        m_ord_price = ParseAmount(contract[name_ord_price].getValStr());
+    DeserializeContractAmount(contract[name_ord_price], m_ord_price, [&](){ return name_ord_price; });
+    DeserializeContractAmount(contract[name_market_fee], m_market_fee, [&](){ return name_market_fee; });
 
-    {   const auto &val = contract[name_market_fee];
-        if (!val.isNull()) { //throw ContractTermMissing(std::string(name_market_fee));
-            if (*m_market_fee != ParseAmount(val.getValStr())) throw ContractValueMismatch(std::string(name_market_fee));
-        }
-    }
     {   const auto& val = contract[name_swap_script_pk_A];
         if (!val.isNull()) {
             if (m_swap_script_pk_A) {
-                if (*m_swap_script_pk_A != unhex<xonly_pubkey>(val.get_str())) throw ContractValueMismatch(std::string(name_swap_script_pk_A));
+                if (*m_swap_script_pk_A != unhex<xonly_pubkey>(val.get_str())) throw ContractTermMismatch(std::string(name_swap_script_pk_A));
             }
             else m_swap_script_pk_A = unhex<xonly_pubkey>(val.get_str());
         }
@@ -617,7 +613,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_ord_mining_fee_rate];
         if (!val.isNull()) {
             if (m_ord_mining_fee_rate) {
-                if (*m_ord_mining_fee_rate != ParseAmount(val.getValStr())) throw ContractValueMismatch(std::string(name_ord_mining_fee_rate));
+                if (*m_ord_mining_fee_rate != ParseAmount(val.getValStr())) throw ContractTermMismatch(std::string(name_ord_mining_fee_rate));
             }
             else m_ord_mining_fee_rate = ParseAmount(val.getValStr());
         }
@@ -625,7 +621,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_swap_script_pk_B];
         if (!val.isNull()) {
             if (m_swap_script_pk_B) {
-                if (*m_swap_script_pk_B != unhex<xonly_pubkey>(val.get_str())) throw ContractValueMismatch(std::string(name_swap_script_pk_B));
+                if (*m_swap_script_pk_B != unhex<xonly_pubkey>(val.get_str())) throw ContractTermMismatch(std::string(name_swap_script_pk_B));
             }
             else m_swap_script_pk_B = unhex<xonly_pubkey>(val.get_str());
         }
@@ -633,7 +629,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_swap_script_pk_M];
         if (!val.isNull()) {
             if (m_swap_script_pk_M) {
-                if (*m_swap_script_pk_M != unhex<xonly_pubkey>(val.get_str())) throw ContractValueMismatch(std::string(name_swap_script_pk_M));
+                if (*m_swap_script_pk_M != unhex<xonly_pubkey>(val.get_str())) throw ContractTermMismatch(std::string(name_swap_script_pk_M));
             }
             else m_swap_script_pk_M = unhex<xonly_pubkey>(val.get_str());
         }
@@ -641,7 +637,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_ord_txid];
         if (!val.isNull()) {
             if (m_ord_txid) {
-                if (*m_ord_txid != val.get_str()) throw ContractValueMismatch(std::string(name_ord_txid));
+                if (*m_ord_txid != val.get_str()) throw ContractTermMismatch(std::string(name_ord_txid));
             }
             else m_ord_txid = val.get_str();
         }
@@ -649,7 +645,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_ord_nout];
         if (!val.isNull()) {
             if (m_ord_nout) {
-                if (*m_ord_nout != val.getInt<uint32_t>()) throw ContractValueMismatch(std::string(name_ord_nout));
+                if (*m_ord_nout != val.getInt<uint32_t>()) throw ContractTermMismatch(std::string(name_ord_nout));
             }
             else m_ord_nout = val.getInt<uint32_t>();
         }
@@ -657,7 +653,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_ord_amount];
         if (!val.isNull()) {
             if (m_ord_amount) {
-                if (*m_ord_amount != ParseAmount(val.getValStr())) throw ContractValueMismatch(std::string(name_ord_amount));
+                if (*m_ord_amount != ParseAmount(val.getValStr())) throw ContractTermMismatch(std::string(name_ord_amount));
             }
             else m_ord_amount = ParseAmount(val.getValStr());
         }
@@ -665,7 +661,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_ord_pk];
         if (!val.isNull()) {
             if (m_ord_pk) {
-                if (*m_ord_pk != unhex<xonly_pubkey>(val.get_str())) throw ContractValueMismatch(std::string(name_ord_txid));
+                if (*m_ord_pk != unhex<xonly_pubkey>(val.get_str())) throw ContractTermMismatch(std::string(name_ord_txid));
             }
             else m_ord_pk = unhex<xonly_pubkey>(val.get_str());
         }
@@ -673,7 +669,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_funds_unspendable_key];
         if (!val.isNull()) {
             if (m_funds_unspendable_key_factor) {
-                if (*m_funds_unspendable_key_factor != unhex<seckey>(val.get_str())) throw ContractValueMismatch(std::string(name_funds_unspendable_key));
+                if (*m_funds_unspendable_key_factor != unhex<seckey>(val.get_str())) throw ContractTermMismatch(std::string(name_funds_unspendable_key));
             }
             else m_funds_unspendable_key_factor = unhex<seckey>(val.get_str());
         }
@@ -681,7 +677,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     {   const auto& val = contract[name_funds];
         if (!val.isNull()) {
             if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_funds));
-            if (!m_funds.empty() && m_funds.size() != val.size()) throw ContractValueMismatch(std::string(name_funds) + " size");
+            if (!m_funds.empty() && m_funds.size() != val.size()) throw ContractTermMismatch(std::string(name_funds) + " size");
 
             auto utxo_it = m_funds.begin();
             for (size_t i = 0; i < val.size(); ++i) {
@@ -714,17 +710,17 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
                 else {
                     // std::format("{}[{}].{}", name_funds, i, name_funds_txid)
                     if (utxo_it->m_txid != txid_val.get_str())
-                        throw ContractValueMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_txid).str());
+                        throw ContractTermMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_txid).str());
                     // std::format("{}[{}].{}", name_funds, i, name_funds_nout)
                     if (utxo_it->m_nout != nout_val.getInt<uint32_t>())
-                        throw ContractValueMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_nout).str());
+                        throw ContractTermMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_nout).str());
                     // std::format("{}[{}].{}", name_funds, i, name_funds_amount)
                     if (utxo_it->m_amount != ParseAmount(amount_val.getValStr()))
-                        throw ContractValueMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_amount).str());
+                        throw ContractTermMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_amount).str());
                     if (utxo_it->m_sig) {
                         // std::format("{}[{}].{}", name_funds, i, name_funds_commit_sig
                         if (*utxo_it->m_sig != unhex<signature>(sig_val.get_str()))
-                            throw ContractValueMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_commit_sig).str());
+                            throw ContractTermMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_commit_sig).str());
                     }
                     else utxo_it->m_sig = unhex<signature>(sig_val.get_str());
 

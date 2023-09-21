@@ -15,9 +15,12 @@
 #include "exechelper.hpp"
 #include "inscription.hpp"
 
+#include "contract_builder.hpp"
+
 #include "policy/policy.h"
 
 #include "test_case_wrapper.hpp"
+#include "univalue.h"
 
 using namespace l15;
 using namespace l15::core;
@@ -118,6 +121,168 @@ TEST_CASE("Fee")
 
     CAmount double_vout_fee = CalculateTxFee(1000, tx);
     std::clog << "Taproot vout vsize: " << (double_vout_fee - double_vin_fee) << std::endl;
+
+}
+
+TEST_CASE("DeserializeContractAmount")
+{
+    const char* json = R"({"num_amount":1000, "str_amount":"0.00001", "wrong_amount":"wrong"})";
+    UniValue val;
+    val.read(json);
+
+    std::optional<CAmount> from_num;
+    std::optional<CAmount> from_str;
+    std::optional<CAmount> another_amount = -1;
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["not_exist"], from_num, [](){ return "not_exist"; }));
+    CHECK(!from_num.has_value());
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
+    CHECK(*from_num == 1000);
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
+    CHECK(*from_num == 1000);
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["num_amount"], another_amount, [](){ return "num_amount"; }), ContractTermMismatch);
+    CHECK(*another_amount == -1);
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
+    CHECK(*from_str == 1000);
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
+    CHECK(*from_str == 1000);
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["str_amount"], another_amount, [](){ return "str_amount"; }), ContractTermMismatch);
+    CHECK(*another_amount == -1);
+
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["wrong_amount"], another_amount, [](){ return "wrong_amount"; }), ContractTermWrongValue);
+    CHECK(*another_amount == -1);
+}
+
+TEST_CASE("DeserializeContractString")
+{
+    const char* json = R"({"str":"test", "num":0.00001, "json":"{\"key\":\"value\"}"})";
+    UniValue val;
+    val.read(json);
+
+    std::optional<std::string> raw_str;
+    std::optional<std::string> raw_json;
+    std::optional<std::string> another_str = "bla";
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["not_exist"], raw_str, [](){ return "not_exist"; }));
+    CHECK(!raw_str.has_value());
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
+    CHECK(*raw_str == "test");
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
+    CHECK(*raw_str == "test");
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractString(val["json"], raw_str, [](){ return "json"; }), ContractTermMismatch);
+    CHECK(*raw_str == "test");
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
+    CHECK(*raw_json == "{\"key\":\"value\"}");
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
+    CHECK(*raw_json == "{\"key\":\"value\"}");
+
+    UniValue json_val;
+    CHECK(json_val.read(*raw_json));
+    CHECK(json_val["key"].get_str() == "value");
+}
+
+TEST_CASE("DeserializeContractHexData")
+{
+    const char* json = R"({"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","longpubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa49988","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+
+    UniValue val;
+    CHECK(val.read(json));
+
+    std::optional<xonly_pubkey> pk;
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
+    CHECK(pk.has_value());
+    CHECK(hex(*pk) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
+    CHECK(hex(*pk) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+
+    std::optional<xonly_pubkey> long_pk;
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractHexData(val["longpubkey"], long_pk, [](){ return "longpubkey"; }), ContractTermWrongValue);
+    CHECK(!long_pk.has_value());
+
+    std::optional<signature> sig;
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["sig"], sig, [](){ return "sig"; }));
+    CHECK(sig.has_value());
+    CHECK(hex(*sig) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+}
+
+TEST_CASE("DeserializeContractTransfer")
+{
+    const char* transfer_json =    R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+    const char* bad_pk_json =      R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+    const char* bad_ex_pk_json =   R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa456","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+    const char* no_txid_json = R"({"nout":11,"amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+    const char* no_nout_json = R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+    const char* no_amount_json = R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+    const char* no_pk_json = R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"amount":1000,"sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+    const char* no_sig_json = R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+
+    UniValue val;
+    val.read(transfer_json);
+    std::optional<Transfer> res;
+    CHECK_NOTHROW(res = ContractBuilder::DeserializeContractTransfer(val, [](){return "utxo";}));
+    CHECK(res.has_value());
+    CHECK(res->m_txid == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+    CHECK(res->m_nout == 11);
+    CHECK(res->m_amount == 1000);
+    CHECK(res->m_pubkey.has_value());
+    CHECK(hex(*res->m_pubkey) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+    CHECK(res->m_sig.has_value());
+    CHECK(hex(*res->m_sig) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+
+    std::optional<Transfer> no_res;
+
+    UniValue bad_pk_val;
+    bad_pk_val.read(bad_pk_json);
+    CHECK_THROWS_AS(no_res = ContractBuilder::DeserializeContractTransfer(bad_pk_val, [](){return "utxo";}), ContractTermWrongValue);
+    CHECK(!no_res.has_value());
+
+    UniValue bad_ex_pk_val;
+    bad_ex_pk_val.read(bad_ex_pk_json);
+    CHECK_THROWS_AS(no_res = ContractBuilder::DeserializeContractTransfer(bad_ex_pk_val, [](){return "utxo";}), ContractTermWrongValue);
+    CHECK(!no_res.has_value());
+
+    UniValue no_txid_val;
+    no_txid_val.read(no_txid_json);
+    CHECK_THROWS_AS(no_res = ContractBuilder::DeserializeContractTransfer(no_txid_val, [](){return "utxo";}), ContractTermMissing);
+    CHECK(!no_res.has_value());
+
+    UniValue no_nout_val;
+    no_nout_val.read(no_nout_json);
+    CHECK_THROWS_AS(no_res = ContractBuilder::DeserializeContractTransfer(no_nout_val, [](){return "utxo";}), ContractTermMissing);
+    CHECK(!no_res.has_value());
+
+    UniValue no_amount_val;
+    no_amount_val.read(no_amount_json);
+    CHECK_THROWS_AS(no_res = ContractBuilder::DeserializeContractTransfer(no_amount_val, [](){return "utxo";}), ContractTermMissing);
+    CHECK(!no_res.has_value());
+
+    UniValue no_pk_val;
+    no_pk_val.read(no_pk_json);
+    std::optional<Transfer> no_pk_res;
+    CHECK_NOTHROW(no_pk_res = ContractBuilder::DeserializeContractTransfer(no_pk_val, [](){return "utxo";}));
+    CHECK(no_pk_res.has_value());
+    CHECK(no_pk_res->m_txid == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+    CHECK(no_pk_res->m_nout == 11);
+    CHECK(no_pk_res->m_amount == 1000);
+    CHECK(!no_pk_res->m_pubkey.has_value());
+    CHECK(no_pk_res->m_sig.has_value());
+    CHECK(hex(*no_pk_res->m_sig) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+
+    UniValue no_sig_val;
+    no_sig_val.read(no_sig_json);
+    std::optional<Transfer> no_sig_res;
+    CHECK_NOTHROW(no_sig_res = ContractBuilder::DeserializeContractTransfer(no_sig_val, [](){return "utxo";}));
+    CHECK(no_sig_res.has_value());
+    CHECK(no_sig_res->m_txid == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+    CHECK(no_sig_res->m_nout == 11);
+    CHECK(no_sig_res->m_amount == 1000);
+    CHECK(no_sig_res->m_pubkey.has_value());
+    CHECK(hex(*no_sig_res->m_pubkey) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+    CHECK(!no_sig_res->m_sig.has_value());
 
 }
 

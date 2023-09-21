@@ -31,10 +31,10 @@ public:
     { return "ContractTermWrongValue"; }
 };
 
-class ContractValueMismatch : public ContractError {
+class ContractTermMismatch : public ContractError {
 public:
-    explicit ContractValueMismatch(std::string&& details) : ContractError(move(details)) {}
-    ~ContractValueMismatch() override = default;
+    explicit ContractTermMismatch(std::string&& details) : ContractError(move(details)) {}
+    ~ContractTermMismatch() override = default;
 
     const char* what() const noexcept override
     { return "ContractTermValueMismatch"; }

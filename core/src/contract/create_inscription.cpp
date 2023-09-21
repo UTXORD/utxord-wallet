@@ -200,7 +200,7 @@ void CreateInscriptionBuilder::SignCommit(uint32_t n, const std::string& sk, con
     auto utxo_it = m_utxo.begin();
     std::advance(utxo_it, n);
     core::ChannelKeys utxo_key(unhex<seckey>(sk));
-    if (utxo_key.GetLocalPubKey() != utxo_it->m_pubkey) throw ContractValueMismatch(name_utxo + '[' + std::to_string(n) + ']' + name_pk);
+    if (utxo_key.GetLocalPubKey() != utxo_it->m_pubkey) throw ContractTermMismatch(name_utxo + '[' + std::to_string(n) + ']' + name_pk);
 
     if (!m_inscribe_int_pk) {
         core::ChannelKeys inscribe_internal_key = core::ChannelKeys();
@@ -209,7 +209,7 @@ void CreateInscriptionBuilder::SignCommit(uint32_t n, const std::string& sk, con
     }
 
     if (m_inscribe_script_pk) {
-        if (*m_inscribe_script_pk != unhex<xonly_pubkey>(inscribe_script_pk)) throw ContractValueMismatch(std::string(name_inscribe_script_pk));
+        if (*m_inscribe_script_pk != unhex<xonly_pubkey>(inscribe_script_pk)) throw ContractTermMismatch(std::string(name_inscribe_script_pk));
     }
     else {
         m_inscribe_script_pk = unhex<xonly_pubkey>(inscribe_script_pk);
@@ -248,7 +248,7 @@ void CreateInscriptionBuilder::SignCollection(const std::string& sk)
 
     core::ChannelKeys script_key(unhex<seckey>(sk));
 
-    if (*m_collection_utxo->m_pubkey != script_key.GetLocalPubKey()) throw ContractValueMismatch(name_collection + '.' + name_pk);
+    if (*m_collection_utxo->m_pubkey != script_key.GetLocalPubKey()) throw ContractTermMismatch(name_collection + '.' + name_pk);
 
     CMutableTransaction genesis_tx = MakeGenesisTx(true);
     m_collection_utxo->m_sig = script_key.SignTaprootTx(genesis_tx, 1, GetGenesisTxSpends(), {});
@@ -260,7 +260,7 @@ void CreateInscriptionBuilder::SignInscription(const std::string& insribe_script
     if (!m_inscribe_int_sk) throw ContractStateError(std::string("internal inscription key undefined: has commit tx been signed?"));
 
     core::ChannelKeys script_keypair(unhex<seckey>(insribe_script_sk));
-    if (*m_inscribe_script_pk != script_keypair.GetLocalPubKey()) throw ContractValueMismatch(std::string(name_inscribe_script_pk));
+    if (*m_inscribe_script_pk != script_keypair.GetLocalPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_pk));
 
     CMutableTransaction genesis_tx = MakeGenesisTx(true);
 
@@ -281,7 +281,7 @@ void CreateInscriptionBuilder::SignFundMiningFee(uint32_t n, const string &sk)
     auto xtra_it = m_xtra_utxo.begin();
     std::advance(xtra_it, n);
 
-    if (keypair.GetLocalPubKey() != *xtra_it->m_pubkey) throw ContractValueMismatch(name_xtra_utxo + '[' + std::to_string(n) + "]." + name_pk);
+    if (keypair.GetLocalPubKey() != *xtra_it->m_pubkey) throw ContractTermMismatch(name_xtra_utxo + '[' + std::to_string(n) + "]." + name_pk);
 
     CMutableTransaction genesis_tx = MakeGenesisTx(true);
 
@@ -444,203 +444,75 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
 
     if (root[name_contract_type].get_str() == val_create_inscription)
         m_type = INSCRIPTION;
-//    else if (root[name_contract_type].get_str() == val_create_collection)
-//        m_type = COLLECTION;
     else
         throw ContractProtocolError("CreateInscription contract does not match " + root[name_contract_type].getValStr());
 
     const UniValue& contract = root[name_params];
 
-    if (contract[name_version].getInt<uint32_t>() == m_protocol_version) {
-        const auto &val = contract[name_market_fee];
-        if (!val.isNull()) {
-            if (!val.isNum()) throw ContractTermWrongValue(name_market_fee + ": " + contract[name_market_fee].getValStr());
-            m_market_fee = val.getInt<CAmount>();
-        }
-    }
-    else if (contract[name_version].getInt<uint32_t>() == m_protocol_version_no_market_fee) {
-        m_market_fee = 0;
-    }
-    else
+    if (contract[name_version].getInt<uint32_t>() != m_protocol_version)
         throw ContractProtocolError("Wrong " + root[name_contract_type].get_str() + " version: " + contract[name_version].getValStr());
 
-    {   const auto &val = contract[name_market_fee_pk];
-        if (!val.isNull()) try {
-            m_market_fee_pk = unhex<xonly_pubkey>(val.get_str());
-        }
-        catch(...) {
-            std::throw_with_nested(ContractTermWrongValue(name_market_fee_pk + ": " + contract[name_market_fee_pk].getValStr()));
-        }
-    }
+    DeserializeContractAmount(contract[name_market_fee], m_market_fee, [&](){ return name_market_fee; });
+    DeserializeContractHexData(contract[name_market_fee_pk], m_market_fee_pk, [&](){ return name_market_fee_pk; });
+    DeserializeContractAmount(contract[name_ord_amount], m_ord_amount, [&](){ return name_ord_amount; });
 
-    {   const auto &val = contract[name_ord_amount];
-        if (!val.isNull()) {
-            if (!val.isNum())throw ContractTermWrongValue(name_ord_amount + ": " + contract[name_ord_amount].getValStr());
-            m_ord_amount = val.getInt<CAmount>();
-        }
-    }
-
-    {   const auto &val = contract[name_utxo];
+    {
+        const auto &val = contract[name_utxo];
         if (!val.isNull()) {
             if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
 
             for (size_t n = 0; n < val.size(); ++n) {
-                const UniValue &utxo = val[n];
-                if (!utxo.isObject()) throw ContractTermWrongFormat(move((name_utxo + '[') += std::to_string(n) += ']'));
-
-                if (!utxo.exists(name_txid))
-                    throw ContractTermMissing(move(((name_utxo + '[') += std::to_string(n) += "].") += name_txid));
-                if (!utxo.exists(name_nout))
-                    throw ContractTermMissing(move(((name_utxo + '[') += std::to_string(n) += "].") += name_nout));
-                if (!utxo.exists(name_amount))
-                    throw ContractTermMissing(move(((name_utxo + '[') += std::to_string(n) += "].") += name_amount));
-                if (!utxo.exists(name_sig))
-                    throw ContractTermMissing(move(((name_utxo + '[') += std::to_string(n) += "].") += name_sig));
-
-                std::string txid = utxo[name_txid].get_str();
-                uint32_t nout = utxo[name_nout].getInt<uint32_t>();
-                CAmount amount = utxo[name_amount].getInt<CAmount>();
-                signature sig = unhex<signature>(utxo[name_sig].get_str());
-
-                m_utxo.emplace_back(move(txid), nout, amount);
-                m_utxo.back().m_sig = move(sig);
+                auto utxo = DeserializeContractTransfer(val[n], [&](){ return (name_utxo + '[') += std::to_string(n) += ']'; });
+                if (!utxo->m_sig) throw ContractTermMissing(move(((name_utxo + '[') += std::to_string(n) += "].") += name_sig));
+                m_utxo.emplace_back(move(*utxo));
             }
         }
     }
-    {   const auto &val = contract[name_collection];
-        if (!val.isNull()) {
-            if (!val.isObject()) throw ContractTermWrongFormat(std::string(name_collection));
+    {
+        const auto &val = contract[name_collection];
+        auto collection_utxo = DeserializeContractTransfer(val, [&](){ return name_collection; });
+        if (collection_utxo) {
+            if (!collection_utxo->m_pubkey) throw ContractTermMissing(name_collection + '.' + name_pk);
+            if (!collection_utxo->m_sig)throw ContractTermMissing(name_collection + '.' + name_sig);
 
-            if (!val.exists(name_txid))
-                throw ContractTermMissing(name_collection + '.' + name_txid);
-            if (!val.exists(name_nout))
-                throw ContractTermMissing(name_collection + '.' + name_nout);
-            if (!val.exists(name_amount))
-                throw ContractTermMissing(name_collection + '.' + name_amount);
-            if (!val.exists(name_pk))
-                throw ContractTermMissing(name_collection + '.' + name_pk);
-            if (!val.exists(name_sig))
-                throw ContractTermMissing(name_collection + '.' + name_sig);
-            if (!val.exists(name_collection_id))
-                throw ContractTermMissing(name_collection + '.' + name_collection_id);
+            DeserializeContractString(val[name_collection_id], m_parent_collection_id, [&]() { return move((name_collection + '.') += name_collection_id); });
+            if (!m_parent_collection_id) throw ContractTermMissing(move((name_collection + '.') += name_collection_id));
 
-            m_parent_collection_id = val[name_collection_id].get_str();
-
-            std::string txid = val[name_txid].get_str();
-            uint32_t nout = val[name_nout].getInt<uint32_t>();
-            CAmount amount = val[name_amount].getInt<CAmount>();
-            xonly_pubkey pk = unhex<signature>(val[name_pk].get_str());
-            signature sig = unhex<signature>(val[name_sig].get_str());
-
-            m_collection_utxo = {move(txid), nout, amount, move(pk), move(sig)};
+            m_collection_utxo = move(collection_utxo);
         }
     }
-    {   const auto &val = contract[name_metadata];
-        if (!val.isNull()) {
-            m_metadata = val.get_str();
 
-            UniValue check_metadata;
-            if (!check_metadata.read(*m_metadata)) {
-                throw ContractTermWrongValue(name_metadata + " is not JSON");
-            }
+    DeserializeContractString(contract[name_metadata], m_metadata, [&](){ return name_metadata; });
+    if (m_metadata) {
+        UniValue check_metadata;
+        if (!check_metadata.read(*m_metadata)) {
+            throw ContractTermWrongValue(name_metadata + " is not JSON");
         }
     }
-    {   const auto &val = contract[name_xtra_utxo];
+
+    {
+        const auto &val = contract[name_xtra_utxo];
         if (!val.isNull()) {
             if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_xtra_utxo));
 
             for (size_t n = 0; n < val.size(); ++n) {
-                const UniValue &utxo = val[n];
-
-                if (!utxo.exists(name_txid))
-                    throw ContractTermMissing(move(((name_xtra_utxo + '[') += std::to_string(n) += "].") += name_txid));
-                if (!utxo.exists(name_nout))
-                    throw ContractTermMissing(move(((name_xtra_utxo + '[') += std::to_string(n) += "].") += name_nout));
-                if (!utxo.exists(name_amount))
-                    throw ContractTermMissing(move(((name_xtra_utxo + '[') += std::to_string(n) += "].") += name_amount));
-                if (!utxo.exists(name_sig))
-                    throw ContractTermMissing(move(((name_xtra_utxo + '[') += std::to_string(n) += "].") += name_sig));
-
-                std::string txid = utxo[name_txid].get_str();
-                uint32_t nout = utxo[name_nout].getInt<uint32_t>();
-                CAmount amount = utxo[name_amount].getInt<CAmount>();
-                signature sig = unhex<signature>(utxo[name_sig].get_str());
-
-                m_xtra_utxo.emplace_back(move(txid), nout, amount);
-                m_xtra_utxo.back().m_sig = move(sig);
+                auto utxo = DeserializeContractTransfer(val[n], [&](){ return (name_xtra_utxo + '[') += std::to_string(n) += ']'; });
+                if (!utxo->m_sig) throw ContractTermMissing(move(((name_xtra_utxo + '[') += std::to_string(n) += "].") += name_sig));
+                m_xtra_utxo.emplace_back(move(*utxo));
             }
         }
     }
-    {   const auto &val = contract[name_mining_fee_rate];
-        if (!val.isNull()) {
-            if (!val.isNum()) throw ContractTermWrongValue(name_mining_fee_rate + ": " + contract[name_mining_fee_rate].getValStr());
-            m_mining_fee_rate = val.getInt<CAmount>();
-        }
-    }
-    {   const auto &val = contract[name_content_type];
-        if (!val.isNull()) try {
-            m_content_type = val.get_str();
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(name_content_type + ": " + contract[name_market_fee_pk].getValStr()));
-        }
-    }
-    {   const auto &val = contract[name_content];
-        if (!val.isNull()) try {
-            m_content = unhex<bytevector>(val.get_str());
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(std::string(name_content)));
-        }
-    }
-    {   const auto &val = contract[name_inscribe_script_pk];
-        if (!val.isNull()) try {
-            m_inscribe_script_pk = unhex<xonly_pubkey>(val.get_str());
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(name_inscribe_script_pk + ": " + contract[name_inscribe_script_pk].getValStr()));
-        }
-    }
-    {   const auto &val = contract[name_inscribe_sig];
-        if (!val.isNull()) try {
-                m_inscribe_script_sig = unhex<signature>(val.get_str());
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(name_inscribe_sig + ": " + contract[name_inscribe_sig].getValStr()));
-        }
-    }
-    {   const auto &val = contract[name_collection_mining_fee_sig];
-        if (!val.isNull()) try {
-            m_collection_mining_fee_sig = unhex<signature>(val.get_str());
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(name_collection_mining_fee_sig + ": " + contract[name_collection_mining_fee_sig].getValStr()));
-        }
-    }
-    {   const auto &val = contract[name_inscribe_int_pk];
-        if (!val.isNull()) try {
-            m_inscribe_int_pk = unhex<xonly_pubkey>(val.get_str());
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(name_inscribe_int_pk + ": " + contract[name_inscribe_int_pk].getValStr()));
-        }
-    }
-    {   const auto &val = contract[name_destination_pk];
-        if (!val.isNull()) try {
-            m_destination_pk = unhex<xonly_pubkey>(val.get_str());
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(name_destination_pk + ": " + contract[name_destination_pk].getValStr()));
-        }
-    }
-    {   const auto &val = contract[name_change_pk];
-        if (!val.isNull()) try {
-            m_change_pk = unhex<xonly_pubkey>(val.get_str());
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(name_change_pk + ": " + contract[name_change_pk].getValStr()));
-        }
-    }
+
+    DeserializeContractAmount(contract[name_mining_fee_rate], m_mining_fee_rate, [&](){ return name_mining_fee_rate; });
+    DeserializeContractString(contract[name_content_type], m_content_type, [&](){ return name_content_type; });
+    DeserializeContractHexData(contract[name_content], m_content, [&](){ return name_content; });
+    DeserializeContractHexData(contract[name_inscribe_script_pk], m_inscribe_script_pk, [&](){ return name_inscribe_script_pk; });
+    DeserializeContractHexData(contract[name_inscribe_sig], m_inscribe_script_sig, [&](){ return name_inscribe_sig; });
+    DeserializeContractHexData(contract[name_collection_mining_fee_sig], m_collection_mining_fee_sig, [&](){ return name_collection_mining_fee_sig; });
+    DeserializeContractHexData(contract[name_inscribe_int_pk], m_inscribe_int_pk, [&](){ return name_inscribe_int_pk; });
+    DeserializeContractHexData(contract[name_destination_pk], m_destination_pk, [&](){ return name_destination_pk; });
+    DeserializeContractHexData(contract[name_change_pk], m_change_pk, [&](){ return name_change_pk; });
+
     CheckContractTerms(phase);
 }
 

@@ -7,6 +7,7 @@
 
 #include "utils.hpp"
 #include "contract_error.hpp"
+#include "univalue.h"
 
 namespace utxord {
 
@@ -84,6 +85,28 @@ public:
     std::string GetMiningFeeRate() const { return FormatAmount(m_mining_fee_rate.value()); }
 
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script);
+
+    static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
+    static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
+    static std::optional<Transfer> DeserializeContractTransfer(const UniValue& val, std::function<std::string()> lazy_name);
+
+    template <typename HEX>
+    static void DeserializeContractHexData(const UniValue& val, std::optional<HEX> &target, std::function<std::string()> lazy_name)
+    {
+        if (!val.isNull()) {
+            HEX hexdata;
+            try {
+                hexdata = unhex<HEX>(val.get_str());
+            } catch (...) {
+                std::throw_with_nested(ContractTermWrongValue(lazy_name() + ": " + val.getValStr()));
+            }
+
+            if (target) {
+                if (*target != hexdata) throw ContractTermMismatch(lazy_name() + " is already set to " + hex(*target));
+            }
+            else target = hexdata;
+        }
+    }
 
 };
 
