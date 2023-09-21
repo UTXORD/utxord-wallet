@@ -13,6 +13,7 @@
           <span class="w-full text-[var(--text-grey-color)]"
             >Store these safely:</span
           >
+          <RefreshIcon @click="refreshMnemonic" class="cursor-pointer w-4 mr-2" />
           <CopyIcon
             class="cursor-pointer"
             @click="copyToClipboard(textarea, 'Mnemonic was copied!')"
@@ -125,6 +126,11 @@ async function onStore() {
 function goToStartPage() {
   localStorage.removeItem('temp-mnemonic')
   push('/start')
+}
+
+function refreshMnemonic() {
+  localStorage.removeItem('temp-mnemonic')
+  getMnemonic()
 }
 
 async function getMnemonic() {
