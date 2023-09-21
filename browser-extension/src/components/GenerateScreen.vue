@@ -9,7 +9,7 @@
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
-        <div class="flex mb-2">
+        <div class="flex items-center mb-2">
           <span class="w-full text-[var(--text-grey-color)]"
             >Store these safely:</span
           >
