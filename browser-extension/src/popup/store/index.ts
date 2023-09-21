@@ -16,6 +16,7 @@ interface IStore {
   ordAddress: string | null
   dataForSign: {} | null
   dataForExportKeyPair: {} | null
+  errorMessage: string | null
 }
 
 export const useStore = defineStore('store', {
@@ -29,10 +30,12 @@ export const useStore = defineStore('store', {
       to_address: 0,
       used_for_inscribtions: 0,
     },
+    refreshingBalance: false,
     fundAddress: null,
     ordAddress: null,
     dataForSign: null,
     dataForExportKeyPair: null,
+    errorMessage: null,
   } as IStore),
   actions: {
     setBalance(value: IBalance) {
@@ -53,6 +56,15 @@ export const useStore = defineStore('store', {
     setSyncToFalse() {
       this.balance.sync = false;
     },
+    setRefreshingBalance() {
+      this.refreshingBalance = true;
+    },
+    unsetRefreshingBalance() {
+      this.refreshingBalance = false;
+    },
+    setErrorMessage(msg: string) {
+      this.errorMessage = msg
+    },
     clearStore() {
       this.balance = {
         confirmed: 0,
@@ -67,6 +79,7 @@ export const useStore = defineStore('store', {
       this.ordAddress = null
       this.dataForSign = null
       this.dataForExportKeyPair = null
+      this.errorMessage = null
     }
   },
   persist: true,

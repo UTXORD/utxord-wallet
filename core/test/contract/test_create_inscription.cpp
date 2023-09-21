@@ -528,22 +528,29 @@ TEST_CASE("inscribe")
     w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
 }
 
-const string short_metadata = "{\"title\":\"sample inscription 1\"}";
-const string exact_520_metadata = "{\"name\":\"sample inscription 2\",\"description\":\"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}";
-const string long_metadata =
+struct InscribeWithMetadataCondition {
+    std::string metadata;
+    bool save_as_parent;
+    bool has_parent;
+};
+
+const InscribeWithMetadataCondition short_metadata = {R"({"name":"sample inscription 1"})", true, false};
+const InscribeWithMetadataCondition exact_520_metadata = {
+        R"({"description":"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description","name":"sample inscription 2"})",
+        false, true};
+const InscribeWithMetadataCondition long_metadata = {
         "{\"name\":\"sample inscription 3\","
         "\"description\":\"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
         "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
         "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
-        "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}";
+        "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}",
+        false, false};
 
 TEST_CASE("metadata") {
     ChannelKeys utxo_key;
     ChannelKeys script_key, inscribe_key;
 
     string addr = w->bech32().Encode(utxo_key.GetLocalPubKey());
-
-    xonly_pubkey destination_pk = w->bech32().Decode(w->btc().GetNewAddress());
 
     std::string fee_rate;
     try {
@@ -560,25 +567,37 @@ TEST_CASE("metadata") {
     const string svg = "<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 118.078 275)\">Svg</text><text fill=\"#FFFFFF\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">svg</text><text fill=\"#000000\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 259.589 275)\">svg</text></g></g></svg>";
     auto content = hex(svg);
 
-    const auto& metadata = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
+    const auto& condition = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
+
+    xonly_pubkey destination_pk = condition.save_as_parent ? inscribe_key.GetLocalPubKey() : w->bech32().Decode(w->btc().GetNewAddress());
 
     CreateInscriptionBuilder builder(INSCRIPTION, "0.00000546");
-    CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-    CHECK_NOTHROW(builder.Data(content_type, content));
-    CHECK_NOTHROW(builder.SetMetaData(metadata));
+    REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(builder.Data(content_type, content));
+    REQUIRE_NOTHROW(builder.SetMetaData(condition.metadata));
 
-    std::string min_fund = builder.GetMinFundingAmount("");
+    std::string min_fund = builder.GetMinFundingAmount(condition.has_parent ? "collection" : "");
     string funds_txid = w->btc().SendToAddress(addr, min_fund);
     auto prevout = w->btc().CheckOutput(funds_txid, addr);
 
-    CHECK_NOTHROW(builder.InscribePubKey(hex(destination_pk)));
-    CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, min_fund, hex(utxo_key.GetLocalPubKey())));
+    REQUIRE_NOTHROW(builder.InscribePubKey(hex(destination_pk)));
+    REQUIRE_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, min_fund, hex(utxo_key.GetLocalPubKey())));
 
-    CHECK_NOTHROW(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())));
-    CHECK_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
+    if (condition.has_parent) {
+        REQUIRE_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), hex(*collection_utxo.m_pubkey)));
+    }
+
+    REQUIRE_NOTHROW(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())));
+    REQUIRE_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
+    if (condition.has_parent) {
+        REQUIRE_NOTHROW(builder.SignCollection(hex(collection_sk)));
+    }
+
+    stringvector rawtxs0;
+    CHECK_NOTHROW(rawtxs0 = builder.RawTransactions());
 
     std::string contract = builder.Serialize();
-    std::clog << contract << std::endl;
+    std::clog << "Contract JSON: " << contract << std::endl;
 
     CreateInscriptionBuilder builder2(INSCRIPTION, "0.00000546");
     builder2.Deserialize(contract);
@@ -593,7 +612,7 @@ TEST_CASE("metadata") {
     Inscription inscr(rawtxs[1]);
     const auto& result_metadata = inscr.GetMetadata();
 
-    CHECK(result_metadata == metadata);
+    CHECK(result_metadata == condition.metadata);
 
     REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
     REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
@@ -603,9 +622,17 @@ TEST_CASE("metadata") {
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
+    if (condition.save_as_parent) {
+        collection_sk = inscribe_key.GetLocalPrivKey();
+        collection_id = revealTx.GetHash().GetHex() + "i0";
+        collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, inscribe_key.GetLocalPubKey()};
+    }
+
     std::clog << "Commit: ========================" << std::endl;
     LogTx(commitTx);
     std::clog << "Genesis: ========================" << std::endl;
     LogTx(revealTx);
     std::clog << "========================" << std::endl;
+
+    w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
 }

@@ -160,7 +160,10 @@ public:
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 
-    std::vector<std::string> RawTransactions() const;
+    std::vector<std::string> RawTransactions();
+
+    std::string RawTransaction(uint32_t n)
+    { return RawTransactions()[n]; }
 
     std::string Serialize() const;
     void Deserialize(const std::string& data);

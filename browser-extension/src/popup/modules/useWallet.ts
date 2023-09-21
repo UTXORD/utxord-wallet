@@ -41,7 +41,6 @@ async function getNetWork(){
         }, 'background')
         if (success) {
           store.setBalance(success?.data)
-          console.log(success?.data);
         }
       } catch(e){
         store.setBalance(0);
@@ -51,7 +50,8 @@ async function getNetWork(){
   }
 
   async function saveDataForSign(data: {}) {
-    store.setDataForSign(data || {})
+    store.setDataForSign(data || {});
+    store.setErrorMessage(data['errorMessage'] || null);
   }
 
   async function saveDataForExportKeyPair(data: {}) {
