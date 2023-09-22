@@ -94,6 +94,39 @@
 
     </div>
     <!-- Total -->
+    <div
+      class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+    >
+      <span><a href="javascript:void(0)" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>
+      <span class="w-full text-[var(--text-grey-color)]"
+        >Description:</span
+      >
+      <span class="mr-2 text-[var(--text-color)]" >...</span>
+    </div>
+    <!-- Secret phrase -->
+    <div
+      class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+    >
+      <div class="flex items-center mb-2">
+        <span class="w-full text-[var(--text-grey-color)]"
+          >Raw transcation:</span
+        >
+  <!--      <RefreshIcon @click="getJSON" class="cursor-pointer w-4 mr-2" /> -->
+        <CopyIcon
+          class="cursor-pointer"
+          @click="copyToClipboard(textarea, 'Constant was copied!')"
+        />
+      </div>
+      <CustomInput
+        type="textarea"
+        class="w-full"
+        rows="3"
+        v-model="textarea"
+        readonly
+      />
+    </div>
+
+    <!-- Inputs -->
   </SignWrapper>
 </template>
 
