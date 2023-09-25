@@ -95,7 +95,7 @@ seckey collection_sk;
 Transfer collection_utxo;
 
 
-TEST_CASE("single")
+TEST_CASE("inscribe")
 {
     ChannelKeys utxo_key;
     ChannelKeys script_key, inscribe_key;
@@ -148,99 +148,138 @@ TEST_CASE("single")
     string funds_txid = w->btc().SendToAddress(addr, condition.funds[0]);
     auto prevout = w->btc().CheckOutput(funds_txid, addr);
 
-    CreateInscriptionBuilder builder_terms(INSCRIPTION);
-    CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, hex(market_fee_pk)));
-
-    std::string market_terms;
-    REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(MARKET_TERMS));
-
-    CreateInscriptionBuilder builder(INSCRIPTION);
-    REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
-
-    CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
-    CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-    CHECK_NOTHROW(builder.Data(content_type, content));
-    CHECK_NOTHROW(builder.InscribePubKey(hex(condition.is_parent ? collection_key.GetLocalPubKey() : destination_pk)));
-    CHECK_NOTHROW(builder.ChangePubKey(hex(destination_pk)));
-    CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, condition.funds[0], hex(utxo_key.GetLocalPubKey())));
-    if (condition.has_parent) {
-        CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), hex(*collection_utxo.m_pubkey)));
-    }
-
-    CHECK_NOTHROW(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())));
-    CHECK_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
-    if (condition.has_parent) {
-        CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));
-    }
-
-//    try {
-//        builder.SignInscription(hex(script_key.GetLocalPrivKey()));
-//    }
-//    catch (const Error& e) {
-//        std::clog << e.what() << ": " << e.details() << std::endl;
-//    }
-
-    std::string contract;
-    REQUIRE_NOTHROW(contract = builder.Serialize(INSCRIPTION_SIGNATURE));
-    std::clog << contract << std::endl;
-
-    CreateInscriptionBuilder fin_contract(INSCRIPTION);
-    REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
 
     stringvector rawtxs;
-    REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
+    bool check_result = false;
 
-    CMutableTransaction commitTx, revealTx;
+    SECTION("Self inscribe") {
+        check_result = true;
 
-    REQUIRE(rawtxs.size() == 2);
-    REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
-    REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
+        CreateInscriptionBuilder builder_terms(INSCRIPTION);
+        CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, hex(market_fee_pk)));
 
-    std::clog << "Funding TX ============================================================" << '\n';
-    LogTx(commitTx);
-    std::clog << "Genesis TX ============================================================" << '\n';
-    LogTx(revealTx);
-    std::clog << "=======================================================================" << '\n';
+        std::string market_terms;
+        REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(MARKET_TERMS));
 
-    if (condition.has_change && condition.has_parent) {
-        CHECK(commitTx.vout.size() == 3);
-    } else if (condition.has_change || condition.has_parent) {
-        CHECK(commitTx.vout.size() == 2);
-    } else {
-        CHECK(commitTx.vout.size() == 1);
+        CreateInscriptionBuilder builder(INSCRIPTION);
+        REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
+
+        CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
+        CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+        CHECK_NOTHROW(builder.Data(content_type, content));
+        CHECK_NOTHROW(builder.InscribePubKey(hex(condition.is_parent ? collection_key.GetLocalPubKey() : destination_pk)));
+        CHECK_NOTHROW(builder.ChangePubKey(hex(destination_pk)));
+        CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, condition.funds[0], hex(utxo_key.GetLocalPubKey())));
+        if (condition.has_parent) {
+            CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount),
+                                                  hex(*collection_utxo.m_pubkey)));
+        }
+
+        CHECK_NOTHROW(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())));
+        CHECK_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
+        if (condition.has_parent) {
+            CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));
+        }
+
+        std::string contract;
+        REQUIRE_NOTHROW(contract = builder.Serialize(INSCRIPTION_SIGNATURE));
+        std::clog << contract << std::endl;
+
+        CreateInscriptionBuilder fin_contract(INSCRIPTION);
+        REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
+
+        REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
+    }
+    SECTION("lazy inscribe") {
+        if (condition.has_parent) {
+            check_result = true;
+
+            CreateInscriptionBuilder builder_terms(LASY_INSCRIPTION);
+            CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, hex(market_fee_pk)));
+            CHECK_NOTHROW(builder_terms.Data(content_type, content));
+            CHECK_NOTHROW(builder_terms.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount),
+                                                  hex(*collection_utxo.m_pubkey)));
+            std::string market_terms;
+            REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(LASY_COLLECTION_MARKET_TERMS));
+
+            CreateInscriptionBuilder builder(LASY_INSCRIPTION);
+            REQUIRE_NOTHROW(builder.Deserialize(market_terms, LASY_COLLECTION_MARKET_TERMS));
+
+            CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
+            CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+            CHECK_NOTHROW(builder.InscribePubKey(hex(condition.is_parent ? collection_key.GetLocalPubKey() : destination_pk)));
+            CHECK_NOTHROW(builder.ChangePubKey(hex(destination_pk)));
+            CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, condition.funds[0], hex(utxo_key.GetLocalPubKey())));
+
+            CHECK_NOTHROW(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())));
+            CHECK_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
+
+            std::string contract;
+            REQUIRE_NOTHROW(contract = builder.Serialize(LASY_COLLECTION_INSCRIPTION_SIGNATURE));
+            std::clog << contract << std::endl;
+
+            CreateInscriptionBuilder fin_contract(LASY_INSCRIPTION);
+            REQUIRE_NOTHROW(fin_contract.Deserialize(contract, LASY_COLLECTION_INSCRIPTION_SIGNATURE));
+
+            CHECK_NOTHROW(fin_contract.SignCollection(hex(collection_sk)));
+
+            REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
+        }
     }
 
-    if (condition.has_parent) {
-        CHECK(revealTx.vin.size() == 3);
-        CHECK(revealTx.vout[1].nValue == 546);
-    }
+    if (check_result) {
 
-    if (condition.has_parent && ParseAmount(condition.market_fee)) {
-        CHECK(revealTx.vout.size() == 3);
-    } else if (condition.has_parent || ParseAmount(condition.market_fee)) {
-        CHECK(revealTx.vout.size() == 2);
-    } else {
-        CHECK(revealTx.vout.size() == 1);
-    }
+        CMutableTransaction commitTx, revealTx;
 
-    CHECK(revealTx.vout[0].nValue == 546);
+        REQUIRE(rawtxs.size() == 2);
+        REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
+        REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
 
-    if (ParseAmount(condition.market_fee)) {
-        CHECK(revealTx.vout.back().nValue == ParseAmount(condition.market_fee));
-    }
+        std::clog << "Funding TX ============================================================" << '\n';
+        LogTx(commitTx);
+        std::clog << "Genesis TX ============================================================" << '\n';
+        LogTx(revealTx);
+        std::clog << "=======================================================================" << '\n';
 
-    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
-    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+        if (condition.has_change && condition.has_parent) {
+            CHECK(commitTx.vout.size() == 3);
+        } else if (condition.has_change || condition.has_parent) {
+            CHECK(commitTx.vout.size() == 2);
+        } else {
+            CHECK(commitTx.vout.size() == 1);
+        }
 
-    if (condition.is_parent) {
-        collection_id = revealTx.GetHash().GetHex() + "i0";
-        collection_sk = collection_key.GetLocalPrivKey();
-        collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, collection_key.GetLocalPubKey()};
-    }
-    else if (condition.has_parent) {
-        collection_utxo.m_txid = revealTx.GetHash().GetHex();
-        collection_utxo.m_nout = 1;
-        collection_utxo.m_amount = revealTx.vout[1].nValue;
+        if (condition.has_parent) {
+            CHECK(revealTx.vin.size() == 3);
+            CHECK(revealTx.vout[1].nValue == 546);
+        }
+
+        if (condition.has_parent && ParseAmount(condition.market_fee)) {
+            CHECK(revealTx.vout.size() == 3);
+        } else if (condition.has_parent || ParseAmount(condition.market_fee)) {
+            CHECK(revealTx.vout.size() == 2);
+        } else {
+            CHECK(revealTx.vout.size() == 1);
+        }
+
+        CHECK(revealTx.vout[0].nValue == 546);
+
+        if (ParseAmount(condition.market_fee)) {
+            CHECK(revealTx.vout.back().nValue == ParseAmount(condition.market_fee));
+        }
+
+        REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
+        REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+
+        if (condition.is_parent) {
+            collection_id = revealTx.GetHash().GetHex() + "i0";
+            collection_sk = collection_key.GetLocalPrivKey();
+            collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, collection_key.GetLocalPubKey()};
+        } else if (condition.has_parent) {
+            collection_utxo.m_txid = revealTx.GetHash().GetHex();
+            collection_utxo.m_nout = 1;
+            collection_utxo.m_amount = revealTx.vout[1].nValue;
+        }
     }
 }
 

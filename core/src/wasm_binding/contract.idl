@@ -60,12 +60,15 @@ interface Collection
 enum InscribeType
 {
     "INSCRIPTION",
+    "LASY_INSCRIPTION",
     "COLLECTION"
 };
 
 enum InscribePhase
 {
     "MARKET_TERMS",
+    "LASY_COLLECTION_MARKET_TERMS",
+    "LASY_COLLECTION_INSCRIPTION_SIGNATURE",
     "INSCRIPTION_SIGNATURE"
 };
 

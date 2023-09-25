@@ -23,8 +23,8 @@ public:
 };
 
 
-enum InscribeType { INSCRIPTION, COLLECTION };
-enum InscribePhase { MARKET_TERMS, INSCRIPTION_SIGNATURE };
+enum InscribeType { INSCRIPTION, LASY_INSCRIPTION, COLLECTION };
+enum InscribePhase { MARKET_TERMS, LASY_COLLECTION_MARKET_TERMS, LASY_COLLECTION_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 
 class CreateInscriptionBuilder: public ContractBuilder
 {
@@ -80,7 +80,7 @@ private:
     CAmount CalculateWholeFee(const std::string& params) const override;
 
     CMutableTransaction MakeCommitTx() const;
-    CMutableTransaction MakeGenesisTx(bool to_sign) const;
+    CMutableTransaction MakeGenesisTx(bool for_inscribe_signature) const;
 
     CMutableTransaction CreateGenesisTxTemplate() const;
 
