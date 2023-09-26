@@ -24,6 +24,7 @@ enum SwapPhase {
 class SwapInscriptionBuilder : public ContractBuilder
 {
     static const uint32_t m_protocol_version;
+    static const uint32_t m_protocol_version_old;
 
     std::optional<CAmount> m_ord_price;
 

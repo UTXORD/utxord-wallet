@@ -18,6 +18,7 @@
 #include "transaction.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
+#include "simple_transaction.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
 
@@ -145,8 +146,10 @@ namespace utxord {
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
+%include "contract_builder.hpp"
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
+%include "simple_transaction.hpp"
 %include "transaction.hpp"
 %include "transaction.h"
 %include "inscription.hpp"

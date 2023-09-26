@@ -52,6 +52,37 @@ interface Exception
 };
 
 [Prefix="utxord::"]
+interface IContractDestination
+{
+    [Value] string Amount();
+    [Value] string DestinationPK();
+};
+
+[Prefix="utxord::"]
+interface P2TR : IContractDestination
+{
+    void P2TR([Const] DOMString amount, [Const] DOMString pk);
+};
+
+[Prefix="utxord::"]
+interface IContractOutput
+{
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+};
+
+[Prefix="utxord::"]
+interface UTXO
+{
+    void UTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString pk);
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+};
+
+
+[Prefix="utxord::"]
 interface Collection
 {
     [Value] string GetCollectionTapRootPubKey([Const] DOMString collectionId, [Const] DOMString scriptSK, [Const] DOMString internalSK);
@@ -148,4 +179,27 @@ interface SwapInscriptionBuilder
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
+};
+
+
+[Prefix="utxord::"]
+interface SimpleTransaction
+{
+    void SimpleTransaction();
+
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+
+    void MiningFeeRate([Const] DOMString rate);
+    [Value] string GetMinFundingAmount();
+
+    void AddInput(IContractOutput prevout);
+    void AddOutput(IContractDestination out);
+    void AddChangeOutput([Const] DOMString pk);
+
+    void Sign([Const] MasterKey master);
+
+    [Const] DOMString Serialize();
+    void Deserialize([Const] DOMString data);
 };

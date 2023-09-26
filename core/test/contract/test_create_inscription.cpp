@@ -490,7 +490,8 @@ const InscribeWithMetadataCondition long_metadata = {
         "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}",
         false, false};
 
-TEST_CASE("metadata") {
+TEST_CASE("metadata")
+{
     ChannelKeys utxo_key;
     ChannelKeys script_key, inscribe_key;
 
