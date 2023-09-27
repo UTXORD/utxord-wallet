@@ -661,7 +661,7 @@ async genAllBranchKeys(type, deep = 0){
          if (!i?.is_inscription) {
            let br = await myself.getBranchKey(item.index, item);
            if(br?.address !== item?.address){
-             console.log("skip: getAllFunds->1|address:",br?.address,"|item.address:",item?.address);
+             console.log("skip: getAllFunds->1|address:", br?.address,"|item.address:", item?.address);
            }else{
              ret.push({
                ...i,
