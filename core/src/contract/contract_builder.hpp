@@ -13,6 +13,8 @@
 #include "univalue.h"
 #include "master_key.hpp"
 
+#include "address.hpp"
+
 namespace utxord {
 
 using namespace l15;
@@ -200,7 +202,7 @@ struct Transfer
     std::string m_txid;
     uint32_t m_nout;
     CAmount m_amount;
-    std::optional<xonly_pubkey> m_pubkey;
+    std::optional<string> m_addr;
     std::optional<signature> m_sig;
 };
 
@@ -211,15 +213,16 @@ public:
     static const std::string name_params;
     static const std::string name_version;
     static const std::string name_mining_fee_rate;
+    static const std::string name_market_fee;
+    static const std::string name_market_fee_addr;
 
     static const char* name_utxo;
     static const std::string name_txid;
     static const std::string name_nout;
     static const std::string name_amount;
     static const std::string name_pk;
+    static const std::string name_addr;
     static const std::string name_sig;
-
-    static const std::string name_market_fee;
 
 protected:
     static const CAmount TX_BASE_VSIZE = 10;
@@ -227,9 +230,11 @@ protected:
     static const CAmount TAPROOT_KEYSPEND_VIN_VSIZE = 58;
     static const CAmount MIN_TAPROOT_TX_VSIZE = TX_BASE_VSIZE + TAPROOT_VOUT_VSIZE + TAPROOT_KEYSPEND_VIN_VSIZE;
 
+    std::unique_ptr<IBech32> mBech;
+
     std::optional<CAmount> m_mining_fee_rate;
     std::optional<CAmount> m_market_fee;
-    std::optional<xonly_pubkey> m_market_fee_pk;
+    std::optional<std::string> m_market_fee_addr;
 
     virtual CAmount CalculateWholeFee(const std::string& params) const;
 
@@ -238,23 +243,30 @@ protected:
 
 public:
     ContractBuilder() = default;
-    ContractBuilder(const ContractBuilder&) = default;
+    //ContractBuilder(const ContractBuilder&);
     ContractBuilder(ContractBuilder&& ) noexcept = default;
+
+    ContractBuilder(IBech32::ChainMode chain_mode);
 
     virtual ~ContractBuilder() = default;
 
-    ContractBuilder& operator=(const ContractBuilder& ) = default;
+//    ContractBuilder& operator=(const ContractBuilder& ) = default;
     ContractBuilder& operator=(ContractBuilder&& ) noexcept = default;
 
-    void MarketFee(const std::string& amount, const std::string& pk)
+    IBech32& bech32() const
+    { return *mBech; }
+
+    void MarketFee(const std::string& amount, const std::string& addr)
     {
+        auto check_res = mBech->Decode(addr);
+
         CAmount market_fee = ParseAmount(amount);
         if (market_fee != 0 && market_fee < Dust(3000)) {
             throw ContractTermWrongValue(std::string(name_market_fee));
         }
 
         m_market_fee = market_fee;
-        m_market_fee_pk = unhex<xonly_pubkey>(pk);
+        m_market_fee_addr = addr;
     }
 
     void MiningFeeRate(const std::string& rate)
@@ -273,7 +285,8 @@ public:
 
     static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
     static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
-    static std::optional<Transfer> DeserializeContractTransfer(const UniValue& val, std::function<std::string()> lazy_name);
+    void DeserializeContractTaprootPubkey(const UniValue& val, std::optional<std::string> &addr, std::function<std::string()> lazy_name);
+    std::optional<Transfer> DeserializeContractTransfer(const UniValue& val, std::function<std::string()> lazy_name);
 
     template <typename HEX>
     static void DeserializeContractHexData(const UniValue& val, std::optional<HEX> &target, std::function<std::string()> lazy_name)

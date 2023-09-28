@@ -24,6 +24,7 @@ enum SwapPhase {
 class SwapInscriptionBuilder : public ContractBuilder
 {
     static const uint32_t m_protocol_version;
+    static const uint32_t m_protocol_version_pubkey;
     static const uint32_t m_protocol_version_old;
 
     std::optional<CAmount> m_ord_price;
@@ -37,7 +38,7 @@ class SwapInscriptionBuilder : public ContractBuilder
     std::optional<std::string> m_ord_txid;
     std::optional<uint32_t> m_ord_nout;
     std::optional<CAmount> m_ord_amount;
-    std::optional<xonly_pubkey> m_ord_pk;
+    std::optional<std::string> m_ord_addr;
 
     std::list<Transfer> m_funds;
 
@@ -116,11 +117,12 @@ public:
     static const std::string name_ordpayoff_sig;
 
     SwapInscriptionBuilder() = default;
+    explicit SwapInscriptionBuilder(IBech32::ChainMode chain_mode) : ContractBuilder(chain_mode) {}
 
-    SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
+    //SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
     SwapInscriptionBuilder(SwapInscriptionBuilder&&) noexcept = default;
 
-    SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
+    //SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
 
     uint32_t GetProtocolVersion() const override { return m_protocol_version; }
@@ -129,7 +131,7 @@ public:
     { m_ord_price = ParseAmount(price); }
 
     void OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount);
-    void AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& pk);
+    void AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
 
     void SwapScriptPubKeyA(const std::string& v) { m_swap_script_pk_A = unhex<xonly_pubkey>(v); }
     void SwapScriptPubKeyB(const std::string& v) { m_swap_script_pk_B = unhex<xonly_pubkey>(v); }

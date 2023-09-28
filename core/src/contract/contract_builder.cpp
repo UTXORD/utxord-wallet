@@ -181,13 +181,32 @@ const std::string ContractBuilder::name_contract_type = "contract_type";
 const std::string ContractBuilder::name_params = "params";
 const std::string ContractBuilder::name_version = "protocol_version";
 const std::string ContractBuilder::name_mining_fee_rate = "mining_fee_rate";
+const std::string ContractBuilder::name_market_fee = "market_fee";
+const std::string ContractBuilder::name_market_fee_addr = "market_fee_addr";
 const char* ContractBuilder::name_utxo = "utxo";
 const std::string ContractBuilder::name_txid = "txid";
 const std::string ContractBuilder::name_nout = "nout";
 const std::string ContractBuilder::name_amount = "amount";
 const std::string ContractBuilder::name_pk = "pubkey";
+const std::string ContractBuilder::name_addr = "addr";
 const std::string ContractBuilder::name_sig = "sig";
-const std::string ContractBuilder::name_market_fee = "market_fee";
+
+ContractBuilder::ContractBuilder(IBech32::ChainMode chain_mode) {
+    switch (chain_mode) {
+    case IBech32::REGTEST:
+        mBech.reset(new Bech32<IBech32::REGTEST>());
+        break;
+    case IBech32::TESTNET:
+        mBech.reset(new Bech32<IBech32::TESTNET>());
+        break;
+    case IBech32::MAINNET:
+        mBech.reset(new Bech32<IBech32::MAINNET>());
+        break;
+    default:
+        throw std::runtime_error("Wrong chain mode: " + std::to_string(chain_mode));
+    }
+}
+
 
 CAmount ContractBuilder::CalculateWholeFee(const std::string& params) const {
     auto txs = GetTransactions();
@@ -317,7 +336,7 @@ std::optional<Transfer> ContractBuilder::DeserializeContractTransfer(const UniVa
 
         Transfer res = {val[name_txid].get_str(), val[name_nout].getInt<uint32_t>(), *amount};
 
-        DeserializeContractHexData(val_pk, res.m_pubkey, [&]() { return (lazy_name() += '.') += name_pk; });
+        DeserializeContractTaprootPubkey(val_pk, res.m_addr, [&]() { return (lazy_name() += '.') += name_pk; });
         DeserializeContractHexData(val_sig, res.m_sig, [&]() { return (lazy_name() += '.') += name_sig; });
 
         return res;
@@ -342,5 +361,24 @@ std::shared_ptr<IContractDestination> ContractBuilder::ReadContractDestination(c
         else throw ContractTermWrongValue("destination: " + type.getValStr());
     }
 }
+
+void ContractBuilder::DeserializeContractTaprootPubkey(const UniValue &val, std::optional<std::string> &addr, std::function<std::string()> lazy_name) {
+    if (!val.isNull()) {
+        std::string str;
+        try {
+            str = mBech->Encode(unhex<xonly_pubkey>(val.get_str()));
+        }
+        catch (...) {
+            std::throw_with_nested(ContractTermWrongValue(lazy_name()));
+        }
+
+        if (addr) {
+            if (*addr != str) throw ContractTermMismatch(move((lazy_name() += " is already set: ") += *addr));
+        } else {
+            addr = move(str);
+        }
+    }
+}
+
 
 } // utxord

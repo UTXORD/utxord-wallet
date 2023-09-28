@@ -61,8 +61,8 @@ class CreateInscriptionBuilder: public ContractBuilder
     std::optional<seckey> m_inscribe_int_sk; //taproot
     std::optional<xonly_pubkey> m_inscribe_int_pk; //taproot
 
-    std::optional<xonly_pubkey> m_destination_pk;
-    std::optional<xonly_pubkey> m_change_pk;
+    std::optional<std::string> m_destination_addr;
+    std::optional<std::string> m_change_addr;
 
     mutable std::optional<CScript> mInscriptionScript;
     mutable std::optional<CMutableTransaction> mCommitTx;
@@ -101,7 +101,6 @@ public:
     static const std::string name_inscribe_int_pk;
     static const std::string name_inscribe_sig;
     static const std::string name_destination_pk;
-    static const std::string name_market_fee_pk;
     static const std::string name_change_pk;
 //    static const std::string name_parent_collection_script_pk;
 //    static const std::string name_parent_collection_int_pk;
@@ -115,7 +114,7 @@ public:
     CreateInscriptionBuilder(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder(CreateInscriptionBuilder&&) noexcept = default;
 
-    explicit CreateInscriptionBuilder(InscribeType type) : m_type(type) {}
+    explicit CreateInscriptionBuilder(IBech32::ChainMode chain_mode, InscribeType type) : ContractBuilder(chain_mode), m_type(type) {}
 
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
@@ -124,29 +123,35 @@ public:
 
     const std::string& GetContentType() const { return *m_content_type; }
     std::string GetContent() const { return l15::hex(m_content.value()); }
-    std::string GetDestinationPubKey() const { return l15::hex(m_destination_pk.value()); }
+    std::string GetInscribeAddress() const { return *m_destination_addr; }
 
     std::string GetIntermediateSecKey() const { return l15::hex(m_inscribe_taproot_sk.value()); }
 
     void OrdAmount(const std::string& amount)
     { m_ord_amount = ParseAmount(amount); }
 
-    void AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
+    void AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& addr);
     void Data(const std::string& content_type, const std::string& hex_data);
 
     void MetaData(const std::string& metadata);
 
-    void InscribePubKey(const std::string& pk)
-    { m_destination_pk = unhex<xonly_pubkey>(pk); }
+    void InscribeAddress(const std::string& addr)
+    {
+        mBech->Decode(addr);
+        m_destination_addr = addr;
+    }
 
-    void ChangePubKey(const std::string& pk)
-    { m_change_pk = unhex<xonly_pubkey>(pk); }
+    void ChangeAddress(const std::string& addr)
+    {
+        mBech->Decode(addr);
+        m_change_addr = addr;
+    }
 
     //void CollectionCommitPubKeys(const std::string& script_pk, const std::string& int_pk);
     void AddToCollection(const std::string& collection_id,
                                               const std::string& utxo_txid, uint32_t utxo_nout, const std::string& utxo_amount,
-                                              const std::string& collection_pk);
-    void FundMiningFee(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
+                                              const std::string& collection_addr);
+    void FundMiningFee(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& addr);
 
     std::string MakeInscriptionId() const;
 

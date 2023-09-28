@@ -28,6 +28,7 @@ const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 
 std::unique_ptr<TestcaseWrapper> w;
+IBech32::ChainMode chain_mode;
 
 
 int main(int argc, char* argv[])
@@ -65,6 +66,16 @@ int main(int argc, char* argv[])
 
     w = std::make_unique<TestcaseWrapper>(configpath, "bitcoin-cli");
 
+    if (w->mMode == "regtest") {
+        chain_mode =  IBech32::REGTEST;
+    }
+    else if (w->mMode == "testnet") {
+        chain_mode = IBech32::TESTNET;
+    }
+    else if (w->mMode == "mainnet") {
+        chain_mode = IBech32::MAINNET;
+    }
+
     return session.run();
 }
 
@@ -100,16 +111,16 @@ TEST_CASE("Swap")
     // ORD side terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket;
+    SwapInscriptionBuilder builderMarket(chain_mode);
     //CHECK_NOTHROW(builderMarket.OrdPrice(ORD_PRICE));
-    CHECK_NOTHROW(builderMarket.MarketFee(MARKET_FEE, hex(swap_script_key_M.GetLocalPubKey())));
+    CHECK_NOTHROW(builderMarket.MarketFee(MARKET_FEE, builderMarket.bech32().Encode(swap_script_key_M.GetLocalPubKey())));
     CHECK_NOTHROW(builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2)));
     CHECK_NOTHROW(builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey())));
 
     string marketOrdConditions;
     REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(ORD_TERMS));
 
-    SwapInscriptionBuilder builderOrdSeller;
+    SwapInscriptionBuilder builderOrdSeller(chain_mode);
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions));
     CHECK_NOTHROW(builderOrdSeller.CheckContractTerms(ORD_TERMS));
 
@@ -136,7 +147,7 @@ TEST_CASE("Swap")
     string marketFundsConditions;
     REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS));
 
-    SwapInscriptionBuilder builderOrdBuyer;
+    SwapInscriptionBuilder builderOrdBuyer(chain_mode);
     REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
 
     CAmount min_funding = ParseAmount(builderOrdBuyer.GetMinFundingAmount(""));
@@ -173,7 +184,7 @@ TEST_CASE("Swap")
         string funds_txid = w->btc().SendToAddress(funds_addr, funds_amount);
         auto funds_prevout = w->btc().CheckOutput(funds_txid, funds_addr);
 
-        builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, hex(funds_utxo_key.GetLocalPubKey()));
+        builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr);
         spent_outs.emplace_back(ParseAmount(funds_amount), CScript() << 1 << funds_utxo_key.GetLocalPubKey());
     }
 
@@ -202,7 +213,7 @@ TEST_CASE("Swap")
     // MARKET confirm terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket1;
+    SwapInscriptionBuilder builderMarket1(chain_mode);
     REQUIRE_NOTHROW(builderMarket1.Deserialize(ordSellerTerms));
     REQUIRE_NOTHROW(builderMarket1.CheckContractTerms(ORD_SWAP_SIG));
 
@@ -355,16 +366,16 @@ TEST_CASE("SwapNoFee")
     // ORD side terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket;
+    SwapInscriptionBuilder builderMarket(chain_mode);
     builderMarket.OrdPrice(ORD_AMOUNT);
-    builderMarket.MarketFee(MARKET_FEE, hex(xonly_pubkey()));
+    builderMarket.MarketFee(MARKET_FEE, builderMarket.bech32().Encode(xonly_pubkey()));
     builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2));
     builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey()));
 
     string marketOrdConditions;
     REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(ORD_TERMS));
 
-    SwapInscriptionBuilder builderOrdSeller;
+    SwapInscriptionBuilder builderOrdSeller(chain_mode);
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions));
 
     REQUIRE_NOTHROW(builderOrdSeller.CheckContractTerms(ORD_TERMS));
@@ -389,7 +400,7 @@ TEST_CASE("SwapNoFee")
     string marketFundsConditions;
     REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS));
 
-    SwapInscriptionBuilder builderOrdBuyer;
+    SwapInscriptionBuilder builderOrdBuyer(chain_mode);
     REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
 
     CAmount min_funding = ParseAmount(builderOrdBuyer.GetMinFundingAmount(""));
@@ -407,7 +418,7 @@ TEST_CASE("SwapNoFee")
     string funds_txid = w->btc().SendToAddress(funds_addr, funds_amount);
     auto funds_prevout = w->btc().CheckOutput(funds_txid, funds_addr);
 
-    builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, hex(funds_utxo_key.GetLocalPubKey()));
+    builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr);
     spent_outs.emplace_back(ParseAmount(funds_amount), CScript() << 1 << funds_utxo_key.GetLocalPubKey());
     REQUIRE_NOTHROW(builderOrdBuyer.SignFundsCommitment(0, hex(funds_utxo_key.GetLocalPrivKey())));
 
@@ -504,14 +515,14 @@ TEST_CASE("FundsNotEnough")
     // ORD side terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket;
-    builderMarket.MarketFee(MARKET_FEE, hex(swap_script_key_M.GetLocalPubKey()));
+    SwapInscriptionBuilder builderMarket(chain_mode);
+    builderMarket.MarketFee(MARKET_FEE, builderMarket.bech32().Encode(swap_script_key_M.GetLocalPubKey()));
     builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2));
     builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey()));
 
     string marketOrdConditions = builderMarket.Serialize(ORD_TERMS);
 
-    SwapInscriptionBuilder builderOrdSeller;
+    SwapInscriptionBuilder builderOrdSeller(chain_mode);
     builderOrdSeller.Deserialize(marketOrdConditions);
     builderOrdSeller.CheckContractTerms(ORD_TERMS);
 
@@ -537,7 +548,7 @@ TEST_CASE("FundsNotEnough")
     builderMarket.MiningFeeRate(fee_rate);
     string marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS);
 
-    SwapInscriptionBuilder builderOrdBuyer;
+    SwapInscriptionBuilder builderOrdBuyer(chain_mode);
     builderOrdBuyer.Deserialize(marketFundsConditions);
 
     //Create insufficient funds utxo
@@ -548,7 +559,7 @@ TEST_CASE("FundsNotEnough")
     auto funds_prevout = w->btc().CheckOutput(funds_txid, funds_addr);
 
     builderOrdBuyer.SwapScriptPubKeyB(hex(swap_script_key_B.GetLocalPubKey()));
-    builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, hex(funds_utxo_key.GetLocalPubKey()));
+    builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr);
     REQUIRE_THROWS_AS(builderOrdBuyer.SignFundsCommitment(0, hex(funds_utxo_key.GetLocalPrivKey())), l15::TransactionError);
 
     //Create funds utxo
