@@ -621,9 +621,9 @@ async genAllBranchKeys(type, deep = 0){
     }
     const ret = [];
     for(const item of my){
-      for (const bal of list){
-        for(const i of bal?.utxo_set){
-          if(i?.is_inscription && Number(i?.nout) === Number(item?.owner_nout) && i?.txid == item?.owner_txid){
+      for (const bal of list) {
+        for (const i of bal?.utxo_set || []) {
+          if (i?.is_inscription && Number(i?.nout) === Number(item?.owner_nout) && i?.txid == item?.owner_txid) {
             let br = await myself.getBranchKey(bal.index, bal);
             if(br?.address !== bal?.address){
               console.log("getInscriptions->1|address:",br?.address,"|bal.address:",bal?.address);
@@ -656,9 +656,9 @@ async genAllBranchKeys(type, deep = 0){
    }
    const ret = [];
    if(list?.length){
-     for(const item of list){
-       for(const i of item?.utxo_set){
-         if(!i?.is_inscription){
+     for (const item of list) {
+       for (const i of item?.utxo_set || []) {
+         if (!i?.is_inscription) {
            let br = await myself.getBranchKey(item.index, item);
            if(br?.address !== item?.address){
              console.log("skip: getAllFunds->1|address:",br?.address,"|item.address:",item?.address);
