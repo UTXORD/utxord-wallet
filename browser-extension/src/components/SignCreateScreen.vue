@@ -97,15 +97,16 @@
     <div
       class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
     >
-      <span><a href="javascript:void(0)" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>
+      <span><a @click="whatSigning" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>
       <span class="w-full text-[var(--text-grey-color)]"
         >Description:</span
       >
       <span class="mr-2 text-[var(--text-color)]" >...</span>
     </div>
-    <!-- Secret phrase -->
+    <!-- What am I signing -->
     <div
       class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+      v-if="showContract"
     >
       <div class="flex items-center mb-2">
         <span class="w-full text-[var(--text-grey-color)]"
@@ -140,14 +141,28 @@ import CopyIcon from '~/components/Icons/CopyIcon.vue'
 const store = useStore()
 const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 
+const textarea = ref('')
+
 const toAddress = computed(() => {
   return ordAddress.value || fundAddress.value
 })
 
+const showContract = ref('')
 const isInsufficientBalance = computed(() => {
   if (Number(dataForSign.value.data?.costs?.amount) > Number(balance.value?.confirmed)) return true
   return false
 })
+
+async function whatSigning(){
+if(showContract.value){
+showContract.value = false;
+textarea.value = '';
+  return;
+}
+showContract.value = true;
+console.log(dataForSign.value)
+textarea.value = JSON.stringify(dataForSign.value?.data?.costs?.raw)
+}
 
 </script>
 

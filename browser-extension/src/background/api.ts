@@ -661,11 +661,11 @@ async genAllBranchKeys(type, deep = 0){
          if(!i?.is_inscription){
            let br = await myself.getBranchKey(item.index, item);
            if(br?.address !== item?.address){
-             console.log("skip: getAllFunds->1|address:",br.address,"|item.address:",item.address);
+             console.log("skip: getAllFunds->1|address:",br?.address,"|item.address:",item?.address);
            }else{
              ret.push({
                ...i,
-               address: item.address,
+               address: item?.address,
                path: item.index,
                key: br.key,
              });
@@ -698,7 +698,7 @@ async selectKeyByFundAddress(address, fundings){
     }
     if(list){
       for(const item of list){
-        if(address === item.address){
+        if(address === item?.address){
           return item.key;
         }
       }
@@ -713,7 +713,7 @@ async selectKeyByFundAddress(address, fundings){
     }
     if(list){
       for(const item of list){
-        if(address === item.address){
+        if(address === item?.address){
           return item.key;
         }
       }
@@ -728,7 +728,7 @@ async selectKeyByFundAddress(address, fundings){
     }
     if(list){
       for(const item of list){
-        if(address === item.address){
+        if(address === item?.address){
           return item;
         }
       }
@@ -742,7 +742,7 @@ async selectKeyByFundAddress(address, fundings){
       list = inscriptions
     }
     for(const item of list){
-      if(address === item.address){
+      if(address === item?.address){
         return item;
       }
     }
@@ -1769,6 +1769,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     extra_amount: 0,
     fee_rate: payload.fee,
     size: (payload.content.length+payload.content_type.length),
+    raw: [],
     errorMessage: null as string | null
   };
   try {
@@ -1795,6 +1796,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       myself.utxord.INSCRIPTION,
       (myself.satToBtc(payload.expect_amount)).toFixed(8)
     );
+    console.log('newOrd:',newOrd);
     if(payload.metadata) {
       await newOrd.SetMetaData(JSON.stringify(payload.metadata));
     }
@@ -1807,6 +1809,8 @@ async createInscriptionContract(payload, theIndex = 0) {
           `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
         );
         setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        outData.raw.push(newOrd.RawTransaction(0).c_str())
+        outData.raw.push(newOrd.RawTransaction(1).c_str())
         return outData;
      }
 
@@ -1839,6 +1843,8 @@ async createInscriptionContract(payload, theIndex = 0) {
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
             "wait for several conformations or wait update on the server.";
+            outData.raw.push(newOrd.RawTransaction(0).c_str())
+            outData.raw.push(newOrd.RawTransaction(1).c_str())
         return outData;
      }
     const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
@@ -1856,6 +1862,8 @@ async createInscriptionContract(payload, theIndex = 0) {
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.errorMessage = "There are no funds to create of the Inscription, please replenish the amount: "+
           `${min_fund_amount} sat`
+          outData.raw.push(newOrd.RawTransaction(0).c_str())
+          outData.raw.push(newOrd.RawTransaction(1).c_str())
         return outData;
     }
 
@@ -1914,6 +1922,8 @@ async createInscriptionContract(payload, theIndex = 0) {
 
 
       outData.data = newOrd.Serialize().c_str();
+      outData.raw.push(newOrd.RawTransaction(0).c_str())
+      outData.raw.push(newOrd.RawTransaction(1).c_str())
       outData.sk = newOrd.getIntermediateTaprootSK().c_str();
       myself.destroy(destination_keypair);
       myself.destroy(change_keypair);
