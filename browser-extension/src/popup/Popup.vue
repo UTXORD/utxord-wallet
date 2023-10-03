@@ -17,7 +17,9 @@ import {
   CHECK_AUTH,
   EXCEPTION,
   SAVE_DATA_FOR_SIGN,
-  SAVE_DATA_FOR_EXPORT_KEY_PAIR
+  SAVE_DATA_FOR_EXPORT_KEY_PAIR,
+  POPUP_HEARTBEAT,
+  DO_REFRESH_BALANCE
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 import { showError } from '~/helpers'
@@ -55,19 +57,15 @@ async function checkAuth(): Promise<boolean> {
     showError(EXCEPTION, error.message)
     console.log(error)
   }
+  return false;
 }
 
 async function updateBalance() {
-  const address = await getFundAddress()
-  await getOrdAddress()
-  getBalance(address)
   setInterval(async () => {
-    store.setRefreshingBalance()
-    setTimeout(() => {
-      getBalance(address)
-      store.unsetRefreshingBalance()
+    setTimeout(async () => {
+      await sendMessage(POPUP_HEARTBEAT, {}, 'background')
     }, 1000)
-  }, 5000)
+  }, 1000)
 }
 
 async function init() {
@@ -85,22 +83,39 @@ async function init() {
   }
 }
 
+onMessage(DO_REFRESH_BALANCE, async (payload: any) => {
+  const address = await getFundAddress()
+  await getOrdAddress()
+  await getBalance(address)
+  store.setRefreshingBalance()
+  setTimeout(async () => {
+    await getBalance(address)
+    store.unsetRefreshingBalance()
+  }, 1000)
+  return true
+})
+
 onMessage(EXCEPTION, (payload: any) => {
   showError(EXCEPTION, payload?.data)
   return true
 })
 
 onMessage(SAVE_DATA_FOR_SIGN, (payload) => {
-  saveDataForSign(payload.data)
+  saveDataForSign(payload.data || {})
   return true
 })
 
 onMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, (payload) => {
-  saveDataForExportKeyPair(payload.data)
+  saveDataForExportKeyPair(payload.data || {})
   return true
 })
 
 onBeforeMount(() => {
+  console.log('===== onBeforeMount');
   init()
+})
+
+onBeforeUnmount(() => {
+  console.log('===== onBeforeUnmount');
 })
 </script>

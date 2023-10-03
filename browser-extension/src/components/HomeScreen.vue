@@ -144,7 +144,7 @@ import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
-import { NEW_FUND_ADDRESS } from '~/config/events'
+import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 
 const store = useStore()
@@ -153,6 +153,7 @@ const { balance, fundAddress } = toRefs(store)
 const { getBalance } = useWallet()
 
 async function newFundAddress() {
+  await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   const response = await sendMessage(NEW_FUND_ADDRESS, {}, 'background')
   const addr = response?.addresses?.find(
     (item) => item.type === 'fund'

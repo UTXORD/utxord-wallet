@@ -1,5 +1,7 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
+import {sendMessage} from "webext-bridge";
+import {ADDRESS_COPIED} from "~/config/events";
 
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
@@ -47,6 +49,7 @@ export function copyToClipboard(text: string, message?: string) {
     document.execCommand('copy');
     document.body.removeChild(tempInput);
 
+    sendMessage(ADDRESS_COPIED, {}, 'background')
     showSuccess('Success', message || 'Address was copied!');
     return text;
   }

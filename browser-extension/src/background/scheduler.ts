@@ -21,59 +21,169 @@ class ScheduleItem {
 
 type Schedule = Record <ScheduleState, ScheduleItem>;
 
+
+export class Watchdog {
+    public static readonly names = {
+        POPUP_WATCHDOG: "POPUP_WATCHDOG"
+    }
+    private static readonly DEFAULT_TIMEOUT: number = 10;
+    private static readonly DEFAULT_CHECK_INTERVAL: number = 10 * mSec;
+    private _timeout: number = Watchdog.DEFAULT_TIMEOUT;
+    private _action: (() => void) | null = null;
+    
+    private static _instances: Record<string, Watchdog> = {};
+    private readonly _name: string;
+    private _checkInterval: ReturnType<typeof setInterval> | null = null;
+
+    private constructor(name: string) {
+        this._name = name;
+        this._action = null;
+        this._timeout = Watchdog.DEFAULT_TIMEOUT;
+        this._checkInterval = null;
+    }
+
+    public get name() {
+        return this._name;
+    }
+
+    public static getNamedInstance(name: string): Watchdog {
+        if (!Watchdog._instances[name]) {
+            Watchdog._log("create instance");
+            Watchdog._instances[name] = new Watchdog(name);
+        }
+        Watchdog._log("return instance");
+        return Watchdog._instances[name];
+    }
+
+    public set actionOnTimeout(action: (() => void) | null) {
+        Watchdog._log("set on-timeout action");
+        this._action = action;
+    }
+
+    public set timeout(timeout: number) {
+        Watchdog._log("set timeout");
+        this._timeout = timeout;
+    }
+
+    private doAction() {
+        Watchdog._log("do timeout action in case it has been set");
+        if (this._action != null) {
+            Watchdog._log("do action");
+            this._action();
+        }
+    }
+
+    public reset() {
+        Watchdog._log("reset timeout");
+        this._timeout = Watchdog.DEFAULT_TIMEOUT;
+    }
+
+    private _check() {
+        this._timeout = Math.max(0, this._timeout-1);
+        Watchdog._log(`check timeout: ${this._timeout}`);
+        if (0 == this._timeout) {
+            this.doAction();
+        }
+    }
+
+    public run() {
+        Watchdog._log("run");
+        this._checkInterval = setInterval(() => {
+          this._check();
+        }, Watchdog.DEFAULT_CHECK_INTERVAL);
+    }
+
+    public stop() {
+        Watchdog._log("stop");
+        if (this._checkInterval) {
+            clearInterval(this._checkInterval);
+            this._checkInterval = null;
+        }
+    }
+
+    private static _log(msg: string) {
+        console.debug(`===== Watchdog: ${msg}`);
+    }
+}
+
 export class Scheduler {
-    private readonly _schedule: Schedule;
-    private _isActive: boolean;
-    private readonly _action: () => void;
+    private static _instance: Scheduler;
+
+    private _schedule: Schedule | null = null;
+    private _isActive: boolean = false;
+    private _action: (() => void) | null = null;
 
     private _latencyTimeout: ReturnType<typeof setTimeout> | null = null;
     private _actionInterval: ReturnType<typeof setInterval> | null = null;
     private _durationTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    constructor(readonly schedule: Schedule, action: () => void) {
-        this._schedule = schedule;
+    private constructor() {
         this._isActive = false;
-        this._action = action;
     }
 
+    public static getInstance(): Scheduler {
+        if (!Scheduler._instance) {
+            Scheduler._log("create instance");
+            Scheduler._instance = new Scheduler();
+        }
+        Scheduler._log("return instance");
+        return Scheduler._instance;
+    }
+
+    public set schedule(schedule: Schedule) {
+        Scheduler._log("set schedule");
+        this._schedule = schedule;
+    }
+    
+    public set action(action: () => void) {
+        Scheduler._log("set action");
+        this._action = action;
+    }
+    
     activate() {
+        Scheduler._log("activate");
         this._isActive = true;
     }
 
     deactivate() {
+        Scheduler._log("deactivate");
         this._isActive = false;
     }
 
-    _runAction() {
+    private doAction() {
+        Scheduler._log("do scheduled action in case it has been set");
         if (this._isActive && this._action != null) {
+            Scheduler._log("do action");
             this._action();
         }
     }
 
-    _runActionInterval(interval: number) {
-        // this._runAction();
+    private runActionInterval(interval: number) {
+        Scheduler._log("run action interval");
+        this.doAction();
         if (0 < interval) {
-            this._actionInterval = setInterval(() => { this._runAction(); }, interval * mSec);
+            this._actionInterval = setInterval(() => { this.doAction(); }, interval * mSec);
         }
     }
 
-    _startScheduleItem(item: ScheduleItem) {
+    private startScheduleItem(item: ScheduleItem) {
+        Scheduler._log(`startScheduleItem: ${item}`);
         if (0 < item.latency) {
             this._latencyTimeout = setTimeout(() => {
-                this._runActionInterval(item.interval);
+                this.runActionInterval(item.interval);
             }, item.latency * mSec);
         } else {
-            this._runActionInterval(item.interval);
+            this.runActionInterval(item.interval);
         }
-
         if (0 < item.duration) {
             this._durationTimeout = setTimeout(() => {
                 this.changeStateTo(ScheduleState.Default);
-            }, item.duration * mSec);
+            }, (item.latency + item.duration) * mSec);
         }
     }
 
-    _stopRunningScheduleItem() {
+    private stopRunningScheduleItem() {
+        Scheduler._log("stopRunningScheduleItem");
         if (this._latencyTimeout != null) {
             clearTimeout(this._latencyTimeout);
             this._latencyTimeout = null;
@@ -88,9 +198,16 @@ export class Scheduler {
         }
     }
 
-    changeStateTo(state: ScheduleState) {
-        this._stopRunningScheduleItem();
-        this._startScheduleItem(this._schedule[state])
+    public changeStateTo(state: ScheduleState) {
+        Scheduler._log(`changeStateTo: ${state}`);
+        this.stopRunningScheduleItem();
+        if (this._schedule && this._schedule[state]) {
+            this.startScheduleItem(this._schedule[state])
+        }
+    }
+
+    private static _log(msg: string) {
+        console.debug(`===== Scheduler: ${msg}`);
     }
 }
 
@@ -106,5 +223,20 @@ export const defaultSchedule: Schedule  = {
     [ScheduleState.BalanceChangePresumed]: new ScheduleItem(
         30,  // interval = 30 seconds
         1200,  // duration = 20 minutes
+    )
+};
+
+export const debugSchedule: Schedule  = {
+    [ScheduleState.Default] : new ScheduleItem(
+        60,  // interval = 10 minutes
+    ),
+    [ScheduleState.AddressCopied]: new ScheduleItem(
+        3,  // interval = 30 seconds
+        120,  // duration = 20 minutes
+        12,  // first run latency = 2 minutes
+    ),
+    [ScheduleState.BalanceChangePresumed]: new ScheduleItem(
+        3,  // interval = 30 seconds
+        120,  // duration = 20 minutes
     )
 };

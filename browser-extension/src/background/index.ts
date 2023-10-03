@@ -1,4 +1,44 @@
-import { NETWORK, MAINNET, TESTNET, REGTEST } from '~/config/index';
+import {MAINNET, NETWORK, TESTNET} from '~/config/index';
+import {onMessage, sendMessage} from 'webext-bridge'
+import '~/background/api'
+import WinManager from '~/background/winManager';
+import {
+  ADDRESS_COPIED,
+  ADDRESSES_TO_SAVE,
+  AUTH_STATUS,
+  BALANCE_CHANGE_PRESUMED,
+  CHECK_AUTH,
+  CHECK_PASSWORD,
+  COMMIT_BUY_INSCRIPTION,
+  CONNECT_TO_PLUGIN,
+  CREATE_INSCRIPTION,
+  DO_REFRESH_BALANCE,
+  EXCEPTION,
+  EXPORT_INSCRIPTION_KEY_PAIR,
+  GENERATE_MNEMONIC,
+  GET_ADDRESSES,
+  GET_ALL_ADDRESSES,
+  GET_BALANCE,
+  GET_BALANCES,
+  GET_NETWORK,
+  NEW_FUND_ADDRESS,
+  OPEN_EXPORT_KEY_PAIR_SCREEN,
+  OPEN_START_PAGE,
+  PLUGIN_ID,
+  PLUGIN_PUBLIC_KEY,
+  POPUP_HEARTBEAT,
+  SAVE_DATA_FOR_EXPORT_KEY_PAIR,
+  SAVE_DATA_FOR_SIGN,
+  SAVE_GENERATED_SEED,
+  SELL_INSCRIPTION,
+  SEND_BALANCES,
+  SUBMIT_SIGN,
+  UNLOAD,
+  UNLOAD_SEED,
+  UPDATE_PASSWORD
+} from '~/config/events';
+import {debugSchedule, defaultSchedule, Scheduler, ScheduleState, Watchdog} from "~/background/scheduler";
+
 if (NETWORK === MAINNET){
   if(self){
     self['console']['log'] =
@@ -8,43 +48,16 @@ if (NETWORK === MAINNET){
   }
 }
 
-import { onMessage, sendMessage } from 'webext-bridge'
-import '~/background/api'
-import WinManager from '~/background/winManager';
-import {
-    EXCEPTION,
-    SAVE_GENERATED_SEED,
-    CHECK_AUTH,
-    UNLOAD_SEED,
-    CONNECT_TO_PLUGIN,
-    CREATE_INSCRIPTION,
-    SELL_INSCRIPTION,
-    COMMIT_BUY_INSCRIPTION,
-    NEW_FUND_ADDRESS,
-    GET_BALANCE,
-    GET_BALANCES,
-    GET_ADDRESSES,
-    GET_ALL_ADDRESSES,
-    SAVE_DATA_FOR_SIGN,
-    SAVE_DATA_FOR_EXPORT_KEY_PAIR,
-    OPEN_EXPORT_KEY_PAIR_SCREEN,
-    SUBMIT_SIGN,
-    PLUGIN_ID,
-    PLUGIN_PUBLIC_KEY,
-    AUTH_STATUS,
-    ADDRESSES_TO_SAVE,
-    UNLOAD,
-    GENERATE_MNEMONIC,
-    UPDATE_PASSWORD,
-    CHECK_PASSWORD,
-    SEND_BALANCES,
-    GET_NETWORK,
-    OPEN_START_PAGE,
-    EXPORT_INSCRIPTION_KEY_PAIR
-} from '~/config/events';
-
 (async () => {
- try{
+
+  async function setupBalanceRefreshing(destination: string) {
+      await sendMessage(DO_REFRESH_BALANCE, {}, destination);
+      Scheduler.getInstance().action = async () => {
+          await sendMessage(DO_REFRESH_BALANCE, {}, destination);
+      }
+  }
+
+  try{
     const Api = await new self.Api(NETWORK);
     if(NETWORK === TESTNET){
       self.api = Api; // for debuging in devtols
@@ -170,6 +183,22 @@ import {
       }
     });
 
+    onMessage(POPUP_HEARTBEAT, async (payload) => {
+      Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG).reset();
+      Scheduler.getInstance().activate();
+      return true;
+    });
+
+    onMessage(BALANCE_CHANGE_PRESUMED, async (payload) => {
+      Scheduler.getInstance().changeStateTo(ScheduleState.BalanceChangePresumed);
+      return true;
+    });
+
+    onMessage(ADDRESS_COPIED, async (payload) => {
+      Scheduler.getInstance().changeStateTo(ScheduleState.AddressCopied);
+      return true;
+    });
+
     chrome.runtime.onConnect.addListener(port => {
       port.onDisconnect.addListener(() => {})
     })
@@ -250,6 +279,7 @@ import {
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
+            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -257,6 +287,7 @@ import {
       if (payload.type === SELL_INSCRIPTION) {
         winManager.openWindow('sign-sell', async (id) => {
           setTimeout(async  () => {
+            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -269,6 +300,7 @@ import {
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
           setTimeout(async () => {
+            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -276,6 +308,7 @@ import {
       if (payload.type === OPEN_EXPORT_KEY_PAIR_SCREEN) {
         winManager.openWindow('export-keys', async (id) => {
           setTimeout(async () => {
+            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, payload.data, `popup@${id}`);
           }, 1000);
         });
@@ -326,6 +359,17 @@ import {
       listener(index);
       index++;
     });
+
+    let scheduler = Scheduler.getInstance();
+    // scheduler.schedule = defaultSchedule;
+    scheduler.schedule = debugSchedule;
+
+    let watchdog = Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG);
+    watchdog.actionOnTimeout = () => {
+      scheduler.deactivate();
+    };
+    watchdog.run();
+
   }catch(e){
     console.log('background:index.ts:',e);
   }
