@@ -323,7 +323,11 @@ if (NETWORK === MAINNET){
         }
       }
       if (payload.type === OPEN_START_PAGE) {
-        winManager.openWindow('start');
+        winManager.openWindow('start', async (id) => {
+          setTimeout(async () => {
+            await setupBalanceRefreshing(`popup@${id}`);
+          }, 1000)
+        });
       }
     })
 
@@ -346,26 +350,32 @@ if (NETWORK === MAINNET){
     chrome.tabs.onReplaced.addListener(sendhello);
 
 
-    async function listener(index: number) {
+    // async function listener() {
+    //   const success = await Api.checkSeed();
+    //   await Api.sendMessageToWebPage(AUTH_STATUS, success);
+    //   // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+    //   // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+    // }
+    // let index = 0
+    // chrome.alarms.onAlarm.addListener(function() {
+    //   listener(index);
+    //   index++;
+    // });
+
+    await chrome.alarms.create("listener", { periodInMinutes: 1 });
+    chrome.alarms.onAlarm.addListener(async () => {
       const success = await Api.checkSeed();
       await Api.sendMessageToWebPage(AUTH_STATUS, success);
-      await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
-      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
-
-    }
-    let index = 0
-    chrome.alarms.create("listener", { periodInMinutes: 0.2 });
-    chrome.alarms.onAlarm.addListener(function() {
-      listener(index);
-      index++;
     });
+    // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+    // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
 
     let scheduler = Scheduler.getInstance();
     // scheduler.schedule = defaultSchedule;
     scheduler.schedule = debugSchedule;
 
     let watchdog = Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG);
-    watchdog.actionOnTimeout = () => {
+    watchdog.onTimeoutAction = () => {
       scheduler.deactivate();
     };
     watchdog.run();

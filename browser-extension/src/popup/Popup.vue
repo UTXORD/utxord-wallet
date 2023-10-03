@@ -61,10 +61,8 @@ async function checkAuth(): Promise<boolean> {
 }
 
 async function updateBalance() {
-  setInterval(async () => {
-    setTimeout(async () => {
-      await sendMessage(POPUP_HEARTBEAT, {}, 'background')
-    }, 1000)
+  setInterval(() => {
+      sendMessage(POPUP_HEARTBEAT, {}, 'background')
   }, 1000)
 }
 
@@ -72,7 +70,7 @@ async function init() {
   const success = await checkAuth()
   if (success) {
     redirectByQuery()
-    updateBalance()
+    runHeartbeat()
   } else {
     const tempMnemonic = localStorage?.getItem('temp-mnemonic')
     if (tempMnemonic) {

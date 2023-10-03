@@ -1,3 +1,4 @@
+import {AUTH_STATUS} from "~/config/events";
 
 const mSec = 1000;
 
@@ -27,8 +28,9 @@ export class Watchdog {
         POPUP_WATCHDOG: "POPUP_WATCHDOG"
     }
     private static readonly DEFAULT_TIMEOUT: number = 10;
-    private static readonly DEFAULT_CHECK_INTERVAL: number = 10 * mSec;
-    private _timeout: number = Watchdog.DEFAULT_TIMEOUT;
+    private static readonly DEFAULT_CHECK_INTERVAL: number = 1 * mSec;
+    private _timeoutValue : number = Watchdog.DEFAULT_TIMEOUT;
+    private _timeout: number;
     private _action: (() => void) | null = null;
     
     private static _instances: Record<string, Watchdog> = {};
@@ -38,7 +40,7 @@ export class Watchdog {
     private constructor(name: string) {
         this._name = name;
         this._action = null;
-        this._timeout = Watchdog.DEFAULT_TIMEOUT;
+        this._timeout = this._timeoutValue;
         this._checkInterval = null;
     }
 
@@ -55,32 +57,35 @@ export class Watchdog {
         return Watchdog._instances[name];
     }
 
-    public set actionOnTimeout(action: (() => void) | null) {
+    public set onTimeoutAction(action: (() => void) | null) {
         Watchdog._log("set on-timeout action");
         this._action = action;
     }
 
     public set timeout(timeout: number) {
         Watchdog._log("set timeout");
-        this._timeout = timeout;
+        this._timeoutValue = timeout;
     }
 
     private doAction() {
-        Watchdog._log("do timeout action in case it has been set");
+        // Watchdog._log("do timeout action in case it has been set");
         if (this._action != null) {
-            Watchdog._log("do action");
+            Watchdog._log("do timeout action");
             this._action();
         }
     }
 
     public reset() {
         Watchdog._log("reset timeout");
-        this._timeout = Watchdog.DEFAULT_TIMEOUT;
+        this._timeout = this._timeoutValue;
     }
 
     private _check() {
-        this._timeout = Math.max(0, this._timeout-1);
+        if (0 == this._timeout) {
+            return;
+        }
         Watchdog._log(`check timeout: ${this._timeout}`);
+        this._timeout = Math.max(0, this._timeout-1);
         if (0 == this._timeout) {
             this.doAction();
         }
@@ -105,6 +110,7 @@ export class Watchdog {
         console.debug(`===== Watchdog: ${msg}`);
     }
 }
+
 
 export class Scheduler {
     private static _instance: Scheduler;
@@ -141,11 +147,17 @@ export class Scheduler {
     }
     
     activate() {
+        if (this._isActive) {
+            return;
+        }
         Scheduler._log("activate");
         this._isActive = true;
     }
 
     deactivate() {
+        if (!this._isActive) {
+            return;
+        }
         Scheduler._log("deactivate");
         this._isActive = false;
     }
