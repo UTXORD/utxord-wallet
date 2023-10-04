@@ -118,6 +118,8 @@
           @click="copyToClipboard(textarea, 'Constant was copied!')"
         />
       </div>
+      <span style="float:left;"><a @click="showRawTranscation(0)" class="mr-2 text-[var(--text-color)]">#raw_transcation_1</a></span>
+      <span style="float:left;"><a @click="showRawTranscation(1)" class="mr-2 text-[var(--text-color)]">#raw_transcation_2</a></span>
       <CustomInput
         type="textarea"
         class="w-full"
@@ -152,16 +154,18 @@ const isInsufficientBalance = computed(() => {
   if (Number(dataForSign.value.data?.costs?.amount) > Number(balance.value?.confirmed)) return true
   return false
 })
-
-async function whatSigning(){
-if(showContract.value){
-showContract.value = false;
-textarea.value = '';
-  return;
+async function showRawTranscation(n){
+  showContract.value = true;
+  textarea.value = dataForSign.value?.data?.costs?.raw[n]
 }
-showContract.value = true;
-console.log(dataForSign.value)
-textarea.value = JSON.stringify(dataForSign.value?.data?.costs?.raw)
+async function whatSigning(){
+  if(showContract.value){
+    showContract.value = false;
+    textarea.value = '';
+    return;
+  }
+  showContract.value = true;
+  textarea.value = dataForSign.value?.data?.costs?.raw[0]
 }
 
 </script>
