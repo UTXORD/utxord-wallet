@@ -5,6 +5,7 @@ import '~/libs/crypto-js.js';
 import winHelpers from '~/helpers/winHelpers';
 import rest from '~/background/rest';
 import { sendMessage } from 'webext-bridge';
+import * as cbor from 'cbor-js';
 import {
   EXCEPTION,
   SELL_INSCRIPTION,
@@ -1798,7 +1799,8 @@ async createInscriptionContract(payload, theIndex = 0) {
     );
     console.log('newOrd:',newOrd);
     if(payload.metadata) {
-      await newOrd.SetMetaData(JSON.stringify(payload.metadata));
+      const encoded = cbor.encode(payload.metadata);
+      await newOrd.SetMetaData(myself.arrayBufferToHex(encoded));
     }
     await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8));
 
@@ -2493,6 +2495,33 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       return true;
     }
     return false;
+  }
+   arrayBufferToHex(arrayBuffer){
+     const byteToHex = [];
+
+     for (let n = 0; n <= 0xff; ++n)
+     {
+       const hexOctet = n.toString(16).padStart(2, "0");
+       byteToHex.push(hexOctet);
+     }
+     const buff = new Uint8Array(arrayBuffer);
+     const hexOctets = [];
+     // new Array(buff.length) is even faster (preallocates necessary array size),
+     // then use hexOctets[i] instead of .push()
+
+   for (let i = 0; i < buff.length; ++i)
+       hexOctets.push(byteToHex[buff[i]]);
+
+   return hexOctets.join("");
+  }
+  typedArrayToBuffer(array: Uint8Array): ArrayBuffer {
+    return array.buffer.slice(array.byteOffset, array.byteLength + array.byteOffset)
+  }
+  hexToArrayBuffer(hex){
+    const uit8arr = new Uint8Array(hex.match(/[\da-f]{2}/gi).map(function (h) {
+      return parseInt(h, 16)
+    }));
+    return this.typedArrayToBuffer(uit8arr);
   }
   locked(){
     //TODO: locked all extension and wallet
