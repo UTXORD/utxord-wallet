@@ -1,7 +1,3 @@
-import {AUTH_STATUS} from "~/config/events";
-
-const mSec = 1000;
-
 export const enum ScheduleState {
     Default = "DEFAULT",
     AddressCopied = "ADDRESS_COPIED",
@@ -24,24 +20,31 @@ type Schedule = Record <ScheduleState, ScheduleItem>;
 
 
 export class Watchdog {
+    private static readonly NAME_PREFIX: string = "utxord_wallet.watchdog";
     public static readonly names = {
         POPUP_WATCHDOG: "POPUP_WATCHDOG"
     }
-    private static readonly DEFAULT_TIMEOUT: number = 10;
-    private static readonly DEFAULT_CHECK_INTERVAL: number = 1 * mSec;
+
+    private static readonly DEFAULT_TIMEOUT: number = 3;
+    private static readonly DEFAULT_CHECK_INTERVAL: number = 1;
     private _timeoutValue : number = Watchdog.DEFAULT_TIMEOUT;
     private _timeout: number;
     private _action: (() => void) | null = null;
-    
+
     private static _instances: Record<string, Watchdog> = {};
     private readonly _name: string;
-    private _checkInterval: ReturnType<typeof setInterval> | null = null;
+    private readonly _nameOfCheckAlarm: string;
 
     private constructor(name: string) {
-        this._name = name;
+        this._name = `${Watchdog.NAME_PREFIX}.${name}`;
+        this._nameOfCheckAlarm = `${this._name}.check_alarm`;
         this._action = null;
         this._timeout = this._timeoutValue;
-        this._checkInterval = null;
+        chrome.alarms.onAlarm.addListener(async (alarm) => {
+            if (alarm.name == this._nameOfCheckAlarm) {
+                this._check();
+            }
+        });
     }
 
     public get name() {
@@ -53,7 +56,7 @@ export class Watchdog {
             Watchdog._log("create instance");
             Watchdog._instances[name] = new Watchdog(name);
         }
-        Watchdog._log("return instance");
+        // Watchdog._log("return instance");
         return Watchdog._instances[name];
     }
 
@@ -91,19 +94,17 @@ export class Watchdog {
         }
     }
 
-    public run() {
+    public async run() {
         Watchdog._log("run");
-        this._checkInterval = setInterval(() => {
-          this._check();
-        }, Watchdog.DEFAULT_CHECK_INTERVAL);
+        await chrome.alarms.create(
+            this._nameOfCheckAlarm,
+            { periodInMinutes: Watchdog.DEFAULT_CHECK_INTERVAL },
+        );
     }
 
-    public stop() {
+    public async stop() {
         Watchdog._log("stop");
-        if (this._checkInterval) {
-            clearInterval(this._checkInterval);
-            this._checkInterval = null;
-        }
+        await chrome.alarms.clear(this._nameOfCheckAlarm);
     }
 
     private static _log(msg: string) {
@@ -114,38 +115,65 @@ export class Watchdog {
 
 export class Scheduler {
     private static _instance: Scheduler;
-
+    private static readonly NAME_PREFIX: string = "utxord_wallet.scheduler";
+    private static readonly DEFAULT_NAME: string = "periodic_query_scheduler";
+    private readonly _name: string;
+    private readonly _nameOfLatencyAlarm: string;
+    private readonly _nameOfIntervalAlarm: string;
+    private readonly _nameOfDurationAlarm: string;
     private _schedule: Schedule | null = null;
+    private _currentScheduleItem: ScheduleItem | null = null;
     private _isActive: boolean = false;
     private _action: (() => void) | null = null;
 
-    private _latencyTimeout: ReturnType<typeof setTimeout> | null = null;
-    private _actionInterval: ReturnType<typeof setInterval> | null = null;
-    private _durationTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    private constructor() {
+    private constructor(name: string) {
+        this._name = `${Scheduler.NAME_PREFIX}.${name}`;
+        this._nameOfLatencyAlarm = `${this._name}.latency_alarm`;
+        this._nameOfIntervalAlarm = `${this._name}.interval_alarm`;
+        this._nameOfDurationAlarm = `${this._name}.duration_alarm`;
         this._isActive = false;
+        chrome.alarms.onAlarm.addListener(async (alarm) => {
+            switch (alarm.name) {
+                case this._nameOfLatencyAlarm: {
+                    await this.runActionInterval(this._currentScheduleItem?.interval || 0);
+                    break;
+                }
+                case this._nameOfIntervalAlarm: {
+                    this.doAction();
+                    break;
+                }
+                case this._nameOfDurationAlarm: {
+                    await this.changeStateTo(ScheduleState.Default);
+                    break;
+                }
+            }
+        });
+
     }
 
     public static getInstance(): Scheduler {
         if (!Scheduler._instance) {
             Scheduler._log("create instance");
-            Scheduler._instance = new Scheduler();
+            Scheduler._instance = new Scheduler(Scheduler.DEFAULT_NAME);
         }
-        Scheduler._log("return instance");
+        // Scheduler._log("return instance");
         return Scheduler._instance;
+    }
+
+    public get name() {
+        return this._name;
     }
 
     public set schedule(schedule: Schedule) {
         Scheduler._log("set schedule");
         this._schedule = schedule;
     }
-    
+
     public set action(action: () => void) {
         Scheduler._log("set action");
         this._action = action;
     }
-    
+
     activate() {
         if (this._isActive) {
             return;
@@ -163,59 +191,68 @@ export class Scheduler {
     }
 
     private doAction() {
-        Scheduler._log("do scheduled action in case it has been set");
+        Scheduler._log(`do scheduled action in case it has been set. ` +
+            `isActive: ${this._isActive}, action: ${this._action}`);
         if (this._isActive && this._action != null) {
             Scheduler._log("do action");
             this._action();
         }
     }
 
-    private runActionInterval(interval: number) {
+    private async runActionInterval(interval: number) {
         Scheduler._log("run action interval");
         this.doAction();
         if (0 < interval) {
-            this._actionInterval = setInterval(() => { this.doAction(); }, interval * mSec);
+            await chrome.alarms.create(
+                this._nameOfIntervalAlarm,
+                { periodInMinutes: interval / 60.0 }
+            );
         }
     }
 
-    private startScheduleItem(item: ScheduleItem) {
+    private async startScheduleItem(item: ScheduleItem) {
         Scheduler._log(`startScheduleItem: ${item}`);
+        this._currentScheduleItem = item;
         if (0 < item.latency) {
-            this._latencyTimeout = setTimeout(() => {
-                this.runActionInterval(item.interval);
-            }, item.latency * mSec);
+            await chrome.alarms.create(
+                this._nameOfLatencyAlarm,
+                { delayInMinutes: item.latency / 60.0 }
+            );
         } else {
-            this.runActionInterval(item.interval);
+            await this.runActionInterval(item.interval);
         }
         if (0 < item.duration) {
-            this._durationTimeout = setTimeout(() => {
-                this.changeStateTo(ScheduleState.Default);
-            }, (item.latency + item.duration) * mSec);
+            await chrome.alarms.create(
+                this._nameOfDurationAlarm,
+                {delayInMinutes: (item.latency + item.duration) / 60.0}
+            );
         }
     }
 
-    private stopRunningScheduleItem() {
+    private async stopRunningScheduleItem() {
         Scheduler._log("stopRunningScheduleItem");
-        if (this._latencyTimeout != null) {
-            clearTimeout(this._latencyTimeout);
-            this._latencyTimeout = null;
-        }
-        if (this._actionInterval != null) {
-            clearInterval(this._actionInterval);
-            this._actionInterval = null;
-        }
-        if (this._durationTimeout != null) {
-            clearTimeout(this._durationTimeout);
-            this._durationTimeout = null;
+        await chrome.alarms.clear(this._nameOfLatencyAlarm);
+        await chrome.alarms.clear(this._nameOfIntervalAlarm);
+        await chrome.alarms.clear(this._nameOfDurationAlarm);
+    }
+
+    public async changeStateTo(state: ScheduleState) {
+        Scheduler._log(`changeStateTo: ${state.toString()}`);
+        await this.stopRunningScheduleItem();
+        if (this._schedule && this._schedule[state]) {
+            await this.startScheduleItem(this._schedule[state])
         }
     }
 
-    public changeStateTo(state: ScheduleState) {
-        Scheduler._log(`changeStateTo: ${state}`);
-        this.stopRunningScheduleItem();
-        if (this._schedule && this._schedule[state]) {
-            this.startScheduleItem(this._schedule[state])
-        }
+    public async run() {
+        Scheduler._log("run");
+        await this.changeStateTo(ScheduleState.Default);
+        this.activate();
+    }
+
+    public async stop() {
+        Scheduler._log("stop");
+        await this.stopRunningScheduleItem();
     }
 
     private static _log(msg: string) {
@@ -228,27 +265,27 @@ export const defaultSchedule: Schedule  = {
         600,  // interval = 10 minutes
     ),
     [ScheduleState.AddressCopied]: new ScheduleItem(
-        30,  // interval = 30 seconds
+        60,  // interval = 1 minute
         1200,  // duration = 20 minutes
         120,  // first run latency = 2 minutes
     ),
     [ScheduleState.BalanceChangePresumed]: new ScheduleItem(
-        30,  // interval = 30 seconds
+        60,  // interval = 1 minute
         1200,  // duration = 20 minutes
     )
 };
 
 export const debugSchedule: Schedule  = {
     [ScheduleState.Default] : new ScheduleItem(
-        60,  // interval = 10 minutes
+        120,  // interval = 2 minutes
     ),
     [ScheduleState.AddressCopied]: new ScheduleItem(
-        3,  // interval = 30 seconds
-        120,  // duration = 20 minutes
-        12,  // first run latency = 2 minutes
+        60,  // interval = 1 minute
+        180,  // duration = 3 minutes
+        120,  // first run latency = 2 minutes
     ),
     [ScheduleState.BalanceChangePresumed]: new ScheduleItem(
-        3,  // interval = 30 seconds
-        120,  // duration = 20 minutes
+        60,  // interval = 1 minute
+        180,  // duration = 3 minutes
     )
 };

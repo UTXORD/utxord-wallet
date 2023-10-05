@@ -60,17 +60,18 @@ async function checkAuth(): Promise<boolean> {
   return false;
 }
 
-async function updateBalance() {
+async function runHeartbeat() {
   setInterval(() => {
       sendMessage(POPUP_HEARTBEAT, {}, 'background')
-  }, 1000)
+  }, 10000)
 }
+
 
 async function init() {
   const success = await checkAuth()
   if (success) {
     redirectByQuery()
-    runHeartbeat()
+    await runHeartbeat()
   } else {
     const tempMnemonic = localStorage?.getItem('temp-mnemonic')
     if (tempMnemonic) {

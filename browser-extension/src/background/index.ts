@@ -50,14 +50,14 @@ if (NETWORK === MAINNET){
 
 (async () => {
 
-  async function setupBalanceRefreshing(destination: string) {
-      await sendMessage(DO_REFRESH_BALANCE, {}, destination);
-      Scheduler.getInstance().action = async () => {
-          await sendMessage(DO_REFRESH_BALANCE, {}, destination);
-      }
-  }
-
   try{
+    async function setupBalanceRefreshing(destination: string) {
+        await sendMessage(DO_REFRESH_BALANCE, {}, destination);
+        Scheduler.getInstance().action = async () => {
+            await sendMessage(DO_REFRESH_BALANCE, {}, destination);
+        }
+    }
+
     const Api = await new self.Api(NETWORK);
     if(NETWORK === TESTNET){
       self.api = Api; // for debuging in devtols
@@ -362,13 +362,17 @@ if (NETWORK === MAINNET){
     //   index++;
     // });
 
-    await chrome.alarms.create("listener", { periodInMinutes: 1 });
-    chrome.alarms.onAlarm.addListener(async () => {
-      const success = await Api.checkSeed();
-      await Api.sendMessageToWebPage(AUTH_STATUS, success);
+    let alarmName = "utxord_wallet.alarm.balance_refresh_main_schedule";
+    await chrome.alarms.clear(alarmName);
+    await chrome.alarms.create(alarmName, { periodInMinutes: 10 });
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+      if (alarm.name == alarmName) {
+        const success = await Api.checkSeed();
+        await Api.sendMessageToWebPage(AUTH_STATUS, success);
+        // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+        // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+      }
     });
-    // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
-    // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
 
     let scheduler = Scheduler.getInstance();
     // scheduler.schedule = defaultSchedule;
@@ -378,7 +382,39 @@ if (NETWORK === MAINNET){
     watchdog.onTimeoutAction = () => {
       scheduler.deactivate();
     };
-    watchdog.run();
+    await scheduler.run();
+    await watchdog.run();
+
+    // let cnt = 1;
+    // let success = true;
+    // let testInterval = setInterval(() => {
+    //   let name = `alarm_${cnt}`;
+    //   try {
+    //     console.log(`===== create ${name}`);
+    //     chrome.alarms.create(name, {periodInMinutes: 1}).catch((reason) => {
+    //       console.error(`ERROR: Unable to create ${name}.`, reason);
+    //       success = false;
+    //     });
+    //
+    //     if (1 == cnt) {
+    //       console.log(`===== addListener to ${name}`);
+    //       chrome.alarms.onAlarm.addListener(() => {});
+    //     }
+    //
+    //     console.log(`===== clear ${name}`);
+    //     chrome.alarms.clear(name).catch((reason) => {
+    //       console.error(`ERROR: Unable to clear ${name}.`, reason);
+    //       success = false;
+    //     });
+    //     cnt++;
+    //   } catch (ex) {
+    //       console.error(`EXCEPTION: Unable to create, clear or addListener for ${name}.`, ex.message);
+    //       success = false;
+    //   }
+    //   if (!success) {
+    //     clearInterval(testInterval);
+    //   }
+    // }, 300);
 
   }catch(e){
     console.log('background:index.ts:',e);
