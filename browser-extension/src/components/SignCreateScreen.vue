@@ -118,8 +118,10 @@
           @click="copyToClipboard(textarea, 'Constant was copied!')"
         />
       </div>
-      <span style="float:left;"><a @click="showRawTranscation(0)" class="mr-2 text-[var(--text-color)]">#raw_transcation_1</a></span>
-      <span style="float:left;"><a @click="showRawTranscation(1)" class="mr-2 text-[var(--text-color)]">#raw_transcation_2</a></span>
+      <span>
+      <a @click="showRawTranscation(0)" :active="activeTab === 0" style="float:left;" class="mr-2 text-[var(--text-color)]">#raw_transcation_1</a>
+      <a @click="showRawTranscation(1)" :active="activeTab === 1" style="float:left;" class="mr-2 text-[var(--text-color)]">#raw_transcation_2</a>
+      </span>
       <CustomInput
         type="textarea"
         class="w-full"
@@ -150,6 +152,8 @@ const toAddress = computed(() => {
 })
 
 const showContract = ref('')
+const activeTab = ref('')
+
 const isInsufficientBalance = computed(() => {
   if (Number(dataForSign.value.data?.costs?.amount) > Number(balance.value?.confirmed)) return true
   return false
@@ -157,8 +161,10 @@ const isInsufficientBalance = computed(() => {
 async function showRawTranscation(n){
   showContract.value = true;
   textarea.value = dataForSign.value?.data?.costs?.raw[n]
+  activeTab.value = Number(n)
 }
 async function whatSigning(){
+    activeTab.value = 0;
   if(showContract.value){
     showContract.value = false;
     textarea.value = '';
@@ -171,6 +177,9 @@ async function whatSigning(){
 </script>
 
 <style scoped>
+[active=true]{
+  color: var(--text-grey-color);
+}
 .sign-screen_block span {
   text-align: left;
   font-weight: 400;
