@@ -1011,16 +1011,14 @@ async matchTapRootKey(payload, target, deep = 0){
 
   signToChallenge(challenge, tabId: number | undefined = undefined) {
     const myself = this;
-    if (myself.wallet.auth.privKeyStr) {
-      const keypair = new myself.utxord.ChannelKeys(myself.wallet.auth.privKeyStr);
-      const signature = keypair.SignSchnorr(challenge).c_str();
+    if (myself.wallet.auth.key) {
+      const signature = myself.wallet.auth.key.SignSchnorr(challenge).c_str();
       console.log("SignSchnorr::challengeResult:", signature);
       myself.sendMessageToWebPage(CONNECT_RESULT, {
         challenge: challenge,
         signature: signature,
-        publickey: myself.wallet.auth.pubKeyStr
+        publickey: myself.wallet.auth.key.GetLocalPubKey().c_str()
       }, tabId);
-    myself.destroy(keypair);
     myself.connect = true;
     myself.sync = false;
     } else {
