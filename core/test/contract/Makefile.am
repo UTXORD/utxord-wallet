@@ -1,6 +1,6 @@
 
 AM_CPPFLAGS = \
- -I$(top_srcdir)/contrib/nlohmann_json \
+ $(NLOHMANN_JSON_CPPFLAGS) \
  -I$(top_srcdir)/l15/contrib \
  -I$(top_srcdir)/l15/contrib/cex \
  -I$(top_srcdir)/l15/contrib/cli11 \
@@ -51,4 +51,3 @@ test_swap_inscription_LDADD = $(L15_LIBS)
 
 test_inscription_SOURCES = test_inscription.cpp
 test_inscription_LDADD = $(L15_LIBS)
-
