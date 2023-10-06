@@ -41,7 +41,7 @@ class Inscription
     std::string m_content_type;
     bytevector m_content;
     std::string m_collection_id;
-    std::string m_metadata;
+    bytevector m_metadata;
 
     friend void ParseTransaction<CMutableTransaction>(Inscription& inscription, const CMutableTransaction& tx, uint32_t nin);
     friend void ParseTransaction<CTransaction>(Inscription& inscription, const CTransaction& tx, uint32_t nin);
@@ -70,7 +70,7 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
-    const std::string& GetMetadata() const
+    const bytevector& GetMetadata() const
     { return m_metadata; }
 };
 
