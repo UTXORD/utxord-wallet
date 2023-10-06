@@ -24,4 +24,4 @@ libutxord_contract_la_SOURCES += inscription.cpp
 endif
 
 libutxord_contract_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--gc-sections
-libutxord_contract_la_CXXFLAGS = $(AM_CXXFLAGS) -ffunction-sections -fdata-sections
+libutxord_contract_la_CXXFLAGS = $(AM_CXXFLAGS) $(NLOHMANN_JSON_CPPFLAGS) -ffunction-sections -fdata-sections

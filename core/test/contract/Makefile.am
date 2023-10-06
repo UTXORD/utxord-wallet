@@ -1,5 +1,6 @@
 
 AM_CPPFLAGS = \
+ $(NLOHMANN_JSON_CPPFLAGS) \
  -I$(top_srcdir)/l15/contrib \
  -I$(top_srcdir)/l15/contrib/cex \
  -I$(top_srcdir)/l15/contrib/cli11 \
