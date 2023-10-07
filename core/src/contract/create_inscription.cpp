@@ -2,7 +2,7 @@
 #include <ranges>
 #include <exception>
 
-#include <nlohmann/json.hpp>
+#include "nlohmann/json.hpp"
 
 #include "univalue.h"
 

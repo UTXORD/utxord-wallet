@@ -50,38 +50,6 @@ AC_PROG_MKDIR_P
 AX_CXX_COMPILE_STDCXX([20], [noext], [mandatory])
 dnl AX_BOOST_BASE([1.70])
 
-dnl PKG_WITH_MODULES([NLOHMANN_JSON], [nlohmann_json>=3.10.5], [], [AC_MSG_ERROR([nlohmann_json >= 3.10.5 is required for inscription metadata])], [nlohmann_json >= 3.10.5 is required])
-dnl PKG_CHECK_MODULES([NLOHMANN_JSON], [nlohmann_json>=3.10.5], [], [AC_MSG_ERROR([nlohmann_json >= 3.10.5 is required for inscription metadata])])
-
-AC_ARG_WITH([nlohmann_json], [AS_HELP_STRING([--with-nlohmann-json=@<:@=ARG@:>@],
-            [use nlohmann_json from standard location (default),
-             use nlohmann_json prefix path (ARG=<path>)])], [
-             AS_CASE(["x${withval}"],
-                [x],[with_nlohmann_json=yes],
-                [xyes],[with_nlohmann_json=yes],
-                [xno],[with_nlohmann_json=no],
-                [with_nlohmann_json=yes; NLOHMANN_JSON_CPPFLAGS="-I${withval}/include"]
-    )])
-
-if test "with_nlohmann_json" != "no"; then
-    CPP_FLAGS_NLOHMANN_SAVE=$CPPFLAGS
-
-    CPPFLAGS="$CPPFLAGS $NLOHMANN_JSON_CPPFLAGS"
-
-    AC_LANG_PUSH([C++])
-    AC_CHECK_HEADER(nlohmann/json.hpp, [json_hpp=yes], [json_hpp=no])
-    AC_LANG_POP([C++])
-
-    CPPFLAGS=$CPP_FLAGS_NLOHMANN_SAVE
-
-    if test "$json_hpp" = "no"; then
-        AC_MSG_ERROR([nlohmann_json is required for inscription metadata])
-    fi
-
-    AC_SUBST(NLOHMANN_JSON_CPPFLAGS)
-else
-    AC_MSG_ERROR([nlohmann_json is required for inscription metadata])
-fi
 
 default_build_tests=yes
 
