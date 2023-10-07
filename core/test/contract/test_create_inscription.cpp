@@ -5,7 +5,7 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch/catch.hpp"
 
-#include <nlohmann/json.hpp>
+#include "nlohmann/json.hpp"
 
 #include "util/translation.h"
 #include "config.hpp"
