@@ -27,7 +27,7 @@ Extension targets:
 8) Press **Extensions** icon on Chrome toolbar.
 9) Click on **Pin** icon at **UTXORD Wallet** item to pin its icon on a toolbar.
 
-## Exact steps fo developers to build dev wallet
+## Exact steps for developers to build dev wallet
 1) *git checkout <branch_name>*
 2) *git submodule update --recursive*
 3) *git pull*
