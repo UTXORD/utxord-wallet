@@ -1789,8 +1789,6 @@ async createInscriptionContract(payload, theIndex = 0) {
       flagsFundingOptions += "collection";
     }
 
-    const destination_keypair = new myself.utxord.ChannelKeys(myself.wallet.ord.privKeyStr);
-    const change_keypair = new myself.utxord.ChannelKeys(myself.wallet.fund.privKeyStr);
     const newOrd = new myself.utxord.CreateInscriptionBuilder(
       myself.utxord.INSCRIPTION,
       (myself.satToBtc(payload.expect_amount)).toFixed(8)
@@ -1827,8 +1825,8 @@ async createInscriptionContract(payload, theIndex = 0) {
     }
 
     await newOrd.Data(payload.content_type, payload.content);
-    await newOrd.InscribePubKey(destination_keypair.GetLocalPubKey().c_str());
-    await newOrd.ChangePubKey(change_keypair.GetLocalPubKey().c_str());
+    await newOrd.InscribePubKey(myself.wallet.ord.key.GetLocalPubKey().c_str());
+    await newOrd.ChangePubKey(myself.wallet.fund.key.GetLocalPubKey().c_str());
 
     const min_fund_amount = await myself.btcToSat(Number(newOrd.GetMinFundingAmount(
         `${flagsFundingOptions}`
@@ -1888,14 +1886,11 @@ async createInscriptionContract(payload, theIndex = 0) {
         );
       }
 
-      //generate new keypair script_key
-      const script_key = new myself.utxord.ChannelKeys(myself.wallet.uns.privKeyStr);
-
       for(const id in utxo_list){
         await newOrd.SignCommit(
           id,
           utxo_list[id].key.GetLocalPrivKey().c_str(),
-          script_key.GetLocalPubKey().c_str()
+          myself.wallet.uns.key.GetLocalPubKey().c_str()
         );
       }
 
@@ -1908,7 +1903,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       }
 
       await newOrd.SignInscription(
-        script_key.GetLocalPrivKey().c_str()
+        myself.wallet.uns.key.GetLocalPrivKey().c_str()
       )
       const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
@@ -1925,9 +1920,6 @@ async createInscriptionContract(payload, theIndex = 0) {
       outData.raw.push(newOrd.RawTransaction(0).c_str())
       outData.raw.push(newOrd.RawTransaction(1).c_str())
       outData.sk = newOrd.getIntermediateTaprootSK().c_str();
-      myself.destroy(destination_keypair);
-      myself.destroy(change_keypair);
-      myself.destroy(script_key);
       return outData;
     } catch (exception){
       const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, exception);
