@@ -2007,17 +2007,6 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
   );
   sellOrd.Deserialize(JSON.stringify(contract));
   sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
-  // console.log("myself.selectKeysByOrdAddress(utxoData.address)",
-  // utxoData?.address,
-  // myself.selectKeyByOrdAddress(utxoData.address),
-  // payload.addresses.length);
-
-  // const utxo_keypair = myself.selectKeyByOrdAddress(utxoData.address);
-  // const swap_keypair_A = new myself.utxord.ChannelKeys(myself.wallet.fund.privKeyStr);
-
-  // console.log("| myself.wallet.fund.privKeyStr:",myself.wallet.fund.privKeyStr);
-  // console.log("utxo_pubkey:",utxo_keypair.GetLocalPubKey().c_str(),
-  // "swap_pubkey_A:",swap_keypair_A.GetLocalPubKey().c_str())
 
   sellOrd.OrdUTXO(
     txid,
@@ -2223,8 +2212,6 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
         buyOrd.CheckContractTerms(myself.utxord.FUNDS_TERMS);
 
-        const swap_keypair_B = new myself.utxord.ChannelKeys(myself.wallet.ord.privKeyStr);
-
         for(const fund of utxo_list){
           buyOrd.AddFundsUTXO(
             fund.txid,
@@ -2233,7 +2220,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
             fund.key.GetLocalPubKey().c_str());
         }
 
-        buyOrd.SwapScriptPubKeyB(swap_keypair_B.GetLocalPubKey().c_str());
+        buyOrd.SwapScriptPubKeyB(myself.wallet.ord.key.GetLocalPubKey().c_str());
 
         for(const id in utxo_list){
           let utxo_keypair = utxo_list[id].key;
@@ -2261,7 +2248,6 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
           return outData;
         }
         outData.data = buyOrd.Serialize(myself.utxord.FUNDS_COMMIT_SIG).c_str();
-        myself.destroy(swap_keypair_B);
         return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
