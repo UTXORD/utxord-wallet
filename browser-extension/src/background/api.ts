@@ -2324,11 +2324,9 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       // console.log("aaaa");
       buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
-      const swap_keypair_B = new myself.utxord.ChannelKeys(myself.wallet.ord.privKeyStr);
 
-      buyOrd.SignFundsSwap(swap_keypair_B.GetLocalPrivKey().c_str());
+      buyOrd.SignFundsSwap(myself.wallet.ord.key.GetLocalPrivKey().c_str());
       const data = buyOrd.Serialize(myself.utxord.FUNDS_SWAP_SIG).c_str();
-      myself.destroy(swap_keypair_B);
       (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
         await myself.sendMessageToWebPage(
