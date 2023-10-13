@@ -40,6 +40,8 @@ CScript MakeRelTimeLockScript(uint32_t blocks_to_lock, const xonly_pubkey& pk)
 
 const uint32_t SwapInscriptionBuilder::m_protocol_version = 3;
 
+const char* SwapInscriptionBuilder::s_versions = "[3]";
+
 const std::string SwapInscriptionBuilder::name_ord_price = "ord_price";
 const std::string SwapInscriptionBuilder::name_market_fee = "market_fee";
 
@@ -438,7 +440,7 @@ string SwapInscriptionBuilder::FundsCommitRawTransaction() const
     return res;
 }
 
-string SwapInscriptionBuilder::FundsPayBackRawTransaction()
+string SwapInscriptionBuilder::FundsPayBackRawTransaction() const
 {
     if (!mFundsPaybackTx) {
         throw std::logic_error("FundsPayOff transaction data unavailable");
