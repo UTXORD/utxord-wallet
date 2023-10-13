@@ -85,7 +85,10 @@ interface CreateInscriptionBuilder
 
     [Value] string Serialize();
 
+    long TransactionCount();
     [Value] string RawTransaction(long n);
+
+    [Const] DOMString SupportedVersions();
 
     [Value] string getIntermediateTaprootSK();
     [Value] string MakeInscriptionId();
@@ -129,6 +132,11 @@ interface SwapInscriptionBuilder
     void CheckContractTerms(SwapPhase phase);
     [Value] string Serialize(SwapPhase phase);
     void Deserialize([Const] DOMString data);
+
+    long TransactionCount();
+    [Value] string RawTransaction(long n);
+
+    [Const] DOMString SupportedVersions();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();
