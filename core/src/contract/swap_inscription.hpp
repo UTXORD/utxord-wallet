@@ -89,6 +89,8 @@ public:
     const CMutableTransaction& GetSwapTx() const;
     const CMutableTransaction& GetPayoffTx() const;
 
+    static const char* s_versions;
+
     static const std::string name_ord_price;
     static const std::string name_market_fee;
 
@@ -129,7 +131,7 @@ public:
     SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
 
-    uint32_t GetProtocolVersion() const override { return m_protocol_version; }
+    const char* SupportedVersions() const override { return s_versions; }
 
     SwapInscriptionBuilder& MiningFeeRate(const std::string& fee_rate) { SetMiningFeeRate(fee_rate); return *this; }
     SwapInscriptionBuilder& OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount);
@@ -160,10 +162,27 @@ public:
     void Deserialize(const std::string& data);
 
     std::string FundsCommitRawTransaction() const;
-    std::string FundsPayBackRawTransaction();
+    std::string FundsPayBackRawTransaction() const;
 
     std::string OrdSwapRawTransaction() const;
     std::string OrdPayoffRawTransaction() const;
+
+    uint32_t TransactionCount() const
+    { return 3; }
+
+    std::string RawTransaction(uint32_t n)
+    {
+        switch(n) {
+        case 0:
+            return FundsCommitRawTransaction();
+        case 1:
+            return OrdSwapRawTransaction();
+        case 2:
+            return OrdPayoffRawTransaction();
+        default:
+            return "";
+        }
+    }
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 };

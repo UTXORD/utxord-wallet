@@ -86,6 +86,8 @@ private:
     const CMutableTransaction& GenesisTx() const;
 
 public:
+    static const char* s_versions;
+
     static const std::string name_ord_amount;
     static const std::string name_utxo;
     static const std::string name_xtra_utxo;
@@ -117,7 +119,7 @@ public:
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
 
-    uint32_t GetProtocolVersion() const override { return m_protocol_version; }
+    const char* SupportedVersions() const override { return s_versions; }
 
     const std::string& GetContentType() const { return *m_content_type; }
     std::string GetContent() const { return l15::hex(m_content.value()); }
@@ -162,8 +164,11 @@ public:
 
     std::vector<std::string> RawTransactions();
 
+    uint32_t TransactionCount() const
+    { return 2; }
+
     std::string RawTransaction(uint32_t n)
-    { return RawTransactions()[n]; }
+    { return (n < TransactionCount()) ? RawTransactions()[n] : std::string(); }
 
     std::string Serialize() const;
     void Deserialize(const std::string& data);

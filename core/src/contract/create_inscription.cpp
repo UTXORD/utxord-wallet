@@ -93,6 +93,7 @@ std::string Collection::GetCollectionTapRootPubKey(const string &collection_id, 
 }
 
 const uint32_t CreateInscriptionBuilder::m_protocol_version = 7;
+const char* CreateInscriptionBuilder::s_versions = "[7]";
 
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
 const std::string CreateInscriptionBuilder::name_utxo = "utxo";
