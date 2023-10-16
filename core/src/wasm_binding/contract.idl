@@ -88,7 +88,7 @@ interface CreateInscriptionBuilder
     long TransactionCount();
     [Value] string RawTransaction(long n);
 
-    [Const] DOMString SupportedVersions();
+    [Const] static DOMString SupportedVersions();
 
     [Value] string getIntermediateTaprootSK();
     [Value] string MakeInscriptionId();
@@ -136,7 +136,7 @@ interface SwapInscriptionBuilder
     long TransactionCount();
     [Value] string RawTransaction(long n);
 
-    [Const] DOMString SupportedVersions();
+    [Const] static DOMString SupportedVersions();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();
