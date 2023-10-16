@@ -119,7 +119,7 @@ public:
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
 
-    const char* SupportedVersions() const override { return s_versions; }
+    static const char* SupportedVersions() { return s_versions; }
 
     const std::string& GetContentType() const { return *m_content_type; }
     std::string GetContent() const { return l15::hex(m_content.value()); }

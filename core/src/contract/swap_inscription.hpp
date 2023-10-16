@@ -131,7 +131,7 @@ public:
     SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
 
-    const char* SupportedVersions() const override { return s_versions; }
+    static const char* SupportedVersions() { return s_versions; }
 
     SwapInscriptionBuilder& MiningFeeRate(const std::string& fee_rate) { SetMiningFeeRate(fee_rate); return *this; }
     SwapInscriptionBuilder& OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount);
