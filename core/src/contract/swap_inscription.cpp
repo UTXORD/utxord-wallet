@@ -38,8 +38,7 @@ CScript MakeRelTimeLockScript(uint32_t blocks_to_lock, const xonly_pubkey& pk)
 
 }
 
-const uint32_t SwapInscriptionBuilder::m_protocol_version = 3;
-
+const uint32_t SwapInscriptionBuilder::s_protocol_version = 3;
 const char* SwapInscriptionBuilder::s_versions = "[3]";
 
 const std::string SwapInscriptionBuilder::name_ord_price = "ord_price";
@@ -461,13 +460,15 @@ string SwapInscriptionBuilder::OrdPayoffRawTransaction() const
     return res;
 }
 
-string SwapInscriptionBuilder::Serialize(SwapPhase phase)
+string SwapInscriptionBuilder::Serialize(uint32_t version, SwapPhase phase)
 {
+    if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
+
     CheckContractTerms(phase);
 
     UniValue contract(UniValue::VOBJ);
 
-    contract.pushKV(name_version, m_protocol_version);
+    contract.pushKV(name_version, s_protocol_version);
     contract.pushKV(name_ord_price, FormatAmount(m_ord_price));
     contract.pushKV(name_swap_script_pk_M, hex(*m_swap_script_pk_M));
     contract.pushKV(name_ord_mining_fee_rate, FormatAmount(*m_ord_mining_fee_rate));
@@ -603,7 +604,7 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
 
     const UniValue& contract = root[name_params];
 
-    if (contract[name_version].getInt<uint32_t>() != m_protocol_version) {
+    if (contract[name_version].getInt<uint32_t>() != s_protocol_version) {
         throw ContractProtocolError("Wrong SwapInscription contract version: " + contract[name_version].getValStr());
     }
 

@@ -26,7 +26,8 @@ class SwapInscriptionBuilder : public ContractBuilder
     CAmount m_whole_fee = 0;
     CAmount m_last_fee_rate = 0;
 
-    static const uint32_t m_protocol_version;
+    static const uint32_t s_protocol_version;
+    static const char* s_versions;
 
     CAmount m_ord_price;
     std::optional<CAmount> m_market_fee;
@@ -88,8 +89,6 @@ public:
 
     const CMutableTransaction& GetSwapTx() const;
     const CMutableTransaction& GetPayoffTx() const;
-
-    static const char* s_versions;
 
     static const std::string name_ord_price;
     static const std::string name_market_fee;
@@ -158,7 +157,7 @@ public:
     void MarketSignSwap(const std::string& sk);
 
     void CheckContractTerms(SwapPhase phase) const;
-    std::string Serialize(SwapPhase phase);
+    string Serialize(uint32_t version, SwapPhase phase);
     void Deserialize(const std::string& data);
 
     std::string FundsCommitRawTransaction() const;
