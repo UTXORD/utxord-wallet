@@ -92,7 +92,7 @@ std::string Collection::GetCollectionTapRootPubKey(const string &collection_id, 
     return hex(taproot.first);
 }
 
-const uint32_t CreateInscriptionBuilder::m_protocol_version = 7;
+const uint32_t CreateInscriptionBuilder::s_protocol_version = 7;
 const char* CreateInscriptionBuilder::s_versions = "[7]";
 
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
@@ -362,12 +362,14 @@ void CreateInscriptionBuilder::CheckContractTerms() const
     }
 }
 
-std::string CreateInscriptionBuilder::Serialize() const
+std::string CreateInscriptionBuilder::Serialize(uint32_t version) const
 {
+    if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
+
     CheckContractTerms();
 
     UniValue contract(UniValue::VOBJ);
-    contract.pushKV(name_version, (int)m_protocol_version);
+    contract.pushKV(name_version, (int)s_protocol_version);
     contract.pushKV(name_ord_amount, m_ord_amount);
     contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
 
@@ -451,7 +453,7 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data)
 
     const UniValue& contract = root[name_params];
 
-    if (contract[name_version].getInt<uint32_t>() != m_protocol_version) {
+    if (contract[name_version].getInt<uint32_t>() != s_protocol_version) {
         throw ContractProtocolError("Wrong " + root[name_contract_type].get_str() + " version: " + contract[name_version].getValStr());
     }
 

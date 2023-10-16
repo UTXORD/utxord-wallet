@@ -156,7 +156,7 @@ TEST_CASE("single")
 //        CHECK_NOTHROW(builder.SignCollectionRootCommit(hex(inscribe_key.GetLocalPrivKey())));
 //    }
 
-    std::string contract = builder.Serialize();
+    std::string contract = builder.Serialize(7);
     std::clog << contract << std::endl;
 
     CreateInscriptionBuilder builder2(condition.type, "0.00000546");
@@ -262,7 +262,7 @@ TEST_CASE("child")
     CHECK_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
     CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));
 
-    std::string contract = builder.Serialize();
+    std::string contract = builder.Serialize(7);
     std::clog << contract << std::endl;
 
     CreateInscriptionBuilder builder2(INSCRIPTION, "0.00000546");
@@ -383,7 +383,7 @@ TEST_CASE("inscribe")
     std::string inscription_id = builder.MakeInscriptionId();
 
     std::string ser_data;
-    REQUIRE_NOTHROW(ser_data = builder.Serialize());
+    REQUIRE_NOTHROW(ser_data = builder.Serialize(7));
 
     std::clog << ser_data << std::endl;
 
@@ -554,7 +554,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     stringvector rawtxs0;
     CHECK_NOTHROW(rawtxs0 = builder.RawTransactions());
 
-    std::string contract = builder.Serialize();
+    std::string contract = builder.Serialize(7);
     std::clog << "Contract JSON: " << contract << std::endl;
 
     CreateInscriptionBuilder builder2(INSCRIPTION, "0.00000546");
