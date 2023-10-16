@@ -92,60 +92,7 @@ struct CreateCondition
 
 std::string collection_id;
 seckey collection_sk;
-//xonly_pubkey collection_int_pk;
 Transfer collection_utxo;
-
-//TEST_CASE("collectiontaproot")
-//{
-//    std::string collectionid = "c730b2db411564b74432473f6789908623eca451a57158dc9de430b30ac7b3f9i0";
-//
-//    std::string coll_scr_pk = "7d5f939cb50067da99c4b17d7ad4bdcd419af6668ad2fbb64c17272db1964584";
-//    std::string coll_int_pk = "6f5600a6f726f23ced3047c04d026b7df3ace31d9e3a3abfc51131c0e4d95142";
-//
-//    std::string coll_tr = Collection::GetCollectionTapRootPubKey(collectionid, coll_scr_pk, coll_int_pk);
-//
-//    CHECK(coll_tr == "8beaf837645995a1e4c0a8a7c68f20770ffc8a5ea8202821e60d4704696f79bb");
-//}
-
-//TEST_CASE("spendwallet") {
-//    ChannelKeys key;
-//    string addr = w->bech32().Encode(key.GetLocalPubKey());
-//
-//    CAmount balance = ParseAmount("0.04178019");
-//
-//    std::clog << "sk: " << hex(key.GetLocalPrivKey()) << std::endl;
-//    std::clog << "addr: " << addr << std::endl;
-//    std::clog << "bal: " << balance << std::endl;
-//
-//    string txid = w->btc().SendToAddress(addr, FormatAmount(balance - (58 + 58 + 43 + 10)));
-//
-//    std::clog << "txid: " << txid << std::endl;
-//}
-//
-//TEST_CASE("fundwallet") {
-//    ChannelKeys key(unhex<seckey>("b64555a19f550bcd387074f6e16b17baef32ad86f70953251b5cb2dde53588eb"));
-//
-//    string addr = w->btc().GetNewAddress();
-//    xonly_pubkey dest_pk = w->bech32().Decode(addr);
-//
-//    std::clog << "source pk: " << hex(key.GetLocalPubKey()) << std::endl;
-//    std::clog << "dest addr: " << addr << std::endl;
-//    std::clog << "dest pk: " << hex(dest_pk) << std::endl;
-//
-//    std::clog << "source: " << uint256S("29d25390a3c7c4f2b60a2259f93dd86042342c9b8f8438d0a08927297e59491e").GetHex() << std::endl;
-//
-//    CMutableTransaction tx;
-//    tx.vin.emplace_back(CTxIn(uint256S("29d25390a3c7c4f2b60a2259f93dd86042342c9b8f8438d0a08927297e59491e"), 0));
-//    tx.vout.emplace_back(ParseAmount("0.04177830") - (58 + 58 + 43 + 10), CScript() << 1 << dest_pk);
-//
-//    signature sig = key.SignTaprootTx(tx, 0, {CTxOut(0, CScript() << 1 << key.GetLocalPubKey())}, {});
-//
-//    std::clog << "sig: " << hex(sig) << std::endl;
-//
-//    tx.vin.front().scriptWitness.stack = {sig};
-//
-//    w->btc().SpendTx(CTransaction(tx));
-//}
 
 TEST_CASE("single")
 {
@@ -578,7 +525,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     auto content = hex(svg);
 
-    const auto& condition = GENERATE_REF(short_metadata/*, exact_520_metadata, long_metadata*/);
+    const auto& condition = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
 
     xonly_pubkey destination_pk = condition.save_as_parent ? inscribe_key.GetLocalPubKey() : xonly_pubkey(w->bech32().Decode(w->btc().GetNewAddress()));
 
