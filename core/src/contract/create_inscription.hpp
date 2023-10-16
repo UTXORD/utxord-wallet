@@ -34,7 +34,9 @@ class CreateInscriptionBuilder: public ContractBuilder
     static const CAmount COLLECTION_SCRIPT_ADD_VSIZE = 18;
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
-    static const uint32_t m_protocol_version;
+    static const uint32_t s_protocol_version;
+    static const char* s_versions;
+
     InscribeType m_type;
     CAmount m_ord_amount;
 
@@ -86,7 +88,6 @@ private:
     const CMutableTransaction& GenesisTx() const;
 
 public:
-    static const char* s_versions;
 
     static const std::string name_ord_amount;
     static const std::string name_utxo;
@@ -170,7 +171,7 @@ public:
     std::string RawTransaction(uint32_t n)
     { return (n < TransactionCount()) ? RawTransactions()[n] : std::string(); }
 
-    std::string Serialize() const;
+    std::string Serialize(uint32_t version) const;
     void Deserialize(const std::string& data);
 
 };
