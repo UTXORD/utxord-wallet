@@ -525,7 +525,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     auto content = hex(svg);
 
-    const auto& condition = GENERATE_REF(short_metadata/*, exact_520_metadata, long_metadata*/);
+    const auto& condition = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
 
     xonly_pubkey destination_pk = condition.save_as_parent ? inscribe_key.GetLocalPubKey() : xonly_pubkey(w->bech32().Decode(w->btc().GetNewAddress()));
 
