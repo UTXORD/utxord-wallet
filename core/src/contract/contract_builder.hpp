@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <memory>
 
+#include "safe_ptr.hpp"
+
 #include "univalue.h"
 
 #include "utils.hpp"
@@ -14,12 +16,26 @@
 #include "master_key.hpp"
 
 #include "address.hpp"
+#include "ecdsa.hpp"
 
 namespace utxord {
 
-using namespace l15;
+using std::move;
+using std::get;
+
+using l15::hex;
+using l15::unhex;
+
+using l15::core::ChannelKeys;
+using l15::core::MasterKey;
+
+using l15::bytevector;
+using l15::seckey;
+using l15::xonly_pubkey;
+using l15::signature;
 
 enum OutputType {
+    P2WPKH_DEFAULT, // m/84'/0'/0'/0/*
     TAPROOT_DEFAULT, // m/86'/0'/0'/0/* or m/86'/0'/0'/1/*
     TAPROOT_DEFAULT_SCRIPT, // m/86'/0'/0'/0/* w/o tweak
     TAPROOT_OUTPUT, // m/86'/0'/1'/0/*
@@ -55,40 +71,77 @@ struct IJsonSerializable
     }
 };
 
+struct KeyLookupHint
+{
+    enum Type {DEFAULT, SCRIPT};
+
+    Type type;
+    std::vector<uint32_t> accounts;
+};
+
+class ISigner
+{
+public:
+    virtual std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const = 0;
+};
+
+class P2WPKHSigner: public ISigner
+{
+    EcdsaKeypair m_keypair;
+public:
+    explicit P2WPKHSigner(EcdsaKeypair keypair) : m_keypair(move(keypair)) {}
+    P2WPKHSigner(const P2WPKHSigner&) = default;
+    P2WPKHSigner(P2WPKHSigner&&) noexcept = default;
+    P2WPKHSigner& operator=(const P2WPKHSigner&) = default;
+    P2WPKHSigner& operator=(P2WPKHSigner&&) noexcept = default;
+
+    std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const override;
+};
+
+class TaprootSigner: public ISigner
+{
+    ChannelKeys m_keypair;
+public:
+    explicit TaprootSigner(ChannelKeys keypair) : m_keypair(move(keypair)) {}
+    TaprootSigner(const TaprootSigner&) = default;
+    TaprootSigner(TaprootSigner&&) noexcept = default;
+    TaprootSigner& operator=(const TaprootSigner&) = default;
+    TaprootSigner& operator=(TaprootSigner&&) noexcept = default;
+
+    std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const override;
+};
 
 class IContractDestination: public IJsonSerializable
 {
 public:
     virtual CAmount Amount() const = 0;
     virtual void Amount(CAmount amount) = 0;
-    virtual std::string DestinationPK() const = 0;
-    virtual CScript DestinationPubKeyScript() const = 0;
-    virtual core::ChannelKeys LookupKeyPair(const core::MasterKey& masterKey, utxord::OutputType outType) const = 0;
+    virtual CScript PubKeyScript() const = 0;
+    virtual std::shared_ptr<ISigner> LookupKey(const MasterKey& masterKey, KeyLookupHint outType) const = 0;
 };
 
-class P2TR: public IContractDestination
+class P2Witness: public IContractDestination
 {
 public:
-    static const std::string name_amount;
-    static const std::string name_pk;
-
     static const char* type;
 
-private:
+protected:
+    Bech32 mBech;
     CAmount m_amount = 0;
-    xonly_pubkey m_pk;
-
+    std::string m_addr;
+private:
+    explicit P2Witness(Bech32 bech) : mBech(bech) {}
 public:
-    P2TR() = default;
-    P2TR(const P2TR&) = default;
-    P2TR(P2TR&&) noexcept = default;
+    P2Witness() = delete;//default;
+    P2Witness(const P2Witness&) = default;
+    P2Witness(P2Witness&&) noexcept = default;
 
-    P2TR(CAmount amount, const std::string& pk) : m_amount(amount), m_pk(unhex<xonly_pubkey>(pk)) {}
+    P2Witness(Bech32 bech, CAmount amount, std::string addr) : mBech(bech), m_amount(amount), m_addr(move(addr)) {}
 
-    explicit P2TR(const UniValue& json)
-    { P2TR::ReadJson(json); }
+    explicit P2Witness(Bech32 bech, const UniValue& json) : mBech(bech)
+    { P2Witness::ReadJson(json); }
 
-    ~P2TR() override = default;
+    ~P2Witness() override = default;
 
     CAmount Amount() const final
     { return m_amount; }
@@ -96,18 +149,42 @@ public:
     void Amount(CAmount amount) override
     { m_amount = amount; }
 
-    std::string DestinationPK() const override
-    { return hex(m_pk); }
+    CScript PubKeyScript() const override
+    { return mBech.PubKeyScript(m_addr); }
 
-    CScript DestinationPubKeyScript() const override
-    { return CScript() << 1 << m_pk; }
-
-    core::ChannelKeys LookupKeyPair(const core::MasterKey& masterKey, utxord::OutputType outType) const override;
+    std::shared_ptr<ISigner> LookupKey(const MasterKey& masterKey, KeyLookupHint outType) const override
+    { throw ContractTermMissing("key"); }
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json) override;
+
+    static std::shared_ptr<IContractDestination> ReadJson(Bech32 bech, const UniValue& json);
+    static std::shared_ptr<IContractDestination> Construct(Bech32 bech, CAmount amount, std::string addr);
 };
 
+class P2WPKH: public P2Witness
+{
+public:
+    P2WPKH() = delete;
+    P2WPKH(const P2WPKH&) = default;
+    P2WPKH(P2WPKH&&) noexcept = default;
+    P2WPKH(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
+    std::shared_ptr<ISigner> LookupKey(const MasterKey& masterKey, KeyLookupHint keyHint) const override;
+};
+
+class P2TR: public P2Witness
+{
+public:
+    P2TR() = delete;
+
+    P2TR(const P2TR &) = default;
+
+    P2TR(P2TR &&) noexcept = default;
+
+    P2TR(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
+
+    std::shared_ptr<ISigner> LookupKey(const MasterKey &masterKey, KeyLookupHint keyHint) const override;
+};
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 class IContractOutput: public IJsonSerializable{
@@ -127,19 +204,20 @@ public:
 
     static const char* type;
 private:
+    Bech32 mBech;
     std::string m_txid;
     uint32_t m_nout = 0;
     std::shared_ptr<IContractDestination> m_destination;
 public:
-    UTXO() = default;
-    UTXO(std::string txid, uint32_t nout, CAmount amount, const std::string& pk)
-        : m_txid(move(txid)), m_nout(nout), m_destination(std::make_shared<P2TR>(amount, pk))
+    //UTXO() = default;
+    UTXO(Bech32 bech, std::string txid, uint32_t nout, CAmount amount, const std::string& addr)
+        : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(bech, amount, addr))
     {}
 
-    explicit UTXO(const IContractOutput& out)
-        : m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
+    explicit UTXO(Bech32 bech, const IContractOutput& out)
+        : mBech(bech), m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
 
-    explicit UTXO(const UniValue& json)
+    explicit UTXO(Bech32 bech, const UniValue& json) : mBech(bech)
     { UTXO::ReadJson(json); }
 
     std::string TxID() const final
@@ -184,11 +262,13 @@ struct ContractInput : public IJsonSerializable
 {
     static const std::string name_witness;
 
+    Bech32 bech32;
+    uint32_t nin;
     std::shared_ptr<IContractOutput> output;
     WitnessStack witness;
 
-    explicit ContractInput(std::shared_ptr<IContractOutput> prevout) : output(move(prevout)) {}
-    explicit ContractInput(const UniValue& json)
+    explicit ContractInput(Bech32 bech, uint32_t n, std::shared_ptr<IContractOutput> prevout) : bech32(bech), nin(n), output(move(prevout)) {}
+    explicit ContractInput(Bech32 bech, uint32_t n, const UniValue& json) : bech32(bech), nin(n)
     { ContractInput::ReadJson(json); }
 
     UniValue MakeJson() const override;
@@ -230,7 +310,7 @@ protected:
     static const CAmount TAPROOT_KEYSPEND_VIN_VSIZE = 58;
     static const CAmount MIN_TAPROOT_TX_VSIZE = TX_BASE_VSIZE + TAPROOT_VOUT_VSIZE + TAPROOT_KEYSPEND_VIN_VSIZE;
 
-    std::unique_ptr<IBech32> mBech;
+    Bech32 mBech;
 
     std::optional<CAmount> m_mining_fee_rate;
     std::optional<CAmount> m_market_fee;
@@ -242,26 +322,26 @@ protected:
     virtual std::vector<std::pair<CAmount,CMutableTransaction>> GetTransactions() const { return {}; };
 
 public:
-    ContractBuilder() = default;
-    //ContractBuilder(const ContractBuilder&);
+    //ContractBuilder() = default;
+    ContractBuilder(const ContractBuilder&) = default;
     ContractBuilder(ContractBuilder&& ) noexcept = default;
 
-    ContractBuilder(IBech32::ChainMode chain_mode);
+    explicit ContractBuilder(Bech32 bech) : mBech(bech) {}
 
     virtual ~ContractBuilder() = default;
 
-//    ContractBuilder& operator=(const ContractBuilder& ) = default;
+    ContractBuilder& operator=(const ContractBuilder& ) = default;
     ContractBuilder& operator=(ContractBuilder&& ) noexcept = default;
 
-    IBech32& bech32() const
-    { return *mBech; }
+    const Bech32& bech32() const
+    { return mBech; }
 
     void MarketFee(const std::string& amount, const std::string& addr)
     {
-        auto check_res = mBech->Decode(addr);
+        bech32().Decode(addr);
 
-        CAmount market_fee = ParseAmount(amount);
-        if (market_fee != 0 && market_fee < Dust(3000)) {
+        CAmount market_fee = l15::ParseAmount(amount);
+        if (market_fee != 0 && market_fee < l15::Dust(3000)) {
             throw ContractTermWrongValue(std::string(name_market_fee));
         }
 
@@ -270,7 +350,7 @@ public:
     }
 
     void MiningFeeRate(const std::string& rate)
-    { m_mining_fee_rate = ParseAmount(rate); }
+    { m_mining_fee_rate = l15::ParseAmount(rate); }
 
     virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
 
@@ -279,14 +359,15 @@ public:
 
     virtual uint32_t GetProtocolVersion() const = 0;
 
-    std::string GetMiningFeeRate() const { return FormatAmount(m_mining_fee_rate.value()); }
+    std::string GetMiningFeeRate() const { return l15::FormatAmount(m_mining_fee_rate.value()); }
 
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script);
 
     static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
     static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
     void DeserializeContractTaprootPubkey(const UniValue& val, std::optional<std::string> &addr, std::function<std::string()> lazy_name);
-    std::optional<Transfer> DeserializeContractTransfer(const UniValue& val, std::function<std::string()> lazy_name);
+    std::optional<Transfer> DeserializeContractTransfer_w_pubkey(const UniValue& val, std::function<std::string()> lazy_name);
+    void DeserializeContractTransfer(const UniValue& val, std::optional<Transfer>& transfer, std::function<std::string()> lazy_name);
 
     template <typename HEX>
     static void DeserializeContractHexData(const UniValue& val, std::optional<HEX> &target, std::function<std::string()> lazy_name)

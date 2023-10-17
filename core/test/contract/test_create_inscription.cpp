@@ -6,10 +6,11 @@
 #include "catch/catch.hpp"
 
 #include "util/translation.h"
+#include "core_io.h"
+
 #include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
-#include "wallet_api.hpp"
 #include "channel_keys.hpp"
 #include "exechelper.hpp"
 #include "create_inscription.hpp"
@@ -26,7 +27,7 @@ const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 
 std::unique_ptr<TestcaseWrapper> w;
-IBech32::ChainMode chain_mode;
+std::optional<Bech32> bech;
 
 std::string GenRandomString(const int len) {
     static const char alphanum[] =
@@ -77,15 +78,14 @@ int main(int argc, char* argv[])
     }
 
     w = std::make_unique<TestcaseWrapper>(configpath, "bitcoin-cli");
-
     if (w->mMode == "regtest") {
-        chain_mode =  IBech32::REGTEST;
+        bech = Bech32(utxord::Hrp<REGTEST>());
     }
     else if (w->mMode == "testnet") {
-        chain_mode = IBech32::TESTNET;
+        bech = Bech32(utxord::Hrp<TESTNET>());
     }
     else if (w->mMode == "mainnet") {
-        chain_mode = IBech32::MAINNET;
+        bech = Bech32(utxord::Hrp<MAINNET>());
     }
 
     return session.run();
@@ -131,7 +131,7 @@ TEST_CASE("inscribe")
     const std::string svg = "<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">sample collection</text></g></g></svg>";
     auto content = hex(svg);
 
-    CreateInscriptionBuilder test_inscription(chain_mode, INSCRIPTION);
+    CreateInscriptionBuilder test_inscription(*bech, INSCRIPTION);
 
     REQUIRE_NOTHROW(test_inscription.OrdAmount("0.00000546"));
     REQUIRE_NOTHROW(test_inscription.MarketFee("0", market_fee_addr));
@@ -166,19 +166,19 @@ TEST_CASE("inscribe")
     SECTION("Self inscribe") {
         check_result = true;
 
-        CreateInscriptionBuilder builder_terms(chain_mode, INSCRIPTION);
+        CreateInscriptionBuilder builder_terms(*bech, INSCRIPTION);
         CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
 
         std::string market_terms;
         REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(MARKET_TERMS));
 
-        CreateInscriptionBuilder builder(chain_mode, INSCRIPTION);
+        CreateInscriptionBuilder builder(*bech, INSCRIPTION);
         REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
         CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
         CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
         CHECK_NOTHROW(builder.Data(content_type, content));
-        CHECK_NOTHROW(builder.InscribeAddress(condition.is_parent ? builder.bech32().Encode(collection_key.GetLocalPubKey()) : destination_addr));
+        CHECK_NOTHROW(builder.InscribeAddress(condition.is_parent ? bech->Encode(collection_key.GetLocalPubKey()) : destination_addr));
         CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
         CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, condition.funds[0], addr));
         if (condition.has_parent) {
@@ -196,7 +196,7 @@ TEST_CASE("inscribe")
         REQUIRE_NOTHROW(contract = builder.Serialize(INSCRIPTION_SIGNATURE));
         std::clog << contract << std::endl;
 
-        CreateInscriptionBuilder fin_contract(chain_mode, INSCRIPTION);
+        CreateInscriptionBuilder fin_contract(*bech, INSCRIPTION);
         REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
 
         REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
@@ -205,7 +205,7 @@ TEST_CASE("inscribe")
         if (condition.has_parent) {
             check_result = true;
 
-            CreateInscriptionBuilder builder_terms(chain_mode, LASY_INSCRIPTION);
+            CreateInscriptionBuilder builder_terms(*bech, LASY_INSCRIPTION);
             CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
             CHECK_NOTHROW(builder_terms.Data(content_type, content));
             CHECK_NOTHROW(builder_terms.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount),
@@ -213,12 +213,12 @@ TEST_CASE("inscribe")
             std::string market_terms;
             REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(LASY_COLLECTION_MARKET_TERMS));
 
-            CreateInscriptionBuilder builder(chain_mode, LASY_INSCRIPTION);
+            CreateInscriptionBuilder builder(*bech, LASY_INSCRIPTION);
             REQUIRE_NOTHROW(builder.Deserialize(market_terms, LASY_COLLECTION_MARKET_TERMS));
 
             CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-            CHECK_NOTHROW(builder.InscribeAddress(condition.is_parent ? builder.bech32().Encode(collection_key.GetLocalPubKey()) : destination_addr));
+            CHECK_NOTHROW(builder.InscribeAddress(condition.is_parent ? bech->Encode(collection_key.GetLocalPubKey()) : destination_addr));
             CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
             CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, condition.funds[0], addr));
 
@@ -229,7 +229,7 @@ TEST_CASE("inscribe")
             REQUIRE_NOTHROW(contract = builder.Serialize(LASY_COLLECTION_INSCRIPTION_SIGNATURE));
             std::clog << contract << std::endl;
 
-            CreateInscriptionBuilder fin_contract(chain_mode, LASY_INSCRIPTION);
+            CreateInscriptionBuilder fin_contract(*bech, LASY_INSCRIPTION);
             REQUIRE_NOTHROW(fin_contract.Deserialize(contract, LASY_COLLECTION_INSCRIPTION_SIGNATURE));
 
             CHECK_NOTHROW(fin_contract.SignCollection(hex(collection_sk)));
@@ -527,13 +527,13 @@ TEST_CASE("metadata")
 
     std::string destination_addr = condition.save_as_parent ? w->bech32().Encode(inscribe_key.GetLocalPubKey()) : w->btc().GetNewAddress();
 
-    CreateInscriptionBuilder builder_terms(chain_mode, INSCRIPTION);
+    CreateInscriptionBuilder builder_terms(*bech, INSCRIPTION);
     CHECK_NOTHROW(builder_terms.MarketFee("0", destination_addr));
 
     std::string market_terms;
     REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(MARKET_TERMS));
 
-    CreateInscriptionBuilder builder(chain_mode, INSCRIPTION);
+    CreateInscriptionBuilder builder(*bech, INSCRIPTION);
     REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
     CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
@@ -564,7 +564,7 @@ TEST_CASE("metadata")
     std::string contract = builder.Serialize(INSCRIPTION_SIGNATURE);
     std::clog << "Contract JSON: " << contract << std::endl;
 
-    CreateInscriptionBuilder builder2(chain_mode, INSCRIPTION);
+    CreateInscriptionBuilder builder2(*bech, INSCRIPTION);
     builder2.Deserialize(contract, INSCRIPTION_SIGNATURE);
 
     stringvector rawtxs;

@@ -26,25 +26,37 @@ CMutableTransaction SimpleTransaction::MakeTx() const
     }
 
     for(const auto& out: m_outputs) {
-        tx.vout.emplace_back(out->Amount(), out->DestinationPubKeyScript());
+        tx.vout.emplace_back(out->Amount(), out->PubKeyScript());
     }
 
     return tx;
 }
 
-void SimpleTransaction::AddChangeOutput(const std::string& pk)
+void SimpleTransaction::AddChangeOutput(const std::string& addr)
 {
     if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
 
-    AddOutput(std::make_shared<P2TR>(0, pk));
-    CAmount required = ParseAmount(GetMinFundingAmount(""));
+    unsigned v;
+    bytevector arg;
+    std::tie(v, arg) = bech32().Decode(addr);
+    if (v == 0) {
+        AddOutput(std::make_shared<P2WPKH>(bech32(), 0, addr));
+    }
+    else if (v == 1) {
+        AddOutput(std::make_shared<P2TR>(bech32(), 0, addr));
+    }
+    else {
+        throw ContractTermWrongValue("");
+    }
+
+    CAmount required = l15::ParseAmount(GetMinFundingAmount(""));
 
     CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
     if (required > total) throw ContractStateError("inputs too small");
     CAmount change = total - required;
 
-    if (change > Dust(*m_mining_fee_rate)) {
+    if (change > l15::Dust(*m_mining_fee_rate)) {
         m_outputs.back()->Amount(change);
     }
     else {
@@ -52,7 +64,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& pk)
     }
 }
 
-void SimpleTransaction::Sign(const core::MasterKey &master_key)
+void SimpleTransaction::Sign(const MasterKey &master_key)
 {
     CMutableTransaction tx = MakeTx();
 
@@ -60,21 +72,18 @@ void SimpleTransaction::Sign(const core::MasterKey &master_key)
     spent_outs.reserve(m_inputs.size());
     for(auto& input: m_inputs) {
         const auto& dest = input.output->Destination();
-        spent_outs.emplace_back(dest->Amount(), dest->DestinationPubKeyScript());
+        spent_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
     }
 
-    uint32_t nin = 0;
     for(auto& input: m_inputs) {
         auto& dest = input.output->Destination();
-        try {
-            core::ChannelKeys keypair = dest->LookupKeyPair(master_key, TAPROOT_OUTPUT);
-            input.witness.Set(0, keypair.SignTaprootTx(tx, nin, spent_outs, {}));
+        auto keypair = dest->LookupKey(master_key, {KeyLookupHint::DEFAULT, {0,1}});
+
+        std::vector<bytevector> stack = keypair->Sign(tx, input.nin, spent_outs, SIGHASH_ALL);
+
+        for (size_t i = 0; i < stack.size(); ++i) {
+            input.witness.Set(i, move(stack[i]));
         }
-        catch(const KeyError& e) {
-            core::ChannelKeys keypair = dest->LookupKeyPair(master_key, TAPROOT_DEFAULT);
-            input.witness.Set(0, keypair.SignTaprootTx(tx, nin, spent_outs, {}));
-        }
-        ++nin;
     }
 }
 
@@ -129,7 +138,7 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
 
         for (const UniValue &input: val.getValues()) {
-            m_inputs.emplace_back(input);
+            m_inputs.emplace_back(bech32(), m_inputs.size(), input);
         }
     }
 
@@ -146,7 +155,7 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
 std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
-    return FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx()) + total_out);
+    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx()) + total_out);
 }
 
 } // l15::utxord

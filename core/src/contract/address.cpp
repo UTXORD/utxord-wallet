@@ -2,8 +2,8 @@
 
 namespace utxord {
 
-const char* const Hrp<IBech32::MAINNET>::value = "bc";
-const char* const Hrp<IBech32::TESTNET>::value = "tb";
-const char* const Hrp<IBech32::REGTEST>::value = "bcrt";
+const char* const Hrp<MAINNET>::value = "bc";
+const char* const Hrp<TESTNET>::value = "tb";
+const char* const Hrp<REGTEST>::value = "bcrt";
 
 }

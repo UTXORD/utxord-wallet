@@ -127,7 +127,11 @@ TEST_CASE("Fee")
 class TestContractBuilder : public ContractBuilder
 {
 public:
-    explicit TestContractBuilder(IBech32::ChainMode chain_mode) : ContractBuilder(chain_mode) {}
+    explicit TestContractBuilder(utxord::ChainMode chain_mode) : ContractBuilder((chain_mode == REGTEST) ?
+                                                                                   Bech32(utxord::Hrp<REGTEST>()) :
+                                                                                        ((chain_mode == TESTNET) ?
+                                                                                         Bech32(utxord::Hrp<TESTNET>()) :
+                                                                                         Bech32(utxord::Hrp<MAINNET>()))) {}
     std::string GetMinFundingAmount(const std::string& params) const override
     { return "0"; }
     uint32_t GetProtocolVersion() const override
@@ -221,7 +225,7 @@ TEST_CASE("DeserializeContractHexData")
 
 TEST_CASE("DeserializeContractTransfer")
 {
-    TestContractBuilder builder(IBech32::ChainMode::MAINNET);
+    TestContractBuilder builder(utxord::MAINNET);
 
     const char* transfer_json =    R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
     const char* bad_pk_json =      R"({"txid":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","nout":11,"amount":1000,"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
@@ -235,7 +239,7 @@ TEST_CASE("DeserializeContractTransfer")
     UniValue val;
     val.read(transfer_json);
     std::optional<Transfer> res;
-    CHECK_NOTHROW(res = builder.DeserializeContractTransfer(val, [](){return "utxo";}));
+    CHECK_NOTHROW(builder.DeserializeContractTransfer(val, res, [](){return "utxo";}));
     CHECK(res.has_value());
     CHECK(res->m_txid == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
     CHECK(res->m_nout == 11);
@@ -249,33 +253,33 @@ TEST_CASE("DeserializeContractTransfer")
 
     UniValue bad_pk_val;
     bad_pk_val.read(bad_pk_json);
-    CHECK_THROWS_AS(no_res = builder.DeserializeContractTransfer(bad_pk_val, [](){return "utxo";}), ContractTermWrongValue);
+    CHECK_THROWS_AS(builder.DeserializeContractTransfer(bad_pk_val, no_res, [](){return "utxo";}), ContractTermWrongValue);
     CHECK(!no_res.has_value());
 
     UniValue bad_ex_pk_val;
     bad_ex_pk_val.read(bad_ex_pk_json);
-    CHECK_THROWS_AS(no_res = builder.DeserializeContractTransfer(bad_ex_pk_val, [](){return "utxo";}), ContractTermWrongValue);
+    CHECK_THROWS_AS(builder.DeserializeContractTransfer(bad_ex_pk_val, no_res, [](){return "utxo";}), ContractTermWrongValue);
     CHECK(!no_res.has_value());
 
     UniValue no_txid_val;
     no_txid_val.read(no_txid_json);
-    CHECK_THROWS_AS(no_res = builder.DeserializeContractTransfer(no_txid_val, [](){return "utxo";}), ContractTermMissing);
+    CHECK_THROWS_AS(builder.DeserializeContractTransfer(no_txid_val, no_res, [](){return "utxo";}), ContractTermMissing);
     CHECK(!no_res.has_value());
 
     UniValue no_nout_val;
     no_nout_val.read(no_nout_json);
-    CHECK_THROWS_AS(no_res = builder.DeserializeContractTransfer(no_nout_val, [](){return "utxo";}), ContractTermMissing);
+    CHECK_THROWS_AS(builder.DeserializeContractTransfer(no_nout_val, no_res, [](){return "utxo";}), ContractTermMissing);
     CHECK(!no_res.has_value());
 
     UniValue no_amount_val;
     no_amount_val.read(no_amount_json);
-    CHECK_THROWS_AS(no_res = builder.DeserializeContractTransfer(no_amount_val, [](){return "utxo";}), ContractTermMissing);
+    CHECK_THROWS_AS(builder.DeserializeContractTransfer(no_amount_val, no_res, [](){return "utxo";}), ContractTermMissing);
     CHECK(!no_res.has_value());
 
     UniValue no_pk_val;
     no_pk_val.read(no_pk_json);
     std::optional<Transfer> no_pk_res;
-    CHECK_NOTHROW(no_pk_res = builder.DeserializeContractTransfer(no_pk_val, [](){return "utxo";}));
+    CHECK_NOTHROW(builder.DeserializeContractTransfer(no_pk_val, no_pk_res, [](){return "utxo";}));
     CHECK(no_pk_res.has_value());
     CHECK(no_pk_res->m_txid == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
     CHECK(no_pk_res->m_nout == 11);
@@ -287,7 +291,7 @@ TEST_CASE("DeserializeContractTransfer")
     UniValue no_sig_val;
     no_sig_val.read(no_sig_json);
     std::optional<Transfer> no_sig_res;
-    CHECK_NOTHROW(no_sig_res = builder.DeserializeContractTransfer(no_sig_val, [](){return "utxo";}));
+    CHECK_NOTHROW(builder.DeserializeContractTransfer(no_sig_val, no_sig_res, [](){return "utxo";}));
     CHECK(no_sig_res.has_value());
     CHECK(no_sig_res->m_txid == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
     CHECK(no_sig_res->m_nout == 11);

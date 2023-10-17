@@ -23,11 +23,11 @@ private:
 
     CMutableTransaction MakeTx() const;
 public:
-    SimpleTransaction() = default;
+    explicit SimpleTransaction(Bech32 bech) : ContractBuilder(bech) {}
     SimpleTransaction(const SimpleTransaction&) = default;
     SimpleTransaction(SimpleTransaction&&) noexcept = default;
 
-    explicit SimpleTransaction(const UniValue& json)
+    explicit SimpleTransaction(Bech32 bech, const UniValue& json) : ContractBuilder(bech)
     { SimpleTransaction::ReadJson(json); }
 
     ~SimpleTransaction() override = default;
@@ -41,14 +41,14 @@ public:
     std::string GetMinFundingAmount(const std::string& params) const override;
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
-    { m_inputs.emplace_back(move(prevout)); }
+    { m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout)); }
 
     void AddOutput(std::shared_ptr<IContractDestination> destination)
     { m_outputs.emplace_back(move(destination)); }
 
-    void AddChangeOutput(const std::string& pk);
+    void AddChangeOutput(const std::string& addr);
 
-    void Sign(const core::MasterKey& master_key);
+    void Sign(const MasterKey& master_key);
 
     std::vector<std::string> RawTransactions() const;
 

@@ -10,10 +10,6 @@
 
 #include "bech32.h"
 #include "util/strencodings.h"
-#include "crypto/sha256.h"
-#include "script/script.h"
-#include "uint256.h"
-#include "amount.h"
 
 #include "common.hpp"
 
@@ -21,44 +17,41 @@
 
 namespace utxord {
 
-using l15::bytevector;
-using l15::xonly_pubkey;
+enum ChainMode {MAINNET, TESTNET, REGTEST};
 
-class IBech32 {
+template <ChainMode M> struct Hrp;
+template <> struct Hrp<MAINNET> { const static char* const value; };
+template <> struct Hrp<TESTNET> { const static char* const value; };
+template <> struct Hrp<REGTEST> { const static char* const value; };
 
-public:
-    enum ChainMode {MAINNET, TESTNET, REGTEST};
-
-    virtual ~IBech32() = default;
-    virtual std::string Encode(const xonly_pubkey& pk) const = 0;
-    virtual std::tuple<unsigned, bytevector> Decode(const std::string& address) const = 0;
-    virtual CScript PubKeyScript(const std::string& addr) const = 0;
-};
-
-template <IBech32::ChainMode M> struct Hrp;
-template <> struct Hrp<IBech32::MAINNET> { const static char* const value; };
-template <> struct Hrp<IBech32::TESTNET> { const static char* const value; };
-template <> struct Hrp<IBech32::REGTEST> { const static char* const value; };
-
-
-template <IBech32::ChainMode M> class Bech32: public IBech32
+class Bech32
 {
-public:
-    typedef Hrp<M> hrp;
+    typedef l15::bytevector bytevector;
 
-    ~Bech32() override = default;
-    std::string Encode(const xonly_pubkey& pk) const override {
-        std::vector<unsigned char> bech32buf = {1};
+    const char* const hrptag;
+public:
+
+    template <ChainMode M>
+    Bech32(Hrp<M>) : hrptag(Hrp<M>::value) {}
+
+    Bech32(const Bech32& o) = default;
+
+    Bech32& operator=(const Bech32& o)
+    { assert(strcmp(hrptag, o.hrptag) == 0); return *this; }
+
+    std::string Encode(const auto& pk, bech32::Encoding encoding = bech32::Encoding::BECH32M) const {
+        std::vector<unsigned char> bech32buf = {(encoding == bech32::Encoding::BECH32) ? (uint8_t)0 : (uint8_t)1};
         bech32buf.reserve(1 + ((pk.end() - pk.begin()) * 8 + 4) / 5);
         ConvertBits<8, 5, true>([&](unsigned char c) { bech32buf.push_back(c); }, pk.begin(), pk.end());
-        return bech32::Encode(bech32::Encoding::BECH32M, hrp::value, bech32buf);
+        return bech32::Encode(encoding, hrptag, bech32buf);
     }
 
-    std::tuple<unsigned, bytevector> Decode(const std::string& address) const override {
+    std::tuple<unsigned, bytevector> Decode(const std::string& address) const
+    {
         bech32::DecodeResult bech_result = bech32::Decode(address);
-        if(bech_result.hrp != hrp::value)
+        if(bech_result.hrp != hrptag)
         {
-            throw ContractTermWrongValue(std::string("Address prefix should be ") + hrp::value + ". Address: " + address);
+            throw ContractTermWrongValue(std::string("Address prefix should be ") + hrptag + ". Address: " + address);
         }
         if(bech_result.data.size() < 1)
         {
@@ -84,7 +77,7 @@ public:
         return std::tie(bech_result.data[0], data);
     }
 
-    CScript PubKeyScript(const std::string& addr) const override
+    CScript PubKeyScript(const std::string& addr) const
     {
         auto res = Decode(addr);
         return CScript() << get<0>(res) << get<1>(res);

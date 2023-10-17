@@ -100,8 +100,8 @@ public:
     static const std::string name_inscribe_script_pk;
     static const std::string name_inscribe_int_pk;
     static const std::string name_inscribe_sig;
-    static const std::string name_destination_pk;
-    static const std::string name_change_pk;
+    static const std::string name_destination_addr;
+    static const std::string name_change_addr;
 //    static const std::string name_parent_collection_script_pk;
 //    static const std::string name_parent_collection_int_pk;
 //    static const std::string name_parent_collection_out_pk;
@@ -110,11 +110,11 @@ public:
 //    static const std::string name_collection_commit_sig;
 //    static const std::string name_collection_out_pk;
 
-    CreateInscriptionBuilder() : m_type(INSCRIPTION) {}
+    //CreateInscriptionBuilder() : m_type(INSCRIPTION) {}
     CreateInscriptionBuilder(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder(CreateInscriptionBuilder&&) noexcept = default;
 
-    explicit CreateInscriptionBuilder(IBech32::ChainMode chain_mode, InscribeType type) : ContractBuilder(chain_mode), m_type(type) {}
+    explicit CreateInscriptionBuilder(Bech32 bech, InscribeType type) : ContractBuilder(bech), m_type(type) {}
 
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
@@ -128,7 +128,7 @@ public:
     std::string GetIntermediateSecKey() const { return l15::hex(m_inscribe_taproot_sk.value()); }
 
     void OrdAmount(const std::string& amount)
-    { m_ord_amount = ParseAmount(amount); }
+    { m_ord_amount = l15::ParseAmount(amount); }
 
     void AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& addr);
     void Data(const std::string& content_type, const std::string& hex_data);
@@ -137,13 +137,13 @@ public:
 
     void InscribeAddress(const std::string& addr)
     {
-        mBech->Decode(addr);
+        bech32().Decode(addr);
         m_destination_addr = addr;
     }
 
     void ChangeAddress(const std::string& addr)
     {
-        mBech->Decode(addr);
+        bech32().Decode(addr);
         m_change_addr = addr;
     }
 

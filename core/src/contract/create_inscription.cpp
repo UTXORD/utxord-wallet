@@ -12,7 +12,6 @@
 
 #include "create_inscription.hpp"
 #include "script_merkle_tree.hpp"
-#include "channel_keys.hpp"
 
 #include "inscription_common.hpp"
 
@@ -110,8 +109,8 @@ const std::string CreateInscriptionBuilder::name_content = "content";
 const std::string CreateInscriptionBuilder::name_inscribe_script_pk = "inscribe_script_pk";
 const std::string CreateInscriptionBuilder::name_inscribe_int_pk = "inscribe_int_pk";
 const std::string CreateInscriptionBuilder::name_inscribe_sig = "inscribe_sig";
-const std::string CreateInscriptionBuilder::name_destination_pk = "destination_pk";
-const std::string CreateInscriptionBuilder::name_change_pk = "change_pk";
+const std::string CreateInscriptionBuilder::name_destination_addr = "destination_addr";
+const std::string CreateInscriptionBuilder::name_change_addr = "change_addr";
 //const std::string CreateInscriptionBuilder::name_parent_collection_script_pk = "parent_collection_script_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_int_pk = "parent_collection_int_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_out_pk = "parent_collection_out_pk";
@@ -128,7 +127,7 @@ void CreateInscriptionBuilder::AddUTXO(const std::string &txid, uint32_t nout,
                                                             const std::string& amount,
                                                             const std::string& addr)
 {
-    mBech->Decode(addr);
+    bech32().Decode(addr);
     m_utxo.emplace_back(std::string(txid), nout, ParseAmount(amount), addr);
 }
 
@@ -137,7 +136,7 @@ void CreateInscriptionBuilder::AddToCollection(const std::string& collection_id,
                                                                     const std::string& collection_addr)
 {
     CheckInscriptionId(collection_id);
-    mBech->Decode(collection_addr);
+    bech32().Decode(collection_addr);
     m_parent_collection_id = collection_id;
     m_collection_utxo = {utxo_txid, utxo_nout, ParseAmount(utxo_amount), collection_addr};
 }
@@ -157,7 +156,7 @@ void CreateInscriptionBuilder::FundMiningFee(const std::string &txid, uint32_t n
                                              const std::string& amount,
                                              const std::string& addr)
 {
-    mBech->Decode(addr);
+    bech32().Decode(addr);
     m_xtra_utxo.emplace_back(std::string(txid), nout, ParseAmount(amount), addr);
 }
 
@@ -203,7 +202,7 @@ void CreateInscriptionBuilder::SignCommit(uint32_t n, const std::string& sk, con
     auto utxo_it = m_utxo.begin();
     std::advance(utxo_it, n);
     core::ChannelKeys utxo_key(unhex<seckey>(sk));
-    if (utxo_key.GetLocalPubKey() != get<1>(mBech->Decode(*utxo_it->m_addr))) throw ContractTermMismatch(name_utxo + '[' + std::to_string(n) + ']' + name_pk);
+    if (utxo_key.GetLocalPubKey() != get<1>(bech32().Decode(*utxo_it->m_addr))) throw ContractTermMismatch(name_utxo + '[' + std::to_string(n) + ']' + name_pk);
 
     if (!m_inscribe_int_pk) {
         core::ChannelKeys inscribe_internal_key = core::ChannelKeys();
@@ -223,7 +222,7 @@ void CreateInscriptionBuilder::SignCommit(uint32_t n, const std::string& sk, con
     spending_outs.reserve(m_utxo.size());
     for (const auto& utxo: m_utxo) {
         utxo_amount += utxo.m_amount;
-        spending_outs.emplace_back(utxo.m_amount, mBech->PubKeyScript(*utxo.m_addr));
+        spending_outs.emplace_back(utxo.m_amount, bech32().PubKeyScript(*utxo.m_addr));
     }
 
     CMutableTransaction funding_tx = MakeCommitTx();
@@ -251,7 +250,7 @@ void CreateInscriptionBuilder::SignCollection(const std::string& sk)
 
     core::ChannelKeys script_key(unhex<seckey>(sk));
 
-    if (get<1>(mBech->Decode(*m_collection_utxo->m_addr)) != script_key.GetLocalPubKey()) throw ContractTermMismatch(name_collection + '.' + name_pk);
+    if (get<1>(bech32().Decode(*m_collection_utxo->m_addr)) != script_key.GetLocalPubKey()) throw ContractTermMismatch(name_collection + '.' + name_pk);
 
     CMutableTransaction genesis_tx = MakeGenesisTx(false);
     m_collection_utxo->m_sig = script_key.SignTaprootTx(genesis_tx, 1, GetGenesisTxSpends(), {});
@@ -284,7 +283,7 @@ void CreateInscriptionBuilder::SignFundMiningFee(uint32_t n, const string &sk)
     auto xtra_it = m_xtra_utxo.begin();
     std::advance(xtra_it, n);
 
-    if (keypair.GetLocalPubKey() != get<1>(mBech->Decode(*xtra_it->m_addr))) throw ContractTermMismatch(name_xtra_utxo + '[' + std::to_string(n) + "]." + name_pk);
+    if (keypair.GetLocalPubKey() != get<1>(bech32().Decode(*xtra_it->m_addr))) throw ContractTermMismatch(name_xtra_utxo + '[' + std::to_string(n) + "]." + name_pk);
 
     CMutableTransaction genesis_tx = MakeGenesisTx(true);
 
@@ -338,9 +337,13 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
         if (!m_inscribe_script_sig) throw ContractTermMissing(std::string(name_inscribe_sig));
         if (m_collection_utxo && m_xtra_utxo.empty() && !m_collection_mining_fee_sig)
             throw ContractTermMissing(std::string(name_collection_mining_fee_sig));
-        if (!m_destination_addr) throw ContractTermMissing(std::string(name_destination_pk));
-        if (!m_change_addr && CommitTx().vout.size() == (m_collection_utxo.has_value() ? 3 : 2))
-            throw ContractTermMissing(std::string(name_change_pk));
+        if (!m_destination_addr) throw ContractTermMissing(std::string(name_destination_addr));
+        bech32().Decode(*m_destination_addr);
+
+        if (m_change_addr) bech32().Decode(*m_change_addr);
+
+//        if (!m_change_addr && CommitTx().vout.size() == (m_collection_utxo.has_value() ? 3 : 2))
+//            throw ContractTermMissing(std::string(name_change_addr));
 
         //no break
     case LASY_COLLECTION_MARKET_TERMS:
@@ -407,9 +410,9 @@ std::string CreateInscriptionBuilder::Serialize(InscribePhase phase) const
             contract.pushKV(name_collection_mining_fee_sig, hex(*m_collection_mining_fee_sig));
         }
 
-        contract.pushKV(name_destination_pk, hex(get<1>(mBech->Decode(*m_destination_addr))));
+        contract.pushKV(name_destination_addr, *m_destination_addr);
         if (m_change_addr)
-            contract.pushKV(name_change_pk, hex(get<1>(mBech->Decode(*m_change_addr))));
+            contract.pushKV(name_change_addr, *m_change_addr);
 
         //no break
     case LASY_COLLECTION_MARKET_TERMS:
@@ -425,7 +428,7 @@ std::string CreateInscriptionBuilder::Serialize(InscribePhase phase) const
             collection_val.pushKV(name_txid, m_collection_utxo->m_txid);
             collection_val.pushKV(name_nout, m_collection_utxo->m_nout);
             collection_val.pushKV(name_amount, m_collection_utxo->m_amount);
-            collection_val.pushKV(name_pk, hex(get<1>(mBech->Decode(*m_collection_utxo->m_addr))));
+            collection_val.pushKV(name_addr, *m_collection_utxo->m_addr);
             if (m_collection_utxo->m_sig) {
                 collection_val.pushKV(name_sig, hex(*m_collection_utxo->m_sig));
             }
@@ -478,7 +481,8 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
             if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
 
             for (size_t n = 0; n < val.size(); ++n) {
-                auto utxo = DeserializeContractTransfer(val[n], [&](){ return (name_utxo + '[') += std::to_string(n) += ']'; });
+                std::optional<Transfer> utxo;
+                DeserializeContractTransfer(val[n], utxo, [&](){ return (name_utxo + '[') += std::to_string(n) += ']'; });
                 if (!utxo->m_sig) throw ContractTermMissing(move(((name_utxo + '[') += std::to_string(n) += "].") += name_sig));
                 m_utxo.emplace_back(move(*utxo));
             }
@@ -486,12 +490,10 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     }
     {
         const auto &val = contract[name_collection];
-        auto collection_utxo = DeserializeContractTransfer(val, [&](){ return name_collection; });
-        if (collection_utxo) {
+        DeserializeContractTransfer(val, m_collection_utxo, [&](){ return name_collection; });
+        if (m_collection_utxo) {
             DeserializeContractString(val[name_collection_id], m_parent_collection_id, [&]() { return move((name_collection + '.') += name_collection_id); });
             if (!m_parent_collection_id) throw ContractTermMissing(move((name_collection + '.') += name_collection_id));
-
-            m_collection_utxo = move(collection_utxo);
         }
     }
 
@@ -509,7 +511,8 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
             if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_xtra_utxo));
 
             for (size_t n = 0; n < val.size(); ++n) {
-                auto utxo = DeserializeContractTransfer(val[n], [&](){ return (name_xtra_utxo + '[') += std::to_string(n) += ']'; });
+                std::optional<Transfer> utxo;
+                DeserializeContractTransfer(val[n], utxo, [&](){ return (name_xtra_utxo + '[') += std::to_string(n) += ']'; });
                 if (!utxo->m_sig) throw ContractTermMissing(move(((name_xtra_utxo + '[') += std::to_string(n) += "].") += name_sig));
                 m_xtra_utxo.emplace_back(move(*utxo));
             }
@@ -523,8 +526,8 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     DeserializeContractHexData(contract[name_inscribe_sig], m_inscribe_script_sig, [&](){ return name_inscribe_sig; });
     DeserializeContractHexData(contract[name_collection_mining_fee_sig], m_collection_mining_fee_sig, [&](){ return name_collection_mining_fee_sig; });
     DeserializeContractHexData(contract[name_inscribe_int_pk], m_inscribe_int_pk, [&](){ return name_inscribe_int_pk; });
-    DeserializeContractTaprootPubkey(contract[name_destination_pk], m_destination_addr, [&](){ return name_destination_pk; });
-    DeserializeContractTaprootPubkey(contract[name_change_pk], m_change_addr, [&](){ return name_change_pk; });
+    DeserializeContractString(contract[name_destination_addr], m_destination_addr, [&](){ return name_destination_addr; });
+    DeserializeContractString(contract[name_change_addr], m_change_addr, [&](){ return name_change_addr; });
 
     CheckContractTerms(phase);
 }
@@ -611,7 +614,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
 
     if (m_change_addr) {
         try {
-            tx.vout.emplace_back(0, mBech->PubKeyScript(*m_change_addr));
+            tx.vout.emplace_back(0, bech32().PubKeyScript(*m_change_addr));
             CAmount change_amount = CalculateOutputAmount(total_funds - *m_ord_amount - genesis_sum_fee, *m_mining_fee_rate, tx);
             tx.vout.back().nValue = change_amount;
         }
@@ -646,13 +649,13 @@ std::vector<CTxOut> CreateInscriptionBuilder::GetGenesisTxSpends() const
 
     spending_outs.emplace_back(CommitTx().vout.front());
     if (m_collection_utxo) {
-        spending_outs.emplace_back(m_collection_utxo->m_amount, mBech->PubKeyScript(*m_collection_utxo->m_addr));
+        spending_outs.emplace_back(m_collection_utxo->m_amount, bech32().PubKeyScript(*m_collection_utxo->m_addr));
         if (m_xtra_utxo.empty()) {
             spending_outs.emplace_back(CommitTx().vout[1]);
         }
         else {
             for (const auto& utxo: m_xtra_utxo) {
-                spending_outs.emplace_back(utxo.m_amount, mBech->PubKeyScript(*utxo.m_addr));
+                spending_outs.emplace_back(utxo.m_amount, bech32().PubKeyScript(*utxo.m_addr));
             }
         }
     }
@@ -682,7 +685,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx(bool for_inscribe_si
         genesis_tx.vin.emplace_back(uint256S(m_collection_utxo->m_txid), m_collection_utxo->m_nout);
         genesis_tx.vin.back().scriptWitness.stack.emplace_back(m_collection_utxo->m_sig.value_or(signature()));
 
-        genesis_tx.vout.emplace(genesis_tx.vout.begin()+1, m_collection_utxo->m_amount, mBech->PubKeyScript(*m_collection_utxo->m_addr));
+        genesis_tx.vout.emplace(genesis_tx.vout.begin()+1, m_collection_utxo->m_amount, bech32().PubKeyScript(*m_collection_utxo->m_addr));
 
         if (m_xtra_utxo.empty()) {
             genesis_tx.vin.emplace_back(commit_tx.GetHash(), 1);
@@ -742,9 +745,9 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
     tx.vin.front().scriptWitness.stack.emplace_back(genesis_script.begin(), genesis_script.end());
     tx.vin.front().scriptWitness.stack.emplace_back(move(control_block));
 
-    tx.vout.emplace_back(0, m_destination_addr ? mBech->PubKeyScript(*m_destination_addr) : (CScript() << 1 << emptyKey));
+    tx.vout.emplace_back(0, m_destination_addr ? bech32().PubKeyScript(*m_destination_addr) : (CScript() << 1 << emptyKey));
     if (*m_market_fee > 0) {
-        tx.vout.emplace_back(*m_market_fee, mBech->PubKeyScript(*m_market_fee_addr));
+        tx.vout.emplace_back(*m_market_fee, bech32().PubKeyScript(*m_market_fee_addr));
     }
 
     return tx;

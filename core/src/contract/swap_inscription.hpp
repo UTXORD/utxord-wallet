@@ -24,8 +24,8 @@ enum SwapPhase {
 class SwapInscriptionBuilder : public ContractBuilder
 {
     static const uint32_t m_protocol_version;
-    static const uint32_t m_protocol_version_pubkey;
-    static const uint32_t m_protocol_version_old;
+    static const uint32_t m_protocol_version_pubkey_v4;
+    static const uint32_t m_protocol_version_old_v3;
 
     std::optional<CAmount> m_ord_price;
 
@@ -63,7 +63,7 @@ class SwapInscriptionBuilder : public ContractBuilder
     mutable std::optional<CMutableTransaction> mSwapTx;
     mutable std::optional<CMutableTransaction> mOrdPayoffTx;
 
-    std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> FundsCommitTapRoot() const;
+    std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> FundsCommitTapRoot() const;
 
     CMutableTransaction MakeSwapTx(bool with_funds_in) const;
 
@@ -72,7 +72,7 @@ class SwapInscriptionBuilder : public ContractBuilder
 
     void CheckOrdPayoffSig() const;
 
-    std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> FundsCommitTemplateTapRoot() const;
+    std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> FundsCommitTemplateTapRoot() const;
 protected:
     std::vector<std::pair<CAmount,CMutableTransaction>> GetTransactions() const override;
 
@@ -99,6 +99,7 @@ public:
     static const std::string name_ord_nout;
     static const std::string name_ord_amount;
     static const std::string name_ord_pk;
+    static const std::string name_ord_addr;
 
     static const std::string name_funds;
     static const std::string name_funds_unspendable_key;
@@ -117,7 +118,7 @@ public:
     static const std::string name_ordpayoff_sig;
 
     SwapInscriptionBuilder() = default;
-    explicit SwapInscriptionBuilder(IBech32::ChainMode chain_mode) : ContractBuilder(chain_mode) {}
+    explicit SwapInscriptionBuilder(Bech32 bech) : ContractBuilder(bech) {}
 
     //SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
     SwapInscriptionBuilder(SwapInscriptionBuilder&&) noexcept = default;
@@ -128,7 +129,7 @@ public:
     uint32_t GetProtocolVersion() const override { return m_protocol_version; }
 
     void OrdPrice(const std::string& price)
-    { m_ord_price = ParseAmount(price); }
+    { m_ord_price = l15::ParseAmount(price); }
 
     void OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount);
     void AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
@@ -139,7 +140,7 @@ public:
     std::string GetSwapScriptPubKeyA() const { return hex(m_swap_script_pk_A.value()); }
     std::string GetSwapScriptPubKeyB() const { return hex(m_swap_script_pk_B.value()); }
 
-    void SetOrdMiningFeeRate(const std::string& fee_rate) { m_ord_mining_fee_rate = ParseAmount(fee_rate); }
+    void SetOrdMiningFeeRate(const std::string& fee_rate) { m_ord_mining_fee_rate = l15::ParseAmount(fee_rate); }
 
     std::string GetSwapScriptPubKeyM() const { return hex(m_swap_script_pk_M.value()); }
     void SetSwapScriptPubKeyM(const std::string& v) { m_swap_script_pk_M = unhex<xonly_pubkey>(v); }
@@ -155,6 +156,7 @@ public:
 
     void CheckContractTerms(SwapPhase phase) const;
     std::string Serialize(SwapPhase phase);
+    void Deserialize_v4(const std::string& data);
     void Deserialize(const std::string& data);
 
     std::string FundsCommitRawTransaction() const;

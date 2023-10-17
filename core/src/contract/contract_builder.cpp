@@ -7,9 +7,14 @@
 
 #include <execution>
 #include <atomic>
+
 #include <limits>
 
 namespace utxord {
+
+using l15::FormatAmount;
+using l15::ParseAmount;
+using l15::SignatureError;
 
 const std::string IJsonSerializable::name_type = "type";
 
@@ -46,7 +51,7 @@ UniValue ContractInput::MakeJson() const
 {
     // Do not serialize underlying contract as transaction input: copy it as UTXO and write UTXO related values only
     // Lazy mode copy of an UTXO state is used to allow early-set of not completed contract as the input at any time
-    UTXO utxo_out(*output);
+    UTXO utxo_out(bech32, *output);
     UniValue json = utxo_out.MakeJson();
     json.pushKV(name_witness, witness.MakeJson());
 
@@ -55,7 +60,7 @@ UniValue ContractInput::MakeJson() const
 
 void ContractInput::ReadJson(const UniValue &json)
 {
-    output = std::make_shared<UTXO>(json);
+    output = std::make_shared<UTXO>(bech32, json);
 
     {   const UniValue& val = json[name_witness];
         if (val.isNull()) throw ContractTermMissing(name_witness.c_str());
@@ -66,79 +71,187 @@ void ContractInput::ReadJson(const UniValue &json)
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-const std::string P2TR::name_amount = "amount";
-const std::string P2TR::name_pk = "pubkey";
-
-const char* P2TR::type = "p2tr";
-
-UniValue P2TR::MakeJson() const
+std::vector<bytevector> P2WPKHSigner::Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const
 {
-    UniValue res(UniValue::VOBJ);
-    res.pushKV(name_type, type);
-    res.pushKV(name_amount, m_amount);
-    res.pushKV(name_pk, hex(m_pk));
+    if (hashtype == SIGHASH_DEFAULT) hashtype = SIGHASH_ALL;
 
-    return res;
+    int witver;
+    std::vector<unsigned char> witprog;
+
+    if (!spent_outputs[nin].scriptPubKey.IsWitnessProgram(witver, witprog) || witver != 0 || witprog.size() != 20)
+        throw ContractError("not P2WPKH contract");
+
+    CScript witnessscript;
+    witnessscript << OP_DUP << OP_HASH160 << witprog << OP_EQUALVERIFY << OP_CHECKSIG;
+
+    return {m_keypair.SignSegwitV0Tx(tx, nin, spent_outputs, witnessscript, hashtype), m_keypair.GetPubKey().as_vector()};
 }
 
-void P2TR::ReadJson(const UniValue &json)
+std::vector<bytevector> TaprootSigner::Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const
 {
-    if (json[name_type].get_str() != type) {
-        throw ContractTermWrongValue(std::string(name_type));
-    }
-    m_amount = json[name_amount].getInt<CAmount>();
-    m_pk = unhex<xonly_pubkey>(json[name_pk].get_str());
+    if (hashtype == SIGHASH_ALL) hashtype = SIGHASH_DEFAULT;
+    return {m_keypair.SignTaprootTx(tx, nin, spent_outputs, {}, hashtype)};
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-core::ChannelKeys P2TR::LookupKeyPair(const core::MasterKey &masterKey, utxord::OutputType outType) const
+const char* P2Witness::type = "p2witness";
+
+UniValue P2Witness::MakeJson() const
 {
-    core::MasterKey masterCopy(masterKey);
-    masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT + core::MasterKey::BIP86_TAPROOT_ACCOUNT);
-    masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT);
+    UniValue res(UniValue::VOBJ);
+    res.pushKV(name_type, type);
+    res.pushKV(ContractBuilder::name_amount, m_amount);
+    res.pushKV(ContractBuilder::name_addr, m_addr);
 
-    switch (outType) {
-    case TAPROOT_DEFAULT:
-    case TAPROOT_DEFAULT_SCRIPT:
-        masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT);
-        break;
-    case TAPROOT_OUTPUT:
-    case TAPROOT_SCRIPT:
-        masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT + 1);
-        break;
-    case INSCRIPTION_OUTPUT:
-        masterCopy.DeriveSelf(core::MasterKey::BIP32_HARDENED_KEY_LIMIT + 2);
-        break;
+    return res;
+}
+
+void P2Witness::ReadJson(const UniValue &json)
+{
+    if (json[name_type].get_str() != type) {
+        throw ContractTermWrongValue(std::string(name_type));
     }
+    m_amount = json[ContractBuilder::name_amount].getInt<CAmount>();
+    m_addr = json[ContractBuilder::name_addr].get_str();
+}
 
-    masterCopy.DeriveSelf(0);
 
-#ifdef _LIBCPP_HAS_PARALLEL_ALGORITHMS
-    std::atomic_uint32_t res_index = std::numeric_limits<uint32_t>::max();
-    const uint32_t step = 64;
-    uint32_t indexes[step];
-    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; key_index += step) {
-        std::iota(indexes, indexes + step, key_index);
-        std::for_each(std::execution::par_unseq, indexes, indexes+step, [&](const auto& k){
-            core::ChannelKeys keypair = masterCopy.Derive(std::vector<uint32_t >{k}, (outType == TAPROOT_DEFAULT_SCRIPT || outType == TAPROOT_SCRIPT) ? core::SUPPRESS : core::FORCE);
-            if (keypair.GetLocalPubKey() == m_pk) {
-                res_index = k;
+std::shared_ptr<IContractDestination> P2Witness::ReadJson(Bech32 bech, const UniValue& json)
+{
+    P2Witness dest(bech);
+    dest.ReadJson(json);
+
+    return Construct(bech, dest.m_amount, dest.m_addr);
+}
+
+std::shared_ptr<IContractDestination> P2Witness::Construct(Bech32 bech, CAmount amount, std::string addr)
+{
+    unsigned witver;
+    bytevector data;
+    std::tie(witver, data) = bech.Decode(addr);
+    if (witver == 0) {
+        return std::make_shared<P2WPKH>(bech, amount, addr);
+    }
+    else {
+        return std::make_shared<P2TR>(bech, amount, addr);
+    }
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+std::shared_ptr<ISigner> P2WPKH::LookupKey(const MasterKey &masterKey, KeyLookupHint keyHint) const
+{
+    if (keyHint.type != KeyLookupHint::DEFAULT)
+        throw std::invalid_argument("KeyLookup type: " + std::to_string(keyHint.type));
+
+    unsigned witver;
+    bytevector pkhash;
+    std::tie(witver, pkhash) = mBech.Decode(m_addr);
+    if (witver != 0) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
+
+    MasterKey masterCopy(masterKey);
+    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + MasterKey::BIP84_P2WPKH_ACCOUNT);
+    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT);
+
+    for (uint32_t acc: keyHint.accounts) {
+        MasterKey account(masterCopy);
+        account.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + acc);
+        account.DeriveSelf(0);
+
+//#ifdef _LIBCPP_HAS_PARALLEL_ALGORITHMS
+        std::atomic<std::shared_ptr<P2WPKHSigner>> res;
+        const uint32_t step = 64;
+        uint32_t indexes[step];
+        for (uint32_t key_index = 0; key_index < 65536/*MasterKey::BIP32_HARDENED_KEY_LIMIT*/; key_index += step) {
+            std::iota(indexes, indexes + step, key_index);
+            std::for_each(std::execution::par_unseq, indexes, indexes+step, [&](const auto& k){
+                EcdsaKeypair keypair(account.Derive(std::vector<uint32_t >{k}, l15::core::SUPPRESS).GetLocalPrivKey());
+                if (l15::Hash160(keypair.GetPubKey().as_vector()) == pkhash) {
+                    res = std::make_shared<P2WPKHSigner>(move(keypair));
+                }
+            });
+            std::shared_ptr<P2WPKHSigner> signer = res.load();
+            if (signer) {
+                return signer;
             }
-        });
-        if (res_index != std::numeric_limits<uint32_t>::max()) {
-            return masterCopy.Derive(std::vector<uint32_t >{res_index}, (outType == TAPROOT_DEFAULT_SCRIPT || outType == TAPROOT_SCRIPT) ? core::SUPPRESS : core::FORCE);
         }
+//#else
+//        for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
+//            EcdsaKeypair keypair(account.Derive(std::vector<uint32_t >{key_index}, l15::core::SUPPRESS).GetLocalPrivKey());
+//            if (l15::Hash160(keypair.GetPubKey().as_vector()) == pkhash) {
+//                auto res = std::make_shared<P2WPKHSigner>(move(keypair));
+//                return res;
+//            }
+//        }
+//#endif
     }
-#else
-    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
-        core::ChannelKeys keypair = masterCopy.Derive(std::vector<uint32_t >{key_index}, (outType == TAPROOT_DEFAULT_SCRIPT || outType == TAPROOT_SCRIPT) ? core::SUPPRESS : core::FORCE);
-        if (keypair.GetLocalPubKey() == m_pk) {
-            return keypair;
+    throw l15::KeyError("derivation lookup");
+}
+
+std::shared_ptr<ISigner> P2TR::LookupKey(const MasterKey &masterKey, KeyLookupHint keyHint) const
+{
+    unsigned witver;
+    bytevector pk;
+    std::tie(witver, pk) = mBech.Decode(m_addr);
+    if (witver != 1) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
+
+    std::clog << "Lookup pubkey: " << hex(pk) << std::endl;
+
+    MasterKey masterCopy(masterKey);
+    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + MasterKey::BIP86_TAPROOT_ACCOUNT);
+    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT);
+
+//    switch (outType) {
+//    case TAPROOT_DEFAULT:
+//    case TAPROOT_DEFAULT_SCRIPT:
+//        masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT);
+//        break;
+//    case TAPROOT_OUTPUT:
+//    case TAPROOT_SCRIPT:
+//        masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + 1);
+//        break;
+//    case INSCRIPTION_OUTPUT:
+//        masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + 2);
+//        break;
+//    default:
+//        throw ContractTermWrongValue("P2TR outType: " + std::to_string(outType));
+//    }
+
+    for (uint32_t acc: keyHint.accounts) {
+        MasterKey account(masterCopy);
+        account.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + acc);
+        account.DeriveSelf(0);
+
+//#ifdef _LIBCPP_HAS_PARALLEL_ALGORITHMS
+        std::atomic<std::shared_ptr<ChannelKeys>> res;
+        const uint32_t step = 64;
+        uint32_t indexes[step];
+        for (uint32_t key_index = 0; key_index < 65536/*MasterKey::BIP32_HARDENED_KEY_LIMIT*/; key_index += step) {
+            std::iota(indexes, indexes + step, key_index);
+            std::for_each(std::execution::par_unseq, indexes, indexes + step, [&](const auto &k) {
+                ChannelKeys keypair = account.Derive(std::vector<uint32_t>{k},
+                                                        (keyHint.type == KeyLookupHint::SCRIPT) ? l15::core::SUPPRESS : l15::core::FORCE);
+                if (keypair.GetLocalPubKey() == pk) {
+                    res = std::make_shared<ChannelKeys>(move(keypair));
+                }
+            });
+            std::shared_ptr<ChannelKeys> keypair = res.load();
+            if (keypair) {
+                //auto signer = ;
+                return std::make_shared<TaprootSigner>(move(*keypair));
+            }
         }
+//#else
+//    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
+//        ChannelKeys keypair = masterCopy.Derive(std::vector<uint32_t >{key_index}, (keyHint.type == KeyLookupHint::SCRIPT) ? l15::core::SUPPRESS : l15::core::FORCE);
+//        if (keypair.GetLocalPubKey() == pk) {
+//            return std::make_shared<TaprootSigner>(move(keypair));;
+//        }
+//    }
+//#endif
     }
-#endif
-    throw KeyError("derivation lookup");
+    throw l15::KeyError("derivation lookup");
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -170,8 +283,7 @@ void UTXO::ReadJson(const UniValue &json)
 
     UniValue dest = json[name_destination];
     if (!dest.isNull()) {
-        m_destination = std::make_shared<P2TR>();
-        m_destination->ReadJson(dest);
+        m_destination = P2Witness::ReadJson(mBech, dest);
     }
 }
 
@@ -191,21 +303,6 @@ const std::string ContractBuilder::name_pk = "pubkey";
 const std::string ContractBuilder::name_addr = "addr";
 const std::string ContractBuilder::name_sig = "sig";
 
-ContractBuilder::ContractBuilder(IBech32::ChainMode chain_mode) {
-    switch (chain_mode) {
-    case IBech32::REGTEST:
-        mBech.reset(new Bech32<IBech32::REGTEST>());
-        break;
-    case IBech32::TESTNET:
-        mBech.reset(new Bech32<IBech32::TESTNET>());
-        break;
-    case IBech32::MAINNET:
-        mBech.reset(new Bech32<IBech32::MAINNET>());
-        break;
-    default:
-        throw std::runtime_error("Wrong chain mode: " + std::to_string(chain_mode));
-    }
-}
 
 
 CAmount ContractBuilder::CalculateWholeFee(const std::string& params) const {
@@ -231,7 +328,7 @@ void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature&
         execdata.m_codeseparator_pos_init = true;
         execdata.m_codeseparator_pos = 0xFFFFFFFF; // Only support non-OP_CODESEPARATOR BIP342 signing for now.
         execdata.m_tapleaf_hash_init = true;
-        execdata.m_tapleaf_hash = TapLeafHash(spend_script);
+        execdata.m_tapleaf_hash = l15::TapLeafHash(spend_script);
     }
 
     uint8_t hashtype = SIGHASH_DEFAULT;
@@ -247,7 +344,7 @@ void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature&
     if (!SignatureHashSchnorr(sighash, execdata, tx, nin, hashtype, sigversion, txdata, MissingDataBehavior::FAIL)) {
         throw SignatureError("sighash");
     }
-    if (!pk.verify(core::ChannelKeys::GetStaticSecp256k1Context(), sig, sighash)) {
+    if (!pk.verify(ChannelKeys::GetStaticSecp256k1Context(), sig, sighash)) {
         throw SignatureError("sig");
     }
 }
@@ -308,7 +405,7 @@ void ContractBuilder::DeserializeContractString(const UniValue& val, std::option
     }
 }
 
-std::optional<Transfer> ContractBuilder::DeserializeContractTransfer(const UniValue& val, std::function<std::string()> lazy_name)
+std::optional<Transfer> ContractBuilder::DeserializeContractTransfer_w_pubkey(const UniValue& val, std::function<std::string()> lazy_name)
 {
     if (!val.isNull()) {
         if (!val.isObject()) throw ContractTermWrongFormat(lazy_name());
@@ -344,6 +441,57 @@ std::optional<Transfer> ContractBuilder::DeserializeContractTransfer(const UniVa
     return {};
 }
 
+void ContractBuilder::DeserializeContractTransfer(const UniValue& val, std::optional<Transfer>& transfer, std::function<std::string()> lazy_name)
+{
+    if (!val.isNull()) {
+        if (!val.isObject()) throw ContractTermWrongFormat(lazy_name());
+
+        const UniValue &val_txid = val[name_txid];
+        const UniValue &val_nout = val[name_nout];
+        const UniValue &val_amount = val[name_amount];
+        const UniValue &val_addr = val[name_addr];
+        const UniValue &val_sig = val[name_sig];
+
+        if (val_txid.isNull())
+            throw ContractTermMissing(move((lazy_name() += '.') += name_txid));
+        if (!val_txid.isStr())
+            throw ContractTermWrongValue(move((((lazy_name() += '.') += name_txid) += ": ") += val_txid.getValStr()));
+        if (val_nout.isNull())
+            throw ContractTermMissing(move((lazy_name() += '.') += name_nout));
+        if (!val_nout.isNum())
+            throw ContractTermWrongValue(move((((lazy_name() += '.') += name_nout) += ": ") += val_nout.getValStr()));
+
+        std::optional<CAmount> amount;
+        DeserializeContractAmount(val_amount, amount, [&]() { return (lazy_name() += '.') += name_amount; });
+
+        if (!amount)
+            throw ContractTermMissing(move((lazy_name() += '.') += name_amount));
+
+        Transfer res = {val[name_txid].get_str(), val[name_nout].getInt<uint32_t>(), *amount};
+        if (transfer) {
+            if (transfer->m_txid != res.m_txid) throw ContractTermMismatch(move((lazy_name() += '.') += name_txid));
+            if (transfer->m_nout != res.m_nout) throw ContractTermMismatch(move((lazy_name() += '.') += name_nout));
+            if (transfer->m_amount != res.m_amount) throw ContractTermMismatch(move((lazy_name() += '.') += name_nout));
+
+            DeserializeContractString(val_addr, transfer->m_addr, [&]() { return (lazy_name() += '.') += name_addr; });
+            if (transfer->m_addr) bech32().Decode(*transfer->m_addr);
+
+            DeserializeContractHexData(val_sig, transfer->m_sig, [&]() { return (lazy_name() += '.') += name_sig; });
+        }
+        else {
+            DeserializeContractString(val_addr, res.m_addr, [&]() { return (lazy_name() += '.') += name_addr; });
+            if (transfer->m_addr) bech32().Decode(*res.m_addr);
+
+            DeserializeContractHexData(val_sig, res.m_sig, [&]() { return (lazy_name() += '.') += name_sig; });
+
+            transfer.emplace(move(res));
+        }
+    }
+    else if (transfer) {
+        throw ContractTermMissing(lazy_name());
+    }
+}
+
 std::shared_ptr<IContractDestination> ContractBuilder::ReadContractDestination(const UniValue & out) const
 {
     if (!out.isObject()) {
@@ -354,10 +502,10 @@ std::shared_ptr<IContractDestination> ContractBuilder::ReadContractDestination(c
         if (type.isNull()) throw ContractTermMissing(std::string(IJsonSerializable::name_type));
         if (!type.isStr()) throw ContractTermWrongFormat(std::string(IJsonSerializable::name_type));
 
-        if (type.getValStr() == P2TR::type) {
-            return std::make_shared<P2TR>(out);
+        if (type.getValStr() == P2Witness::type) {
+            return P2Witness::ReadJson(mBech, out);
         }
-        // TODO: Other types like p2wpkh will be here
+        // TODO: Other types like p2pkh will be here
         else throw ContractTermWrongValue("destination: " + type.getValStr());
     }
 }
@@ -366,7 +514,7 @@ void ContractBuilder::DeserializeContractTaprootPubkey(const UniValue &val, std:
     if (!val.isNull()) {
         std::string str;
         try {
-            str = mBech->Encode(unhex<xonly_pubkey>(val.get_str()));
+            str = bech32().Encode(unhex<xonly_pubkey>(val.get_str()));
         }
         catch (...) {
             std::throw_with_nested(ContractTermWrongValue(lazy_name()));
