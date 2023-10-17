@@ -54,8 +54,6 @@ const WALLET = {
     coin_type: 0,
     key: null,
     p2tr: null,
-    pubKeyStr: null,
-    privKeyStr: null,
   },
   fund: { // funding
     index: 0,
@@ -64,8 +62,6 @@ const WALLET = {
     coin_type: 0,
     key: null,
     p2tr: null,
-    pubKeyStr: null,
-    privKeyStr: null,
   },
   ord: { // ordinal
     index: 0,
@@ -74,8 +70,6 @@ const WALLET = {
     coin_type: 0,
     key: null,
     p2tr: null,
-    pubKeyStr: null,
-    privKeyStr: null,
   },
   uns: { // unspendable
     index: 0,
@@ -84,8 +78,6 @@ const WALLET = {
     coin_type: 0,
     key: null,
     p2tr: null,
-    pubKeyStr: null,
-    privKeyStr: null,
   },
   intsk:{ // internalSK
     index: 0,
@@ -94,8 +86,6 @@ const WALLET = {
     coin_type: 0,
     key: null,
     p2tr: null,
-    pubKeyStr: null,
-    privKeyStr: null,
   },
   scrsk: { //scriptSK
     index: 0,
@@ -104,8 +94,6 @@ const WALLET = {
     coin_type: 0,
     key: null,
     p2tr: null,
-    pubKeyStr: null,
-    privKeyStr: null,
   },
   xord:[],
   ext: {
@@ -140,13 +128,11 @@ const WALLET = {
     account: 214748364,
     coin_type: 214748364,
     key: null,
-    pubKeyStr: null,
-    privKeyStr: null,
   }
 };
 
 const STATUS_DEFAULT = {
-  initAccountData: false,
+    initAccountData: false,
 };
 
 class Api {
@@ -209,7 +195,9 @@ class Api {
         myself.genRootKey();
         myself.genKeys();
         myself.initPassword();
-        if (myself.wallet.fund.pubKeyStr && myself.wallet.auth.privKeyStr && myself.wallet.auth.pubKeyStr) {
+        const fund = myself.wallet.fund.key?.GetLocalPubKey()?.c_str();
+        const auth = myself.wallet.auth.key?.GetLocalPubKey()?.c_str();
+        if (fund && auth) {
           myself.status.initAccountData = true;
           return myself.status.initAccountData;
         }
@@ -482,9 +470,8 @@ class Api {
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
     this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-    this.wallet[type].pubKeyStr = this.wallet[type].key.GetLocalPubKey().c_str();
-    this.wallet[type].privKeyStr = this.wallet[type].key.GetLocalPrivKey().c_str();
-    const address = this.bech.Encode(this.wallet[type].pubKeyStr).c_str();
+    const pubKeyStr = this.wallet[type].key.GetLocalPubKey().c_str();
+    const address = this.bech.Encode(pubKeyStr).c_str();
     this.wallet[type].p2tr = address;
      return true;
   }
@@ -512,7 +499,7 @@ class Api {
                 }
               }
             }
-            publicKeys.push({pubKeyStr: this.wallet[key].pubKeyStr, type: key});
+            publicKeys.push({pubKeyStr: this.wallet[key].key.GetLocalPubKey().c_str(), type: key});
           }
         }
       }
