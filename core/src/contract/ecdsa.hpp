@@ -15,6 +15,7 @@ class EcdsaKeypair
     const secp256k1_context* m_ctx;
     l15::seckey m_sk;
 public:
+    EcdsaKeypair() : m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), m_sk(l15::core::ChannelKeys::GetStrongRandomKey(m_ctx)) {}
     explicit EcdsaKeypair(l15::seckey sk): m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), m_sk(std::move(sk)) {}
     explicit EcdsaKeypair(const secp256k1_context* secp256k1_ctx, l15::seckey sk): m_ctx(secp256k1_ctx), m_sk(std::move(sk)) {}
 

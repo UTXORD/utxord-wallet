@@ -28,8 +28,8 @@ class Bech32
 {
     typedef l15::bytevector bytevector;
 
-    const ChainMode chainmode;
-    const char* const hrptag;
+    ChainMode chainmode;
+    const char* hrptag;
 public:
 
     template <ChainMode M>
@@ -38,10 +38,10 @@ public:
     explicit Bech32(ChainMode m)
         : chainmode(m), hrptag(m == MAINNET ? Hrp<MAINNET>::value : (m == TESTNET ? Hrp<TESTNET>::value : Hrp<REGTEST>::value)) {}
 
+    Bech32() : Bech32(MAINNET) {}
     Bech32(const Bech32& o) = default;
 
-    Bech32& operator=(const Bech32& o)
-    { assert(chainmode == o.chainmode); return *this; }
+    Bech32& operator=(const Bech32& o) = default;
 
     ChainMode GetChainMode() const
     { return chainmode; }
