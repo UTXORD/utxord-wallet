@@ -3,7 +3,6 @@
 #include "script_merkle_tree.hpp"
 #include "channel_keys.hpp"
 #include "contract_builder.hpp"
-#include "simple_transaction.hpp"
 
 #include <execution>
 #include <atomic>
@@ -405,7 +404,7 @@ void ContractBuilder::DeserializeContractString(const UniValue& val, std::option
     }
 }
 
-std::optional<Transfer> ContractBuilder::DeserializeContractTransfer_w_pubkey(const UniValue& val, std::function<std::string()> lazy_name)
+void ContractBuilder::DeserializeContractTransfer_w_pubkey(const UniValue& val, std::optional<Transfer>& transfer, std::function<std::string()> lazy_name)
 {
     if (!val.isNull()) {
         if (!val.isObject()) throw ContractTermWrongFormat(lazy_name());
@@ -432,13 +431,20 @@ std::optional<Transfer> ContractBuilder::DeserializeContractTransfer_w_pubkey(co
             throw ContractTermMissing(move((lazy_name() += '.') += name_amount));
 
         Transfer res = {val[name_txid].get_str(), val[name_nout].getInt<uint32_t>(), *amount};
+        if (transfer) {
+            if (transfer->m_txid != res.m_txid) throw ContractTermMismatch(move((lazy_name() += '.') += name_txid));
+            if (transfer->m_nout != res.m_nout) throw ContractTermMismatch(move((lazy_name() += '.') += name_nout));
+            if (transfer->m_amount != res.m_amount) throw ContractTermMismatch(move((lazy_name() += '.') += name_nout));
 
-        DeserializeContractTaprootPubkey(val_pk, res.m_addr, [&]() { return (lazy_name() += '.') += name_pk; });
-        DeserializeContractHexData(val_sig, res.m_sig, [&]() { return (lazy_name() += '.') += name_sig; });
-
-        return res;
+            DeserializeContractTaprootPubkey(val_pk, transfer->m_addr, [&]() { return (lazy_name() += '.') += name_pk; });
+            DeserializeContractHexData(val_sig, transfer->m_sig, [&]() { return (lazy_name() += '.') += name_sig; });
+        }
+        else {
+            DeserializeContractTaprootPubkey(val_pk, res.m_addr, [&]() { return (lazy_name() += '.') += name_pk; });
+            DeserializeContractHexData(val_sig, res.m_sig, [&]() { return (lazy_name() += '.') += name_sig; });
+            transfer.emplace(move(res));
+        }
     }
-    return {};
 }
 
 void ContractBuilder::DeserializeContractTransfer(const UniValue& val, std::optional<Transfer>& transfer, std::function<std::string()> lazy_name)
@@ -480,7 +486,7 @@ void ContractBuilder::DeserializeContractTransfer(const UniValue& val, std::opti
         }
         else {
             DeserializeContractString(val_addr, res.m_addr, [&]() { return (lazy_name() += '.') += name_addr; });
-            if (transfer->m_addr) bech32().Decode(*res.m_addr);
+            if (res.m_addr) bech32().Decode(*res.m_addr);
 
             DeserializeContractHexData(val_sig, res.m_sig, [&]() { return (lazy_name() += '.') += name_sig; });
 

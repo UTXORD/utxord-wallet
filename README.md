@@ -26,3 +26,18 @@ Extension targets:
 7) Now you should be able to see **UTXORD Wallet** extension as installed and active.
 8) Press **Extensions** icon on Chrome toolbar.
 9) Click on **Pin** icon at **UTXORD Wallet** item to pin its icon on a toolbar.
+
+## Exact steps for developers to build dev wallet
+1) *git checkout <branch_name>*
+2) *git submodule update --recursive*
+3) *git pull*
+4) *docker compose run toolchain-shell make clean ext-core-lib*
+5) *cd browser-extension*
+6) *rm -rf node_modules*
+7) *yarn install*
+8) *yarn dev*
+9) load unpacked extension from *browser-extension/extension/dev*
+
+*NOTE: One can skip step 2 in case no any changes were introduced in repo submodules.
+Step 4 can be omitted in case there are no any changes in core library.
+Steps 6-7 can be omitted in case there are no any changes in used node modules.*

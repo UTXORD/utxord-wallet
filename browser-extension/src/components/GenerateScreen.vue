@@ -9,9 +9,16 @@
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
-        <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >Store these safely:</span
-        >
+        <div class="flex items-center mb-2">
+          <span class="w-full text-[var(--text-grey-color)]"
+            >Store these safely:</span
+          >
+          <RefreshIcon @click="refreshMnemonic" class="cursor-pointer w-4 mr-2" />
+          <CopyIcon
+            class="cursor-pointer"
+            @click="copyToClipboard(textarea, 'Mnemonic was copied!')"
+          />
+        </div>
         <CustomInput
           type="textarea"
           class="w-full"
@@ -46,7 +53,10 @@
             type="password"
             v-model="confirmPassword"
             :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters'
+              (val) => isASCII(val) || 'Please enter only Latin characters',
+              (val) =>
+                val === password ||
+                'Confirm Password does not match the Password'
             ]"
           />
         </div>
@@ -57,7 +67,7 @@
         <Button
           outline
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
-          @click="back"
+          @click="goToStartPage"
         >
           <img src="/assets/arrow-left.svg" alt="Go Back" />
         </Button>
@@ -80,9 +90,9 @@ import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import useWallet from '~/popup/modules/useWallet'
 import { SAVE_GENERATED_SEED } from '~/config/events'
-import { isASCII } from '~/helpers/index'
+import { isASCII, copyToClipboard } from '~/helpers/index'
 
-const { back, push } = useRouter()
+const { push } = useRouter()
 const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
 const password = ref('')
@@ -106,15 +116,36 @@ async function onStore() {
     'background'
   )
   if (success) {
-    await getFundAddress()
-    getBalance()
+    const fundAddress = await getFundAddress()
+    getBalance(fundAddress)
+    localStorage.removeItem('temp-mnemonic')
     push('/')
   }
 }
 
-onBeforeMount(async () => {
-  const mnemonic = await sendMessage('GENERATE_MNEMONIC', {}, 'background')
-  textarea.value = mnemonic
+function goToStartPage() {
+  localStorage.removeItem('temp-mnemonic')
+  push('/start')
+}
+
+function refreshMnemonic() {
+  localStorage.removeItem('temp-mnemonic')
+  getMnemonic()
+}
+
+async function getMnemonic() {
+  const tempMnemonic = localStorage?.getItem('temp-mnemonic')
+  if (tempMnemonic) {
+    textarea.value = tempMnemonic
+  } else {
+    const mnemonic = await sendMessage('GENERATE_MNEMONIC', {}, 'background')
+    localStorage?.setItem('temp-mnemonic', mnemonic)
+    textarea.value = mnemonic
+  }
+}
+
+onBeforeMount(() => {
+  getMnemonic()
 })
 </script>
 

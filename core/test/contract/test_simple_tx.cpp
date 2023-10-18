@@ -99,7 +99,7 @@ TEST_CASE("singleinout")
     TestCondition p2tr_cond = {p2tr_utxo_sk, w->bech32().Encode(p2tr_utxo_key.GetLocalPubKey())};
     TestCondition p2wpkh_cond = {p2wpkh_utxo_sk, w->bech32().Encode(l15::Hash160(p2wpkh_utxo_key.GetPubKey().as_vector()), bech32::Encoding::BECH32)};
 
-    auto cond = GENERATE_COPY(/*p2tr_cond, */p2wpkh_cond);
+    auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond);
 
     std::string fee_rate;
     try {

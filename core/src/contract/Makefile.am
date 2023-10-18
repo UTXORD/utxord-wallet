@@ -1,5 +1,6 @@
 
 AM_CPPFLAGS = \
+ -I$(top_srcdir)/contrib/nlohmann_json \
  -I$(top_srcdir)/bitcoin/src \
  -I$(top_srcdir)/bitcoin/src/univalue/include \
  -I$(top_srcdir)/bitcoin/src/consensus \

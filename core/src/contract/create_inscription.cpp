@@ -2,13 +2,14 @@
 #include <ranges>
 #include <exception>
 
+#include "nlohmann/json.hpp"
+
 #include "univalue.h"
 
 #include "serialize.h"
 #include "interpreter.h"
 #include "core_io.h"
 #include "feerate.h"
-#include "streams.h"
 
 #include "create_inscription.hpp"
 #include "script_merkle_tree.hpp"
@@ -25,7 +26,7 @@ const std::string val_create_collection("CreateCollection");
 
 CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content_type, const bytevector& data,
                               const std::optional<std::string>& collection_id,
-                              const std::optional<std::string>& metadata)
+                              const std::optional<std::string>& hexmetadata)
 {
     CScript script;
     script << pk;
@@ -41,21 +42,17 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
         script << SerializeInscriptionId(*collection_id);
     }
 
-    if (metadata) {
-        auto size = metadata->size();
-        const auto* end = metadata->data() + size;
-        for (const auto* p = metadata->data(); p < end; p += MAX_PUSH) {
-            script << METADATA_TAG << bytevector(p,  ((p + MAX_PUSH) < end) ? (p + MAX_PUSH) : end);
+    if (hexmetadata) {
+        bytevector metadata = unhex<bytevector>(*hexmetadata);
+        for (auto pos = metadata.begin(); pos < metadata.end(); pos += MAX_PUSH) {
+            script << METADATA_TAG << bytevector(pos, ((pos + MAX_PUSH) < metadata.end()) ? (pos + MAX_PUSH) : metadata.end());
         }
     }
 
     script << CONTENT_OP_TAG;
-    auto pos = data.begin();
-    for ( ; pos + MAX_PUSH < data.end(); pos += MAX_PUSH) {
-        script << bytevector(pos, pos + MAX_PUSH);
-    }
-    if (pos != data.end()) {
-        script << bytevector(pos, data.end());
+
+    for (auto pos = data.begin(); pos < data.end(); pos += MAX_PUSH) {
+        script << bytevector(pos, ((pos + MAX_PUSH) < data.end()) ? (pos + MAX_PUSH) : data.end());
     }
 
     script << OP_ENDIF;
@@ -94,8 +91,9 @@ std::string Collection::GetCollectionTapRootPubKey(const string &collection_id, 
     return hex(taproot.first);
 }
 
-const uint32_t CreateInscriptionBuilder::m_protocol_version = 8;
-const uint32_t CreateInscriptionBuilder::m_protocol_version_no_market_fee = 7;
+const uint32_t CreateInscriptionBuilder::s_protocol_version = 8;
+const uint32_t CreateInscriptionBuilder::s_protocol_version_no_market_fee = 7;
+const char* CreateInscriptionBuilder::s_versions = "[7,8]";
 
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
 const std::string CreateInscriptionBuilder::name_utxo = "utxo";
@@ -144,10 +142,10 @@ void CreateInscriptionBuilder::AddToCollection(const std::string& collection_id,
 
 void CreateInscriptionBuilder::MetaData(const string &metadata)
 {
-    UniValue check_metadata;
-    if (!check_metadata.read(metadata)) {
-        throw ContractTermWrongValue(std::string(name_metadata) + " is not JSON");
-    }
+    bytevector cbor = l15::unhex<bytevector>(metadata);
+    auto check_metadata = nlohmann::json::from_cbor(move(cbor));
+    if (check_metadata.is_discarded())
+        throw ContractTermWrongFormat(std::string(name_metadata));
 
     m_metadata = metadata;
 }
@@ -361,12 +359,14 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
     }
 }
 
-std::string CreateInscriptionBuilder::Serialize(InscribePhase phase) const
+std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase phase) const
 {
+    if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
+
     CheckContractTerms(phase);
 
     UniValue contract(UniValue::VOBJ);
-    contract.pushKV(name_version, (int)m_protocol_version);
+    contract.pushKV(name_version, (int)s_protocol_version);
 
     switch (phase) {
     case INSCRIPTION_SIGNATURE:
@@ -468,7 +468,7 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
 
     const UniValue& contract = root[name_params];
 
-    if (contract[name_version].getInt<uint32_t>() != m_protocol_version)
+    if (contract[name_version].getInt<uint32_t>() != s_protocol_version)
         throw ContractProtocolError("Wrong " + root[name_contract_type].get_str() + " version: " + contract[name_version].getValStr());
 
     DeserializeContractAmount(contract[name_market_fee], m_market_fee, [&](){ return name_market_fee; });
@@ -496,12 +496,14 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
             if (!m_parent_collection_id) throw ContractTermMissing(move((name_collection + '.') += name_collection_id));
         }
     }
+    {   const auto &val = contract[name_metadata];
+        if (!val.isNull()) {
+            bytevector cbor = l15::unhex<bytevector>(val.get_str());
+            auto check_metadata = nlohmann::json::from_cbor(move(cbor));
+            if (check_metadata.is_discarded())
+                throw ContractTermWrongFormat(std::string(name_metadata));
 
-    DeserializeContractString(contract[name_metadata], m_metadata, [&](){ return name_metadata; });
-    if (m_metadata) {
-        UniValue check_metadata;
-        if (!check_metadata.read(*m_metadata)) {
-            throw ContractTermWrongValue(name_metadata + " is not JSON");
+            m_metadata = val.get_str();
         }
     }
 

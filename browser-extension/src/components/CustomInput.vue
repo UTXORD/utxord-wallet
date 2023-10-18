@@ -1,7 +1,7 @@
 <template>
   <div
     class="custom-input flex flex-col items-start relative"
-    :class="{ 'pb-4': rules?.length }"
+    :class="{ 'pb-4': rules?.length && !errors?.length }"
   >
     <textarea
       ref="customInput"
@@ -43,8 +43,9 @@
     </div>
     <!-- Errors -->
     <div
-      v-if="props.rules?.length"
-      class="custom-input_error absolute bottom-[-2px] left-0"
+      v-if="errors?.length"
+      class="custom-input_error"
+      :class="{ 'my-2': props.rules?.length }"
     >
       <span v-if="errors?.length" class="text-red-300">{{ errors[0] }}</span>
     </div>

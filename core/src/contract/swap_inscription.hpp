@@ -23,9 +23,13 @@ enum SwapPhase {
 
 class SwapInscriptionBuilder : public ContractBuilder
 {
-    static const uint32_t m_protocol_version;
-    static const uint32_t m_protocol_version_pubkey_v4;
-    static const uint32_t m_protocol_version_old_v3;
+    CAmount m_whole_fee = 0;
+    CAmount m_last_fee_rate = 0;
+
+    static const uint32_t s_protocol_version;
+    static const char* s_versions;
+    static const uint32_t s_protocol_version_pubkey_v4;
+    static const uint32_t s_protocol_version_old_v3;
 
     std::optional<CAmount> m_ord_price;
 
@@ -117,7 +121,6 @@ public:
     static const std::string name_ordpayoff_unspendable_key_factor;
     static const std::string name_ordpayoff_sig;
 
-    SwapInscriptionBuilder() = default;
     explicit SwapInscriptionBuilder(Bech32 bech) : ContractBuilder(bech) {}
 
     //SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
@@ -126,7 +129,7 @@ public:
     //SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
 
-    uint32_t GetProtocolVersion() const override { return m_protocol_version; }
+    static const char* SupportedVersions() { return s_versions; }
 
     void OrdPrice(const std::string& price)
     { m_ord_price = l15::ParseAmount(price); }
@@ -155,15 +158,32 @@ public:
     void MarketSignSwap(const std::string& sk);
 
     void CheckContractTerms(SwapPhase phase) const;
-    std::string Serialize(SwapPhase phase);
+    std::string Serialize(uint32_t version, SwapPhase phase);
     void Deserialize_v4(const std::string& data);
     void Deserialize(const std::string& data);
 
     std::string FundsCommitRawTransaction() const;
-    std::string FundsPayBackRawTransaction();
+    std::string FundsPayBackRawTransaction() const;
 
     std::string OrdSwapRawTransaction() const;
     std::string OrdPayoffRawTransaction() const;
+
+    uint32_t TransactionCount() const
+    { return 3; }
+
+    std::string RawTransaction(uint32_t n)
+    {
+        switch(n) {
+        case 0:
+            return FundsCommitRawTransaction();
+        case 1:
+            return OrdSwapRawTransaction();
+        case 2:
+            return OrdPayoffRawTransaction();
+        default:
+            return "";
+        }
+    }
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 };

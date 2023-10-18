@@ -117,7 +117,7 @@ TEST_CASE("Swap")
     CHECK_NOTHROW(builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey())));
 
     string marketOrdConditions;
-    REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(ORD_TERMS));
+    REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(5, ORD_TERMS));
 
 //    std::clog << "ORD_TERMS: ===========================================\n"
 //              << marketOrdConditions << std::endl;
@@ -138,7 +138,7 @@ TEST_CASE("Swap")
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(hex(ord_utxo_key.GetLocalPrivKey())));
 
     string ordSellerTerms;
-    REQUIRE_NOTHROW(ordSellerTerms = builderOrdSeller.Serialize(ORD_SWAP_SIG));
+    REQUIRE_NOTHROW(ordSellerTerms = builderOrdSeller.Serialize(5, ORD_SWAP_SIG));
 
 //    std::clog << "ORD_SWAP_SIG: ===========================================\n"
 //              << ordSellerTerms << std::endl;
@@ -150,7 +150,7 @@ TEST_CASE("Swap")
     //--------------------------------------------------------------------------
     builderMarket.MiningFeeRate(fee_rate);
     string marketFundsConditions;
-    REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS));
+    REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(5, FUNDS_TERMS));
 
 //    std::clog << "FUNDS_TERMS: ===========================================\n"
 //              << marketFundsConditions << std::endl;
@@ -215,7 +215,7 @@ TEST_CASE("Swap")
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(builderOrdBuyer.GetFundsCommitTx())));
 
     string ordBuyerTerms;
-    REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(FUNDS_COMMIT_SIG));
+    REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(5, FUNDS_COMMIT_SIG));
 
 //    std::clog << "FUNDS_COMMIT_SIG: ===========================================\n"
 //              << ordBuyerTerms << std::endl;
@@ -259,7 +259,7 @@ TEST_CASE("Swap")
 
         REQUIRE_NOTHROW(builderMarket1.MarketSignOrdPayoffTx(hex(swap_script_key_M.GetLocalPrivKey())));
         string ordMarketTerms;
-        REQUIRE_NOTHROW(ordMarketTerms = builderMarket1.Serialize(MARKET_PAYOFF_SIG));
+        REQUIRE_NOTHROW(ordMarketTerms = builderMarket1.Serialize(5, MARKET_PAYOFF_SIG));
 
 //        std::clog << "MARKET_PAYOFF_SIG: ===========================================\n"
 //                  << ordMarketTerms << std::endl;
@@ -273,7 +273,7 @@ TEST_CASE("Swap")
         REQUIRE_NOTHROW(builderOrdBuyer.SignFundsSwap(hex(swap_script_key_B.GetLocalPrivKey())));
 
         string ordFundsSignature;
-        REQUIRE_NOTHROW(ordFundsSignature = builderOrdBuyer.Serialize(FUNDS_SWAP_SIG));
+        REQUIRE_NOTHROW(ordFundsSignature = builderOrdBuyer.Serialize(5, FUNDS_SWAP_SIG));
 
 //        std::clog << "FUNDS_SWAP_SIG: ===========================================\n"
 //                  << ordFundsSignature << std::endl;
@@ -387,7 +387,7 @@ TEST_CASE("SwapNoFee")
     builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey()));
 
     string marketOrdConditions;
-    REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(ORD_TERMS));
+    REQUIRE_NOTHROW(marketOrdConditions = builderMarket.Serialize(5, ORD_TERMS));
 
     SwapInscriptionBuilder builderOrdSeller(*bech);
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions));
@@ -405,20 +405,19 @@ TEST_CASE("SwapNoFee")
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(hex(ord_utxo_key.GetLocalPrivKey())));
 
     string ordSellerTerms;
-    REQUIRE_NOTHROW(ordSellerTerms= builderOrdSeller.Serialize(ORD_SWAP_SIG));
+    REQUIRE_NOTHROW(ordSellerTerms= builderOrdSeller.Serialize(5, ORD_SWAP_SIG));
 
 
     // FUNDS side terms
     //--------------------------------------------------------------------------
     builderMarket.MiningFeeRate(fee_rate);
     string marketFundsConditions;
-    REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS));
+    REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(5, FUNDS_TERMS));
 
     SwapInscriptionBuilder builderOrdBuyer(*bech);
     REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
 
     CAmount min_funding = ParseAmount(builderOrdBuyer.GetMinFundingAmount(""));
-    CAmount dust = Dust(3000);
 
     builderOrdBuyer.SwapScriptPubKeyB(hex(swap_script_key_B.GetLocalPubKey()));
 
@@ -440,7 +439,7 @@ TEST_CASE("SwapNoFee")
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(builderOrdBuyer.GetFundsCommitTx())));
 
     string ordBuyerTerms;
-    REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(FUNDS_COMMIT_SIG));
+    REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(5, FUNDS_COMMIT_SIG));
 
 
     // MARKET confirm terms
@@ -464,7 +463,7 @@ TEST_CASE("SwapNoFee")
 
     REQUIRE_NOTHROW(builderMarket.MarketSignOrdPayoffTx(hex(swap_script_key_M.GetLocalPrivKey())));
     string ordMarketTerms;
-    REQUIRE_NOTHROW(ordMarketTerms = builderMarket.Serialize(MARKET_PAYOFF_SIG));
+    REQUIRE_NOTHROW(ordMarketTerms = builderMarket.Serialize(5, MARKET_PAYOFF_SIG));
 
 
     // BUYER sign swap
@@ -476,7 +475,7 @@ TEST_CASE("SwapNoFee")
     REQUIRE_NOTHROW(builderOrdBuyer.SignFundsSwap(hex(swap_script_key_B.GetLocalPrivKey())));
 
     string ordFundsSignature;
-    REQUIRE_NOTHROW(ordFundsSignature = builderOrdBuyer.Serialize(FUNDS_SWAP_SIG));
+    REQUIRE_NOTHROW(ordFundsSignature = builderOrdBuyer.Serialize(5, FUNDS_SWAP_SIG));
 
 
     // MARKET sign swap
@@ -534,7 +533,7 @@ TEST_CASE("FundsNotEnough")
     builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2));
     builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.GetLocalPubKey()));
 
-    string marketOrdConditions = builderMarket.Serialize(ORD_TERMS);
+    string marketOrdConditions = builderMarket.Serialize(5, ORD_TERMS);
 
     SwapInscriptionBuilder builderOrdSeller(*bech);
     builderOrdSeller.Deserialize(marketOrdConditions);
@@ -551,7 +550,7 @@ TEST_CASE("FundsNotEnough")
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(hex(swap_script_key_A.GetLocalPrivKey())));
 
-    string ordSellerTerms = builderOrdSeller.Serialize(ORD_SWAP_SIG);
+    string ordSellerTerms = builderOrdSeller.Serialize(5, ORD_SWAP_SIG);
 
     builderMarket.Deserialize(ordSellerTerms);
     REQUIRE_NOTHROW(builderMarket.CheckContractTerms(ORD_SWAP_SIG));
@@ -560,7 +559,7 @@ TEST_CASE("FundsNotEnough")
     //--------------------------------------------------------------------------
 
     builderMarket.MiningFeeRate(fee_rate);
-    string marketFundsConditions = builderMarket.Serialize(FUNDS_TERMS);
+    string marketFundsConditions = builderMarket.Serialize(5, FUNDS_TERMS);
 
     SwapInscriptionBuilder builderOrdBuyer(*bech);
     builderOrdBuyer.Deserialize(marketFundsConditions);
@@ -717,7 +716,7 @@ TEST_CASE("SwapV4Compatibility")
 //    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(builderOrdBuyer.GetFundsCommitTx())));
 //
 //    string ordBuyerTerms;
-//    REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(FUNDS_COMMIT_SIG));
+//    REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(5, FUNDS_COMMIT_SIG));
 //
 //    std::clog << "FUNDS_COMMIT_SIG: ===========================================\n"
 //              << ordBuyerTerms << std::endl;

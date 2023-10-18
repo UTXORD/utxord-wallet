@@ -1,8 +1,13 @@
 import { defineStore } from 'pinia'
 
 interface IBalance {
-  confirmed: number,
-  unconfirmed: number,
+  confirmed: number;
+  unconfirmed: number;
+  connect: boolean;
+  inscriptions: any[];
+  sync: boolean;
+  to_address: number;
+  used_for_inscribtions: number;
 }
 
 interface IStore {
@@ -11,6 +16,7 @@ interface IStore {
   ordAddress: string | null
   dataForSign: {} | null
   dataForExportKeyPair: {} | null
+  errorMessage: string | null
 }
 
 export const useStore = defineStore('store', {
@@ -18,11 +24,18 @@ export const useStore = defineStore('store', {
     balance: {
       confirmed: 0,
       unconfirmed: 0,
+      inscriptions: [],
+      connect: false,
+      sync: false,
+      to_address: 0,
+      used_for_inscribtions: 0,
     },
+    refreshingBalance: false,
     fundAddress: null,
     ordAddress: null,
     dataForSign: null,
     dataForExportKeyPair: null,
+    errorMessage: null,
   } as IStore),
   actions: {
     setBalance(value: IBalance) {
@@ -40,15 +53,36 @@ export const useStore = defineStore('store', {
     setDataForExportKeyPair(data: {}) {
       this.dataForExportKeyPair = data
     },
-    clearStore() {
+    setSyncToFalse() {
+      this.balance.sync = false;
+    },
+    setRefreshingBalance() {
+      this.refreshingBalance = true;
+    },
+    unsetRefreshingBalance() {
+      this.refreshingBalance = false;
+    },
+    setErrorMessage(msg: string) {
+      this.errorMessage = msg
+    },
+    clearBalance() {
       this.balance = {
         confirmed: 0,
         unconfirmed: 0,
+        inscriptions: [],
+        connect: false,
+        sync: false,
+        to_address: 0,
+        used_for_inscribtions: 0,
       }
+    },
+    clearStore() {
+      this.clearBalance()
       this.fundAddress = null
       this.ordAddress = null
       this.dataForSign = null
       this.dataForExportKeyPair = null
+      this.errorMessage = null
     }
   },
   persist: true,

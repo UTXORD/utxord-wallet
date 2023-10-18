@@ -11,7 +11,7 @@
 
       <!-- Buttons -->
       <div class="flex w-full gap-3 mt-auto">
-        <Button @click="cancel" outline class="w-2/4"> Cancel </Button>
+        <Button @click="cancel" outline class="w-2/4"> {{ !isInsufficientBalance?'Cancel':'Ok' }} </Button>
         <Modal
           @on-submit="onSign"
           @on-close="password = ''"
@@ -22,7 +22,7 @@
           :disabled="isDisabledPass"
           submit-by-enter
         >
-          <template #button="{ onClick }">
+          <template #button="{ onClick }" v-if="!isInsufficientBalance">
             <Button
               class="w-full"
               :disabled="isDisabled"

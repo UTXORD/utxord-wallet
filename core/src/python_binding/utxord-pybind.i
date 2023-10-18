@@ -135,7 +135,7 @@ namespace utxord {
             }
 
             if (!$1.GetMetadata().empty()) {
-                PyObject * metadata = PyUnicode_FromString($1.GetMetadata().c_str());
+                PyObject * metadata = PyBytes_FromStringAndSize((const char*)($1.GetMetadata().data()), $1.GetMetadata().size());
                 PyDict_SetItemString(obj, "metadata", metadata);
                 Py_XDECREF(metadata);
             }

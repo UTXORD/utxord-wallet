@@ -35,8 +35,8 @@ public:
     SimpleTransaction& operator=(const SimpleTransaction&) = default;
     SimpleTransaction& operator=(SimpleTransaction&&) = default;
 
-    uint32_t GetProtocolVersion() const override
-    { return 1; }
+    uint32_t GetProtocolVersion() const
+    { return m_protocol_version; }
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 
