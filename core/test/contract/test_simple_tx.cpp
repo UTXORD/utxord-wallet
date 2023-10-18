@@ -120,7 +120,7 @@ TEST_CASE("singleinout")
     tx_contract.MiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(*bech, funds_txid, get<0>(prevout).n, 10000, cond.address)));
-    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(*bech, 7000, destination_addr)));
+    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 7000, destination_addr)));
 
     REQUIRE_NOTHROW(tx_contract.Sign(master_key));
 
@@ -206,7 +206,7 @@ TEST_CASE("2ins2outs")
 
     REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(*bech, funds_txid, get<0>(prevout).n, 10000, bech->Encode(utxo_key.GetLocalPubKey()))));
     REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(*bech, funds_txid1, get<0>(prevout1).n, 546, bech->Encode(utxo_key1.GetLocalPubKey()))));
-    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(*bech, 546, destination_addr)));
+    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 546, destination_addr)));
     REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_addr1));
 
     REQUIRE_NOTHROW(tx_contract.Sign(master_key));
@@ -262,10 +262,10 @@ TEST_CASE("txchain")
     tx1_contract->MiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx1_contract->AddInput(tx_contract));
-    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(*bech, 546, destination_addr)));
+    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 546, destination_addr)));
 
     REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(*bech, funds_txid, get<0>(prevout).n, 10000, bech->Encode(utxo_key.GetLocalPubKey()))));
-    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(*bech, ParseAmount(tx1_contract->GetMinFundingAmount("")), bech->Encode(intermediate_key.GetLocalPubKey()))));
+    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), ParseAmount(tx1_contract->GetMinFundingAmount("")), bech->Encode(intermediate_key.GetLocalPubKey()))));
     REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_addr));
 
     REQUIRE_NOTHROW(tx_contract->Sign(master_key));

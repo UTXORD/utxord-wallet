@@ -28,16 +28,23 @@ class Bech32
 {
     typedef l15::bytevector bytevector;
 
+    const ChainMode chainmode;
     const char* const hrptag;
 public:
 
     template <ChainMode M>
-    Bech32(Hrp<M>) : hrptag(Hrp<M>::value) {}
+    Bech32(Hrp<M>) : chainmode(M), hrptag(Hrp<M>::value) {}
+
+    explicit Bech32(ChainMode m)
+        : chainmode(m), hrptag(m == MAINNET ? Hrp<MAINNET>::value : (m == TESTNET ? Hrp<TESTNET>::value : Hrp<REGTEST>::value)) {}
 
     Bech32(const Bech32& o) = default;
 
     Bech32& operator=(const Bech32& o)
-    { assert(strcmp(hrptag, o.hrptag) == 0); return *this; }
+    { assert(chainmode == o.chainmode); return *this; }
+
+    ChainMode GetChainMode() const
+    { return chainmode; }
 
     std::string Encode(const auto& pk, bech32::Encoding encoding = bech32::Encoding::BECH32M) const {
         std::vector<unsigned char> bech32buf = {(encoding == bech32::Encoding::BECH32) ? (uint8_t)0 : (uint8_t)1};

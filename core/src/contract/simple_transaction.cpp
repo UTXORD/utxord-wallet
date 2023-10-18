@@ -40,10 +40,10 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     bytevector arg;
     std::tie(v, arg) = bech32().Decode(addr);
     if (v == 0) {
-        AddOutput(std::make_shared<P2WPKH>(bech32(), 0, addr));
+        AddOutput(std::make_shared<P2WPKH>(bech32().GetChainMode(), 0, addr));
     }
     else if (v == 1) {
-        AddOutput(std::make_shared<P2TR>(bech32(), 0, addr));
+        AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, addr));
     }
     else {
         throw ContractTermWrongValue("");
@@ -64,7 +64,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     }
 }
 
-void SimpleTransaction::Sign(const MasterKey &master_key)
+void SimpleTransaction::Sign(const l15::core::MasterKey &master_key)
 {
     CMutableTransaction tx = MakeTx();
 

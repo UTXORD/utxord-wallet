@@ -8,6 +8,7 @@
 
 namespace utxord {
 
+using l15::core::ChannelKeys;
 using l15::ScriptMerkleTree;
 using l15::TreeBalanceType;
 using l15::ParseAmount;

@@ -116,6 +116,7 @@ public:
     CreateInscriptionBuilder(CreateInscriptionBuilder&&) noexcept = default;
 
     explicit CreateInscriptionBuilder(Bech32 bech, InscribeType type) : ContractBuilder(bech), m_type(type) {}
+    explicit CreateInscriptionBuilder(ChainMode mode, InscribeType type) : CreateInscriptionBuilder(Bech32(mode), type) {}
 
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;

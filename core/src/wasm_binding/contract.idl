@@ -7,7 +7,7 @@ interface string
     [Const] DOMString c_str();
 };
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface ChannelKeys
 {
     static void InitSecp256k1();
@@ -20,51 +20,59 @@ interface ChannelKeys
 };
 
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface MasterKey
 {
     void MasterKey([Const] DOMString seed);
     ChannelKeys Derive([Const] DOMString path, boolean for_script);
 };
 
-
-enum NetworkMode
+enum ChainMode
 {
-    "REGTEST",
+    "MAINNET",
     "TESTNET",
-    "MAINNET"
+    "REGTEST"
 };
 
+enum Bech32Encoding
+{
+    "BECH32",
+    "BECH32M"
+};
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface Bech32
 {
-    void Bech32(NetworkMode network);
-    [Value] string Encode([Const] DOMString pk);
-    [Value] string Decode([Const] DOMString addr);
+    void Bech32(ChainMode mode);
+    [Value] string Encode([Const] DOMString value, Bech32Encoding encoding);
 };
 
-
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface Exception
 {
     [Value] static string getMessage(any e);
 };
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface IContractDestination
 {
     [Value] string Amount();
-    [Value] string DestinationPK();
+    [Value] string Address();
 };
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
+interface P2WPKH : IContractDestination
+{
+    void P2WPKH(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
+};
+
+[Prefix="utxord::wasm::"]
 interface P2TR : IContractDestination
 {
-    void P2TR([Const] DOMString amount, [Const] DOMString pk);
+    void P2TR(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
 };
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface IContractOutput
 {
     [Value] string TxID();
@@ -72,13 +80,10 @@ interface IContractOutput
     IContractDestination Destination();
 };
 
-[Prefix="utxord::"]
-interface UTXO
+[Prefix="utxord::wasm::"]
+interface UTXO : IContractOutput
 {
-    void UTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString pk);
-    [Value] string TxID();
-    unsigned long NOut();
-    IContractDestination Destination();
+    void UTXO(ChainMode mode, [Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString addr);
 };
 
 
@@ -106,19 +111,19 @@ enum InscribePhase
 [Prefix="utxord::"]
 interface CreateInscriptionBuilder
 {
-    void CreateInscriptionBuilder(InscribeType type);
+    void CreateInscriptionBuilder(ChainMode mode, InscribeType type);
     void MarketFee([Const] DOMString amount, [Const] DOMString pk);
     void OrdAmount([Const] DOMString amount);
     void MiningFeeRate([Const] DOMString rate);
     void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pk);
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
     void MetaData([Const] DOMString jsonData);
-    void InscribePubKey([Const] DOMString inscribePK);
-    void ChangePubKey([Const] DOMString changePK);
+    void InscribeAddress([Const] DOMString inscribeAddr);
+    void ChangeAddress([Const] DOMString changeAddr);
 
     void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
-                                                   [Const] DOMString collectionPK);
-    void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeePK);
+                                                   [Const] DOMString collectionAddr);
+    void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeeAddr);
 
     void SignCommit(long n, [Const] DOMString sk, [Const] DOMString scriptPK);
     void SignInscription([Const] DOMString scriptSK);
@@ -158,13 +163,13 @@ enum SwapPhase
 [Prefix="utxord::"]
 interface SwapInscriptionBuilder
 {
-    void SwapInscriptionBuilder();
+    void SwapInscriptionBuilder(ChainMode mode);
 
     void OrdPrice([Const] DOMString price);
     void MarketFee([Const] DOMString amount, [Const] DOMString pk);
 
     void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount);
-    void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pubkey);
+    void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
 
     void SwapScriptPubKeyA([Const] DOMString v);
     void SwapScriptPubKeyB([Const] DOMString v);
@@ -190,10 +195,10 @@ interface SwapInscriptionBuilder
 };
 
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface SimpleTransaction
 {
-    void SimpleTransaction();
+    void SimpleTransaction(ChainMode mode);
 
     [Value] string TxID();
     unsigned long NOut();

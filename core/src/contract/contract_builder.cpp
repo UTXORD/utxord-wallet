@@ -14,6 +14,8 @@ namespace utxord {
 using l15::FormatAmount;
 using l15::ParseAmount;
 using l15::SignatureError;
+using l15::core::ChannelKeys;
+using l15::core::MasterKey;
 
 const std::string IJsonSerializable::name_type = "type";
 
@@ -130,10 +132,10 @@ std::shared_ptr<IContractDestination> P2Witness::Construct(Bech32 bech, CAmount 
     bytevector data;
     std::tie(witver, data) = bech.Decode(addr);
     if (witver == 0) {
-        return std::make_shared<P2WPKH>(bech, amount, addr);
+        return std::make_shared<P2WPKH>(bech.GetChainMode(), amount, move(addr));
     }
     else {
-        return std::make_shared<P2TR>(bech, amount, addr);
+        return std::make_shared<P2TR>(bech.GetChainMode(), amount, move(addr));
     }
 }
 
@@ -158,7 +160,7 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const MasterKey &masterKey, KeyLookup
         account.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + acc);
         account.DeriveSelf(0);
 
-//#ifdef _LIBCPP_HAS_PARALLEL_ALGORITHMS
+#ifndef WASM
         std::atomic<std::shared_ptr<P2WPKHSigner>> res;
         const uint32_t step = 64;
         uint32_t indexes[step];
@@ -175,15 +177,15 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const MasterKey &masterKey, KeyLookup
                 return signer;
             }
         }
-//#else
-//        for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
-//            EcdsaKeypair keypair(account.Derive(std::vector<uint32_t >{key_index}, l15::core::SUPPRESS).GetLocalPrivKey());
-//            if (l15::Hash160(keypair.GetPubKey().as_vector()) == pkhash) {
-//                auto res = std::make_shared<P2WPKHSigner>(move(keypair));
-//                return res;
-//            }
-//        }
-//#endif
+#else
+        for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
+            EcdsaKeypair keypair(account.Derive(std::vector<uint32_t >{key_index}, l15::core::SUPPRESS).GetLocalPrivKey());
+            if (l15::Hash160(keypair.GetPubKey().as_vector()) == pkhash) {
+                auto res = std::make_shared<P2WPKHSigner>(move(keypair));
+                return res;
+            }
+        }
+#endif
     }
     throw l15::KeyError("derivation lookup");
 }
@@ -222,7 +224,7 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const MasterKey &masterKey, KeyLookupHi
         account.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + acc);
         account.DeriveSelf(0);
 
-//#ifdef _LIBCPP_HAS_PARALLEL_ALGORITHMS
+#ifndef WASM
         std::atomic<std::shared_ptr<ChannelKeys>> res;
         const uint32_t step = 64;
         uint32_t indexes[step];
@@ -241,14 +243,14 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const MasterKey &masterKey, KeyLookupHi
                 return std::make_shared<TaprootSigner>(move(*keypair));
             }
         }
-//#else
-//    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
-//        ChannelKeys keypair = masterCopy.Derive(std::vector<uint32_t >{key_index}, (keyHint.type == KeyLookupHint::SCRIPT) ? l15::core::SUPPRESS : l15::core::FORCE);
-//        if (keypair.GetLocalPubKey() == pk) {
-//            return std::make_shared<TaprootSigner>(move(keypair));;
-//        }
-//    }
-//#endif
+#else
+    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
+        ChannelKeys keypair = account.Derive(std::vector<uint32_t >{key_index}, (keyHint.type == KeyLookupHint::SCRIPT) ? l15::core::SUPPRESS : l15::core::FORCE);
+        if (keypair.GetLocalPubKey() == pk) {
+            return std::make_shared<TaprootSigner>(move(keypair));;
+        }
+    }
+#endif
     }
     throw l15::KeyError("derivation lookup");
 }

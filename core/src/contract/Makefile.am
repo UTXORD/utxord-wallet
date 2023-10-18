@@ -1,5 +1,11 @@
 
-AM_CPPFLAGS = \
+AM_CPPFLAGS =
+
+if BIND_WASM
+AM_CPPFLAGS += -DWASM
+endif
+
+AM_CPPFLAGS += \
  -I$(top_srcdir)/contrib/nlohmann_json \
  -I$(top_srcdir)/bitcoin/src \
  -I$(top_srcdir)/bitcoin/src/univalue/include \

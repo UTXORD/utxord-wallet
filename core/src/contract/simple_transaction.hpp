@@ -24,6 +24,7 @@ private:
     CMutableTransaction MakeTx() const;
 public:
     explicit SimpleTransaction(Bech32 bech) : ContractBuilder(bech) {}
+    //explicit SimpleTransaction(ChainMode m) : SimpleTransaction(Bech32(m)) {}
     SimpleTransaction(const SimpleTransaction&) = default;
     SimpleTransaction(SimpleTransaction&&) noexcept = default;
 
@@ -48,7 +49,7 @@ public:
 
     void AddChangeOutput(const std::string& addr);
 
-    void Sign(const MasterKey& master_key);
+    void Sign(const l15::core::MasterKey& master_key);
 
     std::vector<std::string> RawTransactions() const;
 

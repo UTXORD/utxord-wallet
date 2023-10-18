@@ -1,15 +1,10 @@
 
 (async ()=>{
     const api = await utxord();
+    const bech = new api.Bech32(api.TESTNET);
 
     try {
         /*MasterKey*/
-        let bech = new api.Bech32(api.TESTNET);
-        let pk = bech.Decode("tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
-
-        console.log("pk: ", pk.c_str());
-
-        api.destroy(pk);
 
         let randomKey = new api.ChannelKeys();
         let randomPk = randomKey.GetLocalPubKey();
@@ -20,21 +15,20 @@
 
         let key = masterKey.Derive("m/86'/2'/0'/0/0", false);
 
-        let addr = bech.Encode(key.GetLocalPubKey().c_str()).c_str();
+        let addr = bech.Encode(key.GetLocalPubKey().c_str(), api.BECH32M).c_str();
 
         console.log("adr:", addr);
         console.assert(addr === "tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
 
         api.destroy(randomPk);
         api.destroy(randomKey);
-        api.destroy(bech);
         api.destroy(key);
         api.destroy(masterKey);
 
         console.log("MasterKey - OK!");
     } catch(e) {
         console.log("FAIL!");
-        console.error(api.Exception.prototype.getMessage(e).c_str());
+        console.error(await api.Exception.prototype.getMessage(e).c_str());
     }
 
 
@@ -43,18 +37,20 @@
 
         let key = masterKey.Derive("m/86'/0'/1'/0/0", false);
         let pubkey = key.GetLocalPubKey().c_str();
+        let addr = bech.Encode(pubkey, api.BECH32M).c_str();
         api.destroy(key);
 
-        console.log("pubkey", pubkey);
+        console.log("addr", addr);
 
         let outkey = masterKey.Derive("m/86'/0'/1'/0/1", false);
         let outpubkey = outkey.GetLocalPubKey().c_str();
+        let outaddr = bech.Encode(outpubkey, api.BECH32M).c_str();
         api.destroy(outkey);
 
-        let utxo = new api.UTXO("8f3e642289eda5d79c3212b7c5cd990a81bbeed8e768a28400a79b090adb3166", 0, "0.0001", pubkey);
-        let output = new api.P2TR("0.00007", outpubkey);
+        let utxo = new api.UTXO(api.TESTNET, "8f3e642289eda5d79c3212b7c5cd990a81bbeed8e768a28400a79b090adb3166", 0, "0.0001", addr);
+        let output = new api.P2TR(api.TESTNET, "0.00007", outaddr);
 
-        let tx = new api.SimpleTransaction();
+        let tx = new api.SimpleTransaction(api.TESTNET);
 
         tx.MiningFeeRate("0.00001");
         tx.AddInput(utxo);
@@ -82,25 +78,28 @@
 
         let key = masterKey.Derive("m/86'/0'/1'/0/100", false);
         let pubkey = key.GetLocalPubKey().c_str();
+        let addr = bech.Encode(pubkey, api.BECH32M).c_str();
         api.destroy(key);
 
         let intkey = masterKey.Derive("m/86'/0'/1'/0/101", false);
         let intpubkey = intkey.GetLocalPubKey().c_str();
+        let intaddr = bech.Encode(intpubkey, api.BECH32M).c_str();
         api.destroy(intkey);
 
         let outkey = masterKey.Derive("m/86'/0'/1'/0/102", false);
         let outpubkey = outkey.GetLocalPubKey().c_str();
+        let outaddr = bech.Encode(outpubkey, api.BECH32M).c_str();
         api.destroy(outkey);
 
-        let changekey = masterKey.Derive("m/86'/0'/1'/1/99", false);
-        let changepubkey = changekey.GetLocalPubKey().c_str();
+        let changekey = masterKey.Derive("m/86'/0'/1'/0/99", false);
+        let changeaddr = bech.Encode(changekey.GetLocalPubKey().c_str(), api.BECH32M).c_str();
         api.destroy(changekey);
 
-        let utxo = new api.UTXO("8f3e642289eda5d79c3212b7c5cd990a81bbeed8e768a28400a79b090adb3166", 0, "0.0001", pubkey);
-        let output = new api.P2TR("0.00000546", outpubkey);
+        let utxo = new api.UTXO(api.TESTNET, "8f3e642289eda5d79c3212b7c5cd990a81bbeed8e768a28400a79b090adb3166", 0, "0.0001", addr);
+        let output = new api.P2TR(api.TESTNET, "0.00000546", outaddr);
 
-        let tx = new api.SimpleTransaction();
-        let tx1 = new api.SimpleTransaction();
+        let tx = new api.SimpleTransaction(api.TESTNET);
+        let tx1 = new api.SimpleTransaction(api.TESTNET);
 
         tx.MiningFeeRate("0.00001");
         tx1.MiningFeeRate("0.00001");
@@ -109,13 +108,13 @@
         tx1.AddOutput(output);
         api.destroy(output);
 
-        let intout = new api.P2TR(tx1.GetMinFundingAmount(), intpubkey);
+        let intout = new api.P2TR(api.TESTNET, tx1.GetMinFundingAmount(), intaddr);
 
         tx.AddInput(utxo);
         api.destroy(utxo);
         tx.AddOutput(intout)
         api.destroy(intout);
-        tx.AddChangeOutput(changepubkey);
+        tx.AddChangeOutput(changeaddr);
 
         tx.Sign(masterKey);
         tx1.Sign(masterKey);

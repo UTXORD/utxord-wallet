@@ -122,6 +122,7 @@ public:
     static const std::string name_ordpayoff_sig;
 
     explicit SwapInscriptionBuilder(Bech32 bech) : ContractBuilder(bech) {}
+    explicit SwapInscriptionBuilder(ChainMode mode) : SwapInscriptionBuilder(Bech32(mode)) {}
 
     //SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
     SwapInscriptionBuilder(SwapInscriptionBuilder&&) noexcept = default;

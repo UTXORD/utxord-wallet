@@ -26,9 +26,6 @@ using std::get;
 using l15::hex;
 using l15::unhex;
 
-using l15::core::ChannelKeys;
-using l15::core::MasterKey;
-
 using l15::bytevector;
 using l15::seckey;
 using l15::xonly_pubkey;
@@ -100,9 +97,9 @@ public:
 
 class TaprootSigner: public ISigner
 {
-    ChannelKeys m_keypair;
+    l15::core::ChannelKeys m_keypair;
 public:
-    explicit TaprootSigner(ChannelKeys keypair) : m_keypair(move(keypair)) {}
+    explicit TaprootSigner(l15::core::ChannelKeys keypair) : m_keypair(move(keypair)) {}
     TaprootSigner(const TaprootSigner&) = default;
     TaprootSigner(TaprootSigner&&) noexcept = default;
     TaprootSigner& operator=(const TaprootSigner&) = default;
@@ -116,8 +113,9 @@ class IContractDestination: public IJsonSerializable
 public:
     virtual CAmount Amount() const = 0;
     virtual void Amount(CAmount amount) = 0;
+    virtual std::string Address() const = 0;
     virtual CScript PubKeyScript() const = 0;
-    virtual std::shared_ptr<ISigner> LookupKey(const MasterKey& masterKey, KeyLookupHint outType) const = 0;
+    virtual std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey& masterKey, KeyLookupHint outType) const = 0;
 };
 
 class P2Witness: public IContractDestination
@@ -149,10 +147,13 @@ public:
     void Amount(CAmount amount) override
     { m_amount = amount; }
 
+    std::string Address() const override
+    { return m_addr; }
+
     CScript PubKeyScript() const override
     { return mBech.PubKeyScript(m_addr); }
 
-    std::shared_ptr<ISigner> LookupKey(const MasterKey& masterKey, KeyLookupHint outType) const override
+    std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey& masterKey, KeyLookupHint outType) const override
     { throw ContractTermMissing("key"); }
 
     UniValue MakeJson() const override;
@@ -168,22 +169,18 @@ public:
     P2WPKH() = delete;
     P2WPKH(const P2WPKH&) = default;
     P2WPKH(P2WPKH&&) noexcept = default;
-    P2WPKH(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
-    std::shared_ptr<ISigner> LookupKey(const MasterKey& masterKey, KeyLookupHint keyHint) const override;
+    P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
+    std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey& masterKey, KeyLookupHint keyHint) const override;
 };
 
 class P2TR: public P2Witness
 {
 public:
     P2TR() = delete;
-
     P2TR(const P2TR &) = default;
-
     P2TR(P2TR &&) noexcept = default;
-
-    P2TR(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
-
-    std::shared_ptr<ISigner> LookupKey(const MasterKey &masterKey, KeyLookupHint keyHint) const override;
+    P2TR(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
+    std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey &masterKey, KeyLookupHint keyHint) const override;
 };
 /*--------------------------------------------------------------------------------------------------------------------*/
 
@@ -210,12 +207,17 @@ private:
     std::shared_ptr<IContractDestination> m_destination;
 public:
     //UTXO() = default;
-    UTXO(Bech32 bech, std::string txid, uint32_t nout, CAmount amount, const std::string& addr)
-        : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(bech, amount, addr))
-    {}
+    UTXO(Bech32 bech, std::string txid, uint32_t nout, CAmount amount, std::string addr)
+        : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(bech, amount, move(addr))) {}
 
-    explicit UTXO(Bech32 bech, const IContractOutput& out)
+    UTXO(Bech32 bech, const IContractOutput& out)
         : mBech(bech), m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
+
+    UTXO(ChainMode m, std::string txid, uint32_t nout, CAmount amount, std::string addr)
+        : UTXO(Bech32(m), move(txid), nout, amount, move(addr)) {}
+
+    UTXO(ChainMode m, const IContractOutput& out)
+        : UTXO (Bech32(m), out) {}
 
     explicit UTXO(Bech32 bech, const UniValue& json) : mBech(bech)
     { UTXO::ReadJson(json); }
