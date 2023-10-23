@@ -960,6 +960,7 @@ async matchTapRootKey(payload, target, deep = 0){
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
+    if(!args) console.log('error: undefined args'); return;
 
     let tabs: Tab[];
     if (tabId != null) {
