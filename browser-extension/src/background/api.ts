@@ -960,7 +960,6 @@ async matchTapRootKey(payload, target, deep = 0){
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
-    if(!args) console.log('error: undefined args'); return;
 
     let tabs: Tab[];
     if (tabId != null) {
@@ -971,7 +970,6 @@ async matchTapRootKey(payload, target, deep = 0){
         url: BASE_URL_PATTERN,
       });
     }
-console.log('args:', args,'type:', type);
     // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
     for (let tab of tabs) {
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {
