@@ -60,7 +60,7 @@ import {
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       await Api.genKeys();
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.pubKeyStr);
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.GetLocalPubKey().c_str());
       return await Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {
@@ -302,7 +302,7 @@ import {
       console.log(PLUGIN_ID, chrome.runtime.id);
       console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.pubKeyStr);
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.GetLocalPubKey().c_str());
       return true;
     }
 
