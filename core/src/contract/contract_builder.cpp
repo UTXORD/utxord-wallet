@@ -141,7 +141,7 @@ std::shared_ptr<IContractDestination> P2Witness::Construct(Bech32 bech, CAmount 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-std::shared_ptr<ISigner> P2WPKH::LookupKey(const MasterKey &masterKey, KeyLookupHint keyHint) const
+std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const
 {
     if (keyHint.type != KeyLookupHint::DEFAULT)
         throw std::invalid_argument("KeyLookup type: " + std::to_string(keyHint.type));
@@ -151,107 +151,21 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const MasterKey &masterKey, KeyLookup
     std::tie(witver, pkhash) = mBech.Decode(m_addr);
     if (witver != 0) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
 
-    MasterKey masterCopy(masterKey);
-    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + MasterKey::BIP84_P2WPKH_ACCOUNT);
-    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT);
-
-    std::vector<MasterKey> accountKeys;
-    accountKeys.reserve(keyHint.accounts.size());
-
-    for (uint32_t acc: keyHint.accounts) {
-        MasterKey account(masterCopy);
-        account.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + acc);
-        account.DeriveSelf(0);
-        accountKeys.emplace_back(move(account));
-    }
-
-#ifndef WASM
-    std::atomic<std::shared_ptr<P2WPKHSigner>> res;
-    const uint32_t step = 64;
-    uint32_t indexes[step];
-    for (uint32_t key_index = 0; key_index < 65536/*MasterKey::BIP32_HARDENED_KEY_LIMIT*/; key_index += step) {
-        std::iota(indexes, indexes + step, key_index);
-        std::for_each(std::execution::par_unseq, indexes, indexes + step, [&](const auto &k) {
-            for (const MasterKey &account: accountKeys) {
-                EcdsaKeypair keypair(account.Derive(std::vector<uint32_t>{k}, l15::core::SUPPRESS).GetLocalPrivKey());
-                if (l15::Hash160(keypair.GetPubKey().as_vector()) == pkhash) {
-                    res = std::make_shared<P2WPKHSigner>(move(keypair));
-                }
-            }
-        });
-        std::shared_ptr<P2WPKHSigner> signer = res.load();
-        if (signer) {
-            return signer;
-        }
-    }
-#else
-    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
-        for (const MasterKey& account: accountKeys) {
-            EcdsaKeypair keypair(account.Derive(std::vector<uint32_t>{key_index}, l15::core::SUPPRESS).GetLocalPrivKey());
-            if (l15::Hash160(keypair.GetPubKey().as_vector()) == pkhash) {
-                auto res = std::make_shared<P2WPKHSigner>(move(keypair));
-                return res;
-            }
-        }
-    }
-#endif
-    throw l15::KeyError("derivation lookup");
+    KeyPair keypair = masterKey.Lookup(m_addr, keyHint);
+    EcdsaKeypair ecdsa(masterKey.Secp256k1Context(), keypair.PrivKey());
+    return std::make_shared<P2WPKHSigner>(move(ecdsa));
 }
 
-std::shared_ptr<ISigner> P2TR::LookupKey(const MasterKey &masterKey, KeyLookupHint keyHint) const
+std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const
 {
     unsigned witver;
     bytevector pk;
     std::tie(witver, pk) = mBech.Decode(m_addr);
     if (witver != 1) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
 
-    std::clog << "Lookup pubkey: " << hex(pk) << std::endl;
-
-    MasterKey masterCopy(masterKey);
-    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + MasterKey::BIP86_TAPROOT_ACCOUNT);
-    masterCopy.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT);
-
-    std::vector<MasterKey> accountKeys;
-    accountKeys.reserve(keyHint.accounts.size());
-
-    for (uint32_t acc: keyHint.accounts) {
-        MasterKey account(masterCopy);
-        account.DeriveSelf(MasterKey::BIP32_HARDENED_KEY_LIMIT + acc);
-        account.DeriveSelf(0);
-        accountKeys.emplace_back(move(account));
-    }
-
-#ifndef WASM
-    std::atomic<std::shared_ptr<ChannelKeys>> res;
-    const uint32_t step = 64;
-    uint32_t indexes[step];
-    for (uint32_t key_index = 0; key_index < 65536/*MasterKey::BIP32_HARDENED_KEY_LIMIT*/; key_index += step) {
-        std::iota(indexes, indexes + step, key_index);
-        std::for_each(std::execution::par_unseq, indexes, indexes + step, [&](const auto &k) {
-            for (const MasterKey &account: accountKeys) {
-                ChannelKeys keypair = account.Derive(std::vector<uint32_t>{k},
-                                                     (keyHint.type == KeyLookupHint::SCRIPT) ? l15::core::SUPPRESS : l15::core::FORCE);
-                if (keypair.GetLocalPubKey() == pk) {
-                    res = std::make_shared<ChannelKeys>(move(keypair));
-                }
-            }
-        });
-        std::shared_ptr<ChannelKeys> keypair = res.load();
-        if (keypair) {
-            return std::make_shared<TaprootSigner>(move(*keypair));
-        }
-    }
-#else
-    for (uint32_t key_index = 0; key_index < 65536/*core::MasterKey::BIP32_HARDENED_KEY_LIMIT*/; ++key_index) {
-        for (const MasterKey& account: accountKeys) {
-            ChannelKeys keypair = account.Derive(std::vector<uint32_t>{key_index}, (keyHint.type == KeyLookupHint::SCRIPT) ? l15::core::SUPPRESS : l15::core::FORCE);
-            if (keypair.GetLocalPubKey() == pk) {
-                return std::make_shared<TaprootSigner>(move(keypair));
-            }
-        }
-    }
-#endif
-    throw l15::KeyError("derivation lookup");
+    KeyPair keypair = masterKey.Lookup(m_addr, keyHint);
+    ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
+    return std::make_shared<TaprootSigner>(move(schnorr));
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/

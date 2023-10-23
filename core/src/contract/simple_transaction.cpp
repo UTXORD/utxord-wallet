@@ -21,7 +21,7 @@ CMutableTransaction SimpleTransaction::MakeTx() const
         tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
         tx.vin.back().scriptWitness.stack = input.witness;
         if (tx.vin.back().scriptWitness.stack.empty()) {
-            tx.vin.back().scriptWitness.stack.emplace_back(signature());
+            tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
         }
     }
 
@@ -64,7 +64,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     }
 }
 
-void SimpleTransaction::Sign(const l15::core::MasterKey &master_key)
+void SimpleTransaction::Sign(const KeyRegistry &master_key)
 {
     CMutableTransaction tx = MakeTx();
 
@@ -77,7 +77,7 @@ void SimpleTransaction::Sign(const l15::core::MasterKey &master_key)
 
     for(auto& input: m_inputs) {
         auto& dest = input.output->Destination();
-        auto keypair = dest->LookupKey(master_key, {KeyLookupHint::DEFAULT, {0,1}});
+        auto keypair = dest->LookupKey(master_key, {true, KeyLookupHint::DEFAULT, {0,1}});
 
         std::vector<bytevector> stack = keypair->Sign(tx, input.nin, spent_outs, SIGHASH_ALL);
 

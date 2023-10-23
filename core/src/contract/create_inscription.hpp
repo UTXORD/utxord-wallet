@@ -31,6 +31,7 @@ class CreateInscriptionBuilder: public ContractBuilder
     static const std::string FEE_OPT_HAS_CHANGE;
     static const std::string FEE_OPT_HAS_COLLECTION;
     static const std::string FEE_OPT_HAS_XTRA_UTXO;
+    static const std::string FEE_OPT_HAS_P2WPKH_INPUT;
 
     static const CAmount COLLECTION_SCRIPT_ADD_VSIZE = 18;
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
@@ -42,8 +43,8 @@ class CreateInscriptionBuilder: public ContractBuilder
     InscribeType m_type;
     std::optional<CAmount> m_ord_amount;
 
-    std::list<Transfer> m_utxo;
-    std::list<Transfer> m_xtra_utxo;
+    std::list<ContractInput> m_inputs;
+    std::list<ContractInput> m_extra_inputs;
 
     std::optional<std::string> m_parent_collection_id;
     std::optional<Transfer> m_collection_utxo;
@@ -116,7 +117,7 @@ public:
     CreateInscriptionBuilder(CreateInscriptionBuilder&&) noexcept = default;
 
     explicit CreateInscriptionBuilder(Bech32 bech, InscribeType type) : ContractBuilder(bech), m_type(type) {}
-    explicit CreateInscriptionBuilder(ChainMode mode, InscribeType type) : CreateInscriptionBuilder(Bech32(mode), type) {}
+//    explicit CreateInscriptionBuilder(ChainMode mode, InscribeType type) : CreateInscriptionBuilder(Bech32(mode), type) {}
 
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
@@ -170,11 +171,11 @@ public:
 
     std::string GetGenesisTxMiningFee() const;
 
-    void SignCommit(uint32_t n, const std::string& sk, const std::string& inscribe_script_pk);
+    void SignCommit(const KeyRegistry &master_key, const std::string& inscribe_script_pk);
     void SignInscription(const std::string& insribe_script_sk);
 
     void SignCollection(const std::string& script_sk);
-    void SignFundMiningFee(uint32_t n, const std::string& sk);
+    void SignFundMiningFee(const KeyRegistry& master_key);
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 

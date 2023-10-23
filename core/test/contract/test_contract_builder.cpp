@@ -121,6 +121,15 @@ TEST_CASE("Fee")
     CAmount double_vout_fee = CalculateTxFee(1000, tx);
     std::clog << "Taproot vout vsize: " << (double_vout_fee - double_vin_fee) << std::endl;
 
+    CMutableTransaction p2wpkhtx;
+    p2wpkhtx.vin.emplace_back(uint256(), 0);
+    p2wpkhtx.vin.back().scriptWitness.stack.emplace_back(unhex<bytevector>("30440220744cd353daa4c84042229bfdb5f95f4e374fe32f43f16c984f82ab11f0cfa5b1022018d50cdd78bc1cf9e9b8f6119188972934ace1bbf67b581bf9b64663dbd8e04201"));
+    p2wpkhtx.vin.back().scriptWitness.stack.emplace_back(unhex<bytevector>("025d4d8d0b078bb360a50682e39bd6cca383f13f620262c90e4b329b41e92a283d"));
+
+    CAmount p2wpkh_fee = CalculateTxFee(1000, p2wpkhtx);
+
+    std::clog << "P2WPKH vin vsize: " << (p2wpkh_fee - base_fee) << std::endl;
+
 }
 
 class TestContractBuilder : public ContractBuilder

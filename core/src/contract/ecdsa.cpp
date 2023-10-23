@@ -3,6 +3,8 @@
 #include "key.h"
 #include "interpreter.h"
 
+#include "utils.hpp"
+
 namespace utxord {
 
 l15::bytevector EcdsaKeypair::SignTxHash(const uint256 &sighash, unsigned char sighashtype) const
@@ -10,7 +12,6 @@ l15::bytevector EcdsaKeypair::SignTxHash(const uint256 &sighash, unsigned char s
     l15::signature sig_compact;
 
     unsigned char extra_entropy[32] = {0};
-//    WriteLE32(extra_entropy, test_case);
 
     secp256k1_ecdsa_signature sig;
     uint32_t counter = 0;
@@ -27,8 +28,6 @@ l15::bytevector EcdsaKeypair::SignTxHash(const uint256 &sighash, unsigned char s
 
         secp256k1_ecdsa_signature_serialize_compact(m_ctx, sig_compact.data(), &sig);
     }
-//        ret = secp256k1_ecdsa_sign(m_ctx, &sig, sighash.begin(), m_sk.begin(), secp256k1_nonce_function_rfc6979, extra_entropy);
-//    }
 
     // Additional verification step to prevent using a potentially corrupted signature
     secp256k1_pubkey pk;
@@ -55,9 +54,7 @@ l15::bytevector EcdsaKeypair::SignSegwitV0Tx(const CMutableTransaction &tx, uint
     PrecomputedTransactionData txdata;
     txdata.Init(tx, std::move(spent_outputs), true);
 
-    uint256 sighash = SignatureHash(pubkeyscript, tx, nin, hashtype, txdata.m_spent_outputs[nin].nValue, SigVersion::WITNESS_V0);
-
-    std::clog << "ECDSA sighash: " << sighash.GetHex() << std::endl;
+    uint256 sighash = SignatureHash(pubkeyscript, tx, nin, hashtype, txdata.m_spent_outputs[nin].nValue, SigVersion::WITNESS_V0, &txdata);
 
     return SignTxHash(sighash, hashtype);
 }

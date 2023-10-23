@@ -26,6 +26,7 @@ public:
     EcdsaKeypair& operator= (EcdsaKeypair &&old) noexcept
     { m_ctx = old.m_ctx; m_sk = std::move(old.m_sk); return *this; }
 
+    const l15::seckey& GetPrivKey() const { return m_sk; }
     l15::compressed_pubkey GetPubKey() const;
 
     l15::bytevector SignTxHash(const uint256 &sighash, unsigned char sighashtype) const;

@@ -13,7 +13,7 @@
 #include "utils.hpp"
 #include "contract_error.hpp"
 #include "univalue.h"
-#include "master_key.hpp"
+#include "keypair.hpp"
 
 #include "address.hpp"
 #include "ecdsa.hpp"
@@ -68,14 +68,6 @@ struct IJsonSerializable
     }
 };
 
-struct KeyLookupHint
-{
-    enum Type {DEFAULT, SCRIPT};
-
-    Type type;
-    std::vector<uint32_t> accounts;
-};
-
 class ISigner
 {
 public:
@@ -115,7 +107,8 @@ public:
     virtual void Amount(CAmount amount) = 0;
     virtual std::string Address() const = 0;
     virtual CScript PubKeyScript() const = 0;
-    virtual std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey& masterKey, KeyLookupHint outType) const = 0;
+    virtual std::vector<bytevector> DummyWitness() const = 0;
+    virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint outType) const = 0;
 };
 
 class P2Witness: public IContractDestination
@@ -153,7 +146,10 @@ public:
     CScript PubKeyScript() const override
     { return mBech.PubKeyScript(m_addr); }
 
-    std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey& masterKey, KeyLookupHint outType) const override
+    std::vector<bytevector> DummyWitness() const override
+    { throw std::logic_error("generic winness structure is unknown"); } // Should never be called directly
+
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint outType) const override
     { throw ContractTermMissing("key"); }
 
     UniValue MakeJson() const override;
@@ -170,7 +166,9 @@ public:
     P2WPKH(const P2WPKH&) = default;
     P2WPKH(P2WPKH&&) noexcept = default;
     P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
-    std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey& masterKey, KeyLookupHint keyHint) const override;
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const override;
+    std::vector<bytevector> DummyWitness() const override
+    { return { bytevector(72), bytevector(33) }; }
 };
 
 class P2TR: public P2Witness
@@ -180,7 +178,8 @@ public:
     P2TR(const P2TR &) = default;
     P2TR(P2TR &&) noexcept = default;
     P2TR(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
-    std::shared_ptr<ISigner> LookupKey(const l15::core::MasterKey &masterKey, KeyLookupHint keyHint) const override;
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const override;
+    std::vector<bytevector> DummyWitness() const override { return { signature() }; }
 };
 /*--------------------------------------------------------------------------------------------------------------------*/
 
@@ -310,6 +309,7 @@ protected:
     static const CAmount TX_BASE_VSIZE = 10;
     static const CAmount TAPROOT_VOUT_VSIZE = 43;
     static const CAmount TAPROOT_KEYSPEND_VIN_VSIZE = 58;
+    static const CAmount P2WPKH_VIN_VSIZE = 69;
     static const CAmount MIN_TAPROOT_TX_VSIZE = TX_BASE_VSIZE + TAPROOT_VOUT_VSIZE + TAPROOT_KEYSPEND_VIN_VSIZE;
 
     Bech32 mBech;

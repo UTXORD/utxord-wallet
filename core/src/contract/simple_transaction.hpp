@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "common.hpp"
-#include "master_key.hpp"
+#include "keypair.hpp"
 #include "contract_builder.hpp"
 
 namespace utxord {
@@ -47,9 +47,15 @@ public:
     void AddOutput(std::shared_ptr<IContractDestination> destination)
     { m_outputs.emplace_back(move(destination)); }
 
+    const std::vector<ContractInput>& Inputs() const { return m_inputs; }
+    std::vector<ContractInput>& Inputs() { return m_inputs; }
+    const std::vector<std::shared_ptr<IContractDestination>> Outputs() const { return m_outputs; }
+    std::vector<std::shared_ptr<IContractDestination>> Outputs() { return m_outputs; }
+
+
     void AddChangeOutput(const std::string& addr);
 
-    void Sign(const l15::core::MasterKey& master_key);
+    void Sign(const KeyRegistry& master_key);
 
     std::vector<std::string> RawTransactions() const;
 

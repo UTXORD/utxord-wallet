@@ -3,7 +3,8 @@
 #include "random.h"
 
 #include "common.hpp"
-#include "channel_keys.hpp"
+#include "address.hpp"
+#include "keypair.hpp"
 #include "master_key.hpp"
 #include "contract_builder.hpp"
 #include "create_inscription.hpp"
@@ -46,43 +47,8 @@ namespace wasm {
 
 using l15::FormatAmount;
 using l15::ParseAmount;
-
-class ChannelKeys : private l15::core::ChannelKeys
-{
-public:
-    static void InitSecp256k1()
-    { GetSecp256k1(); }
-
-    ChannelKeys() : l15::core::ChannelKeys(GetSecp256k1())
-    {}
-
-    explicit ChannelKeys(const char *sk) : l15::core::ChannelKeys(GetSecp256k1(), l15::unhex<l15::seckey>(sk))
-    {}
-
-    ChannelKeys(l15::core::ChannelKeys &&key) : l15::core::ChannelKeys(move(key))
-    {}
-
-    std::string GetLocalPrivKey() const
-    { return l15::hex(l15::core::ChannelKeys::GetLocalPrivKey()); }
-
-    std::string GetLocalPubKey() const
-    { return l15::hex(l15::core::ChannelKeys::GetLocalPubKey()); }
-
-    std::string SignSchnorr(const char *m) const
-    { return l15::hex(l15::core::ChannelKeys::SignSchnorr(uint256S(m))); }
-};
-
-class MasterKey : private l15::core::MasterKey
-{
-public:
-    explicit MasterKey(const char *seed) : l15::core::MasterKey(GetSecp256k1(), unhex<bytevector>(seed))
-    {}
-
-    ChannelKeys *Derive(const char *path, bool for_script) const
-    { return new ChannelKeys(l15::core::MasterKey::Derive(std::string(path), for_script)); }
-};
-
-//enum NetworkMode {REGTEST, TESTNET, MAINNET};
+using l15::hex;
+using l15::unhex;
 
 enum Bech32Encoding
 {
@@ -90,30 +56,114 @@ enum Bech32Encoding
     BECH32M
 };
 
-class Bech32 : private utxord::Bech32
+class Bech32 : public utxord::Bech32
 {
 public:
+    explicit Bech32(ChainMode mode) : utxord::Bech32(mode) {}
+    Bech32(const Bech32& another) = default;
+    Bech32& operator=(const Bech32& another) = default;
+    const char* Encode(std::string val, Bech32Encoding encoding)
+    {
+        static std::string cache;
+        cache = utxord::Bech32::Encode(unhex<l15::bytevector>(val), encoding == BECH32M ? bech32::Encoding::BECH32M : bech32::Encoding::BECH32);
+        return cache.c_str();
+    }
+};
 
-    explicit Bech32(enum ChainMode mode) : utxord::Bech32(mode) {}
-    std::string Encode(std::string val, Bech32Encoding encoding)
-    { return utxord::Bech32::Encode(unhex<l15::bytevector>(val), encoding == BECH32M ? bech32::Encoding::BECH32M : bech32::Encoding::BECH32); }
+
+class KeyPair : private utxord::KeyPair
+{
+public:
+    static void InitSecp256k1()
+    { GetSecp256k1(); }
+
+    explicit KeyPair(const char* sk) : utxord::KeyPair(GetSecp256k1(), unhex<l15::seckey>(sk)) {}
+
+    KeyPair(const KeyPair& ) = default;
+    KeyPair(KeyPair&& ) noexcept = default;
+
+    KeyPair(const utxord::KeyPair& keypair) : utxord::KeyPair(keypair) {}
+    KeyPair(utxord::KeyPair&& keypair) noexcept : utxord::KeyPair(std::move(keypair)) {}
+
+    const char* PrivKey() const
+    {
+        static std::string cache;
+        cache = l15::hex(utxord::KeyPair::PrivKey());
+        return cache.c_str();
+    }
+
+    const char* PubKey() const
+    {
+        static std::string cache;
+        cache = l15::hex(utxord::KeyPair::PubKey());
+        return cache.c_str();
+    }
+
+    const char* SignSchnorr(const char* m)
+    {
+        static std::string cache;
+        cache = l15::hex(utxord::KeyPair::SignSchnorr(m));
+        return cache.c_str();
+    }
+
+    const char* GetP2TRAddress(ChainMode mode)
+    {
+        static std::string cache;
+        cache = utxord::KeyPair::GetP2TRAddress(utxord::Bech32(mode));
+        return cache.c_str();
+    }
+
+    const char* GetP2WPKHAddress(ChainMode mode)
+    {
+        static std::string cache;
+        cache = utxord::KeyPair::GetP2WPKHAddress(utxord::Bech32(mode));
+        return cache.c_str();
+    }
+};
+
+
+class KeyRegistry : private utxord::KeyRegistry
+{
+public:
+    explicit KeyRegistry(ChainMode mode, const char *seed) : utxord::KeyRegistry(GetSecp256k1(), utxord::Bech32(mode), unhex<bytevector>(seed))
+    {}
+
+    void AddKeyToCache(const char* sk)
+    { utxord::KeyRegistry::AddKeyToCache(unhex<l15::seckey>(sk)); }
+
+    void RemoveKeyFromCache(const char* sk)
+    { utxord::KeyRegistry::RemoveKeyFromCache(unhex<l15::seckey>(sk)); }
+
+    KeyPair* Derive(const char *path, bool for_script) const
+    { return new KeyPair(utxord::KeyRegistry::Derive(path, for_script)); }
+
+    KeyPair* LookupPubKey(const char* pk, const char* key_lookup_opt_json) const
+    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), {true, utxord::KeyLookupHint::DEFAULT, {0, 1}})); }
+
+    KeyPair* LookupAddress(const std::string& addr, const char* key_lookup_opt_json) const
+    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, {true, utxord::KeyLookupHint::DEFAULT, {0, 1}})); }
+
 };
 
 struct Exception
 {
-    static std::string getMessage(void *exceptionPtr)
+    static const char* getMessage(void *exceptionPtr)
     {
+        static std::string cache;
         std::exception *e = reinterpret_cast<std::exception *>(exceptionPtr);
         if (l15::Error * l15err = dynamic_cast<l15::Error *>(e)) {
-            return std::string(l15err->what()) + ": " + l15err->details();
+            cache =  std::string(l15err->what()) + ": " + l15err->details();
+            return cache.c_str();
         }
-        return std::string(e->what());
+        return e->what();
     }
 };
 
 struct IContractDestination
 {
     virtual ~IContractDestination() = default;
+
+    virtual void SetAmount(const std::string& amount) = 0;
 
     virtual std::string Amount() const = 0;
 
@@ -128,6 +178,9 @@ class ContractDestinationWrapper : public IContractDestination
 public:
     ContractDestinationWrapper(std::shared_ptr<utxord::IContractDestination> ptr) : m_ptr(move(ptr))
     {}
+
+    void SetAmount(const std::string& amount) override
+    { m_ptr->Amount(ParseAmount(amount)); }
 
     std::string Amount() const override
     { return FormatAmount(m_ptr->Amount()); }
@@ -227,8 +280,8 @@ public:
     void AddChangeOutput(const std::string &pk)
     { m_ptr->AddChangeOutput(pk); }
 
-    void Sign(const MasterKey *master)
-    { m_ptr->Sign(*reinterpret_cast<const l15::core::MasterKey *>(master)); }
+    void Sign(const KeyRegistry *master)
+    { m_ptr->Sign(*reinterpret_cast<const utxord::KeyRegistry *>(master)); }
 
     const char *Serialize()
     { return m_ptr->Serialize(); }
@@ -238,6 +291,15 @@ public:
 
     std::shared_ptr<utxord::IContractOutput> Share() final
     { return m_ptr; }
+};
+
+class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder
+{
+public:
+    CreateInscriptionBuilder(ChainMode mode, InscribeType type) : utxord::CreateInscriptionBuilder(Bech32(mode), type) {}
+
+    void SignCommit(const KeyRegistry* keyRegistry, const std::string& inscribe_script_pk)
+    { utxord::CreateInscriptionBuilder::SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), inscribe_script_pk); }
 };
 
 } // wasm

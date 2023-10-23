@@ -7,26 +7,6 @@ interface string
     [Const] DOMString c_str();
 };
 
-[Prefix="utxord::wasm::"]
-interface ChannelKeys
-{
-    static void InitSecp256k1();
-
-    void ChannelKeys();
-    void ChannelKeys([Const] DOMString sk);
-    [Value] string GetLocalPrivKey();
-    [Value] string GetLocalPubKey();
-    [Value] string SignSchnorr([Const] DOMString m);
-};
-
-
-[Prefix="utxord::wasm::"]
-interface MasterKey
-{
-    void MasterKey([Const] DOMString seed);
-    ChannelKeys Derive([Const] DOMString path, boolean for_script);
-};
-
 enum ChainMode
 {
     "MAINNET",
@@ -44,32 +24,68 @@ enum Bech32Encoding
 interface Bech32
 {
     void Bech32(ChainMode mode);
-    [Value] string Encode([Const] DOMString value, Bech32Encoding encoding);
+    [Const] DOMString Encode([Const] DOMString value, Bech32Encoding encoding);
+};
+
+[Prefix="utxord::wasm::"]
+interface KeyPair
+{
+    static void InitSecp256k1();
+
+    void KeyPair([Const] DOMString sk);
+    [Const] DOMString PrivKey();
+    [Const] DOMString PubKey();
+    [Const] DOMString SignSchnorr([Const] DOMString m);
+
+    [Const] DOMString GetP2TRAddress(ChainMode mode);
+    [Const] DOMString GetP2WPKHAddress(ChainMode mode);
+};
+
+
+[Prefix="utxord::wasm::"]
+interface KeyRegistry
+{
+    void KeyRegistry(ChainMode mode, [Const] DOMString seed);
+
+    void AddKeyToCache([Const] DOMString sk);
+    void RemoveKeyFromCache([Const] DOMString sk);
+
+    KeyPair Derive([Const] DOMString path, boolean for_script);
+
+    KeyPair LookupPubKey([Const] DOMString pubkey, [Const] DOMString opt);
+    KeyPair LookupAddress([Const] DOMString address, [Const] DOMString opt);
 };
 
 [Prefix="utxord::wasm::"]
 interface Exception
 {
-    [Value] static string getMessage(any e);
+    [Const] static DOMString getMessage(any e);
 };
 
 [Prefix="utxord::wasm::"]
 interface IContractDestination
 {
+    void SetAmount([Const] DOMString amount);
     [Value] string Amount();
     [Value] string Address();
 };
 
 [Prefix="utxord::wasm::"]
-interface P2WPKH : IContractDestination
+interface P2WPKH
 {
     void P2WPKH(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
+    void SetAmount([Const] DOMString amount);
+    [Value] string Amount();
+    [Value] string Address();
 };
 
 [Prefix="utxord::wasm::"]
-interface P2TR : IContractDestination
+interface P2TR
 {
     void P2TR(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
+    void SetAmount([Const] DOMString amount);
+    [Value] string Amount();
+    [Value] string Address();
 };
 
 [Prefix="utxord::wasm::"]
@@ -108,7 +124,7 @@ enum InscribePhase
     "INSCRIPTION_SIGNATURE"
 };
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface CreateInscriptionBuilder
 {
     void CreateInscriptionBuilder(ChainMode mode, InscribeType type);
@@ -125,10 +141,10 @@ interface CreateInscriptionBuilder
                                                    [Const] DOMString collectionAddr);
     void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeeAddr);
 
-    void SignCommit(long n, [Const] DOMString sk, [Const] DOMString scriptPK);
+    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString scriptPK);
     void SignInscription([Const] DOMString scriptSK);
     void SignCollection([Const] DOMString collectionScriptSK);
-    void SignFundMiningFee(long n, [Const] DOMString sk);
+    //void SignFundMiningFee(KeyRegistry keyRegistry);
 
     [Value] string Serialize(long ver, InscribePhase phase);
     void Deserialize([Const] DOMString data, InscribePhase phase);
@@ -211,7 +227,7 @@ interface SimpleTransaction
     void AddOutput(IContractDestination out);
     void AddChangeOutput([Const] DOMString pk);
 
-    void Sign([Const] MasterKey master);
+    void Sign([Const] KeyRegistry master);
 
     [Const] DOMString Serialize();
     void Deserialize([Const] DOMString data);
