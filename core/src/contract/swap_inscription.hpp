@@ -157,7 +157,7 @@ public:
     void MarketSignSwap(const std::string& sk);
 
     void CheckContractTerms(SwapPhase phase) const;
-    string Serialize(uint32_t version, SwapPhase phase);
+    std::string Serialize(uint32_t version, SwapPhase phase);
     void Deserialize(const std::string& data);
 
     std::string FundsCommitRawTransaction() const;
