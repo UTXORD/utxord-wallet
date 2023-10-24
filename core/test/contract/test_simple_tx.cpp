@@ -87,12 +87,13 @@ struct TestCondition {
 TEST_CASE("singleinout")
 {
     KeyRegistry master_key(*bech, seed);
+    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
 
-    KeyPair p2tr_utxo_key = master_key.Derive("m/86'/0'/1'/0/65535", false);
+    KeyPair p2tr_utxo_key = master_key.Derive("m/86'/1'/0'/0/255", false);
 
     std::clog << "P2TR UTXO pubkey: " << hex(p2tr_utxo_key.PubKey()) << std::endl;
 
-    KeyPair p2wpkh_utxo_key = master_key.Derive("m/84'/0'/0'/0/10", false);
+    KeyPair p2wpkh_utxo_key = master_key.Derive("m/84'/1'/0'/0/10", false);
 
     TestCondition p2tr_cond = {p2tr_utxo_key, p2tr_utxo_key.GetP2TRAddress(*bech)};
     TestCondition p2wpkh_cond = {p2wpkh_utxo_key, p2wpkh_utxo_key.GetP2WPKHAddress(*bech)};
@@ -120,7 +121,7 @@ TEST_CASE("singleinout")
     REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(*bech, funds_txid, get<0>(prevout).n, 10000, cond.address)));
     REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 7000, destination_addr)));
 
-    REQUIRE_NOTHROW(tx_contract.Sign(master_key));
+    REQUIRE_NOTHROW(tx_contract.Sign(master_key, "funds"));
 
     std::string data;
     REQUIRE_NOTHROW(data = tx_contract.Serialize());
@@ -175,8 +176,9 @@ TEST_CASE("singleinout")
 TEST_CASE("2ins2outs")
 {
     KeyRegistry master_key(*bech, seed);
-    KeyPair utxo_key = master_key.Derive("m/86'/0'/1'/0/0", false);
-    KeyPair utxo_key1 = master_key.Derive("m/86'/0'/1'/0/1", false);
+    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
+    KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/0", false);
+    KeyPair utxo_key1 = master_key.Derive("m/86'/1'/1'/0/1", false);
 
     string addr = utxo_key.GetP2TRAddress(*bech);
     string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
@@ -207,7 +209,7 @@ TEST_CASE("2ins2outs")
     REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 546, destination_addr)));
     REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_addr1));
 
-    REQUIRE_NOTHROW(tx_contract.Sign(master_key));
+    REQUIRE_NOTHROW(tx_contract.Sign(master_key, "funds"));
 
     std::string data;
     REQUIRE_NOTHROW(data = tx_contract.Serialize());
@@ -234,8 +236,9 @@ TEST_CASE("2ins2outs")
 TEST_CASE("txchain")
 {
     KeyRegistry master_key(*bech, seed);
-    KeyPair utxo_key = master_key.Derive("m/86'/0'/1'/0/100", false);
-    KeyPair intermediate_key = master_key.Derive("m/86'/0'/1'/0/101", false);
+    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
+    KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/100", false);
+    KeyPair intermediate_key = master_key.Derive("m/86'/1'/1'/0/101", false);
 
     string addr = utxo_key.GetP2TRAddress(*bech);
     string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
@@ -267,8 +270,8 @@ TEST_CASE("txchain")
     REQUIRE_NOTHROW(tx_contract->Outputs().back()->Amount(ParseAmount(tx1_contract->GetMinFundingAmount(""))));
     REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_addr));
 
-    REQUIRE_NOTHROW(tx_contract->Sign(master_key));
-    REQUIRE_NOTHROW(tx1_contract->Sign(master_key));
+    REQUIRE_NOTHROW(tx_contract->Sign(master_key, "funds"));
+    REQUIRE_NOTHROW(tx1_contract->Sign(master_key, "funds"));
 
     std::string data, data1;
     REQUIRE_NOTHROW(data = tx_contract->Serialize());

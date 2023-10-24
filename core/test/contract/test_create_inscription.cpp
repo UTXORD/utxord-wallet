@@ -115,6 +115,7 @@ Transfer collection_utxo;
 TEST_CASE("inscribe")
 {
     KeyRegistry master_key(*bech, seed);
+    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
 
     KeyPair script_key, inscribe_key;
     KeyPair collection_key;
@@ -150,32 +151,32 @@ TEST_CASE("inscribe")
 
 //    EcdsaKeypair key1(master_key.Derive("m/84'/0'/0'/0/1").GetLocalPrivKey());
 //    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->bech32().Encode(l15::Hash160(key1.GetPubKey().as_vector()), bech32::Encoding::BECH32) }}, "0", false, true, false};
-    KeyPair key1 = master_key.Derive("m/86'/0'/0'/0/1", false);
+    KeyPair key1 = master_key.Derive("m/86'/1'/0'/0/1", false);
     CreateCondition inscription {{{ ParseAmount(inscription_amount), key1.GetP2TRAddress(*bech) }}, "0", false, true, false, "inscription"};
-    KeyPair key2 = master_key.Derive("m/86'/0'/0'/0/2", false);
+    KeyPair key2 = master_key.Derive("m/86'/1'/0'/0/2", false);
     CreateCondition inscription_w_change {{{ 10000, key2.GetP2TRAddress(*bech) }}, "0", true, false, false, "inscription_w_change"};
-    KeyPair key3 = master_key.Derive("m/86'/0'/0'/0/3", false);
+    KeyPair key3 = master_key.Derive("m/86'/1'/0'/0/3", false);
     CreateCondition inscription_w_fee {{{ ParseAmount(inscription_amount) + 43 + 1000, key3.GetP2TRAddress(*bech) }}, "0.00001", false, false, false, "inscription_w_fee"};
-    KeyPair key4 = master_key.Derive("m/86'/0'/0'/0/4", false);
-    KeyPair key4a = master_key.Derive("m/86'/0'/0'/1/4", false);
+    KeyPair key4 = master_key.Derive("m/86'/1'/0'/0/4", false);
+    KeyPair key4a = master_key.Derive("m/86'/1'/0'/1/4", false);
     CreateCondition inscription_w_change_fee {{{ 8000, key4.GetP2TRAddress(*bech) }, { 20000, key4a.GetP2TRAddress(*bech) }}, "0.00001", true, false, false, "inscription_w_change_fee"};
 
-    KeyPair key5 = master_key.Derive("m/86'/0'/0'/0/5", false);
+    KeyPair key5 = master_key.Derive("m/86'/1'/0'/0/5", false);
     CreateCondition child {{{ ParseAmount(child_amount), key5.GetP2TRAddress(*bech) }}, "0", false, false, true, "child"};
-    KeyPair key6 = master_key.Derive("m/86'/0'/0'/0/6", false);
+    KeyPair key6 = master_key.Derive("m/86'/1'/0'/0/6", false);
     CreateCondition child_w_change {{{ 10000, key6.GetP2TRAddress(*bech) }}, "0", true, false, true, "child_w_change"};
-    KeyPair key7 = master_key.Derive("m/86'/0'/0'/0/7", false);
+    KeyPair key7 = master_key.Derive("m/86'/1'/0'/0/7", false);
     CreateCondition child_w_fee {{{ ParseAmount(child_amount) + 43 + 1000, key7.GetP2TRAddress(*bech) }}, "0.00001", false, false, true, "child_w_fee"};
-    KeyPair key8 = master_key.Derive("m/86'/0'/0'/0/8", false);
+    KeyPair key8 = master_key.Derive("m/86'/1'/0'/0/8", false);
     CreateCondition child_w_change_fee {{{ 10000, key8.GetP2TRAddress(*bech) }}, "0.00001", true, false, true, "child_w_change_fee"};
 
-    KeyPair key9(master_key.Derive("m/84'/0'/0'/0/9", false));
+    KeyPair key9(master_key.Derive("m/84'/1'/0'/0/9", false));
     CreateCondition segwit_child {{{ ParseAmount(segwit_child_amount), key9.GetP2WPKHAddress(*bech) }}, "0", false, false, true, "segwit_child"};
-    KeyPair key10(master_key.Derive("m/84'/0'/0'/0/10", false));
+    KeyPair key10(master_key.Derive("m/84'/1'/0'/0/10", false));
     CreateCondition segwit_child_w_change {{{ 10000, key10.GetP2WPKHAddress(*bech) }}, "0", true, false, true, "segwit_child_w_change"};
-    KeyPair key11(master_key.Derive("m/84'/0'/0'/0/11", false));
+    KeyPair key11(master_key.Derive("m/84'/1'/0'/0/11", false));
     CreateCondition segwit_child_w_fee {{{ ParseAmount(segwit_child_amount) + 43 + 1000, key11.GetP2WPKHAddress(*bech) }}, "0.00001", false, false, true, "segwit_child_w_fee"};
-    KeyPair key12(master_key.Derive("m/84'/0'/0'/0/12", false));
+    KeyPair key12(master_key.Derive("m/84'/1'/0'/0/12", false));
     CreateCondition segwit_child_w_change_fee {{{ 15000, key12.GetP2WPKHAddress(*bech) }}, "0.00001", true, false, true, "segwit_child_w_change_fee"};
 
     auto condition = GENERATE_COPY(inscription,
@@ -217,7 +218,7 @@ TEST_CASE("inscribe")
                                                   *collection_utxo.m_addr));
         }
 
-        CHECK_NOTHROW(builder.SignCommit(master_key, hex(script_key.PubKey())));
+        CHECK_NOTHROW(builder.SignCommit(master_key, "funds", hex(script_key.PubKey())));
         CHECK_NOTHROW(builder.SignInscription(hex(script_key.PrivKey())));
         if (condition.has_parent) {
             CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));
@@ -281,7 +282,7 @@ TEST_CASE("inscribe")
                 CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, FormatAmount(get<0>(utxo)), get<1>(utxo)));
             }
 
-            CHECK_NOTHROW(builder.SignCommit(master_key, hex(script_key.PubKey())));
+            CHECK_NOTHROW(builder.SignCommit(master_key, "funds", hex(script_key.PubKey())));
 
             CHECK_NOTHROW(builder.SignInscription(hex(script_key.PrivKey())));
 
@@ -380,8 +381,9 @@ const InscribeWithMetadataCondition long_metadata = {
 TEST_CASE("metadata")
 {
     KeyRegistry master_key(*bech, seed);
+    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
 
-    KeyPair utxo_key = master_key.Derive("m/86'/0'/0'/0/1", false);
+    KeyPair utxo_key = master_key.Derive("m/86'/1'/0'/0/1", false);
     KeyPair script_key, inscribe_key;
 
     string addr = utxo_key.GetP2TRAddress(*bech);
@@ -438,7 +440,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
         CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), *collection_utxo.m_addr));
     }
 
-    REQUIRE_NOTHROW(builder.SignCommit(master_key, hex(script_key.PubKey())));
+    REQUIRE_NOTHROW(builder.SignCommit(master_key, "funds", hex(script_key.PubKey())));
     REQUIRE_NOTHROW(builder.SignInscription(hex(script_key.PrivKey())));
     if (condition.has_parent) {
         CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));

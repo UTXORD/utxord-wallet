@@ -191,7 +191,7 @@ void CreateInscriptionBuilder::CheckBuildArgs() const
     }
 }
 
-void CreateInscriptionBuilder::SignCommit(const KeyRegistry& master_key, const std::string& inscribe_script_pk)
+void CreateInscriptionBuilder::SignCommit(const KeyRegistry& master_key, const std::string& key_filter, const std::string& inscribe_script_pk)
 {
     CheckBuildArgs();
 
@@ -218,7 +218,7 @@ void CreateInscriptionBuilder::SignCommit(const KeyRegistry& master_key, const s
     CMutableTransaction tx = MakeCommitTx();
 
     for (auto& utxo: m_inputs) {
-        auto signer = utxo.output->Destination()->LookupKey(master_key, {true, KeyLookupHint::DEFAULT, {0, 1}});
+        auto signer = utxo.output->Destination()->LookupKey(master_key, key_filter);
         auto stack = signer->Sign(tx, utxo.nin, spent_outs, SIGHASH_ALL);
 
         for (size_t i = 0; i < stack.size(); ++i) {
@@ -270,7 +270,7 @@ void CreateInscriptionBuilder::SignInscription(const std::string& insribe_script
 }
 
 
-void CreateInscriptionBuilder::SignFundMiningFee(const KeyRegistry& master_key)
+void CreateInscriptionBuilder::SignFundMiningFee(const KeyRegistry& master_key, const std::string& key_filter)
 {
     if (!m_inscribe_script_pk) throw ContractStateError(std::string(name_inscribe_script_pk) + " undefined");
     if (!m_inscribe_int_sk) throw ContractStateError(std::string("internal inscription key undefined: has commit tx been signed?"));
@@ -278,7 +278,7 @@ void CreateInscriptionBuilder::SignFundMiningFee(const KeyRegistry& master_key)
     CMutableTransaction tx = MakeGenesisTx(true);
 
     for (auto& utxo: m_extra_inputs) {
-        auto signer = utxo.output->Destination()->LookupKey(master_key, {true, KeyLookupHint::DEFAULT, {0, 1}});
+        auto signer = utxo.output->Destination()->LookupKey(master_key, key_filter);
         auto stack = signer->Sign(tx, utxo.nin, GetGenesisTxSpends(), SIGHASH_ALL);
 
         for (size_t i = 0; i < stack.size(); ++i) {

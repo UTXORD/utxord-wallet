@@ -55,7 +55,7 @@ public:
 
     void AddChangeOutput(const std::string& addr);
 
-    void Sign(const KeyRegistry& master_key);
+    void Sign(const KeyRegistry& master_key, const std::string key_filter_tag);
 
     std::vector<std::string> RawTransactions() const;
 

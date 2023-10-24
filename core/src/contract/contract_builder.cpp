@@ -141,29 +141,26 @@ std::shared_ptr<IContractDestination> P2Witness::Construct(Bech32 bech, CAmount 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const
+std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const
 {
-    if (keyHint.type != KeyLookupHint::DEFAULT)
-        throw std::invalid_argument("KeyLookup type: " + std::to_string(keyHint.type));
-
     unsigned witver;
     bytevector pkhash;
     std::tie(witver, pkhash) = mBech.Decode(m_addr);
     if (witver != 0) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
 
-    KeyPair keypair = masterKey.Lookup(m_addr, keyHint);
+    KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
     EcdsaKeypair ecdsa(masterKey.Secp256k1Context(), keypair.PrivKey());
     return std::make_shared<P2WPKHSigner>(move(ecdsa));
 }
 
-std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const
+std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const
 {
     unsigned witver;
     bytevector pk;
     std::tie(witver, pk) = mBech.Decode(m_addr);
     if (witver != 1) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
 
-    KeyPair keypair = masterKey.Lookup(m_addr, keyHint);
+    KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
     ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
     return std::make_shared<TaprootSigner>(move(schnorr));
 }

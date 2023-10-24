@@ -2,6 +2,8 @@
 
 #include <functional>
 #include <list>
+#include <ranges>
+#include <unordered_map>
 
 #include "common.hpp"
 #include "channel_keys.hpp"
@@ -38,28 +40,39 @@ public:
     l15::signature SignSchnorr(const char *m) const;
 };
 
-struct KeyLookupHint
+struct KeyLookupFilter
 {
     enum Type {DEFAULT, TAPROOT, TAPSCRIPT};
 
     bool look_cache;
     Type type;
     std::vector<uint32_t> accounts;
+    std::vector<uint32_t> change;
+    std::ranges::iota_view<uint32_t, uint32_t> index_range;
 };
 
 class KeyRegistry
 {
     const secp256k1_context* m_ctx;
     Bech32 mBech;
+
+    std::unordered_map<std::string, KeyLookupFilter> m_key_type_filters;
+
     l15::core::MasterKey mMasterKey;
     std::list<l15::seckey> m_keys_cache;
 
 public:
-    KeyRegistry(Bech32 bech, const l15::bytevector& seed): m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), mBech(bech), mMasterKey(m_ctx, seed) {}
-    KeyRegistry(const secp256k1_context* ctx, Bech32 bech, const l15::bytevector& seed): m_ctx(ctx), mBech(bech), mMasterKey(m_ctx, seed) {}
+    KeyRegistry(Bech32 bech, const l15::bytevector& seed): m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), mBech(bech), m_key_type_filters(10), mMasterKey(m_ctx, seed) {}
+    KeyRegistry(const secp256k1_context* ctx, Bech32 bech, const l15::bytevector& seed): m_ctx(ctx), mBech(bech), m_key_type_filters(10), mMasterKey(m_ctx, seed) {}
 
     const secp256k1_context* Secp256k1Context() const
     { return m_ctx; }
+
+    void AddKeyType(std::string name, KeyLookupFilter filter)
+    { m_key_type_filters.emplace(move(name), std::move(filter)); }
+    void AddKeyType(std::string name, const std::string& filter_json);
+    void RemoveKeyType(const std::string& name)
+    { m_key_type_filters.erase(name); }
 
     void AddKeyToCache(l15::seckey sk)
     { m_keys_cache.emplace_back(move(sk)); }
@@ -69,9 +82,11 @@ public:
 
     KeyPair Derive(const char *path, bool for_script) const;
 
-    KeyPair Lookup(const l15::bytevector& keyid, KeyLookupHint hint, std::function<bool(const l15::core::ChannelKeys&, const l15::bytevector&)>) const;
-    KeyPair Lookup(const l15::xonly_pubkey& pk, KeyLookupHint hint) const;
-    KeyPair Lookup(const std::string& addr, KeyLookupHint hint) const;
+    KeyPair Lookup(const l15::bytevector& keyid, const KeyLookupFilter& hint, std::function<bool(const l15::core::ChannelKeys&, const l15::bytevector&)>) const;
+    KeyPair Lookup(const l15::xonly_pubkey& pk, const KeyLookupFilter& hint) const;
+    KeyPair Lookup(const l15::xonly_pubkey& pk, const std::string& hint_json) const;
+    KeyPair Lookup(const std::string& addr, const KeyLookupFilter& hint) const;
+    KeyPair Lookup(const std::string& addr, const std::string& hint_json) const;
 };
 
 } // utxord

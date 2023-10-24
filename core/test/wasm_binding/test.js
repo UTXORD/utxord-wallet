@@ -2,6 +2,7 @@
 (async ()=>{
     const api = await utxord();
     const bech = new api.Bech32(api.TESTNET);
+    const funds_filter = "{\"look_cache\":true, \"key_type\":\"DEFAULT\", \"accounts\":[\"0'\",\"1'\"], \"change\":[\"0\",\"1\"], \"index_range\":\"0-256\"}";
 
     try {
         /*KeyRegistry*/
@@ -13,7 +14,7 @@
 
         let masterKey = new api.KeyRegistry(api.TESTNET, "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
 
-        let key = masterKey.Derive("m/86'/2'/0'/0/0", false);
+        let key = masterKey.Derive("m/86'/1'/0'/0/0", false);
 
         let addr = key.GetP2TRAddress(api.TESTNET);
 
@@ -33,8 +34,9 @@
 
     try {
         let masterKey = new api.KeyRegistry(api.TESTNET, "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+        masterKey.AddKeyType("funds", funds_filter);
 
-        let key = masterKey.Derive("m/86'/0'/1'/0/0", false);
+        let key = masterKey.Derive("m/86'/1'/1'/0/0", false);
         let pubkey = key.PubKey();
         let addr = bech.Encode(pubkey, api.BECH32M);
         let addr2 = key.GetP2TRAddress(api.TESTNET);
@@ -45,7 +47,7 @@
         console.assert(addr == addr2);
 
 
-        let outkey = masterKey.Derive("m/86'/0'/1'/0/1", false);
+        let outkey = masterKey.Derive("m/86'/1'/1'/0/1", false);
         let outpubkey = outkey.PubKey();
         let outaddr = bech.Encode(outpubkey, api.BECH32M);
         api.destroy(outkey);
@@ -61,7 +63,7 @@
         tx.AddOutput(output);
         api.destroy(output);
 
-        tx.Sign(masterKey);
+        tx.Sign(masterKey, "funds");
         api.destroy(masterKey);
 
         let contract = tx.Serialize();
@@ -78,23 +80,24 @@
 
     try {
         let masterKey = new api.KeyRegistry(api.TESTNET, "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+        masterKey.AddKeyType("funds", funds_filter);
 
-        let key = masterKey.Derive("m/86'/0'/1'/0/100", false);
+        let key = masterKey.Derive("m/86'/1'/1'/0/100", false);
         let pubkey = key.PubKey();
         let addr = bech.Encode(pubkey, api.BECH32M);
         api.destroy(key);
 
-        let intkey = masterKey.Derive("m/86'/0'/1'/0/101", false);
+        let intkey = masterKey.Derive("m/86'/1'/1'/0/101", false);
         let intpubkey = intkey.PubKey();
         let intaddr = bech.Encode(intpubkey, api.BECH32M);
         api.destroy(intkey);
 
-        let outkey = masterKey.Derive("m/86'/0'/1'/0/102", false);
+        let outkey = masterKey.Derive("m/86'/1'/1'/0/102", false);
         let outpubkey = outkey.PubKey();
         let outaddr = bech.Encode(outpubkey, api.BECH32M);
         api.destroy(outkey);
 
-        let changekey = masterKey.Derive("m/86'/0'/1'/0/99", false);
+        let changekey = masterKey.Derive("m/86'/1'/1'/0/99", false);
         let changeaddr = bech.Encode(changekey.PubKey(), api.BECH32M);
         api.destroy(changekey);
 
@@ -123,8 +126,8 @@
         api.destroy(utxo);
         api.destroy(intout);
 
-        tx.Sign(masterKey);
-        tx1.Sign(masterKey);
+        tx.Sign(masterKey, funds_filter);
+        tx1.Sign(masterKey, funds_filter);
         api.destroy(masterKey);
 
         let contract = tx.Serialize();

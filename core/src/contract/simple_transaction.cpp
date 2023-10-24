@@ -64,7 +64,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     }
 }
 
-void SimpleTransaction::Sign(const KeyRegistry &master_key)
+void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string key_filter_tag)
 {
     CMutableTransaction tx = MakeTx();
 
@@ -77,7 +77,7 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key)
 
     for(auto& input: m_inputs) {
         auto& dest = input.output->Destination();
-        auto keypair = dest->LookupKey(master_key, {true, KeyLookupHint::DEFAULT, {0,1}});
+        auto keypair = dest->LookupKey(master_key, key_filter_tag);
 
         std::vector<bytevector> stack = keypair->Sign(tx, input.nin, spent_outs, SIGHASH_ALL);
 

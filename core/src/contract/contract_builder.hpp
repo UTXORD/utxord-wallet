@@ -108,7 +108,7 @@ public:
     virtual std::string Address() const = 0;
     virtual CScript PubKeyScript() const = 0;
     virtual std::vector<bytevector> DummyWitness() const = 0;
-    virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint outType) const = 0;
+    virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const = 0;
 };
 
 class P2Witness: public IContractDestination
@@ -149,7 +149,7 @@ public:
     std::vector<bytevector> DummyWitness() const override
     { throw std::logic_error("generic winness structure is unknown"); } // Should never be called directly
 
-    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint outType) const override
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw ContractTermMissing("key"); }
 
     UniValue MakeJson() const override;
@@ -166,7 +166,7 @@ public:
     P2WPKH(const P2WPKH&) = default;
     P2WPKH(P2WPKH&&) noexcept = default;
     P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
-    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const override;
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override
     { return { bytevector(72), bytevector(33) }; }
 };
@@ -178,7 +178,7 @@ public:
     P2TR(const P2TR &) = default;
     P2TR(P2TR &&) noexcept = default;
     P2TR(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
-    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, KeyLookupHint keyHint) const override;
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
 };
 /*--------------------------------------------------------------------------------------------------------------------*/

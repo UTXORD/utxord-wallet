@@ -128,6 +128,12 @@ public:
     explicit KeyRegistry(ChainMode mode, const char *seed) : utxord::KeyRegistry(GetSecp256k1(), utxord::Bech32(mode), unhex<bytevector>(seed))
     {}
 
+    void AddKeyType(const char* name, const char* filter_json)
+    { utxord::KeyRegistry::AddKeyType(name, filter_json); }
+
+    void RemoveKeyType(const char* name)
+    { utxord::KeyRegistry::RemoveKeyType(name); }
+
     void AddKeyToCache(const char* sk)
     { utxord::KeyRegistry::AddKeyToCache(unhex<l15::seckey>(sk)); }
 
@@ -138,10 +144,10 @@ public:
     { return new KeyPair(utxord::KeyRegistry::Derive(path, for_script)); }
 
     KeyPair* LookupPubKey(const char* pk, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), {true, utxord::KeyLookupHint::DEFAULT, {0, 1}})); }
+    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), {true, utxord::KeyLookupFilter::DEFAULT, {0, 1}})); }
 
     KeyPair* LookupAddress(const std::string& addr, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, {true, utxord::KeyLookupHint::DEFAULT, {0, 1}})); }
+    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, {true, utxord::KeyLookupFilter::DEFAULT, {0, 1}})); }
 
 };
 
@@ -280,8 +286,8 @@ public:
     void AddChangeOutput(const std::string &pk)
     { m_ptr->AddChangeOutput(pk); }
 
-    void Sign(const KeyRegistry *master)
-    { m_ptr->Sign(*reinterpret_cast<const utxord::KeyRegistry *>(master)); }
+    void Sign(const KeyRegistry *master, const std::string key_filter_tag)
+    { m_ptr->Sign(*reinterpret_cast<const utxord::KeyRegistry *>(master), key_filter_tag); }
 
     const char *Serialize()
     { return m_ptr->Serialize(); }
@@ -298,8 +304,8 @@ class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder
 public:
     CreateInscriptionBuilder(ChainMode mode, InscribeType type) : utxord::CreateInscriptionBuilder(Bech32(mode), type) {}
 
-    void SignCommit(const KeyRegistry* keyRegistry, const std::string& inscribe_script_pk)
-    { utxord::CreateInscriptionBuilder::SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), inscribe_script_pk); }
+    void SignCommit(const KeyRegistry* keyRegistry, const std::string& key_filter, const std::string& inscribe_script_pk)
+    { utxord::CreateInscriptionBuilder::SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter, inscribe_script_pk); }
 };
 
 } // wasm

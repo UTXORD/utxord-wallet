@@ -47,6 +47,9 @@ interface KeyRegistry
 {
     void KeyRegistry(ChainMode mode, [Const] DOMString seed);
 
+    void AddKeyType([Const] DOMString name, [Const] DOMString filter_json);
+    void RemoveKeyType([Const] DOMString name);
+
     void AddKeyToCache([Const] DOMString sk);
     void RemoveKeyFromCache([Const] DOMString sk);
 
@@ -141,10 +144,10 @@ interface CreateInscriptionBuilder
                                                    [Const] DOMString collectionAddr);
     void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeeAddr);
 
-    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString scriptPK);
+    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter, [Const] DOMString scriptPK);
     void SignInscription([Const] DOMString scriptSK);
     void SignCollection([Const] DOMString collectionScriptSK);
-    //void SignFundMiningFee(KeyRegistry keyRegistry);
+    //void SignFundMiningFee(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
     [Value] string Serialize(long ver, InscribePhase phase);
     void Deserialize([Const] DOMString data, InscribePhase phase);
@@ -227,7 +230,7 @@ interface SimpleTransaction
     void AddOutput(IContractDestination out);
     void AddChangeOutput([Const] DOMString pk);
 
-    void Sign([Const] KeyRegistry master);
+    void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);
 
     [Const] DOMString Serialize();
     void Deserialize([Const] DOMString data);

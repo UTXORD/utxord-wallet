@@ -171,11 +171,11 @@ public:
 
     std::string GetGenesisTxMiningFee() const;
 
-    void SignCommit(const KeyRegistry &master_key, const std::string& inscribe_script_pk);
+    void SignCommit(const KeyRegistry &master_key, const std::string& key_filter, const std::string& inscribe_script_pk);
     void SignInscription(const std::string& insribe_script_sk);
 
     void SignCollection(const std::string& script_sk);
-    void SignFundMiningFee(const KeyRegistry& master_key);
+    void SignFundMiningFee(const KeyRegistry& master_key, const std::string& key_filter);
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 
