@@ -186,16 +186,17 @@ import {
 
       if (payload.type === SEND_BALANCES) {
         console.log('SEND_BALANCES:',payload.data)
-        if(payload.data?.addresses && payload.data?.my_inscriptions?.results){
+        if(payload.data?.addresses){
           Api.balances = payload.data;
           Api.sync = true;
           Api.connect = true;
-          Api.fundings = await Api.getAllFunds(payload.data.addresses);
-          console.log('Api.fundings:',Api.fundings);
-          Api.inscriptions = await Api.getInscriptions(payload.data.my_inscriptions?.results, Api.balances.addresses);
-          console.log('Api.inscriptions:',Api.inscriptions);
+          console.log('payload.data.addresses: ',payload.data.addresses);
+          const balances = await Api.prepareBalances(payload.data.addresses);
+          Api.fundings = balances.funds;
+          Api.inscriptions = balances.inscriptions;
+          console.log('Api.fundings:', Api.fundings);
+          console.log('Api.inscriptions:', Api.inscriptions);
         }
-
       }
 
       if (payload.type === GET_ALL_ADDRESSES) {
