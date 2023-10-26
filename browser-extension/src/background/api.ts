@@ -609,6 +609,12 @@ async genAllBranchKeys(type, deep = 0){
     }
    return ret;
   }
+ async freeBalance(balance){
+   for(const item of balance){
+     this.destroy(item.key);
+   }
+   return [];
+ }
 
  async prepareBalances(balances){
    const myself = this;

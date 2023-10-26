@@ -191,15 +191,18 @@ import {
           Api.sync = true;
           Api.connect = true;
           console.log('payload.data.addresses: ',payload.data.addresses);
+          Api.fundings = await Api.freeBalance(Api.fundings);
+          Api.inscriptions = await Api.freeBalance(Api.inscriptions);
           const balances = await Api.prepareBalances(payload.data.addresses);
-          Api.fundings = balances.funds;
-          Api.inscriptions = balances.inscriptions;
+          Api.fundings = await balances.funds;
+          Api.inscriptions = await balances.inscriptions;
           console.log('Api.fundings:', Api.fundings);
           console.log('Api.inscriptions:', Api.inscriptions);
         }
       }
 
       if (payload.type === GET_ALL_ADDRESSES) {
+        Api.all_addresses = await Api.freeBalance(Api.all_addresses);
         Api.all_addresses = await Api.getAllAddresses(payload.data.addresses);
         console.log('GET_ALL_ADDRESSES:',payload.data.addresses);
         const check = Api.checkAddresess(payload.data.addresses);
