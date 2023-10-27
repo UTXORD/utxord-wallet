@@ -47,7 +47,7 @@ class CreateInscriptionBuilder: public ContractBuilder
     std::list<ContractInput> m_extra_inputs;
 
     std::optional<std::string> m_parent_collection_id;
-    std::optional<Transfer> m_collection_utxo;
+    std::optional<ContractInput> m_collection_input;
 
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
@@ -172,9 +172,9 @@ public:
     std::string GetGenesisTxMiningFee() const;
 
     void SignCommit(const KeyRegistry &master_key, const std::string& key_filter, const std::string& inscribe_script_pk);
-    void SignInscription(const std::string& insribe_script_sk);
+    void SignInscription(const KeyRegistry &master_key, const std::string& key_filter);
 
-    void SignCollection(const std::string& script_sk);
+    void SignCollection(const KeyRegistry &master_key, const std::string& key_filter);
     void SignFundMiningFee(const KeyRegistry& master_key, const std::string& key_filter);
 
     std::string GetMinFundingAmount(const std::string& params) const override;

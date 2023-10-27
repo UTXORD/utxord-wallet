@@ -256,6 +256,8 @@ public:
     }
     operator const std::vector<bytevector>&() const
     { return m_stack; }
+    operator bool() const
+    { return !m_stack.empty(); }
 };
 
 

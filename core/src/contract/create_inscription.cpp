@@ -136,7 +136,7 @@ void CreateInscriptionBuilder::AddToCollection(const std::string& collection_id,
     CheckInscriptionId(collection_id);
     bech32().Decode(collection_addr);
     m_parent_collection_id = collection_id;
-    m_collection_utxo = {utxo_txid, utxo_nout, ParseAmount(utxo_amount), collection_addr};
+    m_collection_input.emplace(bech32(), 1, std::make_shared<UTXO>(bech32(), utxo_txid, utxo_nout, ParseAmount(utxo_amount), collection_addr));
 }
 
 
@@ -237,34 +237,37 @@ const CScript& CreateInscriptionBuilder::GetInscriptionScript() const
 }
 
 
-void CreateInscriptionBuilder::SignCollection(const std::string& sk)
+void CreateInscriptionBuilder::SignCollection(const KeyRegistry &master_key, const std::string& key_filter)
 {
     if (!m_inscribe_script_pk) throw ContractStateError(name_inscribe_script_pk + " undefined");
     //if (!m_inscribe_int_sk) throw ContractStateError(std::string("internal inscription key undefined: has commit tx been signed?"));
     if (!m_parent_collection_id) throw ContractStateError(name_collection_id + " undefined");
-    if (!m_collection_utxo) throw ContractStateError(name_collection + " undefined");
-    if (!m_collection_utxo->m_addr) throw ContractStateError(name_collection + '.' + name_pk + " undefined");
-
-    core::ChannelKeys script_key(unhex<seckey>(sk));
-
-    if (get<1>(bech32().Decode(*m_collection_utxo->m_addr)) != script_key.GetLocalPubKey()) throw ContractTermMismatch(name_collection + '.' + name_pk);
+    if (!m_collection_input) throw ContractStateError(name_collection + " undefined");
+    if (!m_collection_input->output) throw ContractStateError(name_collection + '.' + name_pk + " undefined");
 
     CMutableTransaction genesis_tx = MakeGenesisTx(false);
-    m_collection_utxo->m_sig = script_key.SignTaprootTx(genesis_tx, 1, GetGenesisTxSpends(), {});
+
+    auto script_signer = m_collection_input->output->Destination()->LookupKey(master_key, key_filter);
+    auto stack = script_signer->Sign(genesis_tx, m_collection_input->nin, GetGenesisTxSpends(), SIGHASH_ALL);
+
+    for (size_t i = 0; i < stack.size(); ++i) {
+        m_collection_input->witness.Set(i, move(stack[i]));
+    }
 }
 
-void CreateInscriptionBuilder::SignInscription(const std::string& insribe_script_sk)
+void CreateInscriptionBuilder::SignInscription(const KeyRegistry &master_key, const std::string& key_filter)
 {
     if (!m_inscribe_script_pk) throw ContractStateError(name_inscribe_script_pk + " undefined");
     if (!m_inscribe_int_sk) throw ContractStateError(std::string("internal inscription key undefined: has commit tx been signed?"));
 
-    core::ChannelKeys script_keypair(unhex<seckey>(insribe_script_sk));
+    auto inscribe_script_keypair = master_key.Lookup(*m_inscribe_script_pk, key_filter);
+    core::ChannelKeys script_keypair(inscribe_script_keypair.PrivKey());
     if (*m_inscribe_script_pk != script_keypair.GetLocalPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_pk));
 
     CMutableTransaction genesis_tx = MakeGenesisTx(true);
 
     m_inscribe_script_sig = script_keypair.SignTaprootTx(genesis_tx, 0, GetGenesisTxSpends(), GetInscriptionScript());
-    if (m_collection_utxo && m_extra_inputs.empty()) {
+    if (m_collection_input && m_extra_inputs.empty()) {
         m_collection_mining_fee_sig = script_keypair.SignTaprootTx(genesis_tx, 2, GetGenesisTxSpends(), {});
     }
 }
@@ -306,8 +309,8 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
     }
     switch (phase) {
     case INSCRIPTION_SIGNATURE:
-        if (m_collection_utxo) {
-            if (!m_collection_utxo->m_sig) throw ContractTermMissing(name_collection + '.' + name_sig);
+        if (m_collection_input) {
+            if (!m_collection_input->witness) throw ContractTermMissing(name_collection + '.' + ContractInput::name_witness);
         }
         //no break
     case LASY_COLLECTION_INSCRIPTION_SIGNATURE:
@@ -331,7 +334,7 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
         if (!m_inscribe_script_pk) throw ContractTermMissing(std::string(name_inscribe_script_pk));
         if (!m_inscribe_int_pk) throw ContractTermMissing(std::string(name_inscribe_int_pk));
         if (!m_inscribe_script_sig) throw ContractTermMissing(std::string(name_inscribe_sig));
-        if (m_collection_utxo && m_extra_inputs.empty() && !m_collection_mining_fee_sig)
+        if (m_collection_input && m_extra_inputs.empty() && !m_collection_mining_fee_sig)
             throw ContractTermMissing(std::string(name_collection_mining_fee_sig));
         if (!m_destination_addr) throw ContractTermMissing(std::string(name_destination_addr));
         bech32().Decode(*m_destination_addr);
@@ -345,10 +348,9 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
     case LASY_COLLECTION_MARKET_TERMS:
         if (!m_content_type) throw ContractTermMissing(std::string(name_content_type));
         if (!m_content) throw ContractTermMissing(std::string(name_content));
-        if (m_type == LASY_INSCRIPTION && !m_collection_utxo) throw ContractTermMissing(std::string(name_collection));
-        if (m_collection_utxo) {
+        if (m_type == LASY_INSCRIPTION && !m_collection_input) throw ContractTermMissing(std::string(name_collection));
+        if (m_collection_input) {
             if (!m_parent_collection_id) throw ContractTermMissing(std::string(name_collection_id));
-            if (!m_collection_utxo->m_addr) throw ContractTermMissing(name_collection + '.' + name_pk);
         }
         //no break
     case MARKET_TERMS:
@@ -394,7 +396,7 @@ std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase 
         contract.pushKV(name_inscribe_script_pk, hex(*m_inscribe_script_pk));
         contract.pushKV(name_inscribe_int_pk, hex(*m_inscribe_int_pk));
         contract.pushKV(name_inscribe_sig, hex(*m_inscribe_script_sig));
-        if (m_collection_utxo && m_extra_inputs.empty()) {
+        if (m_collection_input && m_extra_inputs.empty()) {
             contract.pushKV(name_collection_mining_fee_sig, hex(*m_collection_mining_fee_sig));
         }
 
@@ -411,15 +413,8 @@ std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase 
             contract.pushKV(name_metadata, *m_metadata);
         }
 
-        if (m_collection_utxo) {
-            UniValue collection_val(UniValue::VOBJ);
-            collection_val.pushKV(name_txid, m_collection_utxo->m_txid);
-            collection_val.pushKV(name_nout, m_collection_utxo->m_nout);
-            collection_val.pushKV(name_amount, m_collection_utxo->m_amount);
-            collection_val.pushKV(name_addr, *m_collection_utxo->m_addr);
-            if (m_collection_utxo->m_sig) {
-                collection_val.pushKV(name_sig, hex(*m_collection_utxo->m_sig));
-            }
+        if (m_collection_input) {
+            UniValue collection_val = m_collection_input->MakeJson();
             collection_val.pushKV(name_collection_id, *m_parent_collection_id);
             contract.pushKV(name_collection, move(collection_val));
         }
@@ -475,10 +470,13 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     }
     {
         const auto &val = contract[name_collection];
-        DeserializeContractTransfer(val, m_collection_utxo, [&](){ return name_collection; });
-        if (m_collection_utxo) {
-            DeserializeContractString(val[name_collection_id], m_parent_collection_id, [&]() { return move((name_collection + '.') += name_collection_id); });
-            if (!m_parent_collection_id) throw ContractTermMissing(move((name_collection + '.') += name_collection_id));
+        if (!val.isNull()) {
+            m_collection_input.emplace(bech32(), 1, val);
+            if (m_collection_input) {
+                DeserializeContractString(val[name_collection_id], m_parent_collection_id,
+                                          [&]() { return move((name_collection + '.') += name_collection_id); });
+                if (!m_parent_collection_id) throw ContractTermMissing(move((name_collection + '.') += name_collection_id));
+            }
         }
     }
     {   const auto &val = contract[name_metadata];
@@ -522,11 +520,9 @@ void CreateInscriptionBuilder::RestoreTransactions()
     if (!m_inscribe_int_pk) throw ContractTermMissing(std::string(name_inscribe_int_pk));
     if (!m_inscribe_script_sig) throw ContractTermMissing(std::string(name_inscribe_sig));
 
-    if (!m_parent_collection_id && m_collection_utxo) throw ContractTermMissing(std::string(name_collection_id));
-    if (!m_collection_utxo && m_parent_collection_id) throw ContractTermMissing(std::string(name_collection));
-    if (m_collection_utxo) {
-        if (!m_collection_utxo->m_addr) throw ContractTermMissing(std::string(name_collection) + '.' + name_pk);
-        if (!m_collection_utxo->m_sig) throw ContractTermMissing(std::string(name_collection) + '.' + name_sig);
+    if (!m_parent_collection_id && m_collection_input) throw ContractTermMissing(std::string(name_collection_id));
+    if (!m_collection_input && m_parent_collection_id) throw ContractTermMissing(std::string(name_collection));
+    if (m_collection_input) {
         if (m_extra_inputs.empty() && !m_collection_mining_fee_sig) throw ContractTermMissing(std::string(name_collection_mining_fee_sig));
     }
 
@@ -619,8 +615,9 @@ const CMutableTransaction& CreateInscriptionBuilder::GenesisTx() const
 {
     if (!mGenesisTx) {
         if (!m_inscribe_script_sig) throw ContractStateError(std::string(name_inscribe_sig));
-        if (m_collection_utxo && !m_collection_utxo->m_sig) throw ContractStateError(name_collection + '.' + name_sig);
-        if (m_collection_utxo && !m_collection_mining_fee_sig) throw ContractStateError(std::string(name_collection_mining_fee_sig));
+        if (m_collection_input && !m_collection_input->output) throw ContractStateError(name_collection + '.' + name_sig);
+        if (m_collection_input && !m_collection_input->witness) throw ContractStateError(name_collection + '.' + ContractInput::name_witness);
+        if (m_collection_input && !m_collection_mining_fee_sig) throw ContractStateError(std::string(name_collection_mining_fee_sig));
 
         mGenesisTx = MakeGenesisTx(false);
     }
@@ -630,11 +627,11 @@ const CMutableTransaction& CreateInscriptionBuilder::GenesisTx() const
 std::vector<CTxOut> CreateInscriptionBuilder::GetGenesisTxSpends() const
 {
     std::vector<CTxOut> spending_outs;
-    spending_outs.reserve(1 + (m_collection_utxo ? (m_extra_inputs.empty() ? 2 : m_extra_inputs.size() + 1) : 0));
+    spending_outs.reserve(1 + (m_collection_input ? (m_extra_inputs.empty() ? 2 : m_extra_inputs.size() + 1) : 0));
 
     spending_outs.emplace_back(CommitTx().vout.front());
-    if (m_collection_utxo) {
-        spending_outs.emplace_back(m_collection_utxo->m_amount, bech32().PubKeyScript(*m_collection_utxo->m_addr));
+    if (m_collection_input) {
+        spending_outs.emplace_back(m_collection_input->output->Destination()->Amount(), m_collection_input->output->Destination()->PubKeyScript());
         if (m_extra_inputs.empty()) {
             spending_outs.emplace_back(CommitTx().vout[1]);
         }
@@ -664,13 +661,13 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx(bool for_inscribe_si
 
     genesis_tx.vin[0].prevout.hash = commit_tx.GetHash();
 
-    if (m_collection_utxo) {
+    if (m_collection_input) {
         genesis_tx.vout.front().nValue = commit_tx.vout.front().nValue;
 
-        genesis_tx.vin.emplace_back(uint256S(m_collection_utxo->m_txid), m_collection_utxo->m_nout);
-        genesis_tx.vin.back().scriptWitness.stack.emplace_back(m_collection_utxo->m_sig.value_or(signature()));
+        genesis_tx.vin.emplace_back(uint256S(m_collection_input->output->TxID()), m_collection_input->output->NOut());
+        genesis_tx.vin.back().scriptWitness.stack = m_collection_input->witness ? m_collection_input->witness : m_collection_input->output->Destination()->DummyWitness();
 
-        genesis_tx.vout.emplace(genesis_tx.vout.begin()+1, m_collection_utxo->m_amount, bech32().PubKeyScript(*m_collection_utxo->m_addr));
+        genesis_tx.vout.emplace(genesis_tx.vout.begin()+1, m_collection_input->output->Destination()->Amount(), m_collection_input->output->Destination()->PubKeyScript());
 
         if (m_extra_inputs.empty()) {
             genesis_tx.vin.emplace_back(commit_tx.GetHash(), 1);

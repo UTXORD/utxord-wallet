@@ -131,13 +131,13 @@ enum InscribePhase
 interface CreateInscriptionBuilder
 {
     void CreateInscriptionBuilder(ChainMode mode, InscribeType type);
-    void MarketFee([Const] DOMString amount, [Const] DOMString pk);
+    void MarketFee([Const] DOMString amount, [Const] DOMString addr);
     void OrdAmount([Const] DOMString amount);
     void MiningFeeRate([Const] DOMString rate);
-    void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pk);
+    void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
-    void MetaData([Const] DOMString jsonData);
-    void InscribeAddress([Const] DOMString inscribeAddr);
+    void MetaData([Const] DOMString hexCborData);
+    void InscribeAddress([Const] DOMString inscriptionAddr);
     void ChangeAddress([Const] DOMString changeAddr);
 
     void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
@@ -145,8 +145,8 @@ interface CreateInscriptionBuilder
     void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeeAddr);
 
     void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter, [Const] DOMString scriptPK);
-    void SignInscription([Const] DOMString scriptSK);
-    void SignCollection([Const] DOMString collectionScriptSK);
+    void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
+    void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     //void SignFundMiningFee(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
     [Value] string Serialize(long ver, InscribePhase phase);

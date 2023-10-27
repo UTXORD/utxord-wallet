@@ -54,7 +54,9 @@ UniValue ContractInput::MakeJson() const
     // Lazy mode copy of an UTXO state is used to allow early-set of not completed contract as the input at any time
     UTXO utxo_out(bech32, *output);
     UniValue json = utxo_out.MakeJson();
-    json.pushKV(name_witness, witness.MakeJson());
+    if (witness) {
+        json.pushKV(name_witness, witness.MakeJson());
+    }
 
     return json;
 }
@@ -64,9 +66,10 @@ void ContractInput::ReadJson(const UniValue &json)
     output = std::make_shared<UTXO>(bech32, json);
 
     {   const UniValue& val = json[name_witness];
-        if (val.isNull()) throw ContractTermMissing(name_witness.c_str());
-        if (!val.isArray()) throw ContractTermWrongValue(name_witness.c_str());
-        witness.ReadJson(val);
+        if (!val.isNull()) {
+            if (!val.isArray()) throw ContractTermWrongValue(name_witness.c_str());
+            witness.ReadJson(val);
+        }
     }
 }
 

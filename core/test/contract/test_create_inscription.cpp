@@ -115,10 +115,13 @@ Transfer collection_utxo;
 TEST_CASE("inscribe")
 {
     KeyRegistry master_key(*bech, seed);
-    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
+    master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
+    master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
+    master_key.AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'"], "change":["0"], "index_range":"0-256"})");
 
-    KeyPair script_key, inscribe_key;
-    KeyPair collection_key;
+    KeyPair script_key = master_key.Derive("m/86'/1'/3'/0/0", true);
+    KeyPair inscribe_key = master_key.Derive("m/86'/1'/2'/0/0", false);;
+    KeyPair collection_key = master_key.Derive("m/86'/1'/2'/0/1", false);
 
     std::string destination_addr = w->btc().GetNewAddress();
     std::string market_fee_addr = w->btc().GetNewAddress();
@@ -198,13 +201,15 @@ TEST_CASE("inscribe")
         std::string market_terms;
         REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(8, MARKET_TERMS));
 
+        std::clog << "MARKET_TERMS:\n" << market_terms << std::endl;
+
         CreateInscriptionBuilder builder(*bech, INSCRIPTION);
         REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
         CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
         CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
         CHECK_NOTHROW(builder.Data(content_type, content));
-        CHECK_NOTHROW(builder.InscribeAddress(condition.is_parent ? bech->Encode(collection_key.PubKey()) : destination_addr));
+        CHECK_NOTHROW(builder.InscribeAddress(condition.is_parent ? collection_key.GetP2TRAddress(*bech) : destination_addr));
         CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
 
         for (const auto& utxo: condition.utxo) {
@@ -218,15 +223,15 @@ TEST_CASE("inscribe")
                                                   *collection_utxo.m_addr));
         }
 
-        CHECK_NOTHROW(builder.SignCommit(master_key, "funds", hex(script_key.PubKey())));
-        CHECK_NOTHROW(builder.SignInscription(hex(script_key.PrivKey())));
+        CHECK_NOTHROW(builder.SignCommit(master_key, "fund", hex(script_key.PubKey())));
+        CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
         if (condition.has_parent) {
-            CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));
+            CHECK_NOTHROW(builder.SignCollection(master_key, "ord"));
         }
 
         std::string contract;
         REQUIRE_NOTHROW(contract = builder.Serialize(8, INSCRIPTION_SIGNATURE));
-        std::clog << contract << std::endl;
+        std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
 
         CreateInscriptionBuilder fin_contract(*bech, INSCRIPTION);
         REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
@@ -282,9 +287,9 @@ TEST_CASE("inscribe")
                 CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, FormatAmount(get<0>(utxo)), get<1>(utxo)));
             }
 
-            CHECK_NOTHROW(builder.SignCommit(master_key, "funds", hex(script_key.PubKey())));
+            CHECK_NOTHROW(builder.SignCommit(master_key, "fund", hex(script_key.PubKey())));
 
-            CHECK_NOTHROW(builder.SignInscription(hex(script_key.PrivKey())));
+            CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
 
             std::string contract;
             REQUIRE_NOTHROW(contract = builder.Serialize(8, LASY_COLLECTION_INSCRIPTION_SIGNATURE));
@@ -293,7 +298,7 @@ TEST_CASE("inscribe")
             CreateInscriptionBuilder fin_contract(*bech, LASY_INSCRIPTION);
             REQUIRE_NOTHROW(fin_contract.Deserialize(contract, LASY_COLLECTION_INSCRIPTION_SIGNATURE));
 
-            CHECK_NOTHROW(fin_contract.SignCollection(hex(collection_sk)));
+            CHECK_NOTHROW(fin_contract.SignCollection(master_key, "ord"));
 
             REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
         }
@@ -381,10 +386,13 @@ const InscribeWithMetadataCondition long_metadata = {
 TEST_CASE("metadata")
 {
     KeyRegistry master_key(*bech, seed);
-    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
+    master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
+    master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
+    master_key.AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'"], "change":["0"], "index_range":"0-256"})");
 
     KeyPair utxo_key = master_key.Derive("m/86'/1'/0'/0/1", false);
-    KeyPair script_key, inscribe_key;
+    KeyPair script_key = master_key.Derive("m/86'/1'/3'/0/0", true);
+    KeyPair inscribe_key = master_key.Derive("m/86'/1'/2'/0/0", false);;
 
     string addr = utxo_key.GetP2TRAddress(*bech);
 
@@ -440,10 +448,10 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
         CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), *collection_utxo.m_addr));
     }
 
-    REQUIRE_NOTHROW(builder.SignCommit(master_key, "funds", hex(script_key.PubKey())));
-    REQUIRE_NOTHROW(builder.SignInscription(hex(script_key.PrivKey())));
+    REQUIRE_NOTHROW(builder.SignCommit(master_key, "fund", hex(script_key.PubKey())));
+    REQUIRE_NOTHROW(builder.SignInscription(master_key, "inscribe"));
     if (condition.has_parent) {
-        CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));
+        CHECK_NOTHROW(builder.SignCollection(master_key, "ord"));
     }
 
 //    stringvector rawtxs0;

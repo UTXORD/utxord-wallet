@@ -191,7 +191,11 @@ KeyPair KeyRegistry::Lookup(const l15::bytevector &keyid, const KeyLookupFilter&
 
 KeyPair KeyRegistry::Lookup(const l15::xonly_pubkey &pk, const KeyLookupFilter& hint) const
 {
-    return Lookup(pk.get_vector(), hint, [](const l15::core::ChannelKeys& key, const l15::bytevector& id) { return key.GetLocalPubKey() == id; });
+    KeyLookupFilter taproot_hint = hint;
+    if (taproot_hint.type == KeyLookupFilter::DEFAULT) {
+        taproot_hint.type = KeyLookupFilter::TAPROOT;
+    }
+    return Lookup(pk.get_vector(), taproot_hint, [](const l15::core::ChannelKeys& key, const l15::bytevector& id) { return key.GetLocalPubKey() == id; });
 }
 
 KeyPair KeyRegistry::Lookup(const l15::xonly_pubkey &pk, const std::string& hint_json) const

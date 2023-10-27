@@ -306,6 +306,12 @@ public:
 
     void SignCommit(const KeyRegistry* keyRegistry, const std::string& key_filter, const std::string& inscribe_script_pk)
     { utxord::CreateInscriptionBuilder::SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter, inscribe_script_pk); }
+
+    void SignInscription(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::CreateInscriptionBuilder::SignInscription(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignCollection(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::CreateInscriptionBuilder::SignCollection(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 };
 
 } // wasm
