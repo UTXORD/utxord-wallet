@@ -60,7 +60,7 @@ import {
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       await Api.genKeys();
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.pubKeyStr);
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.GetLocalPubKey().c_str());
       return await Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {
@@ -186,19 +186,23 @@ import {
 
       if (payload.type === SEND_BALANCES) {
         console.log('SEND_BALANCES:',payload.data)
-        if(payload.data?.addresses && payload.data?.my_inscriptions?.results){
+        if(payload.data?.addresses){
           Api.balances = payload.data;
           Api.sync = true;
           Api.connect = true;
-          Api.fundings = await Api.getAllFunds(payload.data.addresses);
-          console.log('Api.fundings:',Api.fundings);
-          Api.inscriptions = await Api.getInscriptions(payload.data.my_inscriptions?.results, Api.balances.addresses);
-          console.log('Api.inscriptions:',Api.inscriptions);
+          console.log('payload.data.addresses: ',payload.data.addresses);
+          Api.fundings = await Api.freeBalance(Api.fundings);
+          Api.inscriptions = await Api.freeBalance(Api.inscriptions);
+          const balances = await Api.prepareBalances(payload.data.addresses);
+          Api.fundings = await balances.funds;
+          Api.inscriptions = await balances.inscriptions;
+          console.log('Api.fundings:', Api.fundings);
+          console.log('Api.inscriptions:', Api.inscriptions);
         }
-
       }
 
       if (payload.type === GET_ALL_ADDRESSES) {
+        Api.all_addresses = await Api.freeBalance(Api.all_addresses);
         Api.all_addresses = await Api.getAllAddresses(payload.data.addresses);
         console.log('GET_ALL_ADDRESSES:',payload.data.addresses);
         const check = Api.checkAddresess(payload.data.addresses);
@@ -302,7 +306,7 @@ import {
       console.log(PLUGIN_ID, chrome.runtime.id);
       console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.pubKeyStr);
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.GetLocalPubKey().c_str());
       return true;
     }
 

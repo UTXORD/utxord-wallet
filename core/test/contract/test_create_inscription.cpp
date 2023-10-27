@@ -108,7 +108,6 @@ struct CreateCondition
 
 std::string collection_id;
 seckey collection_sk;
-//xonly_pubkey collection_int_pk;
 Transfer collection_utxo;
 
 
