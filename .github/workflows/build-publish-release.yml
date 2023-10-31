@@ -49,13 +49,21 @@ jobs:
           compose-file: "./docker-compose.yml"
           service: build-wallet-utxord
       -
-        name: Archive Release
+        name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
           type: 'zip'
           filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet.zip
 
       -
         name: Build QA wallet
@@ -64,13 +72,21 @@ jobs:
           compose-file: "./docker-compose.yml"
           service: build-wallet-qa
       -
-        name: Archive Release
+        name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
           type: 'zip'
           filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-qa.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-qa.zip
 
       -
         name: Build E2E wallet
@@ -79,13 +95,21 @@ jobs:
           compose-file: "./docker-compose.yml"
           service: build-wallet-e2e
       -
-        name: Archive Release
+        name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
           type: 'zip'
           filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-e2e.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-e2e.zip
 
       -
         name: Release
