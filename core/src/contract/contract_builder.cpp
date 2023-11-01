@@ -137,8 +137,11 @@ std::shared_ptr<IContractDestination> P2Witness::Construct(Bech32 bech, CAmount 
     if (witver == 0) {
         return std::make_shared<P2WPKH>(bech.GetChainMode(), amount, move(addr));
     }
-    else {
+    else if (witver == 1){
         return std::make_shared<P2TR>(bech.GetChainMode(), amount, move(addr));
+    }
+    else {
+        throw std::invalid_argument("address with wrong witness program version: " + std::to_string(witver));
     }
 }
 
@@ -260,6 +263,27 @@ void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature&
     }
     if (!pk.verify(ChannelKeys::GetStaticSecp256k1Context(), sig, sighash)) {
         throw SignatureError("sig");
+    }
+}
+
+void ContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs) const
+{
+    uint32_t witver;
+    bytevector keyid;
+
+    std::tie(witver, keyid) = bech32().Decode(addr);
+    if (witver == 1) {
+        if (witness.size() != 1) throw SignatureError("witness stack size");
+        if (witness[0].size() != 64 && witness[0].size() != 65) throw SignatureError("sig size");
+
+        xonly_pubkey pk = move(keyid);
+        signature sig = move(witness[0]);
+
+        VerifyTxSignature(pk, sig, tx, nin, move(spent_outputs), {});
+
+    }
+    else if (witver == 0) {
+        throw std::runtime_error("not implemented");
     }
 }
 

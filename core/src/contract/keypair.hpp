@@ -77,6 +77,8 @@ public:
     void AddKeyToCache(l15::seckey sk)
     { m_keys_cache.emplace_back(move(sk)); }
 
+    void RemoveKeyFromCache(const std::string& addr);
+
     void RemoveKeyFromCache(l15::seckey sk)
     { m_keys_cache.remove_if([&](const auto& el){ return el == sk; }); }
 

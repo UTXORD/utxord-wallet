@@ -140,6 +140,9 @@ public:
     void RemoveKeyFromCache(const char* sk)
     { utxord::KeyRegistry::RemoveKeyFromCache(unhex<l15::seckey>(sk)); }
 
+    void RemoveKeyFromCacheByAddress(const char* address)
+    { utxord::KeyRegistry::RemoveKeyFromCache(address); }
+
     KeyPair* Derive(const char *path, bool for_script) const
     { return new KeyPair(utxord::KeyRegistry::Derive(path, for_script)); }
 
@@ -312,6 +315,24 @@ public:
 
     void SignCollection(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::CreateInscriptionBuilder::SignCollection(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+};
+
+class SwapInscriptionBuilder : public utxord::SwapInscriptionBuilder
+{
+public:
+    SwapInscriptionBuilder(ChainMode mode) : utxord::SwapInscriptionBuilder(Bech32(mode)) {}
+
+    void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::SwapInscriptionBuilder::SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::SwapInscriptionBuilder::SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::SwapInscriptionBuilder::SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignFundsPayBack(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::SwapInscriptionBuilder::SignFundsPayBack(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 };
 
 } // wasm

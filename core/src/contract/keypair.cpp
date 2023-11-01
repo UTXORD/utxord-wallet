@@ -250,4 +250,18 @@ void KeyRegistry::AddKeyType(std::string name, const string &filter_json)
     AddKeyType(move(name), ParseKeyLookupFilter(json));
 }
 
+void KeyRegistry::RemoveKeyFromCache(const string &addr)
+{
+    uint32_t witver;
+    l15::bytevector keyid;
+    std::tie(witver, keyid) = mBech.Decode(addr);
+
+    if (witver == 1)
+        m_keys_cache.remove_if([&](const auto& el){ return KeyPair(m_ctx, el).GetP2TRAddress(mBech) == addr; });
+    else if (witver == 0)
+        m_keys_cache.remove_if([&](const auto& el){ return KeyPair(m_ctx, el).GetP2WPKHAddress(mBech) == addr; });
+    else
+        throw std::invalid_argument("address: " + addr);
+}
+
 } // utxord

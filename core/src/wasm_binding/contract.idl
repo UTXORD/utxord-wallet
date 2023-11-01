@@ -52,6 +52,7 @@ interface KeyRegistry
 
     void AddKeyToCache([Const] DOMString sk);
     void RemoveKeyFromCache([Const] DOMString sk);
+    void RemoveKeyFromCacheByAddress([Const] DOMString addr);
 
     KeyPair Derive([Const] DOMString path, boolean for_script);
 
@@ -179,7 +180,7 @@ enum SwapPhase
     "MARKET_SWAP_SIG",
 };
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface SwapInscriptionBuilder
 {
     void SwapInscriptionBuilder(ChainMode mode);
@@ -187,17 +188,17 @@ interface SwapInscriptionBuilder
     void OrdPrice([Const] DOMString price);
     void MarketFee([Const] DOMString amount, [Const] DOMString pk);
 
-    void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount);
+    void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
     void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
 
     void SwapScriptPubKeyA([Const] DOMString v);
     void SwapScriptPubKeyB([Const] DOMString v);
 
-    void SignOrdSwap([Const] DOMString sk);
+    void SignOrdSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
-    void SignFundsCommitment(long funds_index, [Const] DOMString sk);
-    void SignFundsSwap([Const] DOMString sk);
-    void SignFundsPayBack([Const] DOMString sk);
+    void SignFundsCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    void SignFundsSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    void SignFundsPayBack(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
     void CheckContractTerms(SwapPhase phase);
     [Value] string Serialize(long ver, SwapPhase phase);

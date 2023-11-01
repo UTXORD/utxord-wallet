@@ -39,16 +39,18 @@ class SwapInscriptionBuilder : public ContractBuilder
     std::optional<xonly_pubkey> m_swap_script_pk_B;
     std::optional<xonly_pubkey> m_swap_script_pk_M;
 
-    std::optional<std::string> m_ord_txid;
-    std::optional<uint32_t> m_ord_nout;
-    std::optional<CAmount> m_ord_amount;
-    std::optional<std::string> m_ord_addr;
+    std::optional<ContractInput> m_ord_input;
 
-    std::list<Transfer> m_funds;
+//    std::optional<std::string> m_ord_txid;
+//    std::optional<uint32_t> m_ord_nout;
+//    std::optional<CAmount> m_ord_amount;
+//    std::optional<std::string> m_ord_addr;
+
+    std::vector<ContractInput> m_fund_inputs;
 
     std::optional<seckey> m_funds_unspendable_key_factor;
 
-    std::optional<signature> m_ord_swap_sig_A;
+//    std::optional<signature> m_ord_swap_sig_A;
 
     std::optional<signature> m_funds_swap_sig_B;
     std::optional<signature> m_funds_swap_sig_M;
@@ -99,6 +101,7 @@ public:
     static const std::string name_swap_script_pk_B;
     static const std::string name_swap_script_pk_M;
 
+    static const std::string name_ord_input;
     static const std::string name_ord_txid;
     static const std::string name_ord_nout;
     static const std::string name_ord_amount;
@@ -135,7 +138,7 @@ public:
     void OrdPrice(const std::string& price)
     { m_ord_price = l15::ParseAmount(price); }
 
-    void OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount);
+    void OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
     void AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
 
     void SwapScriptPubKeyA(const std::string& v) { m_swap_script_pk_A = unhex<xonly_pubkey>(v); }
@@ -149,14 +152,14 @@ public:
     std::string GetSwapScriptPubKeyM() const { return hex(m_swap_script_pk_M.value()); }
     void SetSwapScriptPubKeyM(const std::string& v) { m_swap_script_pk_M = unhex<xonly_pubkey>(v); }
 
-    void SignOrdSwap(const std::string& sk);
+    void SignOrdSwap(const KeyRegistry &master_key, const std::string& key_filter);
 
-    void SignFundsCommitment(uint32_t n, const std::string& sk);
-    void SignFundsSwap(const std::string& sk);
-    void SignFundsPayBack(const std::string& sk);
+    void SignFundsCommitment(const KeyRegistry &master_key, const std::string& key_filter);
+    void SignFundsSwap(const KeyRegistry &master_key, const std::string& key_filter);
+    void SignFundsPayBack(const KeyRegistry &master_key, const std::string& key_filter);
 
-    void MarketSignOrdPayoffTx(const std::string& sk);
-    void MarketSignSwap(const std::string& sk);
+    void MarketSignOrdPayoffTx(const KeyRegistry &master_key, const std::string& key_filter);
+    void MarketSignSwap(const KeyRegistry &master_key, const std::string& key_filter);
 
     void CheckContractTerms(SwapPhase phase) const;
     std::string Serialize(uint32_t version, SwapPhase phase);
