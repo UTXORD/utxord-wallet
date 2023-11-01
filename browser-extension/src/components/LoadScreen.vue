@@ -104,7 +104,7 @@ async function onStore() {
   const generated = await sendMessage(
     SAVE_GENERATED_SEED,
     {
-      seed: textarea.value,
+      seed: textarea.value.replace(/\s\s+/g, ' ').trim(),
       password: password.value
     },
     'background'
