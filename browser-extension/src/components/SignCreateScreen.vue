@@ -163,6 +163,7 @@ async function showRawTranscation(n){
   textarea.value = dataForSign.value?.data?.costs?.raw[n]
   activeTab.value = Number(n)
 }
+
 async function whatSigning(){
     activeTab.value = 0;
   if(showContract.value){
@@ -171,18 +172,8 @@ async function whatSigning(){
     return;
   }
   showContract.value = true;
+  console.log(dataForSign.value)
   textarea.value = dataForSign.value?.data?.costs?.raw[0]
-}
-
-async function whatSigning(){
-if(showContract.value){
-showContract.value = false;
-textarea.value = '';
-  return;
-}
-showContract.value = true;
-console.log(dataForSign.value)
-textarea.value = JSON.stringify(dataForSign.value?.data?.costs?.raw)
 }
 
 </script>
