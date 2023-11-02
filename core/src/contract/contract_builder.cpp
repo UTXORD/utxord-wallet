@@ -3,6 +3,7 @@
 #include "script_merkle_tree.hpp"
 #include "channel_keys.hpp"
 #include "contract_builder.hpp"
+#include "utils.hpp"
 
 #include <execution>
 #include <atomic>
@@ -31,7 +32,7 @@ UniValue WitnessStack::MakeJson() const
 void WitnessStack::ReadJson(const UniValue &stack)
 {
     if (!stack.isArray()) {
-        throw ContractTermWrongValue("witness");
+        throw ContractTermWrongValue(std::string(ContractInput::name_witness));
     }
 
     size_t i = 0;
@@ -40,7 +41,13 @@ void WitnessStack::ReadJson(const UniValue &stack)
             throw ContractTermWrongValue("witness[" + std::to_string(i) + ']');
         }
 
-        m_stack.emplace_back(unhex<bytevector>(v.get_str()));
+        if (i < m_stack.size()) {
+            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch(move(((ContractInput::name_witness + '[') += std::to_string(i)) += ']'));
+        }
+        else {
+            m_stack.emplace_back(unhex<bytevector>(v.get_str()));
+        }
+        ++i;
     }
 }
 

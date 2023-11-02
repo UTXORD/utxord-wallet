@@ -74,4 +74,14 @@ public:
     { return "ContractProtocolError"; }
 };
 
+class ContractFundsNotEnough : public ContractError {
+public:
+    explicit ContractFundsNotEnough(std::string&& details) : ContractError(move(details)) {}
+    explicit ContractFundsNotEnough(const char* const details) : ContractError(details) {}
+    ~ContractFundsNotEnough() override = default;
+
+    const char* what() const noexcept override
+    { return "ContractFundsNotEnough"; }
+};
+
 }

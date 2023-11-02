@@ -355,7 +355,8 @@ TEST_CASE("Swap")
             if (CalculateTxFee(ParseAmount(fee_rate), ord_change_spend_tx) + Dust(3000) < funds_commit_tx.vout[1].nValue) {
                 ord_change_spend_tx.vout.front().nValue = CalculateOutputAmount(funds_commit_tx.vout[1].nValue, ParseAmount(fee_rate), ord_change_spend_tx);
 
-                //REQUIRE_NOTHROW(ord_change_spend_tx.vin.front().scriptWitness.stack[0] = swap_script_key_B.SignTaprootTx(ord_change_spend_tx, 0, {funds_commit_tx.vout[1]}, {}));
+                ChannelKeys changeKey(swap_script_key_B.PrivKey());
+                REQUIRE_NOTHROW(ord_change_spend_tx.vin.front().scriptWitness.stack[0] = changeKey.SignTaprootTx(ord_change_spend_tx, 0, {funds_commit_tx.vout[1]}, {}));
                 REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(ord_change_spend_tx)));
             }
 

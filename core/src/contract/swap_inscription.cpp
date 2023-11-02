@@ -143,7 +143,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx(bool with_funds_in) const
 {
     CMutableTransaction swap_tx = GetSwapTxTemplate();
 
-    swap_tx.vin[0].prevout = COutPoint(uint256S(m_ord_input->output->TxID()), m_ord_input->output->Destination()->Amount());
+    swap_tx.vin[0].prevout = COutPoint(uint256S(m_ord_input->output->TxID()), m_ord_input->output->NOut());
     if (m_ord_input->witness) {
         swap_tx.vin[0].scriptWitness.stack = m_ord_input->witness;
     }
@@ -537,7 +537,7 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
                 ++n;
             }
             CAmount req_amount = ParseAmount(GetMinFundingAmount(""));
-            if (funds_amount < req_amount) throw ContractTermMissing("Funds UTXO amount not enough");
+            if (funds_amount < req_amount) throw ContractFundsNotEnough(FormatAmount(funds_amount) + ", required: " + FormatAmount(req_amount));
         }
         if (!m_swap_script_pk_B) throw ContractTermMissing(std::string(name_swap_script_pk_B));
         if (!m_funds_unspendable_key_factor) throw ContractTermMissing(std::string(name_funds_unspendable_key));
