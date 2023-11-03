@@ -5,6 +5,8 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch/catch.hpp"
 
+#include "nlohmann/json.hpp"
+
 #include "util/translation.h"
 #include "config.hpp"
 #include "nodehelper.hpp"
@@ -90,60 +92,7 @@ struct CreateCondition
 
 std::string collection_id;
 seckey collection_sk;
-//xonly_pubkey collection_int_pk;
 Transfer collection_utxo;
-
-//TEST_CASE("collectiontaproot")
-//{
-//    std::string collectionid = "c730b2db411564b74432473f6789908623eca451a57158dc9de430b30ac7b3f9i0";
-//
-//    std::string coll_scr_pk = "7d5f939cb50067da99c4b17d7ad4bdcd419af6668ad2fbb64c17272db1964584";
-//    std::string coll_int_pk = "6f5600a6f726f23ced3047c04d026b7df3ace31d9e3a3abfc51131c0e4d95142";
-//
-//    std::string coll_tr = Collection::GetCollectionTapRootPubKey(collectionid, coll_scr_pk, coll_int_pk);
-//
-//    CHECK(coll_tr == "8beaf837645995a1e4c0a8a7c68f20770ffc8a5ea8202821e60d4704696f79bb");
-//}
-
-//TEST_CASE("spendwallet") {
-//    ChannelKeys key;
-//    string addr = w->bech32().Encode(key.GetLocalPubKey());
-//
-//    CAmount balance = ParseAmount("0.04178019");
-//
-//    std::clog << "sk: " << hex(key.GetLocalPrivKey()) << std::endl;
-//    std::clog << "addr: " << addr << std::endl;
-//    std::clog << "bal: " << balance << std::endl;
-//
-//    string txid = w->btc().SendToAddress(addr, FormatAmount(balance - (58 + 58 + 43 + 10)));
-//
-//    std::clog << "txid: " << txid << std::endl;
-//}
-//
-//TEST_CASE("fundwallet") {
-//    ChannelKeys key(unhex<seckey>("b64555a19f550bcd387074f6e16b17baef32ad86f70953251b5cb2dde53588eb"));
-//
-//    string addr = w->btc().GetNewAddress();
-//    xonly_pubkey dest_pk = w->bech32().Decode(addr);
-//
-//    std::clog << "source pk: " << hex(key.GetLocalPubKey()) << std::endl;
-//    std::clog << "dest addr: " << addr << std::endl;
-//    std::clog << "dest pk: " << hex(dest_pk) << std::endl;
-//
-//    std::clog << "source: " << uint256S("29d25390a3c7c4f2b60a2259f93dd86042342c9b8f8438d0a08927297e59491e").GetHex() << std::endl;
-//
-//    CMutableTransaction tx;
-//    tx.vin.emplace_back(CTxIn(uint256S("29d25390a3c7c4f2b60a2259f93dd86042342c9b8f8438d0a08927297e59491e"), 0));
-//    tx.vout.emplace_back(ParseAmount("0.04177830") - (58 + 58 + 43 + 10), CScript() << 1 << dest_pk);
-//
-//    signature sig = key.SignTaprootTx(tx, 0, {CTxOut(0, CScript() << 1 << key.GetLocalPubKey())}, {});
-//
-//    std::clog << "sig: " << hex(sig) << std::endl;
-//
-//    tx.vin.front().scriptWitness.stack = {sig};
-//
-//    w->btc().SpendTx(CTransaction(tx));
-//}
 
 TEST_CASE("single")
 {
@@ -529,21 +478,22 @@ TEST_CASE("inscribe")
 }
 
 struct InscribeWithMetadataCondition {
-    std::string metadata;
+    bytevector metadata;
     bool save_as_parent;
     bool has_parent;
 };
 
-const InscribeWithMetadataCondition short_metadata = {R"({"name":"sample inscription 1"})", true, false};
+const InscribeWithMetadataCondition short_metadata = {nlohmann::json::to_cbor(nlohmann::json::parse(R"({"name":"sample inscription 1"})")), true, false};
 const InscribeWithMetadataCondition exact_520_metadata = {
-        R"({"description":"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description","name":"sample inscription 2"})",
+        nlohmann::json::to_cbor(nlohmann::json::parse(R"({"description":"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description","name":"sample inscription 2"})")),
         false, true};
 const InscribeWithMetadataCondition long_metadata = {
+    nlohmann::json::to_cbor(nlohmann::json::parse(
         "{\"name\":\"sample inscription 3\","
         "\"description\":\"very loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
         "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
         "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
-        "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}",
+        "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong description\"}")),
         false, false};
 
 TEST_CASE("metadata") {
@@ -564,17 +514,25 @@ TEST_CASE("metadata") {
 
     std::string content_type = "image/svg+xml";
 
-    const string svg = "<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 118.078 275)\">Svg</text><text fill=\"#FFFFFF\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">svg</text><text fill=\"#000000\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 259.589 275)\">svg</text></g></g></svg>";
+    const string svg =
+R"(<?xml version="1.0" encoding="utf-8"?><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 175 175">
+<path style="fill:#777777;" d="M129,151l-11.7-6.6l-7.2-12l-2.8-5.3l-12.4-13l-0.15,11.7l0.5,2.3l1.2,11.3l-8.3,11l-10.9-3.7l-5.9-9.6l-13-27.8l-3.3-3.9l-4.5,3.6l-0.4,4.6l-0.1,3.1l-5,7l-6.8-3.1l-2.3-6.7l-5.3-28.1l-2.4-6.4l-3.1-1.5l-2,0.7l-1.4,4.4l-2.8,5.9l-5.6-1.5
+l-2.3-4.8l-2.8-15.8l7.6-14.2l15.1-0.4l8.6,4.2l4.6,2.4l12.5,0.7l3.5-10.5l0.1-1.5l0.1-1.2l0.6-4l13.7-13.3l15.7,12.1l0.3,0.5l11.4,11l16.5-5.5l4-3.6l11.2-8.4l18.3,0.1l11.8,14l-3.7,11.6l-8.4-0.6l-5.1-1.2l-5.6,2.9l-2.5,9.7l9.7,15.2l8.2,14
+l-3.4,9.3l-6.6,2.3l-7.4-4.9l-2-2l-6.2-2.1l-2.2,1.4l0.6,5.9l6.8,17.2l2.9,11.6l-5.9,10.5zM94,112l0.3,0l14.3,14.2l2.8,5.4l7,11.7l13.1,5.2l4.7-8.7l-2.8-10.8l-6.8-17.2l0.4-7.6l3.6-2.4l7.8,2.6l2.1,2l6.3,4.3l4.9-1.7l2.8-7.7l-7.6-13l-10.2-16.2
+l3-11.3l7.2-3.6l5.8,1.3l6.9,0.7l2.6-9.3l-10.7-12.7l-16.6-0.1l-10.65,8l-4,3.7l-18.4,5.9l-12.4-11.9l-0.3-0.5l-14-11.2l-11.8,11.8l-0.6,3.6l-0.1,1.2l-0.1,1.5l-4.3,12l-14.6-0.5l-4.7-2.5l-8.3-4l-13.4,0.2l-6.6,12.5l2.8,15.1l1.9,4.1l3.3,1
+l1.7-4.3l2-5.6l3.5-1.2l4.6,2.2l2.9,7.3l5.3,28l2,6l4.7,2.3l3.4-5.7l0.1-3l0.5-5l7-5l4.6,5l13,27.8l5.5,9l9,3l6.8-9.3l-1-10.7l-0.5-2.3l0.7-13.8zM81,42c1.4,1,2,2.5,1.3,3.4c-0.65,1-2.3,1-3.7-0.07c-1.4-1-2-2.5-1.3-3.4zM73,47c-1,2.2-3.2,3.5-4.7,2.7
+c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
+
     auto content = hex(svg);
 
     const auto& condition = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
 
-    xonly_pubkey destination_pk = condition.save_as_parent ? inscribe_key.GetLocalPubKey() : w->bech32().Decode(w->btc().GetNewAddress());
+    xonly_pubkey destination_pk = condition.save_as_parent ? inscribe_key.GetLocalPubKey() : xonly_pubkey(w->bech32().Decode(w->btc().GetNewAddress()));
 
     CreateInscriptionBuilder builder(INSCRIPTION, "0.00000546");
     REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(builder.Data(content_type, content));
-    REQUIRE_NOTHROW(builder.SetMetaData(condition.metadata));
+    REQUIRE_NOTHROW(builder.SetMetaData(hex(condition.metadata)));
 
     std::string min_fund = builder.GetMinFundingAmount(condition.has_parent ? "collection" : "");
     string funds_txid = w->btc().SendToAddress(addr, min_fund);
@@ -584,13 +542,13 @@ TEST_CASE("metadata") {
     REQUIRE_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, min_fund, hex(utxo_key.GetLocalPubKey())));
 
     if (condition.has_parent) {
-        REQUIRE_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), hex(*collection_utxo.m_pubkey)));
+        CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), hex(*collection_utxo.m_pubkey)));
     }
 
     REQUIRE_NOTHROW(builder.SignCommit(0, hex(utxo_key.GetLocalPrivKey()), hex(script_key.GetLocalPubKey())));
     REQUIRE_NOTHROW(builder.SignInscription(hex(script_key.GetLocalPrivKey())));
     if (condition.has_parent) {
-        REQUIRE_NOTHROW(builder.SignCollection(hex(collection_sk)));
+        CHECK_NOTHROW(builder.SignCollection(hex(collection_sk)));
     }
 
     stringvector rawtxs0;
@@ -613,6 +571,7 @@ TEST_CASE("metadata") {
     const auto& result_metadata = inscr.GetMetadata();
 
     CHECK(result_metadata == condition.metadata);
+    std::clog << "metadata:\n" << nlohmann::json::from_cbor(result_metadata).dump() << std::endl;
 
     REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
     REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));

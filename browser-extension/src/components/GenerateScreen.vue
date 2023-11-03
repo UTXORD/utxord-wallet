@@ -13,7 +13,7 @@
           <span class="w-full text-[var(--text-grey-color)]"
             >Store these safely:</span
           >
-          <RefreshIcon @click="refreshMnemonic" class="cursor-pointer w-4 mr-2" />
+          <RefreshIconSeed @click="refreshMnemonic" class="cursor-pointer w-4 mr-2" />
           <CopyIcon
             class="cursor-pointer"
             @click="copyToClipboard(textarea, 'Mnemonic was copied!')"

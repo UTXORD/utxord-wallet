@@ -40,7 +40,7 @@ void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
     const auto& witness_stack = tx.vin[nin].scriptWitness.stack;
     CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
 
-    std::ostringstream meta_data;
+    bytevector metadata;
 
     auto inscr_data = ParseEnvelopeScript(script);
     while(!inscr_data.empty()) {
@@ -61,7 +61,7 @@ void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
             inscr_data.pop_front();
         }
         else if (inscr_data.front().first == METADATA_TAG) {
-            meta_data.write((const char*)inscr_data.front().second.data(), inscr_data.front().second.size());
+            metadata.insert(metadata.end(), inscr_data.front().second.begin(), inscr_data.front().second.end());
             inscr_data.pop_front();
         }
         else {
@@ -99,7 +99,7 @@ void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin) {
     }
 
     inscription.m_inscription_id = tx.GetHash().GetHex() + "i" + std::to_string(nin);
-    inscription.m_metadata = meta_data.str();
+    inscription.m_metadata = move(metadata);
 }
 
 
@@ -156,7 +156,7 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
             fetching_content = false;
         }
         else if (opcode == METADATA_OP_TAG || (opcode == METADATA_TAG.size() && data == METADATA_TAG)) {
-            GetNextScriptData(script, it, data, "met-adata");
+            GetNextScriptData(script, it, data, "meta-data");
             res.emplace_back(METADATA_TAG, move(data));
             fetching_content = false;
         }

@@ -54,7 +54,7 @@
             }"
           />
         </div>
-        <div class="flex items-center">
+        <div class="flex items-center hidden">
           <span class="mr-2 text-[var(--text-grey-color)]">Unconfirmed:</span>
           <PriceComp
             class="ml-auto"

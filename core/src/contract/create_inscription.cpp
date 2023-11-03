@@ -2,6 +2,8 @@
 #include <ranges>
 #include <exception>
 
+#include "nlohmann/json.hpp"
+
 #include "univalue.h"
 
 #include "serialize.h"
@@ -25,7 +27,7 @@ const std::string val_create_collection("CreateCollection");
 
 CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content_type, const bytevector& data,
                               const std::optional<std::string>& collection_id,
-                              const std::optional<std::string>& metadata)
+                              const std::optional<std::string>& hexmetadata)
 {
     CScript script;
     script << pk;
@@ -41,22 +43,17 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
         script << SerializeInscriptionId(*collection_id);
     }
 
-    if (metadata) {
-        auto size = metadata->size();
-        const auto* end = metadata->data() + size;
-        for (const auto* p = metadata->data(); p < end; p += MAX_PUSH) {
-            script << METADATA_TAG << bytevector(p,  ((p + MAX_PUSH) < end) ? (p + MAX_PUSH) : end);
+    if (hexmetadata) {
+        bytevector metadata = unhex<bytevector>(*hexmetadata);
+        for (auto pos = metadata.begin(); pos < metadata.end(); pos += MAX_PUSH) {
+            script << METADATA_TAG << bytevector(pos, ((pos + MAX_PUSH) < metadata.end()) ? (pos + MAX_PUSH) : metadata.end());
         }
-        //script << METADATA_TAG << bytevector(metadata->begin(), metadata->end());
     }
 
     script << CONTENT_OP_TAG;
-    auto pos = data.begin();
-    for ( ; pos + MAX_PUSH < data.end(); pos += MAX_PUSH) {
-        script << bytevector(pos, pos + MAX_PUSH);
-    }
-    if (pos != data.end()) {
-        script << bytevector(pos, data.end());
+
+    for (auto pos = data.begin(); pos < data.end(); pos += MAX_PUSH) {
+        script << bytevector(pos, ((pos + MAX_PUSH) < data.end()) ? (pos + MAX_PUSH) : data.end());
     }
 
     script << OP_ENDIF;
@@ -144,10 +141,10 @@ CreateInscriptionBuilder& CreateInscriptionBuilder::AddToCollection(const std::s
 
 CreateInscriptionBuilder &CreateInscriptionBuilder::SetMetaData(const string &metadata)
 {
-    UniValue check_metadata;
-    if (!check_metadata.read(metadata)) {
-        throw ContractTermWrongValue(std::string(name_metadata) + " is not JSON");
-    }
+    bytevector cbor = l15::unhex<bytevector>(metadata);
+    auto check_metadata = nlohmann::json::from_cbor(move(cbor));
+    if (check_metadata.is_discarded())
+        throw ContractTermWrongFormat(std::string(name_metadata));
 
     m_metadata = metadata;
     return *this;
@@ -521,12 +518,12 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data)
     }
     {   const auto &val = contract[name_metadata];
         if (!val.isNull()) {
-            m_metadata = val.get_str();
+            bytevector cbor = l15::unhex<bytevector>(val.get_str());
+            auto check_metadata = nlohmann::json::from_cbor(move(cbor));
+            if (check_metadata.is_discarded())
+                throw ContractTermWrongFormat(std::string(name_metadata));
 
-            UniValue check_metadata;
-            if (!check_metadata.read(*m_metadata)) {
-                throw ContractTermWrongValue(std::string(name_metadata) + " is not JSON");
-            }
+            m_metadata = val.get_str();
         }
     }
     {   const auto &val = contract[name_xtra_utxo];

@@ -1,6 +1,6 @@
 <template>
   <NotificationGroup group="error">
-    <div class="fixed top-0 left-0 w-full flex items-start justify-end px-4">
+    <div class="fixed top-30 left-0 w-full flex items-start justify-end px-4">
       <div class="w-full max-w-sm">
         <Notification
           v-slot="{ notifications, close }"
