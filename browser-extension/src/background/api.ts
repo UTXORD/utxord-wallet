@@ -507,9 +507,9 @@ class Api {
     }
     //add ExternalKeyAddress
     //add XordPubKey
-    for(const item of this.wallet.xord){
       if(!this.checkAddress(item.p2tr)){
         this.addresses.push({
+    for(const item of this.wallet.xord){
           address: item.p2tr,
           type: 'xord',
           index: item.index
