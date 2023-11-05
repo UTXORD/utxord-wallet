@@ -52,7 +52,7 @@ const WALLET = {
     index: 0,
     change: 0,
     account: 0,
-    coin_type: 0,
+    coin_type: 1,
     key: null,
     p2tr: null,
     filter: {
@@ -67,7 +67,7 @@ const WALLET = {
     index: 0,
     change: 0,
     account: 1,
-    coin_type: 0,
+    coin_type: 1,
     key: null,
     p2tr: null,
     filter: {
@@ -82,7 +82,7 @@ const WALLET = {
     index: 0,
     change: 0,
     account: 2,
-    coin_type: 0,
+    coin_type: 1,
     key: null,
     p2tr: null,
     filter: {
@@ -98,12 +98,12 @@ const WALLET = {
     index: 0,
     change: 0,
     account: 3,
-    coin_type: 0,
+    coin_type: 1,
     key: null,
     p2tr: null,
     filter: {
       look_cache: true,
-      key_type: "DEFAULT",
+      key_type: "TAPSCRIPT",
       accounts: ["3'"],
       change: ["0"],
       index_range: "0-16384"
@@ -114,12 +114,12 @@ const WALLET = {
     index: 0,
     change: 0,
     account: 4,
-    coin_type: 0,
+    coin_type: 1,
     key: null,
     p2tr: null,
     filter: {
       look_cache: true,
-      key_type: "DEFAULT",
+      key_type: "TAPSCRIPT",
       accounts: ["4'"],
       change: ["0"],
       index_range: "0-16384"
@@ -130,7 +130,7 @@ const WALLET = {
     index: 0,
     change: 0,
     account: 5,
-    coin_type: 0,
+    coin_type: 1,
     key: null,
     p2tr: null,
     filter: {
@@ -245,19 +245,19 @@ class Api {
       }
       await myself.rememberIndexes();
       console.log('init...');
+      myself.genRootKey();
       if (myself.checkSeed() && myself.utxord && myself.bech) {
-        myself.genRootKey();
         myself.genKeys();
         myself.initPassword();
-        const fund = myself.wallet.fund.key?.PubKey()?.c_str();
-        const auth = myself.wallet.auth.key?.PubKey()?.c_str();
+        const fund = myself.wallet.fund.key?.PubKey();
+        const auth = myself.wallet.auth.key?.PubKey();
         if (fund && auth) {
           myself.status.initAccountData = true;
           return myself.status.initAccountData;
         }
       }
     } catch (e) {
-      console.log('init()->error:', e);
+      console.log('init()->error:', myself.getErrorMessage(e));
     }
   }
 
@@ -279,12 +279,14 @@ class Api {
     }
     return true;
   }
+
   path(type){
     if(!this.wallet_types.includes(type)) return false;
     if(!this.checkSeed()) return false;
     if(type==='xord' || type==='ext') return false;
     //m / purpose' / coin_type' / account' / change / index
-    const t = this.wallet[type].coin_type;
+    let t = this.wallet[type].coin_type;
+    if(this.network === this.utxord.MAINNET  && type!=='auth')  t = 0;
     const a = this.wallet[type].account;
     const c = this.wallet[type].change;
     const i = this.wallet[type].index;
@@ -448,9 +450,13 @@ class Api {
   genRootKey(){
     if(!this.checkSeed()) return false;
     if (this.wallet.root.key) return this.wallet.root.key;
+    console.log('seed:',this.getSeed());
     this.wallet.root.key = new this.utxord.KeyRegistry(this.network, this.getSeed());
-    for(const type of this.wallet_types){//!!!
-      this.wallet.root.key.AddKeyType(type, JSON.stringify(this.wallet[type].filter));
+    for(const type of this.wallet_types){
+      if(type !== 'auth'){
+        console.log('type: ',type,'|json: ',JSON.stringify(this.wallet[type].filter))
+        this.wallet.root.key.AddKeyType(type, JSON.stringify(this.wallet[type].filter));
+      }
     }
     return this.wallet.root.key;
   }
@@ -489,7 +495,7 @@ class Api {
     const myself = this;
 
     const keypair = new myself.utxord.ChannelKeys(keyhex);
-    const tmpAddress = this.bech.Encode(keypair.PubKey()).c_str();
+    const tmpAddress = this.bech.Encode(keypair.PubKey());
     if(!myself.checkAddress(tmpAddress, this.wallet.ext.keys)){
       let enkeyhex = keyhex;
       let enFlag = false;
@@ -850,7 +856,7 @@ selectByOrdOutput(txid, nout, inscriptions = []){
   }
 
   getErrorMessage(exception: number) {
-    return this.utxord.Exception.prototype.getMessage(exception).c_str()
+    return this.utxord.Exception.prototype.getMessage(exception)
   }
 
   async sendExceptionMessage(type?: string, exception: any) {
@@ -987,7 +993,6 @@ async createInscriptionContract(payload, theIndex = 0) {
     nxord: null,
     xord_address: null,
     data: null,
-    sk: null,
     amount: 0,
     inputs_sum: 0,
     utxo_list: [],
@@ -1019,15 +1024,16 @@ async createInscriptionContract(payload, theIndex = 0) {
       myself.network,
       myself.utxord.INSCRIPTION
     );
+    const contract = {"contract_type":"CreateInscription","params":{"protocol_version":8,"market_fee":0}};
+    newOrd.Deserialize(JSON.stringify(contract));
 
     newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
 
     if(payload.metadata) {
       console.log('payload.metadata:',payload.metadata);
       const encoded = cbor.encode(payload.metadata);
-      await newOrd.SetMetaData(myself.arrayBufferToHex(encoded));
+      await newOrd.MetaData(myself.arrayBufferToHex(encoded));
     }
-
     await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8));
 
     if(payload?.collection?.genesis_txid){
@@ -1050,8 +1056,8 @@ async createInscriptionContract(payload, theIndex = 0) {
     }
 
     await newOrd.Data(payload.content_type, payload.content);
-    await newOrd.InscribePubKey(myself.wallet.ord.key.GetP2TRAddress(this.network));
-    await newOrd.ChangePubKey(myself.wallet.fund.key.GetP2TRAddress(this.network));
+    await newOrd.InscribeAddress(myself.wallet.ord.key.GetP2TRAddress(this.network));
+    await newOrd.ChangeAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
 
     const min_fund_amount = await myself.btcToSat(Number(newOrd.GetMinFundingAmount(
         `${flagsFundingOptions}`
@@ -1106,38 +1112,57 @@ async createInscriptionContract(payload, theIndex = 0) {
           fund.address
         );
       }
+try {
+  await newOrd.SignCommit(
+    myself.wallet.root.key,
+    'fund',
+    myself.wallet.uns.key.PubKey()
+  );
+} catch (e) {
+  console.log('SignCommit:',myself.getErrorMessage(e));
+}
 
-        await newOrd.SignCommit(
-          myself.wallet.root.key,
-          JSON.stringify(fund.filter//!!!
-          myself.wallet.uns.key.PubKey()
-        );
-      }
-
+try {
       // get front root ord and select to addres or pubkey
       // collection_utxo_key (root! image key) (current utxo key)
       if(payload?.collection?.genesis_txid) {
         await newOrd.SignCollection(
-          collection_utxo_key.PrivKey()
-        )
+          myself.wallet.root.key,
+          'ord'
+        );
       }
+    } catch (e) {
+      console.log('SignCollection:',myself.getErrorMessage(e));
+    }
 
+try {
       await newOrd.SignInscription(
-        myself.wallet.uns.key.PrivKey()
-      )
+        myself.wallet.root.key,
+        'uns'
+      );
+    } catch (e) {
+      console.log('SignInscription:',myself.getErrorMessage(e));
+    }
+
       const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
       ).c_str());
+
       console.log('min_fund_amount_final_btc:',min_fund_amount_final_btc);
       const min_fund_amount_final = await myself.btcToSat(min_fund_amount_final_btc);
+
       console.log('min_fund_amount_final:',min_fund_amount_final);
       outData.amount = min_fund_amount_final;
+
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
       outData.utxo_list = utxo_list_final;
 
-
-      outData.data = newOrd.Serialize().c_str();
-      outData.sk = newOrd.getIntermediateTaprootSK().c_str();
+      // SupportedVersions()
+      outData.data = newOrd.Serialize(8, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
+      const sk = newOrd.getIntermediateTaprootSK().c_str();
+      myself.wallet.root.key.AddKeyToCache(sk);
+      // TODOO: remove sk before > 2 conformations
+      // or wait and check utxo this translation on balances
       return outData;
     } catch (exception){
       const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, exception);
@@ -1177,16 +1202,18 @@ async createInscription(payload_data) {
         if(payload_data.costs?.nxord){
           myself.addToXordPubKey(payload_data.costs?.nxord);
         }
-        if(payload_data.costs?.sk){
-          myself.addToExternalKey(payload_data.costs?.sk);
-          console.log(" sk:", payload_data.costs?.sk);
-        }
-
         await myself.genKeys();
         await myself.sendMessageToWebPage(ADDRESSES_TO_SAVE, myself.addresses, payload_data._tabId);
       }
 
       setTimeout(async () => {
+        console.log(CREATE_INSCRIBE_RESULT,": ",{
+          contract: JSON.parse(payload_data.costs.data),
+          name: payload_data.name,
+          description: payload_data?.description,
+          type: payload_data?.type
+        });
+/*
         myself.WinHelpers.closeCurrentWindow();
         await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, {
           contract: JSON.parse(payload_data.costs.data),
@@ -1194,13 +1221,14 @@ async createInscription(payload_data) {
           description: payload_data?.description,
           type: payload_data?.type
         }, payload_data._tabId);
+
         await myself.generateNewIndex('ord');
         await myself.generateNewIndex('uns');
         if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord){
           await myself.generateNewIndex('intsk');
           await myself.generateNewIndex('scrsk');
         }
-        await myself.genKeys();
+        await myself.genKeys();*/
       },1000);
 
 
