@@ -51,4 +51,3 @@ test_swap_inscription_LDADD = $(L15_LIBS)
 
 test_inscription_SOURCES = test_inscription.cpp
 test_inscription_LDADD = $(L15_LIBS)
-

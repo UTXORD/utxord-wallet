@@ -94,6 +94,44 @@
 
     </div>
     <!-- Total -->
+    <div
+      class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+    >
+      <span><a @click="whatSigning" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>
+      <span class="w-full text-[var(--text-grey-color)]"
+        >Description:</span
+      >
+      <span class="mr-2 text-[var(--text-color)]" >...</span>
+    </div>
+    <!-- What am I signing -->
+    <div
+      class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+      v-if="showContract"
+    >
+      <div class="flex items-center mb-2">
+        <span class="w-full text-[var(--text-grey-color)]"
+          >Raw transcation:</span
+        >
+  <!--      <RefreshIcon @click="getJSON" class="cursor-pointer w-4 mr-2" /> -->
+        <CopyIcon
+          class="cursor-pointer"
+          @click="copyToClipboard(textarea, 'Constant was copied!')"
+        />
+      </div>
+      <span>
+      <a @click="showRawTranscation(0)" :active="activeTab === 0" style="float:left;" class="mr-2 text-[var(--text-color)]">#raw_transcation_1</a>
+      <a @click="showRawTranscation(1)" :active="activeTab === 1" style="float:left;" class="mr-2 text-[var(--text-color)]">#raw_transcation_2</a>
+      </span>
+      <CustomInput
+        type="textarea"
+        class="w-full"
+        rows="3"
+        v-model="textarea"
+        readonly
+      />
+    </div>
+
+    <!-- Inputs -->
   </SignWrapper>
 </template>
 
@@ -107,18 +145,65 @@ import CopyIcon from '~/components/Icons/CopyIcon.vue'
 const store = useStore()
 const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 
+const textarea = ref('')
+
 const toAddress = computed(() => {
   return ordAddress.value || fundAddress.value
 })
+
+const showContract = ref('')
+const activeTab = ref('')
 
 const isInsufficientBalance = computed(() => {
   if (Number(dataForSign.value.data?.costs?.amount) > Number(balance.value?.confirmed)) return true
   return false
 })
+async function showRawTranscation(n){
+  showContract.value = true;
+  textarea.value = dataForSign.value?.data?.costs?.raw[n]
+  activeTab.value = Number(n)
+}
+
+async function whatSigning(){
+    activeTab.value = 0;
+  if(showContract.value){
+    showContract.value = false;
+    textarea.value = '';
+    return;
+  }
+  showContract.value = true;
+  console.log(dataForSign.value)
+  textarea.value = dataForSign.value?.data?.costs?.raw[0]
+}
+
+async function whatSigning(){
+if(showContract.value){
+showContract.value = false;
+textarea.value = '';
+  return;
+}
+showContract.value = true;
+console.log(dataForSign.value)
+textarea.value = JSON.stringify(dataForSign.value?.data?.costs?.raw)
+}
+
+async function whatSigning(){
+if(showContract.value){
+showContract.value = false;
+textarea.value = '';
+  return;
+}
+showContract.value = true;
+console.log(dataForSign.value)
+textarea.value = JSON.stringify(dataForSign.value?.data?.costs?.raw)
+}
 
 </script>
 
 <style scoped>
+[active=true]{
+  color: var(--text-grey-color);
+}
 .sign-screen_block span {
   text-align: left;
   font-weight: 400;
