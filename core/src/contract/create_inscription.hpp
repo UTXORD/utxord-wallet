@@ -64,7 +64,6 @@ class CreateInscriptionBuilder: public ContractBuilder
     std::optional<xonly_pubkey> m_inscribe_int_pk; //taproot
 
     std::optional<std::string> m_destination_addr;
-    std::optional<std::string> m_change_addr;
 
     mutable std::optional<CScript> mInscriptionScript;
     mutable std::optional<CMutableTransaction> mCommitTx;
@@ -103,7 +102,6 @@ public:
     static const std::string name_inscribe_int_pk;
     static const std::string name_inscribe_sig;
     static const std::string name_destination_addr;
-    static const std::string name_change_addr;
 //    static const std::string name_parent_collection_script_pk;
 //    static const std::string name_parent_collection_int_pk;
 //    static const std::string name_parent_collection_out_pk;
@@ -142,12 +140,6 @@ public:
     {
         bech32().Decode(addr);
         m_destination_addr = addr;
-    }
-
-    void ChangeAddress(const std::string& addr)
-    {
-        bech32().Decode(addr);
-        m_change_addr = addr;
     }
 
     //void CollectionCommitPubKeys(const std::string& script_pk, const std::string& int_pk);

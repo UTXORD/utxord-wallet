@@ -96,6 +96,14 @@ int main(int argc, char* argv[])
 static const bytevector seed = unhex<bytevector>(
         "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
 
+struct Transfer
+{
+    std::string m_txid;
+    uint32_t m_nout;
+    CAmount m_amount;
+    std::string m_addr;
+};
+
 struct CreateCondition
 {
     std::vector<std::tuple<CAmount, std::string>> utxo;
@@ -219,7 +227,7 @@ TEST_CASE("inscribe")
 
         if (condition.has_parent) {
             CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount),
-                                                  *collection_utxo.m_addr));
+                                                  collection_utxo.m_addr));
         }
 
         CHECK_NOTHROW(builder.SignCommit(master_key, "fund", hex(script_key.PubKey())));
@@ -268,7 +276,7 @@ TEST_CASE("inscribe")
             CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
             CHECK_NOTHROW(builder_terms.Data(content_type, content));
             CHECK_NOTHROW(builder_terms.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount),
-                                                  *collection_utxo.m_addr));
+                                                  collection_utxo.m_addr));
             std::string market_terms;
             REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(8, LASY_COLLECTION_MARKET_TERMS));
 
@@ -444,7 +452,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     REQUIRE_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, min_fund, addr));
 
     if (condition.has_parent) {
-        CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), *collection_utxo.m_addr));
+        CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), collection_utxo.m_addr));
     }
 
     REQUIRE_NOTHROW(builder.SignCommit(master_key, "fund", hex(script_key.PubKey())));

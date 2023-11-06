@@ -5,6 +5,8 @@
 #include <vector>
 #include <stdexcept>
 #include <memory>
+#include <sstream>
+#include <list>
 
 #include "safe_ptr.hpp"
 
@@ -17,6 +19,7 @@
 
 #include "address.hpp"
 #include "ecdsa.hpp"
+#include "common.hpp"
 
 namespace utxord {
 
@@ -109,6 +112,24 @@ public:
     virtual CScript PubKeyScript() const = 0;
     virtual std::vector<bytevector> DummyWitness() const = 0;
     virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const = 0;
+
+    static std::shared_ptr<IContractDestination> ReadJson(Bech32 bech, const UniValue& json, bool allow_zero_destination = false);
+};
+
+class ZeroDestination: public IContractDestination
+{
+public:
+    ZeroDestination() = default;
+    explicit ZeroDestination(const UniValue &json);
+    CAmount Amount() const override { return 0; }
+    void Amount(CAmount amount) override { if (amount) throw std::invalid_argument("Non zero amount cannot be assigned to zero destination"); }
+    std::string Address() const override { return {}; }
+    CScript PubKeyScript() const override { throw std::domain_error("zero destination cannot has a witness"); }
+    std::vector<bytevector> DummyWitness() const override { throw std::domain_error("zero destination cannot has a witness"); }
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
+    { throw std::domain_error("zero destination cannot provide a signer"); }
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json) override;
 };
 
 class P2Witness: public IContractDestination
@@ -121,6 +142,7 @@ protected:
     CAmount m_amount = 0;
     std::string m_addr;
 private:
+    friend IContractDestination;
     explicit P2Witness(Bech32 bech) : mBech(bech) {}
 public:
     P2Witness() = delete;//default;
@@ -129,8 +151,7 @@ public:
 
     P2Witness(Bech32 bech, CAmount amount, std::string addr) : mBech(bech), m_amount(amount), m_addr(move(addr)) {}
 
-    explicit P2Witness(Bech32 bech, const UniValue& json) : mBech(bech)
-    { P2Witness::ReadJson(json); }
+    explicit P2Witness(Bech32 bech, const UniValue& json);
 
     ~P2Witness() override = default;
 
@@ -155,7 +176,6 @@ public:
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json) override;
 
-    static std::shared_ptr<IContractDestination> ReadJson(Bech32 bech, const UniValue& json);
     static std::shared_ptr<IContractDestination> Construct(Bech32 bech, CAmount amount, std::string addr);
 };
 
@@ -280,15 +300,6 @@ struct ContractInput : public IJsonSerializable
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-struct Transfer
-{
-    std::string m_txid;
-    uint32_t m_nout;
-    CAmount m_amount;
-    std::optional<string> m_addr;
-    std::optional<signature> m_sig;
-};
-
 class ContractBuilder
 {
 public:
@@ -307,6 +318,7 @@ public:
     static const std::string name_addr;
     static const std::string name_sig;
 
+    static const std::string name_change_addr;
 protected:
     static const CAmount TX_BASE_VSIZE = 10;
     static const CAmount TAPROOT_VOUT_VSIZE = 43;
@@ -317,8 +329,8 @@ protected:
     Bech32 mBech;
 
     std::optional<CAmount> m_mining_fee_rate;
-    std::optional<CAmount> m_market_fee;
-    std::optional<std::string> m_market_fee_addr;
+    std::shared_ptr<IContractDestination> m_market_fee;
+    std::optional<std::string> m_change_addr;
 
     virtual CAmount CalculateWholeFee(const std::string& params) const;
 
@@ -341,20 +353,16 @@ public:
     { return mBech; }
 
     void MarketFee(const std::string& amount, const std::string& addr)
-    {
-        bech32().Decode(addr);
-
-        CAmount market_fee = l15::ParseAmount(amount);
-        if (market_fee != 0 && market_fee < l15::Dust(3000)) {
-            throw ContractTermWrongValue(std::string(name_market_fee));
-        }
-
-        m_market_fee = market_fee;
-        m_market_fee_addr = addr;
-    }
+    { m_market_fee = P2Witness::Construct(bech32(), l15::ParseAmount(amount), addr); }
 
     void MiningFeeRate(const std::string& rate)
     { m_mining_fee_rate = l15::ParseAmount(rate); }
+
+    void ChangeAddress(const std::string& addr)
+    {
+        bech32().Decode(addr);
+        m_change_addr = addr;
+    }
 
     virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
 
@@ -370,8 +378,6 @@ public:
     static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
     static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
     void DeserializeContractTaprootPubkey(const UniValue& val, std::optional<std::string> &addr, std::function<std::string()> lazy_name);
-    void DeserializeContractTransfer_w_pubkey(const UniValue& val, std::optional<Transfer>& transfer, std::function<std::string()> lazy_name);
-    void DeserializeContractTransfer(const UniValue& val, std::optional<Transfer>& transfer, std::function<std::string()> lazy_name);
 
     template <typename HEX>
     static void DeserializeContractHexData(const UniValue& val, std::optional<HEX> &target, std::function<std::string()> lazy_name)
@@ -390,7 +396,6 @@ public:
             else target = hexdata;
         }
     }
-    std::shared_ptr<IContractDestination> ReadContractDestination(const UniValue& ) const;
 
 };
 

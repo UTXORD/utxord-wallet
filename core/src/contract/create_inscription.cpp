@@ -15,6 +15,7 @@
 #include "script_merkle_tree.hpp"
 
 #include "inscription_common.hpp"
+#include "contract_builder.hpp"
 
 namespace utxord {
 
@@ -92,8 +93,7 @@ std::string Collection::GetCollectionTapRootPubKey(const string &collection_id, 
 }
 
 const uint32_t CreateInscriptionBuilder::s_protocol_version = 8;
-const uint32_t CreateInscriptionBuilder::s_protocol_version_no_market_fee = 7;
-const char* CreateInscriptionBuilder::s_versions = "[7,8]";
+const char* CreateInscriptionBuilder::s_versions = "[8]";
 
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
 const std::string CreateInscriptionBuilder::name_utxo = "utxo";
@@ -108,7 +108,6 @@ const std::string CreateInscriptionBuilder::name_inscribe_script_pk = "inscribe_
 const std::string CreateInscriptionBuilder::name_inscribe_int_pk = "inscribe_int_pk";
 const std::string CreateInscriptionBuilder::name_inscribe_sig = "inscribe_sig";
 const std::string CreateInscriptionBuilder::name_destination_addr = "destination_addr";
-const std::string CreateInscriptionBuilder::name_change_addr = "change_addr";
 //const std::string CreateInscriptionBuilder::name_parent_collection_script_pk = "parent_collection_script_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_int_pk = "parent_collection_int_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_out_pk = "parent_collection_out_pk";
@@ -355,7 +354,6 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
         //no break
     case MARKET_TERMS:
         if (!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
-        if (*m_market_fee > 0 && !m_market_fee_addr) throw ContractTermMissing(std::string(name_market_fee));
     }
 }
 
@@ -420,10 +418,12 @@ std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase 
         }
 
     case MARKET_TERMS:
-        contract.pushKV(name_market_fee, *m_market_fee);
-        if (*m_market_fee > 0)
-            contract.pushKV(name_market_fee_addr, *m_market_fee_addr);
-
+        if (m_market_fee->Amount() > 0) {
+            contract.pushKV(name_market_fee, m_market_fee->MakeJson());
+        }
+        else {
+            contract.pushKV(name_market_fee, UniValue(UniValue::VOBJ));
+        }
     }
 
     UniValue dataRoot(UniValue::VOBJ);
@@ -454,8 +454,17 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     if (contract[name_version].getInt<uint32_t>() != s_protocol_version)
         throw ContractProtocolError("Wrong " + root[name_contract_type].get_str() + " version: " + contract[name_version].getValStr());
 
-    DeserializeContractAmount(contract[name_market_fee], m_market_fee, [&](){ return name_market_fee; });
-    DeserializeContractString(contract[name_market_fee_addr], m_market_fee_addr, [&](){ return name_market_fee_addr; });
+    {   const auto& val = contract[name_market_fee];
+        if (!val.isNull()) {
+            if (!val.isObject()) throw ContractTermWrongFormat(std::string(name_market_fee));
+
+            if (m_market_fee)
+                m_market_fee->ReadJson(bech32(), val, true);
+            else
+                m_market_fee = IContractDestination::ReadJson(bech32(), val, true);
+
+        }
+    }
     DeserializeContractAmount(contract[name_ord_amount], m_ord_amount, [&](){ return name_ord_amount; });
 
     {
@@ -575,7 +584,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
     }
 
     tx.vout.emplace_back(*m_ord_amount, pubkey_script);
-    CAmount genesis_sum_fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate()) + *m_market_fee;
+    CAmount genesis_sum_fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate()) + m_market_fee->Amount();
 
     if (m_parent_collection_id) {
         CAmount add_vsize = TAPROOT_KEYSPEND_VIN_VSIZE + TAPROOT_VOUT_VSIZE;
@@ -675,7 +684,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx(bool for_inscribe_si
         }
     }
     else {
-        genesis_tx.vout.front().nValue = CalculateOutputAmount(commit_tx.vout.front().nValue, *m_mining_fee_rate, genesis_tx) - *m_market_fee;
+        genesis_tx.vout.front().nValue = CalculateOutputAmount(commit_tx.vout.front().nValue, *m_mining_fee_rate, genesis_tx) - m_market_fee->Amount();
     }
 
     for (const auto &utxo: m_extra_inputs) {
@@ -728,8 +737,8 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
     tx.vin.front().scriptWitness.stack.emplace_back(move(control_block));
 
     tx.vout.emplace_back(0, m_destination_addr ? bech32().PubKeyScript(*m_destination_addr) : (CScript() << 1 << emptyKey));
-    if (*m_market_fee > 0) {
-        tx.vout.emplace_back(*m_market_fee, bech32().PubKeyScript(*m_market_fee_addr));
+    if (m_market_fee->Amount() > 0) {
+        tx.vout.emplace_back(m_market_fee->Amount(), m_market_fee->PubKeyScript());
     }
 
     return tx;
@@ -747,7 +756,7 @@ std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& par
     if(!m_content) throw ContractTermMissing(std::string(name_content));
     if(!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
 
-    CAmount amount = *m_ord_amount + *m_market_fee + CalculateWholeFee(params);
+    CAmount amount = *m_ord_amount + m_market_fee->Amount() + CalculateWholeFee(params);
     return FormatAmount(amount);
 }
 

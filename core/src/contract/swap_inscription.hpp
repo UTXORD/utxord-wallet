@@ -35,27 +35,21 @@ class SwapInscriptionBuilder : public ContractBuilder
 
     std::optional<CAmount> m_ord_mining_fee_rate;
 
-    std::optional<xonly_pubkey> m_swap_script_pk_A;
     std::optional<xonly_pubkey> m_swap_script_pk_B;
     std::optional<xonly_pubkey> m_swap_script_pk_M;
 
     std::optional<ContractInput> m_ord_input;
-
-//    std::optional<std::string> m_ord_txid;
-//    std::optional<uint32_t> m_ord_nout;
-//    std::optional<CAmount> m_ord_amount;
-//    std::optional<std::string> m_ord_addr;
+    std::optional<std::string> m_funds_payoff_addr;
 
     std::vector<ContractInput> m_fund_inputs;
+    std::optional<std::string> m_ord_payoff_addr;
 
     std::optional<seckey> m_funds_unspendable_key_factor;
-
-//    std::optional<signature> m_ord_swap_sig_A;
 
     std::optional<signature> m_funds_swap_sig_B;
     std::optional<signature> m_funds_swap_sig_M;
 
-    std::optional<signature> m_ordpayoff_sig;
+    std::optional<signature> m_ord_payoff_sig;
 
     mutable std::optional<CMutableTransaction> mFundsCommitTpl;
     mutable std::optional<CMutableTransaction> mFundsPaybackTpl;
@@ -101,12 +95,14 @@ public:
     static const std::string name_swap_script_pk_B;
     static const std::string name_swap_script_pk_M;
 
+    static const std::string name_ord_payoff_addr;
+    static const std::string name_funds_payoff_addr;
+
     static const std::string name_ord_input;
     static const std::string name_ord_txid;
     static const std::string name_ord_nout;
     static const std::string name_ord_amount;
     static const std::string name_ord_pk;
-    static const std::string name_ord_addr;
 
     static const std::string name_funds;
     static const std::string name_funds_unspendable_key;
@@ -122,7 +118,7 @@ public:
     static const std::string name_funds_swap_sig_M;
 
     static const std::string name_ordpayoff_unspendable_key_factor;
-    static const std::string name_ordpayoff_sig;
+    static const std::string name_ord_payoff_sig;
 
     explicit SwapInscriptionBuilder(Bech32 bech) : ContractBuilder(bech) {}
     explicit SwapInscriptionBuilder(ChainMode mode) : SwapInscriptionBuilder(Bech32(mode)) {}
@@ -141,10 +137,20 @@ public:
     void OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
     void AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
 
-    void SwapScriptPubKeyA(const std::string& v) { m_swap_script_pk_A = unhex<xonly_pubkey>(v); }
+    void OrdPayoffAddress(const std::string& addr)
+    {
+        bech32().Decode(addr);
+        m_ord_payoff_addr = addr;
+    }
+
+    void FundsPayoffAddress(const std::string& addr)
+    {
+        bech32().Decode(addr);
+        m_funds_payoff_addr = addr;
+    }
+
     void SwapScriptPubKeyB(const std::string& v) { m_swap_script_pk_B = unhex<xonly_pubkey>(v); }
 
-    std::string GetSwapScriptPubKeyA() const { return hex(m_swap_script_pk_A.value()); }
     std::string GetSwapScriptPubKeyB() const { return hex(m_swap_script_pk_B.value()); }
 
     void SetOrdMiningFeeRate(const std::string& fee_rate) { m_ord_mining_fee_rate = l15::ParseAmount(fee_rate); }

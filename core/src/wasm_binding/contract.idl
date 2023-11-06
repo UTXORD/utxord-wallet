@@ -186,12 +186,16 @@ interface SwapInscriptionBuilder
     void SwapInscriptionBuilder(ChainMode mode);
 
     void OrdPrice([Const] DOMString price);
-    void MarketFee([Const] DOMString amount, [Const] DOMString pk);
+    void MarketFee([Const] DOMString amount, [Const] DOMString addr);
 
     void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
     void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
 
-    void SwapScriptPubKeyA([Const] DOMString v);
+    void ChangeAddress([Const] DOMString changeAddr);
+
+    void OrdPayoffAddress([Const] DOMString addr);
+    void FundsPayoffAddress([Const] DOMString addr);
+
     void SwapScriptPubKeyB([Const] DOMString v);
 
     void SignOrdSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);

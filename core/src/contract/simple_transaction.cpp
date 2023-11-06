@@ -147,7 +147,7 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_outputs));
 
         for (const UniValue &out: val.getValues()) {
-            m_outputs.emplace_back(ReadContractDestination(out));
+            m_outputs.emplace_back(IContractDestination::ReadJson(bech32(), out));
         }
     }
 }

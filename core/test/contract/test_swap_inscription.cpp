@@ -99,12 +99,14 @@ TEST_CASE("Swap")
     master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
     master_key.AddKeyType("swap", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'"], "change":["0"], "index_range":"0-256"})");
 
-    KeyPair swap_script_key_A = master_key.Derive("m/86'/1'/3'/0/0", true);
+    KeyPair swap_script_key_A = master_key.Derive("m/86'/1'/0'/0/0", false);
     KeyPair swap_script_key_B = master_key.Derive("m/86'/1'/3'/0/1", true);
     KeyPair swap_script_key_M = master_key.Derive("m/86'/1'/3'/0/2", true);
     //get key pair
     KeyPair funds_utxo_key = master_key.Derive("m/86'/1'/0'/0/0", false);
     KeyPair ord_utxo_key = master_key.Derive("m/86'/1'/2'/0/0", false);
+    KeyPair ord_payoff_key = master_key.Derive("m/86'/1'/2'/0/10", false);
+    KeyPair change_key = master_key.Derive("m/86'/1'/3'/1/0", false);
 
     std::string fee_rate;
     try {
@@ -142,7 +144,7 @@ TEST_CASE("Swap")
 
     //CHECK_NOTHROW(builderOrdSeller.OrdPrice(ORD_PRICE));
     CHECK_NOTHROW(builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, FormatAmount(get<1>(ord_prevout).nValue), ord_addr));
-    CHECK_NOTHROW(builderOrdSeller.SwapScriptPubKeyA(hex(swap_script_key_A.PubKey())));
+    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(*bech)));
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "ord"));
 
@@ -190,6 +192,7 @@ TEST_CASE("Swap")
             );
 
     builderOrdBuyer.SwapScriptPubKeyB(hex(swap_script_key_B.PubKey()));
+    builderOrdBuyer.ChangeAddress(change_key.GetP2TRAddress(*bech));
 
     //Fund commitment
     string funds_addr = funds_utxo_key.GetP2TRAddress(*bech);
@@ -222,6 +225,8 @@ TEST_CASE("Swap")
 
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(builderOrdBuyer.GetFundsCommitTx())));
+
+    builderOrdBuyer.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(*bech));
 
     string ordBuyerTerms;
     REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(5, FUNDS_COMMIT_SIG));
@@ -343,19 +348,16 @@ TEST_CASE("Swap")
             // BUYER spends his change
             //--------------------------------------------------------------------------
 
-            xonly_pubkey change_pk = w->bech32().Decode(w->btc().GetNewAddress());
-            CScript buyer_change_pubkey_script = CScript() << 1 << change_pk;
-
             CMutableTransaction ord_change_spend_tx;
             ord_change_spend_tx.vin = {CTxIn(funds_commit_tx.GetHash(), 1)};
             ord_change_spend_tx.vin.front().scriptWitness.stack.emplace_back(64);
-            ord_change_spend_tx.vout = {CTxOut(funds_commit_tx.vout[1].nValue, buyer_change_pubkey_script)};
+            ord_change_spend_tx.vout = {CTxOut(funds_commit_tx.vout[1].nValue, bech->PubKeyScript(change_key.GetP2TRAddress(*bech)))};
 
 
             if (CalculateTxFee(ParseAmount(fee_rate), ord_change_spend_tx) + Dust(3000) < funds_commit_tx.vout[1].nValue) {
                 ord_change_spend_tx.vout.front().nValue = CalculateOutputAmount(funds_commit_tx.vout[1].nValue, ParseAmount(fee_rate), ord_change_spend_tx);
 
-                ChannelKeys changeKey(swap_script_key_B.PrivKey());
+                ChannelKeys changeKey(change_key.PrivKey());
                 REQUIRE_NOTHROW(ord_change_spend_tx.vin.front().scriptWitness.stack[0] = changeKey.SignTaprootTx(ord_change_spend_tx, 0, {funds_commit_tx.vout[1]}, {}));
                 REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(ord_change_spend_tx)));
             }
@@ -414,7 +416,7 @@ TEST_CASE("SwapNoFee")
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
     builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, FormatAmount(get<1>(ord_prevout).nValue), ord_addr);
-    builderOrdSeller.SwapScriptPubKeyA(hex(swap_script_key_A.PubKey()));
+    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(*bech)));
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "ord"));
 
@@ -561,7 +563,7 @@ TEST_CASE("FundsNotEnough")
 
     builderOrdSeller.OrdPrice(ORD_PRICE);
     builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, "0.0001", ord_addr);
-    builderOrdSeller.SwapScriptPubKeyA(hex(swap_script_key_A.PubKey()));
+    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(*bech)));
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "swap"));
 
