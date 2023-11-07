@@ -418,12 +418,7 @@ std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase 
         }
 
     case MARKET_TERMS:
-        if (m_market_fee->Amount() > 0) {
-            contract.pushKV(name_market_fee, m_market_fee->MakeJson());
-        }
-        else {
-            contract.pushKV(name_market_fee, UniValue(UniValue::VOBJ));
-        }
+        contract.pushKV(name_market_fee, m_market_fee->MakeJson());
     }
 
     UniValue dataRoot(UniValue::VOBJ);

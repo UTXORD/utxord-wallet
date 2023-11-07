@@ -353,7 +353,14 @@ public:
     { return mBech; }
 
     void MarketFee(const std::string& amount, const std::string& addr)
-    { m_market_fee = P2Witness::Construct(bech32(), l15::ParseAmount(amount), addr); }
+    {
+        if (l15::ParseAmount(amount) > 0) {
+            m_market_fee = P2Witness::Construct(bech32(), l15::ParseAmount(amount), addr);
+        }
+        else {
+            m_market_fee = std::make_shared<ZeroDestination>();
+        }
+    }
 
     void MiningFeeRate(const std::string& rate)
     { m_mining_fee_rate = l15::ParseAmount(rate); }
