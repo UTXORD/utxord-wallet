@@ -89,6 +89,7 @@ private:
     const CMutableTransaction& GenesisTx() const;
 
 public:
+
     static const std::string name_ord_amount;
     static const std::string name_utxo;
     static const std::string name_xtra_utxo;

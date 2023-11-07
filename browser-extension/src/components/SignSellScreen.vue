@@ -58,7 +58,9 @@
         />
       </div>
     </div>
+    <GetRawTransactions/>
     <!-- Total -->
+
   </SignWrapper>
 </template>
 
@@ -68,6 +70,7 @@ import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
+import GetRawTransactions from '~/components/GetRawTransactions.vue'
 
 const store = useStore()
 const { balance, fundAddress, dataForSign } = toRefs(store)
