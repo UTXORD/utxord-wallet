@@ -1035,7 +1035,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       myself.network,
       myself.utxord.INSCRIPTION
     );
-    const contract = {"contract_type":"CreateInscription","params":{"protocol_version":8,"market_fee":0}};
+    const contract = {"contract_type":"CreateInscription","params":{"protocol_version":8,"market_fee":{"amount":0}}};
     newOrd.Deserialize(JSON.stringify(contract));
 
     newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
@@ -1254,24 +1254,25 @@ async createInscription(payload_data) {
 async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
   const myself = this;
   try {
-  const sellOrd = new myself.utxord.SwapInscriptionBuilder(
-    ord_price,
-    (myself.satToBtc(market_fee)).toFixed(8)
-  );
+  const sellOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
   sellOrd.Deserialize(JSON.stringify(contract));
   sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
 
   sellOrd.OrdUTXO(
     txid,
     nout,
-    (myself.satToBtc(utxoData.amount)).toFixed(8)
+    (myself.satToBtc(utxoData.amount)).toFixed(8),
+    myself.wallet.ord.key.GetP2TRAddress(this.network)
   );
-  sellOrd.SwapScriptPubKeyA(myself.wallet.fund.key.GetLocalPubKey().c_str());
-  sellOrd.SignOrdSwap(utxoData.key.GetLocalPrivKey().c_str());
+  sellOrd.FundsPayoffAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
+  sellOrd.SignOrdSwap(
+    myself.wallet.root.key,
+    'ord'
+  );
   const raw = '';//await myself.getRawTransactions(sellOrd); it is not work
   return {
     raw: raw,
-    contract_data: sellOrd.Serialize(3,myself.utxord.ORD_SWAP_SIG).c_str()
+    contract_data: sellOrd.Serialize(5,myself.utxord.ORD_SWAP_SIG).c_str()
   };
 } catch (exception) {
   this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
@@ -1283,7 +1284,7 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
     try {
       const txid = payload.utxo_id.split(':')[0];
       const nout = Number(payload.utxo_id.split(':')[1]);
-       console.log('sellInscriptionContract->payload:',payload);
+      console.log('sellInscriptionContract->payload:',payload);
       console.log('txid:',txid, 'nout:', nout)
 
       const utxoData = myself.selectByOrdOutput(txid, nout);
@@ -1431,10 +1432,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
     //const inscriptions = structuredClone(myself.inscriptions);
     //console.log("commitBuyInscription->payload",payload)
     try {
-      const swapSim = new myself.utxord.SwapInscriptionBuilder(
-        (myself.satToBtc(payload.ord_price)).toFixed(8),
-        (myself.satToBtc(payload.market_fee)).toFixed(8)
-      );
+      const swapSim = new myself.utxord.SwapInscriptionBuilder(myself.network);
       swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
 
@@ -1460,10 +1458,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       console.log("min_fund_amount:",min_fund_amount);
       console.log("utxo_list:",utxo_list);
 
-        const buyOrd = new myself.utxord.SwapInscriptionBuilder(
-          (myself.satToBtc(payload.ord_price)).toFixed(8),
-          (myself.satToBtc(payload.market_fee)).toFixed(8)
-        );
+        const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
         buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
         buyOrd.CheckContractTerms(myself.utxord.FUNDS_TERMS);
 
@@ -1472,18 +1467,18 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
             fund.txid,
             fund.nout,
             (myself.satToBtc(fund.amount)).toFixed(8),
-            fund.key.PubKey());
+            fund.address);
         }
+        buyOrd.ChangeAddress(myself.wallet.fund.key.GetP2TRAddress(myself.network));
+        buyOrd.SwapScriptPubKeyB(myself.wallet.scrsk.key.PubKey()); //!!!
 
-        buyOrd.SwapScriptPubKeyB(myself.wallet.ord.key.PubKey());
-
-        for(const id in utxo_list){
-          let utxo_keypair = utxo_list[id].key;
           buyOrd.SignFundsCommitment(
-            id,
-            utxo_keypair.PrivKey()
+            myself.wallet.root.key,
+            'fund'
           );
-        }
+
+          buyOrd.OrdPayoffAddress(myself.wallet.ord.key.GetP2TRAddress(myself.network));
+
         const min_fund_amount_final = await myself.btcToSat(Number(buyOrd.GetMinFundingAmount("").c_str()))
         outData.min_fund_amount = min_fund_amount_final;
         outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
@@ -1503,7 +1498,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
               `${min_fund_amount_final} sat`;
           return outData;
         }
-        outData.data = buyOrd.Serialize(3,myself.utxord.FUNDS_COMMIT_SIG).c_str();
+        outData.data = buyOrd.Serialize(5, myself.utxord.FUNDS_COMMIT_SIG).c_str();
         return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
@@ -1551,27 +1546,20 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
 
   async signSwapInscription(payload, tabId: number | undefined = undefined) {
     const myself = this;
-    if(!payload.ord_price){
-      console.error("signSwapInscription->error:ord_price required field")
-      return
-    }
-     //payload.ord_price = (myself.satToBtc(4000)).toFixed(8);
-
     try {
-      // chrome.storage.sync.remove('signSwapInscriptionResult')
-      console.log('//////////// signSwapInscription ARGS', payload);
+        console.log('//////////// signSwapInscription ARGS', payload);
       console.log("!!!!contract:",JSON.stringify(payload.swap_ord_terms.contract));
 
-      const buyOrd = new myself.utxord.SwapInscriptionBuilder(
-        payload.ord_price.toString(),
-        (myself.satToBtc(payload.market_fee)).toFixed(8)
-      );
+      const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       // console.log("aaaa");
       buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
-      buyOrd.SignFundsSwap(myself.wallet.ord.key.GetLocalPrivKey().c_str());
+      buyOrd.SignFundsSwap(
+        myself.wallet.root.key,
+        'scrsk'
+      );
       const raw = [];// await myself.getRawTransactions(buyOrd); ///!!!!
-      const data = buyOrd.Serialize(3,myself.utxord.FUNDS_SWAP_SIG).c_str();
+      const data = buyOrd.Serialize(5, myself.utxord.FUNDS_SWAP_SIG).c_str();
 
       (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
@@ -1580,6 +1568,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
           { contract_uuid: payload.swap_ord_terms.contract_uuid, contract: JSON.parse(data) },
           tabId
         );
+          await myself.generateNewIndex('scrsk');
           await myself.generateNewIndex('ord');
           await myself.genKeys();
       })(data, payload);
