@@ -34,7 +34,9 @@ class CreateInscriptionBuilder: public ContractBuilder
     static const CAmount COLLECTION_SCRIPT_ADD_VSIZE = 18;
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
-    static const uint32_t m_protocol_version;
+    static const uint32_t s_protocol_version;
+    static const char* s_versions;
+
     InscribeType m_type;
     CAmount m_ord_amount;
 
@@ -86,6 +88,7 @@ private:
     const CMutableTransaction& GenesisTx() const;
 
 public:
+
     static const std::string name_ord_amount;
     static const std::string name_utxo;
     static const std::string name_xtra_utxo;
@@ -117,7 +120,7 @@ public:
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
 
-    uint32_t GetProtocolVersion() const override { return m_protocol_version; }
+    static const char* SupportedVersions() { return s_versions; }
 
     const std::string& GetContentType() const { return *m_content_type; }
     std::string GetContent() const { return l15::hex(m_content.value()); }
@@ -162,10 +165,13 @@ public:
 
     std::vector<std::string> RawTransactions();
 
-    std::string RawTransaction(uint32_t n)
-    { return RawTransactions()[n]; }
+    uint32_t TransactionCount() const
+    { return 2; }
 
-    std::string Serialize() const;
+    std::string RawTransaction(uint32_t n)
+    { return (n < TransactionCount()) ? RawTransactions()[n] : std::string(); }
+
+    std::string Serialize(uint32_t version) const;
     void Deserialize(const std::string& data);
 
 };

@@ -60,8 +60,6 @@ public:
     std::string GetNewInputMiningFee();
     std::string GetNewOutputMiningFee();
 
-    virtual uint32_t GetProtocolVersion() const = 0;
-
     std::string GetMiningFeeRate() const { return FormatAmount(m_mining_fee_rate.value()); }
     void SetMiningFeeRate(const std::string& v) { m_mining_fee_rate = ParseAmount(v); }
 
