@@ -178,22 +178,8 @@ public:
     std::string OrdSwapRawTransaction() const;
     std::string OrdPayoffRawTransaction() const;
 
-    uint32_t TransactionCount() const
-    { return 3; }
-
-    std::string RawTransaction(uint32_t n)
-    {
-        switch(n) {
-        case 0:
-            return FundsCommitRawTransaction();
-        case 1:
-            return OrdSwapRawTransaction();
-        case 2:
-            return OrdPayoffRawTransaction();
-        default:
-            return "";
-        }
-    }
+    uint32_t TransactionCount(SwapPhase phase) const;
+    std::string RawTransaction(SwapPhase phase, uint32_t n);
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 };

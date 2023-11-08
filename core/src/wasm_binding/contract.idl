@@ -208,8 +208,8 @@ interface SwapInscriptionBuilder
     [Value] string Serialize(long ver, SwapPhase phase);
     void Deserialize([Const] DOMString data);
 
-    long TransactionCount();
-    [Value] string RawTransaction(long n);
+    long TransactionCount(SwapPhase phase);
+    [Value] string RawTransaction(SwapPhase phase, long n);
 
     [Const] static DOMString SupportedVersions();
 
