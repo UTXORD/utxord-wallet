@@ -903,5 +903,57 @@ void SwapInscriptionBuilder::CheckOrdPayoffSig() const
     }
 }
 
+uint32_t SwapInscriptionBuilder::TransactionCount(SwapPhase phase) const
+{
+    switch (phase) {
+    case FUNDS_COMMIT_SIG:
+    case ORD_SWAP_SIG:
+        return 1;
+    case MARKET_SWAP_SIG:
+    case FUNDS_SWAP_SIG:
+        return 3;
+//    case FUNDS_TERMS:
+//    case ORD_TERMS:
+//    case MARKET_PAYOFF_SIG:
+//    case MARKET_PAYOFF_TERMS:
+    default:
+        throw ContractStateError("Raw transaction data are not available");
+    }
+}
+
+std::string SwapInscriptionBuilder::RawTransaction(SwapPhase phase, uint32_t n)
+{
+    switch (phase) {
+    case ORD_SWAP_SIG:
+        if (n == 0) {
+            return EncodeHexTx(CTransaction(MakeSwapTx(false)));
+        }
+        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+    case FUNDS_COMMIT_SIG:
+        if (n == 0) {
+            return FundsCommitRawTransaction();
+        }
+        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+    case MARKET_SWAP_SIG:
+    case FUNDS_SWAP_SIG:
+        switch(n) {
+        case 0:
+            return FundsCommitRawTransaction();
+        case 1:
+            return OrdSwapRawTransaction();
+        case 2:
+            return OrdPayoffRawTransaction();
+        default:
+            throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+        }
+//    case FUNDS_TERMS:
+//    case ORD_TERMS:
+//    case MARKET_PAYOFF_SIG:
+//    case MARKET_PAYOFF_TERMS:
+    default:
+        throw ContractStateError("Raw transaction data are not available");
+    }
+}
+
 
 } // namespace l15::utxord
