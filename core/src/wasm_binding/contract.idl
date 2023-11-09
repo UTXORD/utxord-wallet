@@ -83,9 +83,12 @@ interface CreateInscriptionBuilder
     void SignCollection([Const] DOMString collectionScriptSK);
     void SignFundMiningFee(long n, [Const] DOMString sk);
 
-    [Value] string Serialize();
+    [Value] string Serialize(long ver);
 
+    long TransactionCount();
     [Value] string RawTransaction(long n);
+
+    [Const] static DOMString SupportedVersions();
 
     [Value] string getIntermediateTaprootSK();
     [Value] string MakeInscriptionId();
@@ -127,8 +130,13 @@ interface SwapInscriptionBuilder
     void SignFundsPayBack([Const] DOMString sk);
 
     void CheckContractTerms(SwapPhase phase);
-    [Value] string Serialize(SwapPhase phase);
+    [Value] string Serialize(long ver, SwapPhase phase);
     void Deserialize([Const] DOMString data);
+
+    long TransactionCount();
+    [Value] string RawTransaction(long n);
+
+    [Const] static DOMString SupportedVersions();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();

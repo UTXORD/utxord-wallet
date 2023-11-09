@@ -163,7 +163,7 @@ if (NETWORK === MAINNET){
       if (payload.data.type === SELL_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
-          const success = Api.sellInscription(payload.data.data);
+          const success = await Api.sellInscription(payload.data.data);
           await Api.encryptedWallet(payload.data.password);
           return success;
         }
@@ -289,6 +289,9 @@ if (NETWORK === MAINNET){
         });
       }
       if (payload.type === SELL_INSCRIPTION) {
+        const costs = await Api.sellInscriptionContract(payload.data);
+        payload.data.costs = costs;
+        console.log(SELL_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-sell', async (id) => {
           setTimeout(async  () => {
             await setupBalanceRefreshing(`popup@${id}`);

@@ -93,7 +93,8 @@
       <span class="mr-2 text-[var(--text-color)]" style="font-size: 20px;">Insufficient funds. Please add.</span>
 
     </div>
-    <!-- Total -->
+    <GetRawTransactions/>
+    <!-- Inputs -->
   </SignWrapper>
 </template>
 
@@ -103,6 +104,8 @@ import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
+import GetRawTransactions from '~/components/GetRawTransactions.vue'
+
 
 const store = useStore()
 const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
