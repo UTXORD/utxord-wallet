@@ -22,6 +22,7 @@
             src="/assets/logout.svg"
             alt="Logout"
             title="Change account"
+            data-test-id="btn-logout"
             @click="onClick"
           />
         </template>

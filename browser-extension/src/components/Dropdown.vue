@@ -5,6 +5,7 @@
       data-dropdown-toggle="dropdown"
       class="min-w-[160px] text-black bg-[#FAFAFA] font-medium rounded-lg text-sm px-4 py-2.5 text-center justify-between inline-flex items-center"
       type="button"
+      data-test-id="btn-menu-dropdown"
     >
       550
       <svg
@@ -36,6 +37,7 @@
           <a
             href="#"
             class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+            data-test-id="menu-dropdown-item-dashboard"
             >Dashboard</a
           >
         </li>
@@ -43,6 +45,7 @@
           <a
             href="#"
             class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+            data-test-id="menu-dropdown-item-settings"
             >Settings</a
           >
         </li>
@@ -50,6 +53,7 @@
           <a
             href="#"
             class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+            data-test-id="menu-dropdown-item-earnings"
             >Earnings</a
           >
         </li>
@@ -57,6 +61,7 @@
           <a
             href="#"
             class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+            data-test-id="menu-dropdown-item-signout"
             >Sign out</a
           >
         </li>

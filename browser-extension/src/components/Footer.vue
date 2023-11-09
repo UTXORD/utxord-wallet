@@ -3,6 +3,7 @@
     <button
       class="icon-btn mx-2 !outline-none"
       :title="$t('button.toggle_dark')"
+      data-test-id="btn-toggle-dark"
       @click="(e) => toggleDark()"
     >
       <carbon-moon v-if="isDark" />
@@ -12,6 +13,7 @@
     <a
       class="icon-btn mx-2"
       :title="$t('button.toggle_langs')"
+      data-test-id="btn-toggle-locales"
       @click="toggleLocales"
     >
       <carbon-language />

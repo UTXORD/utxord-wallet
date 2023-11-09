@@ -47,6 +47,7 @@
 
             <!-- Close btn -->
             <button
+              data-test-id="btn-close-notification"
               @click="close(notification.id)"
               class="absolute top-[-2px] right-[-5px] px-4 py-3"
             >

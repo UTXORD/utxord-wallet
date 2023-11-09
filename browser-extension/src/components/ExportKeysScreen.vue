@@ -20,7 +20,7 @@
       </div>
       <!-- Buttons -->
       <div class="flex w-full gap-3 mt-auto">
-        <Button @click="cancel" outline class="w-2/4"> Cancel </Button>
+        <Button @click="cancel" outline class="w-2/4" data-test-id="btn-cancel"> Cancel </Button>
         <Modal
           @on-submit="onExport"
           @on-close="password = ''"
@@ -36,6 +36,7 @@
               class="w-full"
               :disabled="isDisabled"
               style="white-space: nowrap"
+              data-test-id="btn-export"
               @click="onClick"
               >Export</Button
             >
@@ -50,6 +51,7 @@
                   >Password</span
                 >
                 <CustomInput
+                  data-test-id="TODO-input-password"
                   autofocus
                   type="password"
                   v-model="password"
