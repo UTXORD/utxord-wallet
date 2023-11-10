@@ -23,7 +23,7 @@ public:
 };
 
 
-enum InscribeType { INSCRIPTION, LASY_INSCRIPTION, COLLECTION };
+enum InscribeType { INSCRIPTION, LASY_INSCRIPTION };
 enum InscribePhase { MARKET_TERMS, LASY_COLLECTION_MARKET_TERMS, LASY_COLLECTION_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 
 class CreateInscriptionBuilder: public ContractBuilder
