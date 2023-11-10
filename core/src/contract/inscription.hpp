@@ -28,12 +28,8 @@ public:
     { return "InscriptionFormatError"; }
 };
 
-std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script);
+std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script, CScript::const_iterator& it);
 
-class Inscription;
-
-template<typename T> /*requires std::same_as<T, CMutableTransaction> || std::same_as<T, CTransaction>*/
-void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin);
 
 class Inscription
 {
@@ -43,13 +39,11 @@ class Inscription
     std::string m_collection_id;
     bytevector m_metadata;
 
-    friend void ParseTransaction<CMutableTransaction>(Inscription& inscription, const CMutableTransaction& tx, uint32_t nin);
-    friend void ParseTransaction<CTransaction>(Inscription& inscription, const CTransaction& tx, uint32_t nin);
-
 public:
-    explicit Inscription(const CMutableTransaction& tx, uint32_t nin = 0);
-    explicit Inscription(const CTransaction& tx, uint32_t nin = 0);
-    explicit Inscription(const std::string& hex_tx, uint32_t nin = 0);
+    Inscription() = default;
+
+    explicit Inscription(std::string inscription_id, std::list<std::pair<bytevector, bytevector>>&& tagged_data);
+
     Inscription(const Inscription& ) = default;
     Inscription(Inscription&& ) noexcept = default;
 
@@ -74,7 +68,7 @@ public:
     { return m_metadata; }
 };
 
-Inscription ParseInscription(const std::string& hex_tx);
+std::list<Inscription> ParseInscriptions(const std::string& hex_tx);
 
 } // utxord
 

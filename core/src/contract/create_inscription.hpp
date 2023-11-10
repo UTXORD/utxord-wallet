@@ -14,15 +14,6 @@
 
 namespace utxord {
 
-class Collection
-{
-public:
-    static std::string GetCollectionTapRootPubKey(const std::string& collection_id,
-                                                  const std::string& script_pk,
-                                                  const std::string& internal_pk);
-};
-
-
 enum InscribeType { INSCRIPTION, COLLECTION };
 
 class CreateInscriptionBuilder: public ContractBuilder
@@ -106,10 +97,6 @@ public:
 //    static const std::string name_parent_collection_script_pk;
 //    static const std::string name_parent_collection_int_pk;
 //    static const std::string name_parent_collection_out_pk;
-//    static const std::string name_collection_script_pk;
-//    static const std::string name_collection_int_pk;
-//    static const std::string name_collection_commit_sig;
-//    static const std::string name_collection_out_pk;
 
     CreateInscriptionBuilder() : m_type(INSCRIPTION), m_ord_amount(0) {}
     CreateInscriptionBuilder(const CreateInscriptionBuilder&) = default;

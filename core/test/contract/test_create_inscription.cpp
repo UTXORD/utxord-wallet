@@ -425,7 +425,7 @@ TEST_CASE("inscribe")
 //        }
 
         std::optional<Inscription> inscription;
-        CHECK_NOTHROW(inscription = Inscription(rawtx[1]));
+        CHECK_NOTHROW(inscription = ParseInscriptions(rawtx[1]).front());
         CHECK(inscription->GetIscriptionId() == genesis_tx.GetHash().GetHex() + "i" + std::to_string(0));
         CHECK(inscription->GetContentType() == content_type);
         CHECK(hex(inscription->GetContent()) == content);
@@ -567,7 +567,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     REQUIRE(rawtxs.size() == 2);
 
-    Inscription inscr(rawtxs[1]);
+    Inscription inscr = ParseInscriptions(rawtxs[1]).front();
     const auto& result_metadata = inscr.GetMetadata();
 
     CHECK(result_metadata == condition.metadata);

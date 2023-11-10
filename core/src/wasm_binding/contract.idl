@@ -51,11 +51,6 @@ interface Exception
     [Value] static string getMessage(any e);
 };
 
-[Prefix="utxord::"]
-interface Collection
-{
-    [Value] string GetCollectionTapRootPubKey([Const] DOMString collectionId, [Const] DOMString scriptSK, [Const] DOMString internalSK);
-};
 
 enum InscribeType
 {
