@@ -197,7 +197,6 @@ class Api {
         const myself = this;
         this.utxord = await utxord();
         this.network = this.setUpNetWork(network);
-        this.WinHelpers = new winHelpers();
         this.Rest = new rest();
         this.wwa = await new self.wwa(this.network, this.utxord);
         this.bip39 = await bip39;
@@ -471,7 +470,7 @@ class Api {
   }
 
   pubKeyStrToP2tr(publicKey){
-    return this.bech.Encode(publicKey).c_str();
+    return this.bech.Encode(publicKey)?.c_str();
   }
 
   addToXordPubKey(xordPubkey){
@@ -861,21 +860,7 @@ selectByOrdOutput(txid, nout, inscriptions = []){
   }
 
   async sendExceptionMessage(type: string, exception: any) {
-    let errorStack = '';
-    exception = this.getErrorMessage(exception);
-    const errorMessage = exception?.message || exception;
-    if(exception?.name) type = exception?.name;
-    if(exception?.stack) errorStack = exception?.stack;
-
-    if(errorMessage.indexOf('Aborted(OOM)')!==-1){
-      console.log('wasm->load::Error{',errorMessage,'}');
-      return errorMessage;
-    }
-
-    const currentWindow = await this.WinHelpers.getCurrentWindow()
-    sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
-    console.log(type, errorMessage, errorStack);
-    return `${type} ${errorMessage} ${errorStack}`;
+    return await this.wwa.sendExceptionMessage(type, exception);
   }
 
   async fetchAddress(address: string){
@@ -986,11 +971,11 @@ selectByOrdOutput(txid, nout, inscriptions = []){
     }
   }
 //------------------------------------------------------------------------------
-async getRawTransactions(builderObject){
-  const raw_size = builderObject.TransactionCount();
+async getRawTransactions(mode, builderObject){
+  const raw_size = builderObject.TransactionCount(mode);
   const raw = [];
   for(let i = 0; i < raw_size; i += 1){
-    raw.push(builderObject.RawTransaction(i).c_str())
+    raw.push(builderObject.RawTransaction(mode, i)?.c_str())
   }
   return raw;
 }
@@ -1052,8 +1037,8 @@ async createInscriptionContract(payload, theIndex = 0) {
           'CREATE_INSCRIPTION',
           `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
         );
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        outData.raw = await myself.getRawTransactions(newOrd);
+        setTimeout(()=>myself.WinHelpers?.closeCurrentWindow(),closeWindowAfter);
+        outData.raw = await myself.getRawTransactions(myself.utxord.INSCRIPTION ,newOrd);
         return outData;
      }
 
@@ -1074,18 +1059,12 @@ async createInscriptionContract(payload, theIndex = 0) {
     const min_fund_amount = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(
       newOrd,
       `${flagsFundingOptions}`
-    ).c_str()))
+    )?.c_str()))
     outData.amount = min_fund_amount;
     if(!myself.fundings.length ){
-        // TODO: REWORK FUNDS EXCEPTION
-        // myself.sendExceptionMessage(
-        //   'CREATE_INSCRIPTION',
-        //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
-        // );
-        // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
             "wait for several conformations or wait update on the server.";
-        outData.raw = await myself.getRawTransactions(newOrd);
+        outData.raw = await myself.getRawTransactions(myself.utxord.INSCRIPTION, newOrd);
         return outData;
      }
     const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
@@ -1093,32 +1072,25 @@ async createInscriptionContract(payload, theIndex = 0) {
     const inputs_sum = await myself.sumAllFunds(utxo_list);
     outData.inputs_sum = inputs_sum;
 
-    if(utxo_list?.length < 1){
-        // TODO: REWORK FUNDS EXCEPTION
-        // this.sendExceptionMessage(
-        //   'CREATE_INSCRIPTION',
-        //   "There are no funds to create of the Inscription, please replenish the amount: "+
-        //   `${min_fund_amount} sat`
-        // );
-        // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        outData.errorMessage = "There are no funds to create of the Inscription, please replenish the amount: "+
-          `${min_fund_amount} sat`
-        outData.raw = await myself.getRawTransactions(newOrd);
-        return outData;
-    }
 
     if(inputs_sum > Number(payload.expect_amount)){
       if(payload?.collection?.genesis_txid){flagsFundingOptions += ","}
       flagsFundingOptions += "change";
     }
 
-    const extra_amount = myself.btcToSat(Number(myself.wwa.GetGenesisTxMiningFee(newOrd).c_str()));
+
+    const extra_amount = myself.btcToSat(Number(myself.wwa.GetGenesisTxMiningFee(newOrd)?.c_str()));
     outData.extra_amount = extra_amount;
 
     console.log("extra_amount:",extra_amount);
     console.log("min_fund_amount:",min_fund_amount);
     console.log("utxo_list:",utxo_list);
-
+    if(utxo_list?.length < 1){
+        outData.errorMessage = "There are no funds to create of the Inscription, please replenish the amount: "+
+          `${min_fund_amount} sat`
+        outData.raw = await myself.getRawTransactions(myself.utxord.INSCRIPTION ,newOrd);
+        return outData;
+    }
       for(const fund of utxo_list){
         await myself.wwa.AddUTXO(
           newOrd,
@@ -1153,7 +1125,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       const min_fund_amount_final_btc = Number(myself.wwa.GetMinFundingAmount(
         newOrd,
         `${flagsFundingOptions}`
-      ).c_str());
+      )?.c_str());
 
       console.log('min_fund_amount_final_btc:',min_fund_amount_final_btc);
       const min_fund_amount_final = await myself.btcToSat(min_fund_amount_final_btc);
@@ -1165,8 +1137,9 @@ async createInscriptionContract(payload, theIndex = 0) {
       outData.utxo_list = utxo_list_final;
 
       // SupportedVersions()
-      outData.data = myself.wwa.Serialize(newOrd, 8, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
-      const sk = myself.wwa.getIntermediateTaprootSK(newOrd).c_str();
+      outData.data = myself.wwa.Serialize(newOrd, 8, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
+      outData.raw = await myself.getRawTransactions(myself.utxord.INSCRIPTION ,newOrd);
+      const sk = myself.wwa.getIntermediateTaprootSK(newOrd)?.c_str();
       myself.wwa.AddKeyToCache(myself.wallet.root.key, sk);
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
@@ -1187,9 +1160,9 @@ async createInscriptionContract(payload, theIndex = 0) {
       if(eout.indexOf('TransactionError')!==-1) return;
       console.info(CREATE_INSCRIPTION,'call:theIndex:',theIndex);
       theIndex++;
-      if(theIndex>1000){
+      if(theIndex>10){
         this.sendExceptionMessage(CREATE_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        setTimeout(()=>myself.WinHelpers?.closeCurrentWindow(),closeWindowAfter);
         return outData;
       }
       return await myself.createInscriptionContract(payload, theIndex);
@@ -1271,7 +1244,7 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
     const raw = '';//await myself.getRawTransactions(sellOrd); it is not work
     return {
       raw: raw,
-      contract_data: myself.wwa.Serialize(sellOrd, 5, myself.utxord.ORD_SWAP_SIG).c_str()
+      contract_data: myself.wwa.Serialize(sellOrd, 5, myself.utxord.ORD_SWAP_SIG)?.c_str()
     };
   } catch (exception) {
     this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
@@ -1325,7 +1298,7 @@ async sellInscription(payload_data) {
     try {
       await (async (data) => {
         console.log("SELL_DATA_RESULT:", data);
-        myself.WinHelpers.closeCurrentWindow()
+        myself.WinHelpers?.closeCurrentWindow()
         myself.sendMessageToWebPage(
           SELL_INSCRIBE_RESULT,
           data,
@@ -1367,8 +1340,7 @@ async sellInscription(payload_data) {
     const sum_funds = await this.sumAllFunds(all_funds);
 
     if(sum_funds < target){
-      console.log(sum_funds,"sum<target",target);
-      return [];
+      return all_funds;
     }
     if(all_funds?.length === 0){
       console.log(all_funds,"no funds");
@@ -1434,7 +1406,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       myself.wwa.Deserialize(swapSim, JSON.stringify(payload.swap_ord_terms.contract));
       myself.wwa.CheckContractTerms(swapSim, myself.utxord.FUNDS_TERMS);
 
-      const min_fund_amount = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(swapSim, "").c_str()))
+      const min_fund_amount = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(swapSim, "")?.c_str()))
 
 
       if(!myself.fundings.length ){
@@ -1480,7 +1452,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
 
           myself.wwa.OrdPayoffAddress(buyOrd, myself.wwa.GetP2TRAddress(myself.wallet.ord.key, myself.network));
 
-        const min_fund_amount_final = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(buyOrd, "").c_str()))
+        const min_fund_amount_final = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(buyOrd, "")?.c_str()))
         outData.min_fund_amount = min_fund_amount_final;
         outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
         outData.utxo_list = utxo_list;
@@ -1499,7 +1471,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
               `${min_fund_amount_final} sat`;
           return outData;
         }
-        outData.data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_COMMIT_SIG).c_str();
+        outData.data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_COMMIT_SIG)?.c_str();
         return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
@@ -1519,7 +1491,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       theIndex++;
       if(theIndex>1000){
         this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        setTimeout(()=>myself.WinHelpers?.closeCurrentWindow(),closeWindowAfter);
         return outData;
       }
       return await myself.commitBuyInscriptionContract(payload, theIndex);
@@ -1532,7 +1504,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       if(!payload_data?.swap_ord_terms) return;
       try {
         console.log("data:", payload_data?.costs?.data," payload:", payload_data);
-        myself.WinHelpers.closeCurrentWindow()
+        myself.WinHelpers?.closeCurrentWindow()
         myself.sendMessageToWebPage(
           COMMIT_BUY_INSCRIBE_RESULT, {
           contract_uuid: payload_data?.swap_ord_terms?.contract_uuid,
@@ -1561,7 +1533,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         'scrsk'
       );
       const raw = [];// await myself.getRawTransactions(buyOrd); ///!!!!
-      const data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_SWAP_SIG).c_str();
+      const data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_SWAP_SIG)?.c_str();
 
       (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
