@@ -1,4 +1,5 @@
 import '~/libs/utxord.js';
+import '~/libs/wwa.ts';
 import * as bip39 from '~/libs/bip39.browser.js';
 import '~/libs/safe-buffer.js';
 import '~/libs/crypto-js.js';
@@ -194,13 +195,13 @@ class Api {
     return (async () => {
       try {
         const myself = this;
+        this.utxord = await utxord();
+        this.network = this.setUpNetWork(network);
         this.WinHelpers = new winHelpers();
         this.Rest = new rest();
-        this.utxord = await utxord();
+        this.wwa = await new self.wwa(this.network);
         this.bip39 = await bip39;
-        this.network = this.setUpNetWork(network);
         this.bech = new this.utxord.Bech32(this.network);
-
         this.locked = false;
         this.status = STATUS_DEFAULT;
         this.wallet = WALLET;
@@ -218,7 +219,7 @@ class Api {
         return this;
       } catch(e) {
         console.log('constructor->error:',e);
-        chrome.runtime.reload();
+        //chrome.runtime.reload();
 
       }
     })();
