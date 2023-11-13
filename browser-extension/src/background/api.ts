@@ -1489,7 +1489,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
               `${min_fund_amount_final} sat`;
           return outData;
         }
-        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
+        outData.raw = []; // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
         outData.data = buyOrd.Serialize(3,myself.utxord.FUNDS_COMMIT_SIG).c_str();
 
         return outData;
@@ -1558,7 +1558,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
       buyOrd.SignFundsSwap(myself.wallet.ord.key.GetLocalPrivKey().c_str());
-      const raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
+      const raw = []; // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
       const data = buyOrd.Serialize(3, myself.utxord.FUNDS_SWAP_SIG).c_str();
 
       (async (data, payload) => {
