@@ -2,11 +2,11 @@ import '~/libs/utxord.js';
 // Wasm Wrapper Api
 class Wwa {
 
-  constructor(network) {
+  constructor(network, utxord) {
       try {
         (async () => {
           this.network = network;
-          this.utxord = await utxord();
+          this.utxord = utxord;
           this.bech = new this.utxord.Bech32(this.network);
         })();
         return this;
@@ -30,130 +30,194 @@ class Wwa {
   MarketFee(builder, amount, addr){
     try {
       return builder.MarketFee(amount, addr);
-    } catch(e) {console.log('Wwa::MarketFee->error:',this.getErrorMessage(e));}
+    } catch(e) {
+      console.log('Wwa::MarketFee->error:',this.getErrorMessage(e));
+    }
   }
 
   OrdAmount(builder, amount){
     try {
       return builder.OrdAmount(amount);
-    } catch(e) {console.log('Wwa::OrdAmount->error:',this.getErrorMessage(e));}
+    } catch(e) {
+      console.log('Wwa::OrdAmount->error:',this.getErrorMessage(e));
+    }
   }
 
   MiningFeeRate(builder, rate){
     try {
       return builder.MiningFeeRate(rate);
-  } catch(e) {console.log('Wwa::MiningFeeRate->error:',this.getErrorMessage(e));}
-}
+    } catch(e) {
+      console.log('Wwa::MiningFeeRate->error:',this.getErrorMessage(e));
+    }
+  }
 
   AddUTXO(builder, txid,nout,amount,addr){
     try {
       return builder.AddUTXO(txid, nout, amount, addr);
-  } catch(e) {console.log('Wwa::AddUTXO->error:',this.getErrorMessage(e));}
-}
+    } catch(e) {
+      console.log('Wwa::AddUTXO->error:',this.getErrorMessage(e));
+    }
+  }
 
   Data(builder, contentType, hexData){
     try {
       return builder.Data(contentType, hexData);
-  } catch(e) {console.log('Wwa::Data->error:',this.getErrorMessage(e));}
+    } catch(e) {
+      console.log('Wwa::Data->error:',this.getErrorMessage(e));
+    }
   }
 
   MetaData(builder, hexCborData){
     try {
       return builder.MetaData(hexCborData);
-    } catch(e) {console.log('Wwa::MetaData->error:',this.getErrorMessage(e));}
+    } catch(e) {
+      console.log('Wwa::MetaData->error:',this.getErrorMessage(e));
+    }
   }
 
   InscribeAddress(builder, inscriptionAddr){
     try {
       return builder.InscribeAddress(inscriptionAddr);
-    } catch(e) {console.log('Wwa::InscribeAddress->error:',this.getErrorMessage(e));}
+    } catch(e) {
+      console.log('Wwa::InscribeAddress->error:',this.getErrorMessage(e));
+    }
   }
 
   ChangeAddress(builder, changeAddr){
     try {
       return builder.ChangeAddress(changeAddr);
-  } catch(e) {console.log('Wwa::ChangeAddress->error:',this.getErrorMessage(e));}
- }
+    } catch(e) {
+      console.log('Wwa::ChangeAddress->error:',this.getErrorMessage(e));
+    }
+  }
 
   AddToCollection(builder, collectionId, txid, nout, amount, collectionAddr){
     try {
-    return builder.AddToCollection(collectionId, txid, nout, amount, collectionAddr);
-  } catch(e) {console.log('Wwa::AddToCollection->error:',this.getErrorMessage(e));}}
+      return builder.AddToCollection(collectionId, txid, nout, amount, collectionAddr);
+    } catch(e) {
+      console.log('Wwa::AddToCollection->error:',this.getErrorMessage(e));
+    }
+  }
 
   FundMiningFee(builder, txid, nout,  amount, fundMiningFeeAddr){
     try {
-    return builder.FundMiningFee( txid, nout,  amount,  fundMiningFeeAddr);
-  } catch(e) {console.log('Wwa::FundMiningFee->error:',this.getErrorMessage(e));}}
+      return builder.FundMiningFee( txid, nout,  amount,  fundMiningFeeAddr);
+    } catch(e) {
+      console.log('Wwa::FundMiningFee->error:',this.getErrorMessage(e));
+    }
+  }
 
   SignCommit(builder, keyRegistry,  key_filter,  scriptPK){
     try {
-    return builder.SignCommit(keyRegistry,  key_filter,  scriptPK);
-  } catch(e) {console.log('Wwa::SignCommit->error:',this.getErrorMessage(e));}}
+      return builder.SignCommit(keyRegistry,  key_filter,  scriptPK);
+    } catch(e) {
+      console.log('Wwa::SignCommit->error:',this.getErrorMessage(e));
+    }
+  }
 
   SignInscription(builder, keyRegistry, script_key_filter){
     try {
-    return builder.SignInscription(keyRegistry, script_key_filter);
-  } catch(e) {console.log('Wwa::SignInscription->error:',this.getErrorMessage(e));}}
+      return builder.SignInscription(keyRegistry, script_key_filter);
+    } catch(e) {
+      console.log('Wwa::SignInscription->error:',this.getErrorMessage(e));
+    }
+  }
 
   SignCollection(builder, keyRegistry,  key_filter){
     try {
-    return builder.SignCollection(keyRegistry,  key_filter);
-  } catch(e) {console.log('Wwa::SignCollection->error:',this.getErrorMessage(e));}}
+      return builder.SignCollection(keyRegistry,  key_filter);
+    } catch(e) {
+      console.log('Wwa::SignCollection->error:',this.getErrorMessage(e));
+    }
+  }
 
   Serialize(builder, ver, phase){
     try {
-    return builder.Serialize(ver, phase);
-  } catch(e) {console.log('Wwa::Serialize->error:',this.getErrorMessage(e));}}
+      return builder.Serialize(ver, phase);
+    } catch(e) {
+      console.log('Wwa::Serialize->error:',this.getErrorMessage(e));
+    }
+  }
 
   Deserialize(builder, data, phase){
     try {
-    return builder.Deserialize(data, phase);
-  } catch(e) {console.log('Wwa::Deserialize->error:',this.getErrorMessage(e));}}
+      return builder.Deserialize(data, phase);
+    } catch(e) {
+      console.log('Wwa::Deserialize->error:',this.getErrorMessage(e));
+  }
+}
 
   TransactionCount(builder,phase){
     try {
-    return builder.TransactionCount(phase);
-  } catch(e) {console.log('Wwa::TransactionCount->error:',this.getErrorMessage(e));}}
+      return builder.TransactionCount(phase);
+    } catch(e) {
+      console.log('Wwa::TransactionCount->error:',this.getErrorMessage(e));
+    }
+  }
 
   RawTransaction(builder,phase, n){
     try {
-    return builder.RawTransaction(phase, n);
-  } catch(e) {console.log('Wwa::RawTransaction->error:',this.getErrorMessage(e));}}
+      return builder.RawTransaction(phase, n);
+    } catch(e) {
+      console.log('Wwa::RawTransaction->error:',this.getErrorMessage(e));
+    }
+  }
 
   SupportedVersions(builder){
     try {
-    return builder.SupportedVersions();
-  } catch(e) {console.log('Wwa::SupportedVersions->error:',this.getErrorMessage(e));}}
+      return builder.SupportedVersions();
+    } catch(e) {
+      console.log('Wwa::SupportedVersions->error:',this.getErrorMessage(e));
+    }
+  }
 
   getIntermediateTaprootSK(builder){
     try {
-    return builder.getIntermediateTaprootSK();
-  } catch(e) {console.log('Wwa::getIntermediateTaprootSK->error:',this.getErrorMessage(e));}}
+      return builder.getIntermediateTaprootSK();
+    } catch(e) {
+      console.log('Wwa::getIntermediateTaprootSK->error:',this.getErrorMessage(e));
+    }
+  }
 
   MakeInscriptionId(builder){
     try {
-    return  builder.MakeInscriptionId();
-  } catch(e) {console.log('Wwa::MakeInscriptionId->error:',this.getErrorMessage(e));}}
+      return  builder.MakeInscriptionId();
+    } catch(e) {
+      console.log('Wwa::MakeInscriptionId->error:',this.getErrorMessage(e));
+    }
+  }
 
   GetMinFundingAmount(builder, params){
     try {
-    return builder.GetMinFundingAmount(params);
-  } catch(e) {console.log('Wwa::GetMinFundingAmount->error:',this.getErrorMessage(e));}}
+      return builder.GetMinFundingAmount(params);
+    } catch(e) {
+      console.log('Wwa::GetMinFundingAmount->error:',this.getErrorMessage(e));
+    }
+  }
 
   GetGenesisTxMiningFee(builder){
     try {
-    return builder.GetGenesisTxMiningFee();
-  } catch(e) {console.log('Wwa::GetGenesisTxMiningFee->error:',this.getErrorMessage(e));}}
+      return builder.GetGenesisTxMiningFee();
+    } catch(e) {
+      console.log('Wwa::GetGenesisTxMiningFee->error:',this.getErrorMessage(e));
+    }
+  }
 
   GetNewInputMiningFee(builder){
     try {
-    return builder.GetNewInputMiningFee();
-  } catch(e) {console.log('Wwa::GetNewInputMiningFee->error:',this.getErrorMessage(e));}}
+      return builder.GetNewInputMiningFee();
+    } catch(e) {
+      console.log('Wwa::GetNewInputMiningFee->error:',this.getErrorMessage(e));
+    }
+  }
 
   GetNewOutputMiningFee(builder){
     try {
-    return builder.GetNewOutputMiningFee();
-  } catch(e) {console.log('Wwa::GetNewOutputMiningFee->error:',this.getErrorMessage(e));}}
+      return builder.GetNewOutputMiningFee();
+    } catch(e) {
+      console.log('Wwa::GetNewOutputMiningFee->error:',this.getErrorMessage(e));
+    }
+  }
 
   SwapInscriptionBuilder(network){
     try {
@@ -258,7 +322,6 @@ class Wwa {
       console.log('Wwa::KeyPair->error:',this.getErrorMessage(e));
     }
   }
-
   PrivKey(keyPair){
     try {
       return keyPair.PrivKey();
@@ -282,14 +345,14 @@ class Wwa {
   }
   GetP2TRAddress(keyPair, network){
     try {
-      return KeyPair.GetP2TRAddress(network);
+      return keyPair.GetP2TRAddress(network);
     } catch(e) {
       console.log('Wwa::GetP2WPKHAddress->error:',this.getErrorMessage(e));
     }
   }
   GetP2WPKHAddress(keyPair, network){
     try {
-      return KeyPair.GetP2WPKHAddress(network);
+      return keyPair.GetP2WPKHAddress(network);
     } catch(e) {
       console.log('Wwa::GetP2WPKHAddress->error:',this.getErrorMessage(e));
     }
@@ -341,8 +404,8 @@ class Wwa {
       return keyRegistry.Derive(path, for_script);
     } catch(e) {
       console.log('Wwa::Derive->error:',this.getErrorMessage(e));
+    }
   }
-}
   LookupPubKey(keyRegistry, pubkey, opt){
     try {
       return keyRegistry.LookupPubKey(pubkey, opt);
@@ -358,8 +421,11 @@ class Wwa {
     }
   }
 
-  getErrorMessage(exception: number) {
-    return this.utxord.Exception.prototype.getMessage(exception)
+  getErrorMessage(exception: any) {
+    if(typeof exception === 'number'){
+      return this.utxord.Exception.prototype.getMessage(Number.parseInt(exception, 10))
+    }
+    return exception;
   }
 
 }

@@ -199,9 +199,9 @@ class Api {
         this.network = this.setUpNetWork(network);
         this.WinHelpers = new winHelpers();
         this.Rest = new rest();
-        this.wwa = await new self.wwa(this.network);
+        this.wwa = await new self.wwa(this.network, this.utxord);
         this.bip39 = await bip39;
-        this.bech = new this.utxord.Bech32(this.network);
+        this.bech = await this.wwa.bech;
         this.locked = false;
         this.status = STATUS_DEFAULT;
         this.wallet = WALLET;
@@ -218,8 +218,8 @@ class Api {
         await this.init(this);
         return this;
       } catch(e) {
-        console.log('constructor->error:',e);
-        //chrome.runtime.reload();
+        console.log('Api::constructor->error:',e);
+        chrome.runtime.reload();
 
       }
     })();
@@ -250,15 +250,15 @@ class Api {
       if (myself.checkSeed() && myself.utxord && myself.bech) {
         myself.genKeys();
         myself.initPassword();
-        const fund = myself.wallet.fund.key?.PubKey();
-        const auth = myself.wallet.auth.key?.PubKey();
+        const fund = myself.wwa.PubKey(myself.wallet.fund.key);
+        const auth = myself.wwa.PubKey(myself.wallet.auth.key);
         if (fund && auth) {
           myself.status.initAccountData = true;
           return myself.status.initAccountData;
         }
       }
     } catch (e) {
-      console.log('init()->error:', myself.getErrorMessage(e));
+      console.log('init()->error:', myself.wwa.getErrorMessage(e));
     }
   }
 
@@ -451,12 +451,12 @@ class Api {
   genRootKey(){
     if(!this.checkSeed()) return false;
     if (this.wallet.root.key) return this.wallet.root.key;
-    console.log('seed:',this.getSeed());
-    this.wallet.root.key = new this.utxord.KeyRegistry(this.network, this.getSeed());
+    console.log('seed:', this.getSeed());
+    this.wallet.root.key = this.wwa.KeyRegistry(this.network, this.getSeed());
     for(const type of this.wallet_types){
       if(type !== 'auth'){
         console.log('type: ',type,'|json: ',JSON.stringify(this.wallet[type].filter))
-        this.wallet.root.key.AddKeyType(type, JSON.stringify(this.wallet[type].filter));
+        this.wwa.AddKeyType(this.wallet.root.key, type, JSON.stringify(this.wallet[type].filter));
       }
     }
     return this.wallet.root.key;
@@ -495,7 +495,7 @@ class Api {
   addToExternalKey(keyhex, pass){
     const myself = this;
 
-    const keypair = new myself.utxord.ChannelKeys(keyhex);
+    const keypair = new this.utxord.KeyPair(keyhex);
     const tmpAddress = this.bech.Encode(keypair.PubKey());
     if(!myself.checkAddress(tmpAddress, this.wallet.ext.keys)){
       let enkeyhex = keyhex;
@@ -563,7 +563,7 @@ class Api {
                 }
               }
             }
-            publicKeys.push({pubKeyStr: this.wallet[key].key.PubKey(), type: key});
+            publicKeys.push({pubKeyStr: this.wwa.PubKey(this.wallet[key].key), type: key});
           }
         }
       }
@@ -856,33 +856,28 @@ selectByOrdOutput(txid, nout, inscriptions = []){
     return buffer.Buffer.from(hex, 'hex');
   }
 
-  getErrorMessage(exception: number) {
-    return this.utxord.Exception.prototype.getMessage(exception)
+  getErrorMessage(exception) {
+    return this.wwa.getErrorMessage(exception)
   }
 
-  async sendExceptionMessage(type?: string, exception: any) {
-    let errorMessage;
-    let errorStack;
-    if(typeof exception === 'number'){
-      errorMessage = this.getErrorMessage(Number.parseInt(exception, 10));
+  async sendExceptionMessage(type: string, exception: any) {
+    let errorStack = '';
+    exception = this.getErrorMessage(exception);
+    const errorMessage = exception?.message || exception;
+    if(exception?.name) type = exception?.name;
+    if(exception?.stack) errorStack = exception?.stack;
 
-    }else{
-      errorMessage = exception;
-      if(exception?.message){
-        errorMessage = exception?.message;
-        type = exception?.name;
-        errorStack = exception?.stack;
-      }
-    }
     if(errorMessage.indexOf('Aborted(OOM)')!==-1){
       console.log('wasm->load::Error{',errorMessage,'}');
       return errorMessage;
     }
+
     const currentWindow = await this.WinHelpers.getCurrentWindow()
     sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
     console.log(type, errorMessage, errorStack);
-    return type+errorMessage+errorStack;
+    return `${type} ${errorMessage} ${errorStack}`;
   }
+
   async fetchAddress(address: string){
     const response = await this.Rest.get(`/api/address/${address}/balance/`);
     return response;
@@ -945,7 +940,7 @@ selectByOrdOutput(txid, nout, inscriptions = []){
         url: BASE_URL_PATTERN,
       });
     }
-console.log('args:', args,'type:', type);
+    // console.log('args:', args,'type:', type);
     // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
     for (let tab of tabs) {
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {
@@ -974,12 +969,15 @@ console.log('args:', args,'type:', type);
   signToChallenge(challenge, tabId: number | undefined = undefined) {
     const myself = this;
     if (myself.wallet.auth.key) {
-      const signature = myself.wallet.auth.key.SignSchnorr(challenge);
+      const signature = myself.wwa.SignSchnorr(
+        myself.wallet.auth.key,
+        challenge
+      );
       console.log("SignSchnorr::challengeResult:", signature);
       myself.sendMessageToWebPage(CONNECT_RESULT, {
         challenge: challenge,
         signature: signature,
-        publickey: myself.wallet.auth.key.PubKey()
+        publickey: myself.wwa.PubKey(myself.wallet.auth.key)
       }, tabId);
     myself.connect = true;
     myself.sync = false;
@@ -1032,21 +1030,21 @@ async createInscriptionContract(payload, theIndex = 0) {
       flagsFundingOptions += "collection";
     }
 
-    const newOrd = new myself.utxord.CreateInscriptionBuilder(
+    const newOrd = myself.wwa.CreateInscriptionBuilder(
       myself.network,
       myself.utxord.INSCRIPTION
     );
     const contract = {"contract_type":"CreateInscription","params":{"protocol_version":8,"market_fee":{"amount":0}}};
-    newOrd.Deserialize(JSON.stringify(contract));
+    myself.wwa.Deserialize(newOrd, JSON.stringify(contract));
 
-    newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
+    myself.wwa.OrdAmount(newOrd, (myself.satToBtc(payload.expect_amount)).toFixed(8));
 
     if(payload.metadata) {
       console.log('payload.metadata:',payload.metadata);
       const encoded = cbor.encode(payload.metadata);
-      await newOrd.MetaData(myself.arrayBufferToHex(encoded));
+      await myself.wwa.MetaData(newOrd, myself.arrayBufferToHex(encoded));
     }
-    await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8));
+    await myself.wwa.MiningFeeRate(newOrd, (myself.satToBtc(payload.fee)).toFixed(8));
 
     if(payload?.collection?.genesis_txid){
       if(!collection){
@@ -1059,21 +1057,23 @@ async createInscriptionContract(payload, theIndex = 0) {
         return outData;
      }
 
-      newOrd.AddToCollection(
+      myself.wwa.AddToCollection(
+        newOrd,
         `${payload.collection.genesis_txid}i0`,
         payload.collection.owner_txid,
         payload.collection.owner_nout,
         (myself.satToBtc(collection.amount)).toFixed(8),
         payload.collection.btc_owner_address
-      )
+      );
     }
 
-    await newOrd.Data(payload.content_type, payload.content);
-    await newOrd.InscribeAddress(myself.wallet.ord.key.GetP2TRAddress(this.network));
-    await newOrd.ChangeAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
+    await myself.wwa.Data(newOrd, payload.content_type, payload.content);
+    await myself.wwa.InscribeAddress(newOrd, myself.wwa.GetP2TRAddress(myself.wallet.ord.key, this.network));
+    await myself.wwa.ChangeAddress(newOrd, myself.wwa.GetP2TRAddress(myself.wallet.fund.key, this.network));
 
-    const min_fund_amount = await myself.btcToSat(Number(newOrd.GetMinFundingAmount(
-        `${flagsFundingOptions}`
+    const min_fund_amount = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(
+      newOrd,
+      `${flagsFundingOptions}`
     ).c_str()))
     outData.amount = min_fund_amount;
     if(!myself.fundings.length ){
@@ -1112,7 +1112,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       flagsFundingOptions += "change";
     }
 
-    const extra_amount = myself.btcToSat(Number(newOrd.GetGenesisTxMiningFee().c_str()));
+    const extra_amount = myself.btcToSat(Number(myself.wwa.GetGenesisTxMiningFee(newOrd).c_str()));
     outData.extra_amount = extra_amount;
 
     console.log("extra_amount:",extra_amount);
@@ -1120,47 +1120,39 @@ async createInscriptionContract(payload, theIndex = 0) {
     console.log("utxo_list:",utxo_list);
 
       for(const fund of utxo_list){
-        await newOrd.AddUTXO(
+        await myself.wwa.AddUTXO(
+          newOrd,
           fund.txid,
           fund.nout,
           (myself.satToBtc(fund.amount)).toFixed(8),
           fund.address
         );
       }
-try {
-  await newOrd.SignCommit(
+  await myself.wwa.SignCommit(
+    newOrd,
     myself.wallet.root.key,
     'fund',
-    myself.wallet.uns.key.PubKey()
+    myself.wwa.PubKey(myself.wallet.uns.key)
   );
-} catch (e) {
-  console.log('SignCommit:',myself.getErrorMessage(e));
-}
 
-try {
       // get front root ord and select to addres or pubkey
       // collection_utxo_key (root! image key) (current utxo key)
       if(payload?.collection?.genesis_txid) {
-        await newOrd.SignCollection(
+        await myself.wwa.SignCollection(
+          newOrd,
           myself.wallet.root.key,
           'ord'
         );
       }
-    } catch (e) {
-      console.log('SignCollection:',myself.getErrorMessage(e));
-    }
-
-try {
-      await newOrd.SignInscription(
+      await myself.wwa.SignInscription(
+        newOrd,
         myself.wallet.root.key,
         'uns'
       );
-    } catch (e) {
-      console.log('SignInscription:',myself.getErrorMessage(e));
-    }
 
-      const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
-          `${flagsFundingOptions}`
+      const min_fund_amount_final_btc = Number(myself.wwa.GetMinFundingAmount(
+        newOrd,
+        `${flagsFundingOptions}`
       ).c_str());
 
       console.log('min_fund_amount_final_btc:',min_fund_amount_final_btc);
@@ -1173,9 +1165,9 @@ try {
       outData.utxo_list = utxo_list_final;
 
       // SupportedVersions()
-      outData.data = newOrd.Serialize(8, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
-      const sk = newOrd.getIntermediateTaprootSK().c_str();
-      myself.wallet.root.key.AddKeyToCache(sk);
+      outData.data = myself.wwa.Serialize(newOrd, 8, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
+      const sk = myself.wwa.getIntermediateTaprootSK(newOrd).c_str();
+      myself.wwa.AddKeyToCache(myself.wallet.root.key, sk);
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
       return outData;
@@ -1255,30 +1247,35 @@ async createInscription(payload_data) {
 async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
   const myself = this;
   try {
-  const sellOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
-  sellOrd.Deserialize(JSON.stringify(contract));
-  sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
+    const sellOrd = myself.wwa.SwapInscriptionBuilder(myself.network);
+    myself.wwa.Deserialize(sellOrd, JSON.stringify(contract));
+    myself.wwa.CheckContractTerms(sellOrd, myself.utxord.ORD_TERMS);
+    myself.wwa.OrdUTXO(
+      sellOrd,
+      txid,
+      nout,
+      (myself.satToBtc(utxoData.amount)).toFixed(8),
+      myself.wwa.GetP2TRAddress(myself.wallet.ord.key, this.network)
+    );
 
-  sellOrd.OrdUTXO(
-    txid,
-    nout,
-    (myself.satToBtc(utxoData.amount)).toFixed(8),
-    myself.wallet.ord.key.GetP2TRAddress(this.network)
-  );
-  sellOrd.FundsPayoffAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
-  sellOrd.SignOrdSwap(
-    myself.wallet.root.key,
-    'ord'
-  );
-  const raw = '';//await myself.getRawTransactions(sellOrd); it is not work
-  return {
-    raw: raw,
-    contract_data: sellOrd.Serialize(5,myself.utxord.ORD_SWAP_SIG).c_str()
-  };
-} catch (exception) {
-  this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
-}
+    myself.wwa.FundsPayoffAddress(
+      sellOrd,
+      myself.wwa.GetP2TRAddress(myself.wallet.fund.key, this.network)
+    );
 
+    myself.wwa.SignOrdSwap(
+      sellOrd,
+      myself.wallet.root.key,
+      'ord'
+    );
+    const raw = '';//await myself.getRawTransactions(sellOrd); it is not work
+    return {
+      raw: raw,
+      contract_data: myself.wwa.Serialize(sellOrd, 5, myself.utxord.ORD_SWAP_SIG).c_str()
+    };
+  } catch (exception) {
+    this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
+  }
 }
   async sellInscriptionContract(payload) {
     const myself = this;
@@ -1433,11 +1430,11 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
     //const inscriptions = structuredClone(myself.inscriptions);
     //console.log("commitBuyInscription->payload",payload)
     try {
-      const swapSim = new myself.utxord.SwapInscriptionBuilder(myself.network);
-      swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+      const swapSim = myself.wwa.SwapInscriptionBuilder(myself.network);
+      myself.wwa.Deserialize(swapSim, JSON.stringify(payload.swap_ord_terms.contract));
+      myself.wwa.CheckContractTerms(swapSim, myself.utxord.FUNDS_TERMS);
 
-      const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("").c_str()))
+      const min_fund_amount = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(swapSim, "").c_str()))
 
 
       if(!myself.fundings.length ){
@@ -1459,28 +1456,31 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       console.log("min_fund_amount:",min_fund_amount);
       console.log("utxo_list:",utxo_list);
 
-        const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
-        buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-        buyOrd.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+        const buyOrd = myself.wwa.SwapInscriptionBuilder(myself.network);
+        myself.wwa.Deserialize(buyOrd, JSON.stringify(payload.swap_ord_terms.contract));
+        myself.wwa.CheckContractTerms(buyOrd, myself.utxord.FUNDS_TERMS);
 
         for(const fund of utxo_list){
-          buyOrd.AddFundsUTXO(
+          myself.wwa.AddFundsUTXO(
+            buyOrd,
             fund.txid,
             fund.nout,
             (myself.satToBtc(fund.amount)).toFixed(8),
-            fund.address);
+            fund.address
+          );
         }
-        buyOrd.ChangeAddress(myself.wallet.fund.key.GetP2TRAddress(myself.network));
-        buyOrd.SwapScriptPubKeyB(myself.wallet.scrsk.key.PubKey()); //!!!
+        myself.wwa.ChangeAddress(buyOrd, myself.wwa.GetP2TRAddress(myself.wallet.fund.key, myself.network));
+        myself.wwa.SwapScriptPubKeyB(buyOrd, myself.wwa.PubKey(myself.wallet.scrsk.key)); //!!!
 
-          buyOrd.SignFundsCommitment(
+          myself.wwa.SignFundsCommitment(
+            buyOrd,
             myself.wallet.root.key,
             'fund'
           );
 
-          buyOrd.OrdPayoffAddress(myself.wallet.ord.key.GetP2TRAddress(myself.network));
+          myself.wwa.OrdPayoffAddress(buyOrd, myself.wwa.GetP2TRAddress(myself.wallet.ord.key, myself.network));
 
-        const min_fund_amount_final = await myself.btcToSat(Number(buyOrd.GetMinFundingAmount("").c_str()))
+        const min_fund_amount_final = await myself.btcToSat(Number(myself.wwa.GetMinFundingAmount(buyOrd, "").c_str()))
         outData.min_fund_amount = min_fund_amount_final;
         outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
         outData.utxo_list = utxo_list;
@@ -1499,7 +1499,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
               `${min_fund_amount_final} sat`;
           return outData;
         }
-        outData.data = buyOrd.Serialize(5, myself.utxord.FUNDS_COMMIT_SIG).c_str();
+        outData.data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_COMMIT_SIG).c_str();
         return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
@@ -1551,16 +1551,17 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         console.log('//////////// signSwapInscription ARGS', payload);
       console.log("!!!!contract:",JSON.stringify(payload.swap_ord_terms.contract));
 
-      const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
+      const buyOrd = myself.wwa.SwapInscriptionBuilder(myself.network);
       // console.log("aaaa");
-      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
-      buyOrd.SignFundsSwap(
+      myself.wwa.Deserialize(buyOrd, JSON.stringify(payload.swap_ord_terms.contract));
+      myself.wwa.CheckContractTerms(buyOrd, myself.utxord.MARKET_PAYOFF_SIG);
+      myself.wwa.SignFundsSwap(
+        buyOrd,
         myself.wallet.root.key,
         'scrsk'
       );
       const raw = [];// await myself.getRawTransactions(buyOrd); ///!!!!
-      const data = buyOrd.Serialize(5, myself.utxord.FUNDS_SWAP_SIG).c_str();
+      const data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_SWAP_SIG).c_str();
 
       (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
