@@ -917,7 +917,8 @@ uint32_t SwapInscriptionBuilder::TransactionCount(SwapPhase phase) const
 //    case MARKET_PAYOFF_SIG:
 //    case MARKET_PAYOFF_TERMS:
     default:
-        throw ContractStateError("Raw transaction data are not available");
+        // throw ContractStateError("Raw transaction data are not available");
+        return 0;
     }
 }
 

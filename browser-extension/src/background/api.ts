@@ -1489,7 +1489,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
               `${min_fund_amount_final} sat`;
           return outData;
         }
-        outData.raw = []; // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
+        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
         outData.data = buyOrd.Serialize(3,myself.utxord.FUNDS_COMMIT_SIG).c_str();
 
         return outData;
