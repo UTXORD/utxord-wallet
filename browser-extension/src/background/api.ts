@@ -945,7 +945,7 @@ async matchTapRootKey(payload, target, deep = 0){
         url: BASE_URL_PATTERN,
       });
     }
-console.log('args:', args,'type:', type);
+    console.log('args:', args,'type:', type);
     // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
     for (let tab of tabs) {
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {

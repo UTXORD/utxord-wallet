@@ -169,7 +169,7 @@ export class Scheduler {
         this._schedule = schedule;
     }
 
-    public set action(action: () => void) {
+    public set action(action: (() => void) | null) {
         Scheduler._log("set action");
         this._action = action;
     }
@@ -191,7 +191,7 @@ export class Scheduler {
     }
 
     private doAction() {
-        Scheduler._log(`do scheduled action in case it has been set. ` +
+        Scheduler._log(`--- ${new Date().toLocaleString()} do scheduled action in case it has been set. ` +
             `isActive: ${this._isActive}, action: ${this._action}`);
         if (this._isActive && this._action != null) {
             Scheduler._log("do action");
@@ -211,7 +211,7 @@ export class Scheduler {
     }
 
     private async startScheduleItem(item: ScheduleItem) {
-        Scheduler._log(`startScheduleItem: ${item}`);
+        Scheduler._log(`--- ${new Date().toLocaleString()} startScheduleItem, latency: ${item.latency}, interval: ${item.interval}, duration: ${item.duration}`);
         this._currentScheduleItem = item;
         if (0 < item.latency) {
             await chrome.alarms.create(
@@ -230,14 +230,14 @@ export class Scheduler {
     }
 
     private async stopRunningScheduleItem() {
-        Scheduler._log("stopRunningScheduleItem");
+        Scheduler._log("--- ${new Date().toLocaleString()} stopRunningScheduleItem");
         await chrome.alarms.clear(this._nameOfLatencyAlarm);
         await chrome.alarms.clear(this._nameOfIntervalAlarm);
         await chrome.alarms.clear(this._nameOfDurationAlarm);
     }
 
     public async changeStateTo(state: ScheduleState) {
-        Scheduler._log(`changeStateTo: ${state.toString()}`);
+        Scheduler._log(`--- ${new Date().toLocaleString()} changeStateTo: ${state.toString()}`);
         await this.stopRunningScheduleItem();
         if (this._schedule && this._schedule[state]) {
             await this.startScheduleItem(this._schedule[state])

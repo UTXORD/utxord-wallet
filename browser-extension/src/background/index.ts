@@ -19,11 +19,9 @@ import {
   GET_ADDRESSES,
   GET_ALL_ADDRESSES,
   GET_BALANCE,
-  GET_BALANCES,
   GET_NETWORK,
   NEW_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
-  OPEN_START_PAGE,
   PLUGIN_ID,
   PLUGIN_PUBLIC_KEY,
   POPUP_HEARTBEAT,
@@ -51,12 +49,29 @@ if (NETWORK === MAINNET){
 (async () => {
 
   try{
-    async function setupBalanceRefreshing(destination: string) {
-        await sendMessage(DO_REFRESH_BALANCE, {}, destination);
-        Scheduler.getInstance().action = async () => {
-            await sendMessage(DO_REFRESH_BALANCE, {}, destination);
+    // We have to use chrome API instead of webext-bridge module due to following issue
+    // https://github.com/zikaari/webext-bridge/issues/37
+    chrome.runtime.onConnect.addListener(async (port) => {
+      console.debug(`----- chrome.runtime.onConnect got port: ${port}`);
+      console.dir(port);
+      if ('POPUP_MESSAGING_CHANNEL' != port?.name) {
+        return false;
+      }
+      port.onMessage.addListener(async (payload) => {
+        if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) {
+          return;
         }
-    }
+        port.postMessage({id: DO_REFRESH_BALANCE});
+        Scheduler.getInstance().action = async () => {
+          port.postMessage({id: DO_REFRESH_BALANCE});
+        }
+      });
+      port.onDisconnect.addListener(async (port) => {
+        if ('POPUP_MESSAGING_CHANNEL' == port?.name) {
+          Scheduler.getInstance().action = null;
+        }
+      })
+    });
 
     const Api = await new self.Api(NETWORK);
     if(NETWORK === TESTNET){
@@ -108,15 +123,15 @@ if (NETWORK === MAINNET){
       return success;
     });
 
-    onMessage(GET_BALANCE, (payload: any) => {
-      const balance = Api.fetchBalance(payload.data?.address);
+    onMessage(GET_BALANCE, async (payload: any) => {
+      const balance = await Api.fetchBalance(payload.data?.address);
       setTimeout(async () => {
               await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
       }, 1000);
       return balance;
     });
 
-    onMessage(GET_ADDRESSES, async() => {
+    onMessage(GET_ADDRESSES, async () => {
       const {addresses} = await Api.genKeys();
       console.log('addresses:',addresses)
       return addresses;
@@ -238,7 +253,7 @@ if (NETWORK === MAINNET){
         console.log('Api.checkAddresess:',check)
         if(!check){
           setTimeout(async () => {
-                  console.log('ADDRESSES_TO_SAVE:',Api.addresses);
+                  // console.log('ADDRESSES_TO_SAVE:',Api.addresses);
                   await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
           }, 100);
         }
@@ -283,7 +298,6 @@ if (NETWORK === MAINNET){
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
-            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -294,7 +308,6 @@ if (NETWORK === MAINNET){
         console.log(SELL_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-sell', async (id) => {
           setTimeout(async  () => {
-            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -307,7 +320,6 @@ if (NETWORK === MAINNET){
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
           setTimeout(async () => {
-            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -315,7 +327,6 @@ if (NETWORK === MAINNET){
       if (payload.type === OPEN_EXPORT_KEY_PAIR_SCREEN) {
         winManager.openWindow('export-keys', async (id) => {
           setTimeout(async () => {
-            await setupBalanceRefreshing(`popup@${id}`);
             await sendMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, payload.data, `popup@${id}`);
           }, 1000);
         });
@@ -328,13 +339,6 @@ if (NETWORK === MAINNET){
           await Api.encryptedWallet(Api.wallet.tmp);
           Api.wallet.tmp = ''
         }
-      }
-      if (payload.type === OPEN_START_PAGE) {
-        winManager.openWindow('start', async (id) => {
-          setTimeout(async () => {
-            await setupBalanceRefreshing(`popup@${id}`);
-          }, 1000)
-        });
       }
     })
 
@@ -356,18 +360,6 @@ if (NETWORK === MAINNET){
     chrome.tabs.onUpdated.addListener(sendhello);
     chrome.tabs.onReplaced.addListener(sendhello);
 
-
-    // async function listener() {
-    //   const success = await Api.checkSeed();
-    //   await Api.sendMessageToWebPage(AUTH_STATUS, success);
-    //   // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
-    //   // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
-    // }
-    // let index = 0
-    // chrome.alarms.onAlarm.addListener(function() {
-    //   listener(index);
-    //   index++;
-    // });
 
     let alarmName = "utxord_wallet.alarm.balance_refresh_main_schedule";
     await chrome.alarms.clear(alarmName);
@@ -392,38 +384,7 @@ if (NETWORK === MAINNET){
     await scheduler.run();
     await watchdog.run();
 
-    // let cnt = 1;
-    // let success = true;
-    // let testInterval = setInterval(() => {
-    //   let name = `alarm_${cnt}`;
-    //   try {
-    //     console.log(`===== create ${name}`);
-    //     chrome.alarms.create(name, {periodInMinutes: 1}).catch((reason) => {
-    //       console.error(`ERROR: Unable to create ${name}.`, reason);
-    //       success = false;
-    //     });
-    //
-    //     if (1 == cnt) {
-    //       console.log(`===== addListener to ${name}`);
-    //       chrome.alarms.onAlarm.addListener(() => {});
-    //     }
-    //
-    //     console.log(`===== clear ${name}`);
-    //     chrome.alarms.clear(name).catch((reason) => {
-    //       console.error(`ERROR: Unable to clear ${name}.`, reason);
-    //       success = false;
-    //     });
-    //     cnt++;
-    //   } catch (ex) {
-    //       console.error(`EXCEPTION: Unable to create, clear or addListener for ${name}.`, ex.message);
-    //       success = false;
-    //   }
-    //   if (!success) {
-    //     clearInterval(testInterval);
-    //   }
-    // }, 300);
-
-  }catch(e){
+  } catch (e) {
     console.log('background:index.ts:',e);
   }
 })();

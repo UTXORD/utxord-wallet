@@ -82,17 +82,23 @@ async function init() {
   }
 }
 
-onMessage(DO_REFRESH_BALANCE, async (payload: any) => {
+// We have to use chrome API instead of webext-bridge module due to following issue
+// https://github.com/zikaari/webext-bridge/issues/37
+let port = chrome.runtime.connect({
+    name: 'POPUP_MESSAGING_CHANNEL'
+});
+port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});
+port.onMessage.addListener(async function(payload) {
+  if ('DO_REFRESH_BALANCE' != payload.id) return false;
   const address = await getFundAddress()
   await getOrdAddress()
-  await getBalance(address)
-  store.setRefreshingBalance()
-  setTimeout(async () => {
-    await getBalance(address)
-    store.unsetRefreshingBalance()
-  }, 1000)
+  store.setRefreshingBalance();
+  await getBalance(address);
+  store.unsetRefreshingBalance();
   return true
-})
+});
+
+
 
 onMessage(EXCEPTION, (payload: any) => {
   showError(EXCEPTION, payload?.data)
