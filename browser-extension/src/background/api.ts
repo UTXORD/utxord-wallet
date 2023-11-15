@@ -988,11 +988,15 @@ console.log('args:', args,'type:', type);
     }
   }
 //------------------------------------------------------------------------------
-async getRawTransactions(builderObject){
-  const raw_size = builderObject.TransactionCount();
+async getRawTransactions(builderObject, phase = undefined){
+  const raw_size = builderObject.TransactionCount(phase);
   const raw = [];
   for(let i = 0; i < raw_size; i += 1){
-    raw.push(builderObject.RawTransaction(i).c_str())
+    if(phase!==undefined){
+      raw.push(builderObject.RawTransaction(phase, i).c_str())
+    }else{
+      raw.push(builderObject.RawTransaction(i).c_str())
+    }
   }
   return raw;
 }
@@ -1250,7 +1254,7 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
   );
   sellOrd.SwapScriptPubKeyA(myself.wallet.fund.key.GetLocalPubKey().c_str());
   sellOrd.SignOrdSwap(utxoData.key.GetLocalPrivKey().c_str());
-  const raw = '';//await myself.getRawTransactions(sellOrd); it is not work
+  const raw = await myself.getRawTransactions(sellOrd, myself.utxord.ORD_SWAP_SIG);
   return {
     raw: raw,
     contract_data: sellOrd.Serialize(3,myself.utxord.ORD_SWAP_SIG).c_str()
@@ -1289,8 +1293,7 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
 
       return {
         contract_uuid: payload.swap_ord_terms.contract_uuid,
-        raw: raws[0],
-        raws: raws,
+        raw: raws,
         contracts: contract_list,
       };
 
@@ -1434,7 +1437,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
             "wait for several conformations or wait update on the server";
             outData.min_fund_amount = min_fund_amount;
             outData.mining_fee = Number(min_fund_amount) - Number(payload.market_fee) - Number(payload.ord_price);
-            outData.raw = []; //await myself.getRawTransactions(swapSim);
+            outData.raw = await myself.getRawTransactions(swapSim, myself.utxord.FUNDS_TERMS);
         return outData;
       }
 
@@ -1448,6 +1451,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         );
         buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
         buyOrd.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
 
         for(const fund of utxo_list){
           buyOrd.AddFundsUTXO(
@@ -1470,7 +1474,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         outData.min_fund_amount = min_fund_amount_final;
         outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
         outData.utxo_list = utxo_list;
-        outData.raw = [];// await myself.getRawTransactions(buyOrd);
+        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
         if (utxo_list?.length < 1) {
           // setTimeout(() => {
           //   // TODO: REWORK FUNDS EXCEPTION
@@ -1485,7 +1489,9 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
               `${min_fund_amount_final} sat`;
           return outData;
         }
+        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
         outData.data = buyOrd.Serialize(3,myself.utxord.FUNDS_COMMIT_SIG).c_str();
+
         return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
@@ -1552,8 +1558,8 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
       buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
       buyOrd.SignFundsSwap(myself.wallet.ord.key.GetLocalPrivKey().c_str());
-      const raw = [];// await myself.getRawTransactions(buyOrd); ///!!!!
-      const data = buyOrd.Serialize(3,myself.utxord.FUNDS_SWAP_SIG).c_str();
+      const raw = []; // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
+      const data = buyOrd.Serialize(3, myself.utxord.FUNDS_SWAP_SIG).c_str();
 
       (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
