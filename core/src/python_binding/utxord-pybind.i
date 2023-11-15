@@ -103,6 +103,13 @@
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
 
+namespace l15 {
+    %typemap(out) bytevector (PyObject* obj)
+    %{
+        obj = PyBytes_FromStringAndSize((const char*)($1.data()), $1.size());
+    %}
+}
+
 %include "common_error.hpp"
 %include "contract_error.hpp"
 %include "contract_builder.hpp"
