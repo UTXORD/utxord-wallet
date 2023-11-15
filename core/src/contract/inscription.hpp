@@ -8,11 +8,9 @@
 
 namespace utxord {
 
-using namespace l15;
-
-class InscriptionError : public Error {
+class InscriptionError : public l15::Error {
 public:
-    explicit InscriptionError(std::string&& details) : Error(move(details)) {}
+    explicit InscriptionError(std::string&& details) : l15::Error(move(details)) {}
     ~InscriptionError() override = default;
 
     const char* what() const noexcept override
@@ -28,21 +26,21 @@ public:
     { return "InscriptionFormatError"; }
 };
 
-std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script, CScript::const_iterator& it);
+std::list<std::pair<l15::bytevector, l15::bytevector>> ParseEnvelopeScript(const CScript& script, CScript::const_iterator& it);
 
 
 class Inscription
 {
     std::string m_inscription_id;
     std::string m_content_type;
-    bytevector m_content;
+    l15::bytevector m_content;
     std::string m_collection_id;
-    bytevector m_metadata;
+    l15::bytevector m_metadata;
 
 public:
     Inscription() = default;
 
-    explicit Inscription(std::string inscription_id, std::list<std::pair<bytevector, bytevector>>&& tagged_data);
+    explicit Inscription(std::string inscription_id, std::list<std::pair<l15::bytevector, l15::bytevector>>&& tagged_data);
 
     Inscription(const Inscription& ) = default;
     Inscription(Inscription&& ) noexcept = default;
@@ -55,7 +53,7 @@ public:
 
     const std::string& GetContentType() const
     { return m_content_type; }
-    const bytevector& GetContent() const
+    const l15::bytevector& GetContent() const
     { return m_content; }
 
     bool HasParent() const
@@ -64,7 +62,7 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
-    const bytevector& GetMetadata() const
+    const l15::bytevector& GetMetadata() const
     { return m_metadata; }
 };
 
