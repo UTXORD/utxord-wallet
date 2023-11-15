@@ -53,8 +53,8 @@ public:
 
     const std::string& GetContentType() const
     { return m_content_type; }
-    const l15::bytevector& GetContent() const
-    { return m_content; }
+    std::string GetContent() const
+    { return l15::hex(m_content); }
 
     bool HasParent() const
     { return !m_collection_id.empty(); }
@@ -62,8 +62,8 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
-    const l15::bytevector& GetMetadata() const
-    { return m_metadata; }
+    std::string GetMetadata() const
+    { return l15::hex(m_metadata); }
 };
 
 std::list<Inscription> ParseInscriptions(const std::string& hex_tx);

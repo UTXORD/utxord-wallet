@@ -73,7 +73,7 @@ TEST_CASE("svgscript")
 
     auto inscriptions = ParseInscriptions(raw_tx);
 
-    std::clog << hex(inscriptions.front().GetContent()) << std::endl;
+    std::clog << inscriptions.front().GetContent() << std::endl;
     std::clog << "===========================================================\n"
               << inscriptions.front().GetCollectionId() << std::endl;
 }
@@ -86,7 +86,7 @@ TEST_CASE("parse")
 
     std::clog << inscriptions.front().GetIscriptionId() << std::endl;
     std::clog << inscriptions.front().GetContentType() << std::endl;
-    std::clog << hex(inscriptions.front().GetContent()) << std::endl;
+    std::clog << inscriptions.front().GetContent() << std::endl;
     std::clog << "===========================================================\n"
               << "collection: " << inscriptions.front().GetCollectionId() << std::endl;
 }

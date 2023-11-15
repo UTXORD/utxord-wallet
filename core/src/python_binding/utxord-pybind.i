@@ -4,7 +4,6 @@
 %include "std_string.i"
 %include "std_vector.i"
 %include "std_list.i"
-%include "std_map.i"
 %include "exception.i"
 
 %apply unsigned int { uint32_t }
@@ -21,9 +20,6 @@
 #include "swap_inscription.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
-
-using namespace utxord;
-using namespace l15;
 
 %}
 
@@ -105,11 +101,6 @@ using namespace l15;
 
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
-
-    %typemap(out) l15::bytevector (PyObject* obj)
-    %{
-        obj = PyBytes_FromStringAndSize((const char*)($1.data()), $1.size());
-    %}
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
