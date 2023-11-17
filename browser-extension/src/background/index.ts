@@ -307,8 +307,6 @@ if (NETWORK === MAINNET){
 */
         costs = await Api.createInscriptionContract(payload.data);
         payload.data.costs = costs;
-        payload.data.errorMessage = payload.data.costs.errorMessage;
-        delete payload.data.costs['errorMessage'];
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
@@ -328,8 +326,6 @@ if (NETWORK === MAINNET){
       }
       if (payload.type === COMMIT_BUY_INSCRIPTION) {
         payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
-        payload.data.errorMessage = payload.data.costs.errorMessage;
-        delete payload.data.costs['errorMessage'];
         console.log(COMMIT_BUY_INSCRIPTION+':',payload);
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
