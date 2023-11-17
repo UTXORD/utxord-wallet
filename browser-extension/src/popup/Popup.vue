@@ -19,10 +19,12 @@ import {
   SAVE_DATA_FOR_SIGN,
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
   POPUP_HEARTBEAT,
-  DO_REFRESH_BALANCE
+  DO_REFRESH_BALANCE,
+  BALANCE_REFRESH_DONE
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 import { showError } from '~/helpers'
+import { toRefs } from 'vue'
 
 const { push } = useRouter()
 const {
@@ -32,7 +34,9 @@ const {
   saveDataForSign,
   saveDataForExportKeyPair
 } = useWallet()
+
 const store = useStore()
+const { balance, fundAddress } = toRefs(store)
 
 function redirectByQuery() {
   const pageHref = window.location.search
@@ -60,18 +64,29 @@ async function checkAuth(): Promise<boolean> {
   return false;
 }
 
-async function runHeartbeat() {
-  setInterval(() => {
-      sendMessage(POPUP_HEARTBEAT, {}, 'background')
+function runHeartbeat() {
+  setInterval(async () => {
+      await sendMessage(POPUP_HEARTBEAT, {}, 'background')
   }, 10000)
 }
 
 
+function refreshBalance() {
+  store.setSyncToFalse();
+  setTimeout(async () => {
+    await getBalance(fundAddress)  // TODO: to use fundAddress from store? (see "refresh" click handler in HomeScreen)
+    // const address = await getFundAddress();
+    // await getOrdAddress();
+    // await getBalance(address);
+  }, 3000)
+}
+
 async function init() {
   const success = await checkAuth()
   if (success) {
-    redirectByQuery()
-    await runHeartbeat()
+    redirectByQuery();
+    runHeartbeat();
+    // refreshBalance();
   } else {
     const tempMnemonic = localStorage?.getItem('temp-mnemonic')
     if (tempMnemonic) {
@@ -82,6 +97,8 @@ async function init() {
   }
 }
 
+
+
 // We have to use chrome API instead of webext-bridge module due to following issue
 // https://github.com/zikaari/webext-bridge/issues/37
 let port = chrome.runtime.connect({
@@ -89,16 +106,17 @@ let port = chrome.runtime.connect({
 });
 port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});
 port.onMessage.addListener(async function(payload) {
-  if ('DO_REFRESH_BALANCE' != payload.id) return false;
-  const address = await getFundAddress()
-  await getOrdAddress()
-  store.setRefreshingBalance();
-  await getBalance(address);
-  store.unsetRefreshingBalance();
-  return true
+  switch (payload.id) {
+    case DO_REFRESH_BALANCE: {
+      refreshBalance();
+      break;
+    }
+    case BALANCE_REFRESH_DONE: {
+      balance.value.sync = true;
+      break;
+    }
+  }
 });
-
-
 
 onMessage(EXCEPTION, (payload: any) => {
   showError(EXCEPTION, payload?.data)

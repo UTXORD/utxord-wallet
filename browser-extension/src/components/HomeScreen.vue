@@ -162,9 +162,9 @@ async function newFundAddress() {
 }
 
 function refreshBalance() {
-  store.setSyncToFalse()
-  setTimeout(() => {
-    getBalance(fundAddress)
+  store.setSyncToFalse();
+  setTimeout(async () => {
+    await getBalance(fundAddress);
   }, 1000)
 }
 

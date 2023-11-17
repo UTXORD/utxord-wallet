@@ -7,6 +7,7 @@ import {
   ADDRESSES_TO_SAVE,
   AUTH_STATUS,
   BALANCE_CHANGE_PRESUMED,
+  BALANCE_REFRESH_DONE,
   CHECK_AUTH,
   CHECK_PASSWORD,
   COMMIT_BUY_INSCRIPTION,
@@ -19,6 +20,7 @@ import {
   GET_ADDRESSES,
   GET_ALL_ADDRESSES,
   GET_BALANCE,
+  GET_BALANCES,
   GET_NETWORK,
   NEW_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
@@ -36,6 +38,7 @@ import {
   UPDATE_PASSWORD
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleState, Watchdog} from "~/background/scheduler";
+import Port = chrome.runtime.Port;
 
 if (NETWORK === MAINNET){
   if(self){
@@ -48,29 +51,34 @@ if (NETWORK === MAINNET){
 
 (async () => {
 
-  try{
+  try {
     // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
-    chrome.runtime.onConnect.addListener(async (port) => {
-      console.debug(`----- chrome.runtime.onConnect got port: ${port}`);
-      console.dir(port);
-      if ('POPUP_MESSAGING_CHANNEL' != port?.name) {
-        return false;
+    let popupPort: Port | null = null;
+    function postMessageToPopupIfOpen(msg: any) {
+      if (popupPort != null) {
+        popupPort.postMessage(msg);
       }
+    }
+
+    chrome.runtime.onConnect.addListener(async (port) => {
+      if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
+
+      popupPort = port;
+      popupPort.onDisconnect.addListener(async (port) => {
+        if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
+        Scheduler.getInstance().action = null;
+        popupPort = null;
+      })
+
       port.onMessage.addListener(async (payload) => {
-        if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) {
-          return;
-        }
-        port.postMessage({id: DO_REFRESH_BALANCE});
+        if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) return;
+
+        postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE});
         Scheduler.getInstance().action = async () => {
-          port.postMessage({id: DO_REFRESH_BALANCE});
+          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE});
         }
       });
-      port.onDisconnect.addListener(async (port) => {
-        if ('POPUP_MESSAGING_CHANNEL' == port?.name) {
-          Scheduler.getInstance().action = null;
-        }
-      })
     });
 
     const Api = await new self.Api(NETWORK);
@@ -126,7 +134,10 @@ if (NETWORK === MAINNET){
     onMessage(GET_BALANCE, async (payload: any) => {
       const balance = await Api.fetchBalance(payload.data?.address);
       setTimeout(async () => {
-              await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+        const success = await Api.checkSeed();
+        await Api.sendMessageToWebPage(AUTH_STATUS, success);
+        await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
       }, 1000);
       return balance;
     });
@@ -230,9 +241,12 @@ if (NETWORK === MAINNET){
 
       if (payload.type === SEND_BALANCES) {
         console.log('SEND_BALANCES:',payload.data)
-        if(payload.data?.addresses){
+        if (payload.data?.addresses) {
           Api.balances = payload.data;
-          Api.sync = true;
+          // -------
+          Api.sync = true;  // FIXME: seems useless, it's happening too much late
+          postMessageToPopupIfOpen({id: BALANCE_REFRESH_DONE});  // ..so using this hack
+          // -------
           Api.connect = true;
           console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
@@ -374,8 +388,8 @@ if (NETWORK === MAINNET){
     });
 
     let scheduler = Scheduler.getInstance();
-    // scheduler.schedule = defaultSchedule;
-    scheduler.schedule = debugSchedule;
+    scheduler.schedule = defaultSchedule;
+    // scheduler.schedule = debugSchedule;
 
     let watchdog = Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG);
     watchdog.onTimeoutAction = () => {
