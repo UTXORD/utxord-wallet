@@ -44,7 +44,7 @@
         class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-4 gap-1"
       >
         <div class="flex items-center">
-          <span class="mr-2 text-[var(--text-grey-color)]">Avaliable:</span>
+          <span class="mr-2 text-[var(--text-grey-color)]">Available:</span>
           <PriceComp
             class="ml-auto"
             :price="balance?.confirmed || 0"
