@@ -1,4 +1,4 @@
-export const enum ScheduleState {
+export const enum ScheduleName {
     Default = "DEFAULT",
     AddressCopied = "ADDRESS_COPIED",
     BalanceChangePresumed = "BALANCE_CHANGE_PRESUMED"
@@ -16,7 +16,7 @@ class ScheduleItem {
     }
 }
 
-type Schedule = Record <ScheduleState, ScheduleItem>;
+type Schedule = Record <ScheduleName, ScheduleItem>;
 
 
 export class Watchdog {
@@ -143,7 +143,7 @@ export class Scheduler {
                     break;
                 }
                 case this._nameOfDurationAlarm: {
-                    await this.changeStateTo(ScheduleState.Default);
+                    await this.changeScheduleTo(ScheduleName.Default);
                     break;
                 }
             }
@@ -236,7 +236,7 @@ export class Scheduler {
         await chrome.alarms.clear(this._nameOfDurationAlarm);
     }
 
-    public async changeStateTo(state: ScheduleState) {
+    public async changeScheduleTo(state: ScheduleName) {
         Scheduler._log(`--- ${new Date().toLocaleString()} changeStateTo: ${state.toString()}`);
         await this.stopRunningScheduleItem();
         if (this._schedule && this._schedule[state]) {
@@ -246,7 +246,7 @@ export class Scheduler {
 
     public async run() {
         Scheduler._log("run");
-        await this.changeStateTo(ScheduleState.Default);
+        await this.changeScheduleTo(ScheduleName.Default);
         this.activate();
     }
 
@@ -261,30 +261,30 @@ export class Scheduler {
 }
 
 export const defaultSchedule: Schedule  = {
-    [ScheduleState.Default] : new ScheduleItem(
+    [ScheduleName.Default] : new ScheduleItem(
         600,  // interval = 10 minutes
     ),
-    [ScheduleState.AddressCopied]: new ScheduleItem(
+    [ScheduleName.AddressCopied]: new ScheduleItem(
         60,  // interval = 1 minute
         1200,  // duration = 20 minutes
         120,  // first run latency = 2 minutes
     ),
-    [ScheduleState.BalanceChangePresumed]: new ScheduleItem(
+    [ScheduleName.BalanceChangePresumed]: new ScheduleItem(
         60,  // interval = 1 minute
         1200,  // duration = 20 minutes
     )
 };
 
 export const debugSchedule: Schedule  = {
-    [ScheduleState.Default] : new ScheduleItem(
+    [ScheduleName.Default] : new ScheduleItem(
         120,  // interval = 2 minutes
     ),
-    [ScheduleState.AddressCopied]: new ScheduleItem(
+    [ScheduleName.AddressCopied]: new ScheduleItem(
         60,  // interval = 1 minute
         180,  // duration = 3 minutes
         120,  // first run latency = 2 minutes
     ),
-    [ScheduleState.BalanceChangePresumed]: new ScheduleItem(
+    [ScheduleName.BalanceChangePresumed]: new ScheduleItem(
         60,  // interval = 1 minute
         180,  // duration = 3 minutes
     )

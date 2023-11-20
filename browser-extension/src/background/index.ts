@@ -37,7 +37,7 @@ import {
   UNLOAD_SEED,
   UPDATE_PASSWORD
 } from '~/config/events';
-import {debugSchedule, defaultSchedule, Scheduler, ScheduleState, Watchdog} from "~/background/scheduler";
+import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
 
 if (NETWORK === MAINNET){
@@ -216,12 +216,12 @@ if (NETWORK === MAINNET){
     });
 
     onMessage(BALANCE_CHANGE_PRESUMED, async (payload) => {
-      Scheduler.getInstance().changeStateTo(ScheduleState.BalanceChangePresumed);
+      Scheduler.getInstance().changeScheduleTo(ScheduleName.BalanceChangePresumed);
       return true;
     });
 
     onMessage(ADDRESS_COPIED, async (payload) => {
-      Scheduler.getInstance().changeStateTo(ScheduleState.AddressCopied);
+      Scheduler.getInstance().changeScheduleTo(ScheduleName.AddressCopied);
       return true;
     });
 
