@@ -971,11 +971,15 @@ selectByOrdOutput(txid, nout, inscriptions = []){
     }
   }
 //------------------------------------------------------------------------------
-async getRawTransactions(mode, builderObject){
-  const raw_size = builderObject.TransactionCount(mode);
+async getRawTransactions(builderObject, phase = undefined){
+  const raw_size = builderObject.TransactionCount(phase);
   const raw = [];
   for(let i = 0; i < raw_size; i += 1){
-    raw.push(builderObject.RawTransaction(mode, i)?.c_str())
+    if(phase!==undefined){
+      raw.push(builderObject.RawTransaction(phase, i).c_str())
+    }else{
+      raw.push(builderObject.RawTransaction(i).c_str())
+    }
   }
   return raw;
 }
@@ -1240,7 +1244,7 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
       myself.wallet.root.key,
       'ord'
     );
-    const raw = '';//await myself.getRawTransactions(sellOrd); it is not work
+    const raw = await myself.getRawTransactions(sellOrd, myself.utxord.ORD_SWAP_SIG);
     return {
       raw: raw,
       contract_data: myself.wwa.Serialize(sellOrd, 5, myself.utxord.ORD_SWAP_SIG)?.c_str()
@@ -1278,8 +1282,7 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
 
       return {
         contract_uuid: payload.swap_ord_terms.contract_uuid,
-        raw: raws[0],
-        raws: raws,
+        raw: raws,
         contracts: contract_list,
       };
 
@@ -1418,7 +1421,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         outData.errorMessage = "Insufficient funds. Please add.";
             outData.min_fund_amount = min_fund_amount;
             outData.mining_fee = Number(min_fund_amount) - Number(payload.market_fee) - Number(payload.ord_price);
-            outData.raw = []; //await myself.getRawTransactions(swapSim);
+            outData.raw = await myself.getRawTransactions(swapSim, myself.utxord.FUNDS_TERMS);
         return outData;
       }
 
@@ -1429,6 +1432,8 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         const buyOrd = myself.wwa.SwapInscriptionBuilder(myself.network);
         myself.wwa.Deserialize(buyOrd, JSON.stringify(payload.swap_ord_terms.contract));
         myself.wwa.CheckContractTerms(buyOrd, myself.utxord.FUNDS_TERMS);
+        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
+
 
         for(const fund of utxo_list){
           myself.wwa.AddFundsUTXO(
@@ -1454,7 +1459,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         outData.min_fund_amount = min_fund_amount_final;
         outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
         outData.utxo_list = utxo_list;
-        outData.raw = [];// await myself.getRawTransactions(buyOrd);
+        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
         if (utxo_list?.length < 1) {
           // setTimeout(() => {
           //   // TODO: REWORK FUNDS EXCEPTION
@@ -1469,6 +1474,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
               `${min_fund_amount_final} sat`;
           return outData;
         }
+        outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
         outData.data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_COMMIT_SIG)?.c_str();
         return outData;
     } catch (exception) {
@@ -1530,7 +1536,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         myself.wallet.root.key,
         'scrsk'
       );
-      const raw = [];// await myself.getRawTransactions(buyOrd); ///!!!!
+      const raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
       const data = myself.wwa.Serialize(buyOrd, 5, myself.utxord.FUNDS_SWAP_SIG)?.c_str();
 
       (async (data, payload) => {
