@@ -39,6 +39,8 @@ export const useStore = defineStore('store', {
   } as IStore),
   actions: {
     setBalance(value: IBalance) {
+      console.log('... store.setBalance:');
+      console.dir(value);
       this.balance = value
     },
     setFundAddress(addr: string) {

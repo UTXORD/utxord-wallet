@@ -40,7 +40,7 @@
     "@iconify/json": "^2.2.39",
     "@intlify/unplugin-vue-i18n": "^0.12.2",
     "@rushstack/eslint-patch": "^1.2.0",
-    "@types/chrome": "^0.0.225",
+    "@types/chrome": "^0.0.246",
     "@types/fs-extra": "^9.0.12",
     "@types/node": "^16.4.1",
     "@types/webextension-polyfill": "^0.10.0",

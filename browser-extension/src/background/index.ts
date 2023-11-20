@@ -1,4 +1,45 @@
-import { NETWORK, MAINNET, TESTNET, REGTEST } from '~/config/index';
+import {MAINNET, NETWORK, TESTNET} from '~/config/index';
+import {onMessage, sendMessage} from 'webext-bridge'
+import '~/background/api'
+import WinManager from '~/background/winManager';
+import {
+  ADDRESS_COPIED,
+  ADDRESSES_TO_SAVE,
+  AUTH_STATUS,
+  BALANCE_CHANGE_PRESUMED,
+  BALANCE_REFRESH_DONE,
+  CHECK_AUTH,
+  CHECK_PASSWORD,
+  COMMIT_BUY_INSCRIPTION,
+  CONNECT_TO_PLUGIN,
+  CREATE_INSCRIPTION,
+  DO_REFRESH_BALANCE,
+  EXCEPTION,
+  EXPORT_INSCRIPTION_KEY_PAIR,
+  GENERATE_MNEMONIC,
+  GET_ADDRESSES,
+  GET_ALL_ADDRESSES,
+  GET_BALANCE,
+  GET_BALANCES,
+  GET_NETWORK,
+  NEW_FUND_ADDRESS,
+  OPEN_EXPORT_KEY_PAIR_SCREEN,
+  PLUGIN_ID,
+  PLUGIN_PUBLIC_KEY,
+  POPUP_HEARTBEAT,
+  SAVE_DATA_FOR_EXPORT_KEY_PAIR,
+  SAVE_DATA_FOR_SIGN,
+  SAVE_GENERATED_SEED,
+  SELL_INSCRIPTION,
+  SEND_BALANCES,
+  SUBMIT_SIGN,
+  UNLOAD,
+  UNLOAD_SEED,
+  UPDATE_PASSWORD
+} from '~/config/events';
+import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
+import Port = chrome.runtime.Port;
+
 if (NETWORK === MAINNET){
   if(self){
     self['console']['log'] =
@@ -8,43 +49,38 @@ if (NETWORK === MAINNET){
   }
 }
 
-import { onMessage, sendMessage } from 'webext-bridge'
-import '~/background/api'
-import WinManager from '~/background/winManager';
-import {
-    EXCEPTION,
-    SAVE_GENERATED_SEED,
-    CHECK_AUTH,
-    UNLOAD_SEED,
-    CONNECT_TO_PLUGIN,
-    CREATE_INSCRIPTION,
-    SELL_INSCRIPTION,
-    COMMIT_BUY_INSCRIPTION,
-    NEW_FUND_ADDRESS,
-    GET_BALANCE,
-    GET_BALANCES,
-    GET_ADDRESSES,
-    GET_ALL_ADDRESSES,
-    SAVE_DATA_FOR_SIGN,
-    SAVE_DATA_FOR_EXPORT_KEY_PAIR,
-    OPEN_EXPORT_KEY_PAIR_SCREEN,
-    SUBMIT_SIGN,
-    PLUGIN_ID,
-    PLUGIN_PUBLIC_KEY,
-    AUTH_STATUS,
-    ADDRESSES_TO_SAVE,
-    UNLOAD,
-    GENERATE_MNEMONIC,
-    UPDATE_PASSWORD,
-    CHECK_PASSWORD,
-    SEND_BALANCES,
-    GET_NETWORK,
-    OPEN_START_PAGE,
-    EXPORT_INSCRIPTION_KEY_PAIR
-} from '~/config/events';
-
 (async () => {
- try{
+
+  try {
+    // We have to use chrome API instead of webext-bridge module due to following issue
+    // https://github.com/zikaari/webext-bridge/issues/37
+    let popupPort: Port | null = null;
+    function postMessageToPopupIfOpen(msg: any) {
+      if (popupPort != null) {
+        popupPort.postMessage(msg);
+      }
+    }
+
+    chrome.runtime.onConnect.addListener(async (port) => {
+      if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
+
+      popupPort = port;
+      popupPort.onDisconnect.addListener(async (port) => {
+        if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
+        Scheduler.getInstance().action = null;
+        popupPort = null;
+      })
+
+      port.onMessage.addListener(async (payload) => {
+        if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) return;
+
+        postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE});
+        Scheduler.getInstance().action = async () => {
+          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE});
+        }
+      });
+    });
+
     const Api = await new self.Api(NETWORK);
     if(NETWORK === TESTNET){
       self.api = Api; // for debuging in devtols
@@ -95,15 +131,18 @@ import {
       return success;
     });
 
-    onMessage(GET_BALANCE, (payload: any) => {
-      const balance = Api.fetchBalance(payload.data?.address);
+    onMessage(GET_BALANCE, async (payload: any) => {
+      const balance = await Api.fetchBalance(payload.data?.address);
       setTimeout(async () => {
-              await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+        const success = await Api.checkSeed();
+        await Api.sendMessageToWebPage(AUTH_STATUS, success);
+        await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
       }, 1000);
       return balance;
     });
 
-    onMessage(GET_ADDRESSES, async() => {
+    onMessage(GET_ADDRESSES, async () => {
       const {addresses} = await Api.genKeys();
       console.log('addresses:',addresses)
       return addresses;
@@ -170,6 +209,22 @@ import {
       }
     });
 
+    onMessage(POPUP_HEARTBEAT, async (payload) => {
+      Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG).reset();
+      Scheduler.getInstance().activate();
+      return true;
+    });
+
+    onMessage(BALANCE_CHANGE_PRESUMED, async (payload) => {
+      Scheduler.getInstance().changeScheduleTo(ScheduleName.BalanceChangePresumed);
+      return true;
+    });
+
+    onMessage(ADDRESS_COPIED, async (payload) => {
+      Scheduler.getInstance().changeScheduleTo(ScheduleName.AddressCopied);
+      return true;
+    });
+
     chrome.runtime.onConnect.addListener(port => {
       port.onDisconnect.addListener(() => {})
     })
@@ -186,9 +241,12 @@ import {
 
       if (payload.type === SEND_BALANCES) {
         console.log('SEND_BALANCES:',payload.data)
-        if(payload.data?.addresses){
+        if (payload.data?.addresses) {
           Api.balances = payload.data;
-          Api.sync = true;
+          // -------
+          Api.sync = true;  // FIXME: seems useless, it's happening too much late
+          postMessageToPopupIfOpen({id: BALANCE_REFRESH_DONE});  // ..so using this hack
+          // -------
           Api.connect = true;
           console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
@@ -209,7 +267,7 @@ import {
         console.log('Api.checkAddresess:',check)
         if(!check){
           setTimeout(async () => {
-                  console.log('ADDRESSES_TO_SAVE:',Api.addresses);
+                  // console.log('ADDRESSES_TO_SAVE:',Api.addresses);
                   await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
           }, 100);
         }
@@ -292,9 +350,6 @@ import {
           Api.wallet.tmp = ''
         }
       }
-      if (payload.type === OPEN_START_PAGE) {
-        winManager.openWindow('start');
-      }
     })
 
     // SET PLUGIN ID TO WEB PAGE
@@ -316,20 +371,30 @@ import {
     chrome.tabs.onReplaced.addListener(sendhello);
 
 
-    async function listener(index: number) {
-      const success = await Api.checkSeed();
-      await Api.sendMessageToWebPage(AUTH_STATUS, success);
-      await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
-      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
-
-    }
-    let index = 0
-    chrome.alarms.create("listener", { periodInMinutes: 0.2 });
-    chrome.alarms.onAlarm.addListener(function() {
-      listener(index);
-      index++;
+    let alarmName = "utxord_wallet.alarm.balance_refresh_main_schedule";
+    await chrome.alarms.clear(alarmName);
+    await chrome.alarms.create(alarmName, { periodInMinutes: 10 });
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+      if (alarm.name == alarmName) {
+        const success = await Api.checkSeed();
+        await Api.sendMessageToWebPage(AUTH_STATUS, success);
+        // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+        // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+      }
     });
-  }catch(e){
+
+    let scheduler = Scheduler.getInstance();
+    scheduler.schedule = defaultSchedule;
+    // scheduler.schedule = debugSchedule;
+
+    let watchdog = Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG);
+    watchdog.onTimeoutAction = () => {
+      scheduler.deactivate();
+    };
+    await scheduler.run();
+    await watchdog.run();
+
+  } catch (e) {
     console.log('background:index.ts:',e);
   }
 })();

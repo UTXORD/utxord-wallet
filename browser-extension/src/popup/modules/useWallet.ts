@@ -36,11 +36,11 @@ async function getNetWork(){
   async function getBalance(address: string) {
     if (address) {
       try {
-        const success = await sendMessage(GET_BALANCE, {
+        const balance = await sendMessage(GET_BALANCE, {
           address,
         }, 'background')
-        if (success) {
-          store.setBalance(success?.data)
+        if (balance) {
+          store.setBalance(balance?.data)
         }
       } catch(e) {
         console.log('getBalance->error:',e);

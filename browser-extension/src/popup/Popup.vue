@@ -17,10 +17,14 @@ import {
   CHECK_AUTH,
   EXCEPTION,
   SAVE_DATA_FOR_SIGN,
-  SAVE_DATA_FOR_EXPORT_KEY_PAIR
+  SAVE_DATA_FOR_EXPORT_KEY_PAIR,
+  POPUP_HEARTBEAT,
+  DO_REFRESH_BALANCE,
+  BALANCE_REFRESH_DONE
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 import { showError } from '~/helpers'
+import { toRefs } from 'vue'
 
 const { push } = useRouter()
 const {
@@ -30,7 +34,9 @@ const {
   saveDataForSign,
   saveDataForExportKeyPair
 } = useWallet()
+
 const store = useStore()
+const { balance, fundAddress } = toRefs(store)
 
 function redirectByQuery() {
   const pageHref = window.location.search
@@ -55,26 +61,32 @@ async function checkAuth(): Promise<boolean> {
     showError(EXCEPTION, error.message)
     console.log(error)
   }
+  return false;
 }
 
-async function updateBalance() {
-  const address = await getFundAddress()
-  await getOrdAddress()
-  getBalance(address)
+function runHeartbeat() {
   setInterval(async () => {
-    store.setRefreshingBalance()
-    setTimeout(() => {
-      getBalance(address)
-      store.unsetRefreshingBalance()
-    }, 1000)
-  }, 5000)
+      await sendMessage(POPUP_HEARTBEAT, {}, 'background')
+  }, 10000)
+}
+
+
+function refreshBalance() {
+  store.setSyncToFalse();
+  setTimeout(async () => {
+    await getBalance(fundAddress)  // TODO: to use fundAddress from store? (see "refresh" click handler in HomeScreen)
+    // const address = await getFundAddress();
+    // await getOrdAddress();
+    // await getBalance(address);
+  }, 3000)
 }
 
 async function init() {
   const success = await checkAuth()
   if (success) {
-    redirectByQuery()
-    updateBalance()
+    redirectByQuery();
+    runHeartbeat();
+    // refreshBalance();
   } else {
     const tempMnemonic = localStorage?.getItem('temp-mnemonic')
     if (tempMnemonic) {
@@ -85,22 +97,48 @@ async function init() {
   }
 }
 
+
+
+// We have to use chrome API instead of webext-bridge module due to following issue
+// https://github.com/zikaari/webext-bridge/issues/37
+let port = chrome.runtime.connect({
+    name: 'POPUP_MESSAGING_CHANNEL'
+});
+port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});
+port.onMessage.addListener(async function(payload) {
+  switch (payload.id) {
+    case DO_REFRESH_BALANCE: {
+      refreshBalance();
+      break;
+    }
+    case BALANCE_REFRESH_DONE: {
+      balance.value.sync = true;
+      break;
+    }
+  }
+});
+
 onMessage(EXCEPTION, (payload: any) => {
   showError(EXCEPTION, payload?.data)
   return true
 })
 
 onMessage(SAVE_DATA_FOR_SIGN, (payload) => {
-  saveDataForSign(payload.data)
+  saveDataForSign(payload.data || {})
   return true
 })
 
 onMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, (payload) => {
-  saveDataForExportKeyPair(payload.data)
+  saveDataForExportKeyPair(payload.data || {})
   return true
 })
 
 onBeforeMount(() => {
+  console.log('===== onBeforeMount');
   init()
+})
+
+onBeforeUnmount(() => {
+  console.log('===== onBeforeUnmount');
 })
 </script>
