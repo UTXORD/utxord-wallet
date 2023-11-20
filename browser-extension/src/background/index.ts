@@ -60,7 +60,7 @@ import {
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       await Api.genKeys();
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
+      if(Api.wallet.auth.key) await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wwa.PubKey(Api.wallet.auth.key));
       return await Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {
@@ -250,7 +250,7 @@ import {
         costs = await Api.createInscriptionContract(payload.data);
         payload.data.costs = costs;
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
-        delete payload.data.costs['errorMessage'];
+        if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
@@ -271,7 +271,7 @@ import {
       if (payload.type === COMMIT_BUY_INSCRIPTION) {
         payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
-        delete payload.data.costs['errorMessage'];
+        if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
         console.log(COMMIT_BUY_INSCRIPTION+':',payload);
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
@@ -306,10 +306,10 @@ import {
       // const [tab] = await chrome.tabs.query({ active: true });
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) return;
 
-      console.log(PLUGIN_ID, chrome.runtime.id);
-      console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
+      // console.log(PLUGIN_ID, chrome.runtime.id);
+      // console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
+      if(Api.wallet.auth.key) await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wwa.PubKey(Api.wallet.auth.key));
       return true;
     }
 
