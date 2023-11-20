@@ -1062,8 +1062,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     )?.c_str()))
     outData.amount = min_fund_amount;
     if(!myself.fundings.length ){
-        outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
-            "wait for several conformations or wait update on the server.";
+        outData.errorMessage = "Insufficient funds. Please add.";
         outData.raw = await myself.getRawTransactions(myself.utxord.INSCRIPTION, newOrd);
         return outData;
      }
@@ -1416,8 +1415,7 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
         // );
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
-            "wait for several conformations or wait update on the server";
+        outData.errorMessage = "Insufficient funds. Please add.";
             outData.min_fund_amount = min_fund_amount;
             outData.mining_fee = Number(min_fund_amount) - Number(payload.market_fee) - Number(payload.ord_price);
             outData.raw = []; //await myself.getRawTransactions(swapSim);
