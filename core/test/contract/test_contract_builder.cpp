@@ -11,13 +11,15 @@
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
 #include "wallet_api.hpp"
-#include "channel_keys.hpp"
 #include "exechelper.hpp"
 #include "inscription.hpp"
+
+#include "contract_builder.hpp"
 
 #include "policy/policy.h"
 
 #include "test_case_wrapper.hpp"
+#include "univalue.h"
 
 using namespace l15;
 using namespace l15::core;
@@ -119,5 +121,112 @@ TEST_CASE("Fee")
     CAmount double_vout_fee = CalculateTxFee(1000, tx);
     std::clog << "Taproot vout vsize: " << (double_vout_fee - double_vin_fee) << std::endl;
 
+    CMutableTransaction p2wpkhtx;
+    p2wpkhtx.vin.emplace_back(uint256(), 0);
+    p2wpkhtx.vin.back().scriptWitness.stack.emplace_back(unhex<bytevector>("30440220744cd353daa4c84042229bfdb5f95f4e374fe32f43f16c984f82ab11f0cfa5b1022018d50cdd78bc1cf9e9b8f6119188972934ace1bbf67b581bf9b64663dbd8e04201"));
+    p2wpkhtx.vin.back().scriptWitness.stack.emplace_back(unhex<bytevector>("025d4d8d0b078bb360a50682e39bd6cca383f13f620262c90e4b329b41e92a283d"));
+
+    CAmount p2wpkh_fee = CalculateTxFee(1000, p2wpkhtx);
+
+    std::clog << "P2WPKH vin vsize: " << (p2wpkh_fee - base_fee) << std::endl;
+
 }
+
+class TestContractBuilder : public ContractBuilder
+{
+public:
+    explicit TestContractBuilder(utxord::ChainMode chain_mode) : ContractBuilder((chain_mode == REGTEST) ?
+                                                                                   Bech32(utxord::Hrp<REGTEST>()) :
+                                                                                        ((chain_mode == TESTNET) ?
+                                                                                         Bech32(utxord::Hrp<TESTNET>()) :
+                                                                                         Bech32(utxord::Hrp<MAINNET>()))) {}
+    std::string GetMinFundingAmount(const std::string& params) const override
+    { return "0"; }
+};
+
+TEST_CASE("DeserializeContractAmount")
+{
+    const char* json = R"({"num_amount":1000, "str_amount":"0.00001", "wrong_amount":"wrong"})";
+    UniValue val;
+    val.read(json);
+
+    std::optional<CAmount> from_num;
+    std::optional<CAmount> from_str;
+    std::optional<CAmount> another_amount = -1;
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["not_exist"], from_num, [](){ return "not_exist"; }));
+    CHECK(!from_num.has_value());
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
+    CHECK(*from_num == 1000);
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
+    CHECK(*from_num == 1000);
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["num_amount"], another_amount, [](){ return "num_amount"; }), ContractTermMismatch);
+    CHECK(*another_amount == -1);
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
+    CHECK(*from_str == 1000);
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
+    CHECK(*from_str == 1000);
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["str_amount"], another_amount, [](){ return "str_amount"; }), ContractTermMismatch);
+    CHECK(*another_amount == -1);
+
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["wrong_amount"], another_amount, [](){ return "wrong_amount"; }), ContractTermWrongValue);
+    CHECK(*another_amount == -1);
+}
+
+TEST_CASE("DeserializeContractString")
+{
+    const char* json = R"({"str":"test", "num":0.00001, "json":"{\"key\":\"value\"}"})";
+    UniValue val;
+    val.read(json);
+
+    std::optional<std::string> raw_str;
+    std::optional<std::string> raw_json;
+    std::optional<std::string> another_str = "bla";
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["not_exist"], raw_str, [](){ return "not_exist"; }));
+    CHECK(!raw_str.has_value());
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
+    CHECK(*raw_str == "test");
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
+    CHECK(*raw_str == "test");
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractString(val["json"], raw_str, [](){ return "json"; }), ContractTermMismatch);
+    CHECK(*raw_str == "test");
+
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
+    CHECK(*raw_json == "{\"key\":\"value\"}");
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
+    CHECK(*raw_json == "{\"key\":\"value\"}");
+
+    UniValue json_val;
+    CHECK(json_val.read(*raw_json));
+    CHECK(json_val["key"].get_str() == "value");
+}
+
+TEST_CASE("DeserializeContractHexData")
+{
+    const char* json = R"({"pubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4","longpubkey":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa49988","sig":"f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4"})";
+
+    UniValue val;
+    CHECK(val.read(json));
+
+    std::optional<xonly_pubkey> pk;
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
+    CHECK(pk.has_value());
+    CHECK(hex(*pk) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
+    CHECK(hex(*pk) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+
+    std::optional<xonly_pubkey> long_pk;
+    CHECK_THROWS_AS(ContractBuilder::DeserializeContractHexData(val["longpubkey"], long_pk, [](){ return "longpubkey"; }), ContractTermWrongValue);
+    CHECK(!long_pk.has_value());
+
+    std::optional<signature> sig;
+    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["sig"], sig, [](){ return "sig"; }));
+    CHECK(sig.has_value());
+    CHECK(hex(*sig) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
+}
+
 
