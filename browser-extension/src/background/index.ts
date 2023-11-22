@@ -24,6 +24,7 @@ import {
   GET_NETWORK,
   NEW_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
+  PLUGIN_CONNECTED,
   PLUGIN_ID,
   PLUGIN_PUBLIC_KEY,
   POPUP_HEARTBEAT,
@@ -236,7 +237,10 @@ if (NETWORK === MAINNET){
       }
 
       if (payload.type === CONNECT_TO_PLUGIN) {
-        await Api.signToChallenge(payload.data, tabId)
+        let success = Api.signToChallenge(payload.data, tabId);
+        if (success) {
+          postMessageToPopupIfOpen({id: PLUGIN_CONNECTED});
+        }
       }
 
       if (payload.type === SEND_BALANCES) {
@@ -244,10 +248,10 @@ if (NETWORK === MAINNET){
         if (payload.data?.addresses) {
           Api.balances = payload.data;
           // -------
-          Api.sync = true;  // FIXME: seems useless, it's happening too much late
+          Api.sync = true;    // FIXME: seems useless because happening too much late.
+          Api.connect = true; // FIXME: However it's working for ome reason in v1.1.5
           postMessageToPopupIfOpen({id: BALANCE_REFRESH_DONE});  // ..so using this hack
           // -------
-          Api.connect = true;
           console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
           Api.inscriptions = await Api.freeBalance(Api.inscriptions);
