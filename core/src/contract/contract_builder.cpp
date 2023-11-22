@@ -40,7 +40,7 @@ UniValue WitnessStack::MakeJson() const
 void WitnessStack::ReadJson(const UniValue &stack)
 {
     if (!stack.isArray()) {
-        throw ContractTermWrongValue(std::string(ContractInput::name_witness));
+        throw ContractTermWrongValue(std::string(TxInput::name_witness));
     }
 
     size_t i = 0;
@@ -50,7 +50,7 @@ void WitnessStack::ReadJson(const UniValue &stack)
         }
 
         if (i < m_stack.size()) {
-            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch(move(((ContractInput::name_witness + '[') += std::to_string(i)) += ']'));
+            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch(move(((TxInput::name_witness + '[') += std::to_string(i)) += ']'));
         }
         else {
             m_stack.emplace_back(unhex<bytevector>(v.get_str()));
@@ -61,9 +61,9 @@ void WitnessStack::ReadJson(const UniValue &stack)
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-const std::string ContractInput::name_witness = "witness";
+const std::string TxInput::name_witness = "witness";
 
-UniValue ContractInput::MakeJson() const
+UniValue TxInput::MakeJson() const
 {
     // Do not serialize underlying contract as transaction input: copy it as UTXO and write UTXO related values only
     // Lazy mode copy of an UTXO state is used to allow early-set of not completed contract as the input at any time
@@ -76,13 +76,18 @@ UniValue ContractInput::MakeJson() const
     return json;
 }
 
-void ContractInput::ReadJson(const UniValue &json)
+void TxInput::ReadJson(const UniValue &json)
 {
-    output = std::make_shared<UTXO>(bech32, json);
+    if (output) {
+        auto new_output = std::make_shared<UTXO>(bech32, json);
+        if (new_output->TxID() != output->TxID() || new_output->NOut() != output->NOut()) throw ContractTermMismatch("tx input"/*move((name_swap_inputs + '[') += std::to_string(i) += ']')*/);
+    }
+    else {
+        output = std::make_shared<UTXO>(bech32, json);
+    }
 
     {   const UniValue& val = json[name_witness];
         if (!val.isNull()) {
-            if (!val.isArray()) throw ContractTermWrongValue(name_witness.c_str());
             witness.ReadJson(val);
         }
     }
@@ -271,15 +276,12 @@ const std::string ContractBuilder::name_addr = "addr";
 const std::string ContractBuilder::name_sig = "sig";
 const std::string ContractBuilder::name_change_addr = "change_addr";
 
+const std::string ContractBuilder::FEE_OPT_HAS_CHANGE = "change";
+const std::string ContractBuilder::FEE_OPT_HAS_COLLECTION = "collection";
+const std::string ContractBuilder::FEE_OPT_HAS_XTRA_UTXO = "extra_utxo";
+const std::string ContractBuilder::FEE_OPT_HAS_P2WPKH_INPUT = "p2wpkh_utxo";
 
-CAmount ContractBuilder::CalculateWholeFee(const std::string& params) const {
-    auto txs = GetTransactions();
-    return std::accumulate(txs.begin(), txs.end(), CAmount(0), [](CAmount sum, const auto &tx) {
-        return sum + l15::CalculateTxFee(tx.first, tx.second);
-    });
-}
-
-void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script)
+void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script)
 {
     if (sig.size() != 64 && sig.size() != 65) throw SignatureError("sig size");
 
@@ -316,7 +318,7 @@ void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature&
     }
 }
 
-void ContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs) const
+void ContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const
 {
     uint32_t witver;
     bytevector keyid;
@@ -408,6 +410,24 @@ void ContractBuilder::DeserializeContractTaprootPubkey(const UniValue &val, std:
             if (*addr != str) throw ContractTermMismatch(move((lazy_name() += " is already set: ") += *addr));
         } else {
             addr = move(str);
+        }
+    }
+}
+
+void ContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std::optional<xonly_pubkey> &pk, std::function<std::string()> lazy_name) {
+    if (!val.isNull()) {
+        xonly_pubkey new_pk;
+        try {
+            new_pk = unhex<xonly_pubkey>(val.get_str());
+        }
+        catch (...) {
+            std::throw_with_nested(ContractTermWrongValue(lazy_name()));
+        }
+
+        if (pk) {
+            if (*pk != new_pk) throw ContractTermMismatch(move((lazy_name() += " is already set: ") += hex(*pk)));
+        } else {
+            pk = move(new_pk);
         }
     }
 }

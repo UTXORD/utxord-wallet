@@ -10,7 +10,7 @@
 
 namespace utxord {
 
-class SimpleTransaction: public ContractBuilder, public IContractOutput
+class SimpleTransaction: public ContractBuilder, public IContractMultiOutput, public IJsonSerializable
 {
 public:
     static const std::string name_outputs;
@@ -18,10 +18,9 @@ public:
 private:
     static const uint32_t m_protocol_version;
 
-    std::vector<ContractInput> m_inputs;
+    std::vector<TxInput> m_inputs;
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
 
-    CMutableTransaction MakeTx() const;
 public:
     explicit SimpleTransaction(Bech32 bech) : ContractBuilder(bech) {}
     //explicit SimpleTransaction(ChainMode m) : SimpleTransaction(Bech32(m)) {}
@@ -39,6 +38,7 @@ public:
     uint32_t GetProtocolVersion() const
     { return m_protocol_version; }
 
+    CAmount CalculateWholeFee(const std::string& params) const override;
     std::string GetMinFundingAmount(const std::string& params) const override;
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
@@ -47,31 +47,31 @@ public:
     void AddOutput(std::shared_ptr<IContractDestination> destination)
     { m_outputs.emplace_back(move(destination)); }
 
-    const std::vector<ContractInput>& Inputs() const { return m_inputs; }
-    std::vector<ContractInput>& Inputs() { return m_inputs; }
-    const std::vector<std::shared_ptr<IContractDestination>> Outputs() const { return m_outputs; }
-    std::vector<std::shared_ptr<IContractDestination>> Outputs() { return m_outputs; }
-
+    const std::vector<TxInput>& Inputs() const { return m_inputs; }
+    std::vector<TxInput>& Inputs() { return m_inputs; }
+    const std::vector<std::shared_ptr<IContractDestination>>& Outputs() const { return m_outputs; }
+    std::vector<std::shared_ptr<IContractDestination>>& Outputs() { return m_outputs; }
 
     void AddChangeOutput(const std::string& addr);
 
     void Sign(const KeyRegistry& master_key, const std::string key_filter_tag);
 
+    void CheckSig() const;
+
     std::vector<std::string> RawTransactions() const;
 
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
+    UniValue MakeJson() const;
+    void ReadJson(const UniValue& json);
+
+    CMutableTransaction MakeTxTemplate() const;
+    CMutableTransaction MakeTx() const;
 
     std::string TxID() const override
     { return MakeTx().GetHash().GetHex(); }
-    uint32_t NOut() const override
-    { return 0; }
 
-    const std::shared_ptr<IContractDestination>& Destination() const override
-    { return const_cast<SimpleTransaction*>(this)->Destination(); }
+    std::vector<std::shared_ptr<IContractDestination>> Destinations() const override
+    { return std::vector<std::shared_ptr<IContractDestination>>(m_outputs.begin(), m_outputs.end()); }
 
-    std::shared_ptr<IContractDestination>& Destination() override
-    { return m_outputs[NOut()]; }
 };
 
 } // l15::utxord

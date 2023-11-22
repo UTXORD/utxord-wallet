@@ -16,6 +16,7 @@
 
 #include "inscription_common.hpp"
 #include "contract_builder.hpp"
+#include "policy.h"
 
 namespace utxord {
 
@@ -116,10 +117,6 @@ const std::string CreateInscriptionBuilder::name_destination_addr = "destination
 //const std::string CreateInscriptionBuilder::name_collection_commit_sig = "collection_commit_sig";
 //const std::string CreateInscriptionBuilder::name_collection_out_pk = "collection_out_pk";
 
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_CHANGE = "change";
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_COLLECTION = "collection";
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_XTRA_UTXO = "extra_utxo";
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_P2WPKH_INPUT = "p2wpkh_utxo";
 
 void CreateInscriptionBuilder::AddUTXO(const std::string &txid, uint32_t nout,
                                                             const std::string& amount,
@@ -309,7 +306,7 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
     switch (phase) {
     case INSCRIPTION_SIGNATURE:
         if (m_collection_input) {
-            if (!m_collection_input->witness) throw ContractTermMissing(name_collection + '.' + ContractInput::name_witness);
+            if (!m_collection_input->witness) throw ContractTermMissing(name_collection + '.' + TxInput::name_witness);
         }
         //no break
     case LASY_COLLECTION_INSCRIPTION_SIGNATURE:
@@ -620,7 +617,7 @@ const CMutableTransaction& CreateInscriptionBuilder::GenesisTx() const
     if (!mGenesisTx) {
         if (!m_inscribe_script_sig) throw ContractStateError(std::string(name_inscribe_sig));
         if (m_collection_input && !m_collection_input->output) throw ContractStateError(name_collection + '.' + name_sig);
-        if (m_collection_input && !m_collection_input->witness) throw ContractStateError(name_collection + '.' + ContractInput::name_witness);
+        if (m_collection_input && !m_collection_input->witness) throw ContractStateError(name_collection + '.' + TxInput::name_witness);
         if (m_collection_input && !m_collection_mining_fee_sig) throw ContractStateError(std::string(name_collection_mining_fee_sig));
 
         mGenesisTx = MakeGenesisTx(false);
@@ -688,7 +685,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx(bool for_inscribe_si
     }
 
     for (const auto& out: genesis_tx.vout) {
-        if (out.nValue < Dust(3000))
+        if (out.nValue < Dust(DUST_RELAY_TX_FEE))
             throw ContractStateError(move((std::string("Funds not enough: out[") += std::to_string(&out - genesis_tx.vout.data()) += "]: ") += std::to_string(out.nValue)));
     }
 

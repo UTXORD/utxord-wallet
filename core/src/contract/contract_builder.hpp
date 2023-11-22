@@ -203,15 +203,35 @@ public:
 };
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-class IContractOutput: public IJsonSerializable{
+class IContractMultiOutput {
+public:
+    virtual std::string TxID() const = 0;
+    virtual std::vector<std::shared_ptr<IContractDestination>> Destinations() const = 0;
+};
+
+class IContractOutput {
 public:
     virtual std::string TxID() const = 0;
     virtual uint32_t NOut() const = 0;
-    virtual const std::shared_ptr<IContractDestination>& Destination() const = 0;
-    virtual std::shared_ptr<IContractDestination>& Destination() = 0;
+    virtual const std::shared_ptr<IContractDestination> Destination() const = 0;
+    virtual std::shared_ptr<IContractDestination> Destination() = 0;
 };
 
-class UTXO: public IContractOutput
+class ContractOutput : public IContractOutput {
+    std::shared_ptr<IContractMultiOutput> m_contract;
+    uint32_t m_nout;
+public:
+    ContractOutput(std::shared_ptr<IContractMultiOutput> contract, uint32_t nout) : m_contract(move(contract)), m_nout(nout) {}
+    ContractOutput(const ContractOutput&) = default;
+    ContractOutput(ContractOutput&&) noexcept = default;
+
+    std::string TxID() const override { return m_contract->TxID(); }
+    uint32_t NOut() const override { return m_nout; }
+    const std::shared_ptr<IContractDestination> Destination() const override { return m_contract->Destinations()[m_nout]; }
+    std::shared_ptr<IContractDestination> Destination() override { return m_contract->Destinations()[m_nout]; }
+};
+
+class UTXO: public IContractOutput, public IJsonSerializable
 {
 public:
     static const std::string name_txid;
@@ -229,8 +249,14 @@ public:
     UTXO(Bech32 bech, std::string txid, uint32_t nout, CAmount amount, std::string addr)
         : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(bech, amount, move(addr))) {}
 
+    UTXO(Bech32 bech, std::string txid, uint32_t nout, std::shared_ptr<IContractDestination> destination)
+        : mBech(bech), m_txid(txid), m_nout(nout), m_destination(move(destination)) {}
+
     UTXO(Bech32 bech, const IContractOutput& out)
         : mBech(bech), m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
+
+    UTXO(Bech32 bech, const IContractMultiOutput& out, uint32_t nout)
+        : mBech(bech), m_txid(out.TxID()), m_nout(nout), m_destination(out.Destinations()[nout]) {}
 
     UTXO(ChainMode m, std::string txid, uint32_t nout, CAmount amount, std::string addr)
         : UTXO(Bech32(m), move(txid), nout, amount, move(addr)) {}
@@ -247,9 +273,9 @@ public:
     uint32_t NOut() const final
     { return  m_nout; }
 
-    const std::shared_ptr<IContractDestination>& Destination() const final
+    const std::shared_ptr<IContractDestination> Destination() const final
     { return m_destination; }
-    std::shared_ptr<IContractDestination>& Destination() final
+    std::shared_ptr<IContractDestination> Destination() final
     { return m_destination; }
 
     UniValue MakeJson() const override;
@@ -281,7 +307,7 @@ public:
 };
 
 
-struct ContractInput : public IJsonSerializable
+struct TxInput : public IJsonSerializable
 {
     static const std::string name_witness;
 
@@ -290,12 +316,14 @@ struct ContractInput : public IJsonSerializable
     std::shared_ptr<IContractOutput> output;
     WitnessStack witness;
 
-    explicit ContractInput(Bech32 bech, uint32_t n, std::shared_ptr<IContractOutput> prevout) : bech32(bech), nin(n), output(move(prevout)) {}
-    explicit ContractInput(Bech32 bech, uint32_t n, const UniValue& json) : bech32(bech), nin(n)
-    { ContractInput::ReadJson(json); }
+    explicit TxInput(Bech32 bech, uint32_t n, std::shared_ptr<IContractOutput> prevout) : bech32(bech), nin(n), output(move(prevout)) {}
+    explicit TxInput(Bech32 bech, uint32_t n, const UniValue& json) : bech32(bech), nin(n)
+    { TxInput::ReadJson(json); }
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& data) override;
+
+    bool operator<(const TxInput& r) const { return nin < r.nin; }
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -326,16 +354,16 @@ protected:
     static const CAmount P2WPKH_VIN_VSIZE = 69;
     static const CAmount MIN_TAPROOT_TX_VSIZE = TX_BASE_VSIZE + TAPROOT_VOUT_VSIZE + TAPROOT_KEYSPEND_VIN_VSIZE;
 
+    static const std::string FEE_OPT_HAS_CHANGE;
+    static const std::string FEE_OPT_HAS_COLLECTION;
+    static const std::string FEE_OPT_HAS_XTRA_UTXO;
+    static const std::string FEE_OPT_HAS_P2WPKH_INPUT;
+
     Bech32 mBech;
 
     std::optional<CAmount> m_mining_fee_rate;
     std::shared_ptr<IContractDestination> m_market_fee;
     std::optional<std::string> m_change_addr;
-
-    virtual CAmount CalculateWholeFee(const std::string& params) const;
-
-    ///deprecated
-    virtual std::vector<std::pair<CAmount,CMutableTransaction>> GetTransactions() const { return {}; };
 
 public:
     //ContractBuilder() = default;
@@ -371,6 +399,7 @@ public:
         m_change_addr = addr;
     }
 
+    virtual CAmount CalculateWholeFee(const std::string& params) const = 0;
     virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
 
     std::string GetNewInputMiningFee();
@@ -379,12 +408,13 @@ public:
     std::string GetMiningFeeRate() const { return l15::FormatAmount(m_mining_fee_rate.value()); }
     void SetMiningFeeRate(const std::string& v) { m_mining_fee_rate = l15::ParseAmount(v); }
 
-    static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script);
-    void VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs) const;
+    static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script);
+    void VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const;
 
     static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
     static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
     void DeserializeContractTaprootPubkey(const UniValue& val, std::optional<std::string> &addr, std::function<std::string()> lazy_name);
+    void DeserializeContractScriptPubkey(const UniValue& val, std::optional<xonly_pubkey> &pk, std::function<std::string()> lazy_name);
 
     template <typename HEX>
     static void DeserializeContractHexData(const UniValue& val, std::optional<HEX> &target, std::function<std::string()> lazy_name)

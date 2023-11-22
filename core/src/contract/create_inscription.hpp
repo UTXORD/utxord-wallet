@@ -28,11 +28,6 @@ enum InscribePhase { MARKET_TERMS, LASY_COLLECTION_MARKET_TERMS, LASY_COLLECTION
 
 class CreateInscriptionBuilder: public ContractBuilder
 {
-    static const std::string FEE_OPT_HAS_CHANGE;
-    static const std::string FEE_OPT_HAS_COLLECTION;
-    static const std::string FEE_OPT_HAS_XTRA_UTXO;
-    static const std::string FEE_OPT_HAS_P2WPKH_INPUT;
-
     static const CAmount COLLECTION_SCRIPT_ADD_VSIZE = 18;
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
@@ -43,11 +38,11 @@ class CreateInscriptionBuilder: public ContractBuilder
     InscribeType m_type;
     std::optional<CAmount> m_ord_amount;
 
-    std::list<ContractInput> m_inputs;
-    std::list<ContractInput> m_extra_inputs;
+    std::list<TxInput> m_inputs;
+    std::list<TxInput> m_extra_inputs;
 
     std::optional<std::string> m_parent_collection_id;
-    std::optional<ContractInput> m_collection_input;
+    std::optional<TxInput> m_collection_input;
 
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
@@ -78,7 +73,6 @@ private:
 
     const CScript& GetInscriptionScript() const;
     std::vector<CTxOut> GetGenesisTxSpends() const;
-    CAmount CalculateWholeFee(const std::string& params) const override;
 
     CMutableTransaction MakeCommitTx() const;
     CMutableTransaction MakeGenesisTx(bool for_inscribe_signature) const;
@@ -170,6 +164,7 @@ public:
     void SignCollection(const KeyRegistry &master_key, const std::string& key_filter);
     void SignFundMiningFee(const KeyRegistry& master_key, const std::string& key_filter);
 
+    CAmount CalculateWholeFee(const std::string& params) const override;
     std::string GetMinFundingAmount(const std::string& params) const override;
 
     std::vector<std::string> RawTransactions();
