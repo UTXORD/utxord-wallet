@@ -20,7 +20,8 @@ import {
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
   POPUP_HEARTBEAT,
   DO_REFRESH_BALANCE,
-  BALANCE_REFRESH_DONE
+  BALANCE_REFRESH_DONE,
+  PLUGIN_CONNECTED
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 import { showError } from '~/helpers'
@@ -113,6 +114,12 @@ port.onMessage.addListener(async function(payload) {
     }
     case BALANCE_REFRESH_DONE: {
       balance.value.sync = true;
+      balance.value.connect = true;
+      break;
+    }
+    case PLUGIN_CONNECTED: {
+      balance.value.sync = false;
+      balance.value.connect = true;
       break;
     }
   }

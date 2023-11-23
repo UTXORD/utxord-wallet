@@ -971,7 +971,7 @@ async matchTapRootKey(payload, target, deep = 0){
   }
   //------------------------------------------------------------------------------
 
-  signToChallenge(challenge, tabId: number | undefined = undefined) {
+  signToChallenge(challenge, tabId: number | undefined = undefined): boolean {
     const myself = this;
     if (myself.wallet.auth.key) {
       const signature = myself.wallet.auth.key.SignSchnorr(challenge).c_str();
@@ -986,9 +986,10 @@ async matchTapRootKey(payload, target, deep = 0){
     } else {
       myself.sendMessageToWebPage(CONNECT_RESULT, null, tabId);
     }
+    return myself.connect;
   }
 //------------------------------------------------------------------------------
-async getRawTransactions(builderObject, phase = undefined){
+async getRawTransactions(builderObject, phase = undefined) {
   const raw_size = builderObject.TransactionCount(phase);
   const raw = [];
   for(let i = 0; i < raw_size; i += 1){
