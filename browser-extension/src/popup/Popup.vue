@@ -109,6 +109,7 @@ port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});
 port.onMessage.addListener(async function(payload) {
   switch (payload.id) {
     case DO_REFRESH_BALANCE: {
+      balance.value.connect = payload.connect;
       refreshBalance();
       break;
     }
