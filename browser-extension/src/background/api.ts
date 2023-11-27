@@ -8,6 +8,8 @@ import { sendMessage } from 'webext-bridge';
 import * as cbor from 'cbor-js';
 import {
   EXCEPTION,
+  WARNING,
+  NOTIFICATION,
   SELL_INSCRIPTION,
   CREATE_INSCRIPTION,
   COMMIT_BUY_INSCRIPTION,
@@ -860,6 +862,32 @@ async matchTapRootKey(payload, target, deep = 0){
     return this.utxord.Exception.prototype.getMessage(exception).c_str()
   }
 
+  async sendNotificationMessage(type?: string, message: any) {
+    const currentWindow = await this.WinHelpers.getCurrentWindow()
+    sendMessage(NOTIFICATION , {type, message}, `popup@${currentWindow.id}`)
+    console.log(NOTIFICATION,type, message);
+    return true;
+  }
+
+  async sendWarningMessage(type?: string, warning: any) {
+    let errorMessage;
+    let errorStack;
+    if(typeof warning === 'number'){
+      errorMessage = this.getErrorMessage(Number.parseInt(warning, 10));
+
+    }else{
+      errorMessage = warning;
+      if(warning?.message){
+        errorMessage = warning?.message;
+        type = warning?.name;
+        errorStack = warning?.stack;
+      }
+    }
+    const currentWindow = await this.WinHelpers.getCurrentWindow()
+    sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`)
+    console.log(type, errorMessage, errorStack);
+    return type+errorMessage+errorStack;
+  }
   async sendExceptionMessage(type?: string, exception: any) {
     let errorMessage;
     let errorStack;
@@ -883,6 +911,7 @@ async matchTapRootKey(payload, target, deep = 0){
     console.log(type, errorMessage, errorStack);
     return type+errorMessage+errorStack;
   }
+
   async fetchAddress(address: string){
     const response = await this.Rest.get(`/api/address/${address}/balance/`);
     return response;
@@ -1162,7 +1191,14 @@ async createInscriptionContract(payload, theIndex = 0) {
       outData.amount = min_fund_amount_final;
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
       outData.utxo_list = utxo_list_final;
+      const output_mining_fee = await myself.btcToSat(Number(newOrd.GetNewOutputMiningFee()));
 
+       if(output_mining_fee < 546){
+         myself.sendNotificationMessage(
+            'CREATE_INSCRIPTION',
+            "There are too few coins left after creation and they will become part of the inscription balance"
+         );
+       }
 
       outData.data = newOrd.Serialize(7).c_str();
       outData.raw = await myself.getRawTransactions(newOrd);

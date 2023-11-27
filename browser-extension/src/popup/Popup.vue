@@ -16,6 +16,8 @@ import { useStore } from '~/popup/store/index'
 import {
   CHECK_AUTH,
   EXCEPTION,
+  WARNING,
+  NOTIFICATION,
   SAVE_DATA_FOR_SIGN,
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
   POPUP_HEARTBEAT,
@@ -128,6 +130,16 @@ port.onMessage.addListener(async function(payload) {
 
 onMessage(EXCEPTION, (payload: any) => {
   showError(EXCEPTION, payload?.data)
+  return true
+})
+
+onMessage(WARNING, (payload: any) => {
+  showError(WARNING, payload?.data)
+  return true
+})
+
+onMessage(NOTIFICATION, (payload: any) => {
+  showSuccess(NOTIFICATION, payload?.data)
   return true
 })
 
