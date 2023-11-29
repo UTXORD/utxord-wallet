@@ -75,7 +75,7 @@ function runHeartbeat() {
 function refreshBalance() {
   store.setSyncToFalse();
   setTimeout(async () => {
-    await getBalance(fundAddress)  // TODO: to use fundAddress from store? (see "refresh" click handler in HomeScreen)
+    await getBalance(fundAddress.value)
     // const address = await getFundAddress();
     // await getOrdAddress();
     // await getBalance(address);
