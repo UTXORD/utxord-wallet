@@ -36,6 +36,7 @@ async function getNetWork(){
   async function getBalance(address: string) {
     if (address) {
       try {
+        console.log(`===== getBalance(), address: ${address}`);
         const balance = await sendMessage(GET_BALANCE, {
           address,
         }, 'background')
