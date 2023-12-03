@@ -24,6 +24,7 @@ import {
   GET_NETWORK,
   NEW_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
+  OPEN_START_PAGE,
   PLUGIN_CONNECTED,
   PLUGIN_ID,
   PLUGIN_PUBLIC_KEY,
@@ -353,6 +354,9 @@ if (NETWORK === MAINNET){
           await Api.encryptedWallet(Api.wallet.tmp);
           Api.wallet.tmp = ''
         }
+      }
+      if (payload.type === OPEN_START_PAGE) {
+        winManager.openWindow('start');
       }
     })
 
