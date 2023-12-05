@@ -184,7 +184,7 @@ const connected = computed(() => balance?.value?.connect)
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)
-    return 'On the site, press "Connect to wallet" button.'
+    return 'On the site, press "Connect to wallet" button or'
   if (!balance?.value?.sync) return 'Synchronizing...'
   if (balance?.value?.confirmed > 0 || balance?.value?.sync)
     return 'Synchronized.'
