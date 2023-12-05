@@ -159,8 +159,9 @@ const { balance, fundAddress } = toRefs(store)
 
 const { getBalance } = useWallet()
 
-async function ConnectToSite() {
+async function connectToSite() {
   await sendMessage(CONNECT_TO_SITE, {}, 'background')
+  await refreshBalance()
 }
 
 async function newFundAddress() {
