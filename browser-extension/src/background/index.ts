@@ -227,6 +227,14 @@ if (NETWORK === MAINNET){
       return true;
     });
 
+    onMessage(CONNECT_TO_SITE, async (payload) => {
+      const success = await Api.checkSeed();
+      if(success){
+        await Api.sendMessageToWebPage(CONNECT_TO_SITE, success);
+      }
+      return true;
+    });
+
     chrome.runtime.onConnect.addListener(port => {
       port.onDisconnect.addListener(() => {})
     })
