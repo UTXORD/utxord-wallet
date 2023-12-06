@@ -864,8 +864,8 @@ async matchTapRootKey(payload, target, deep = 0){
 
   async sendNotificationMessage(type?: string, message: any) {
     const currentWindow = await this.WinHelpers.getCurrentWindow()
-    sendMessage(NOTIFICATION , {type, message}, `popup@${currentWindow.id}`)
-    console.log(NOTIFICATION,type, message);
+    sendMessage(NOTIFICATION , `${message}`, `popup@${currentWindow.id}`)
+    console.log(NOTIFICATION, type, message);
     return true;
   }
 
@@ -1191,7 +1191,8 @@ async createInscriptionContract(payload, theIndex = 0) {
       outData.amount = min_fund_amount_final;
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
       outData.utxo_list = utxo_list_final;
-      const output_mining_fee = await myself.btcToSat(Number(newOrd.GetNewOutputMiningFee()));
+      const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee().c_str()));
+      console.log('output_mining_fee:', output_mining_fee);
 
        if(output_mining_fee < 546){
          myself.sendNotificationMessage(

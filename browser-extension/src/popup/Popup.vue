@@ -26,7 +26,7 @@ import {
   PLUGIN_CONNECTED
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-import { showError } from '~/helpers'
+import { showError, showSuccess } from '~/helpers'
 import { toRefs } from 'vue'
 
 const { push } = useRouter()
@@ -139,7 +139,7 @@ onMessage(WARNING, (payload: any) => {
 })
 
 onMessage(NOTIFICATION, (payload: any) => {
-  showSuccess(NOTIFICATION, payload?.data)
+  showSuccess(NOTIFICATION, payload?.data, 10000)
   return true
 })
 
