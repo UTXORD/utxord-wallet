@@ -16,6 +16,8 @@ import { useStore } from '~/popup/store/index'
 import {
   CHECK_AUTH,
   EXCEPTION,
+  WARNING,
+  NOTIFICATION,
   SAVE_DATA_FOR_SIGN,
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
   POPUP_HEARTBEAT,
@@ -24,7 +26,7 @@ import {
   PLUGIN_CONNECTED
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-import { showError } from '~/helpers'
+import { showError, showSuccess } from '~/helpers'
 import { toRefs } from 'vue'
 
 const { push } = useRouter()
@@ -128,6 +130,16 @@ port.onMessage.addListener(async function(payload) {
 
 onMessage(EXCEPTION, (payload: any) => {
   showError(EXCEPTION, payload?.data)
+  return true
+})
+
+onMessage(WARNING, (payload: any) => {
+  showError(WARNING, payload?.data)
+  return true
+})
+
+onMessage(NOTIFICATION, (payload: any) => {
+  showSuccess(NOTIFICATION, payload?.data, 10000)
   return true
 })
 

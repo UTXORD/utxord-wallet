@@ -6,20 +6,20 @@ import {ADDRESS_COPIED} from "~/config/events";
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
 
-export function showSuccess(title: string, text: string) {
+export function showSuccess(title: string, text: string, duration: number = 4000) { // 4s
   notify({
     group: 'success',
     title,
     text
-  }, 4000) // 4s
+  }, duration)
 }
 
-export function showError(title: string, text: string) {
+export function showError(title: string, text: string, duration: number = 10000) { // 10s
   notify({
     group: 'error',
     title,
     text
-  }, 10000) // 10s
+  }, duration)
 }
 
 export function formatAddress(address: string, start?: number, end?: number) {
