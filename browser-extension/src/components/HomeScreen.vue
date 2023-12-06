@@ -36,6 +36,13 @@
         >
           {{ status_message }}
         </span>
+        <template v-if="!connected">
+        <Button
+        outline
+        @click="connectToSite"
+        class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+        >Connect to site</Button>
+        </template>
       </div>
 
       <!-- Balance -->
@@ -144,13 +151,18 @@ import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
-import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS} from '~/config/events'
+import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 
 const store = useStore()
 const { balance, fundAddress } = toRefs(store)
 
 const { getBalance } = useWallet()
+
+async function connectToSite() {
+  await sendMessage(CONNECT_TO_SITE, {}, 'background')
+  await refreshBalance()
+}
 
 async function newFundAddress() {
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
@@ -173,7 +185,7 @@ const connected = computed(() => balance?.value?.connect)
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)
-    return 'On the site, press "Connect to wallet" button.'
+    return 'On the site, press "Connect to wallet" button or'
   if (!balance?.value?.sync) return 'Synchronizing...'
   if (balance?.value?.confirmed > 0 || balance?.value?.sync)
     return 'Synchronized.'

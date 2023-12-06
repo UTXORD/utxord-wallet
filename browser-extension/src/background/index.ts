@@ -12,6 +12,7 @@ import {
   CHECK_PASSWORD,
   COMMIT_BUY_INSCRIPTION,
   CONNECT_TO_PLUGIN,
+  CONNECT_TO_SITE,
   CREATE_INSCRIPTION,
   DO_REFRESH_BALANCE,
   EXCEPTION,
@@ -91,6 +92,16 @@ if (NETWORK === MAINNET){
 
     onMessage(GENERATE_MNEMONIC, async () => {
       return await Api.bip39.generateMnemonic();
+    });
+
+    onMessage(CONNECT_TO_SITE, async (payload) => {
+      const success = await Api.checkSeed();
+      console.log('checkSeed', success)
+      if(success){
+        await Api.sendMessageToWebPage(CONNECT_TO_SITE, success);
+        await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+      }
+      return true;
     });
 
     onMessage(SAVE_GENERATED_SEED, async (payload) => {
