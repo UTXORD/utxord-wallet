@@ -76,10 +76,7 @@ function refreshBalance() {
   store.setSyncToFalse();
   setTimeout(async () => {
     await getBalance(fundAddress.value)
-    // const address = await getFundAddress();
-    // await getOrdAddress();
-    // await getBalance(address);
-  }, 3000)
+  }, 1000)
 }
 
 async function init() {
@@ -109,18 +106,28 @@ port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});
 port.onMessage.addListener(async function(payload) {
   switch (payload.id) {
     case DO_REFRESH_BALANCE: {
-      balance.value.connect = payload.connect;
+      store.setBalance({
+        ...balance.value,
+        connect: payload.connect
+      });
       refreshBalance();
       break;
     }
     case BALANCE_REFRESH_DONE: {
-      balance.value.sync = true;
-      balance.value.connect = true;
+      const fresh_balance = payload.data?.balance
+      store.setBalance({
+        ...fresh_balance || balance.value,
+        sync: true,
+        connect: true
+      });
       break;
     }
     case PLUGIN_CONNECTED: {
-      balance.value.sync = false;
-      balance.value.connect = true;
+      store.setBalance({
+        ...balance.value,
+        sync: false,
+        connect: true
+      });
       break;
     }
   }

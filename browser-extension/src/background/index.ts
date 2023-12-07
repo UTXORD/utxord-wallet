@@ -249,10 +249,9 @@ if (NETWORK === MAINNET){
         if (payload.data?.addresses) {
           Api.balances = payload.data;
           // -------
-          Api.sync = true;    // FIXME: seems useless because happening too much late.
-          Api.connect = true; // FIXME: However it's working for ome reason in v1.1.5
-          postMessageToPopupIfOpen({id: BALANCE_REFRESH_DONE});  // ..so using this hack
-          // -------
+          Api.sync = true;    // FIXME: Seems useless because happening too much late.
+          Api.connect = true; // FIXME: However it's working for some reason in v1.1.5.
+                              // FIXME: Probably due to high balance refresh frequency.
           console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
           Api.inscriptions = await Api.freeBalance(Api.inscriptions);
@@ -261,6 +260,12 @@ if (NETWORK === MAINNET){
           Api.inscriptions = await balances.inscriptions;
           console.log('Api.fundings:', Api.fundings);
           console.log('Api.inscriptions:', Api.inscriptions);
+
+          const balance = await Api.fetchBalance("UNUSED_VALUE");  // FIXME: currently address is still unused
+          setTimeout(async () => {
+            postMessageToPopupIfOpen({id: BALANCE_REFRESH_DONE, data: {balance: balance?.data}});
+          }, 1000);
+          // -------
         }
       }
 
