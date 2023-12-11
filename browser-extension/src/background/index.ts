@@ -99,7 +99,9 @@ if (NETWORK === MAINNET){
       console.log('checkSeed', success)
       if(success){
         await Api.sendMessageToWebPage(CONNECT_TO_SITE, success);
-        await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+        setTimeout(async () => {
+          await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+        }, 1000);
       }
       return true;
     });
@@ -144,13 +146,17 @@ if (NETWORK === MAINNET){
       return success;
     });
 
-    onMessage(GET_BALANCE, async (payload: any) => {
-      const balance = await Api.fetchBalance(payload.data?.address);
-      setTimeout(async () => {
+    async function refreshBalanceAndAdressed() {
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success);
         await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+    };
+
+    onMessage(GET_BALANCE, async (payload: any) => {
+      const balance = await Api.fetchBalance(payload.data?.address);
+      setTimeout(async () => {
+        await refreshBalanceAndAdressed();
       }, 1000);
       return balance;
     });
@@ -243,6 +249,9 @@ if (NETWORK === MAINNET){
     })
 
     chrome.runtime.onMessageExternal.addListener(async (payload, sender) => {
+      // console.debug(`----- message from frontend: ${payload?.type}`);
+      // console.dir({...payload?.data || {}});
+
       let tabId = sender?.tab?.id;
       if (typeof payload?.data === 'object' && payload?.data !== null) {
         payload.data._tabId = tabId;
@@ -252,6 +261,9 @@ if (NETWORK === MAINNET){
         let success = Api.signToChallenge(payload.data, tabId);
         if (success) {
           postMessageToPopupIfOpen({id: PLUGIN_CONNECTED});
+          setTimeout(async () => {
+            await refreshBalanceAndAdressed();
+          }, 1000);
         }
       }
 
