@@ -19,7 +19,7 @@ public:
     ~ContractTermMissing() override = default;
 
     const char* what() const noexcept override
-    { return "ContractTermsMissing"; }
+    { return "ContractTermMissing"; }
 };
 
 class ContractTermWrongValue : public ContractError {
