@@ -1050,7 +1050,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     errorMessage: null as string | null
   };
   try {
-    console.log('createInscription payload: ', payload);
+    console.log('createInscription payload: ', {...payload || {}});
 
     let collection;
     let flagsFundingOptions = "";
@@ -1073,7 +1073,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     );
     console.log('newOrd:',newOrd);
     if(payload.metadata) {
-      console.log('payload.metadata:',payload.metadata);
+      console.log('payload.metadata:', payload.metadata);
 
       const encoded = cbor.encode(payload.metadata);
       await newOrd.SetMetaData(myself.arrayBufferToHex(encoded));
@@ -1089,7 +1089,7 @@ async createInscriptionContract(payload, theIndex = 0) {
         setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.raw = await myself.getRawTransactions(newOrd);
         return outData;
-     }
+      }
 
       collection_utxo_key = myself.selectKeyByOrdAddress(payload.collection.btc_owner_address);
       console.log('SignCollection:', collection_utxo_key.GetLocalPubKey().c_str());
@@ -1107,9 +1107,9 @@ async createInscriptionContract(payload, theIndex = 0) {
     await newOrd.InscribePubKey(myself.wallet.ord.key.GetLocalPubKey().c_str());
     await newOrd.ChangePubKey(myself.wallet.fund.key.GetLocalPubKey().c_str());
 
-    const min_fund_amount = await myself.btcToSat(Number(newOrd.GetMinFundingAmount(
+    const min_fund_amount = myself.btcToSat(Number(newOrd.GetMinFundingAmount(
         `${flagsFundingOptions}`
-    ).c_str()))
+    ).c_str()));
     outData.amount = min_fund_amount;
     if(!myself.fundings.length ){
         // TODO: REWORK FUNDS EXCEPTION
@@ -1120,9 +1120,10 @@ async createInscriptionContract(payload, theIndex = 0) {
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
             "wait for several conformations or wait update on the server.";
+        // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there are no fundings available.
         outData.raw = await myself.getRawTransactions(newOrd);
         return outData;
-     }
+    }
     const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
     outData.utxo_list = utxo_list;
     const inputs_sum = await myself.sumAllFunds(utxo_list);
