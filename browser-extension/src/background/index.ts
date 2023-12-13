@@ -146,11 +146,11 @@ if (NETWORK === MAINNET){
       return success;
     });
 
-    async function refreshBalanceAndAdressed() {
+    async function refreshBalanceAndAdressed(tabId: number | undefined = undefined) {
         const success = await Api.checkSeed();
-        await Api.sendMessageToWebPage(AUTH_STATUS, success);
-        await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
-        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+        await Api.sendMessageToWebPage(AUTH_STATUS, success, tabId);
+        await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses, tabId);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, tabId);
     };
 
     onMessage(GET_BALANCE, async (payload: any) => {
@@ -249,8 +249,7 @@ if (NETWORK === MAINNET){
     })
 
     chrome.runtime.onMessageExternal.addListener(async (payload, sender) => {
-      // console.debug(`----- message from frontend: ${payload?.type}`);
-      // console.dir({...payload?.data || {}});
+      // console.debug(`----- message from frontend: ${payload?.type}, data: `, {...payload?.data || {}});
 
       let tabId = sender?.tab?.id;
       if (typeof payload?.data === 'object' && payload?.data !== null) {
@@ -262,7 +261,7 @@ if (NETWORK === MAINNET){
         if (success) {
           postMessageToPopupIfOpen({id: PLUGIN_CONNECTED});
           setTimeout(async () => {
-            await refreshBalanceAndAdressed();
+            await refreshBalanceAndAdressed(tabId);
           }, 1000);
         }
       }
@@ -277,9 +276,11 @@ if (NETWORK === MAINNET){
                               // FIXME: Probably due to high balance refresh frequency.
           console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
+          // console.debug('... Api.fundings after Api.freeBalance:', Api.fundings);
           Api.inscriptions = await Api.freeBalance(Api.inscriptions);
           const balances = await Api.prepareBalances(payload.data.addresses);
-          Api.fundings = await balances.funds;
+          Api.fundings = balances.funds;
+          // console.debug('... Api.fundings after Api.prepareBalances:', Api.fundings);
           Api.inscriptions = await balances.inscriptions;
           console.log('Api.fundings:', Api.fundings);
           console.log('Api.inscriptions:', Api.inscriptions);
@@ -295,12 +296,13 @@ if (NETWORK === MAINNET){
       if (payload.type === GET_ALL_ADDRESSES) {
         Api.all_addresses = await Api.freeBalance(Api.all_addresses);
         Api.all_addresses = await Api.getAllAddresses(payload.data.addresses);
-        console.log('GET_ALL_ADDRESSES:',payload.data.addresses);
+        console.log('GET_ALL_ADDRESSES:', payload.data.addresses);
+        // console.log('Api.addresses:', Api.addresses);
         const check = Api.checkAddresess(payload.data.addresses);
-        console.log('Api.checkAddresess:',check)
+        console.log('Api.checkAddresess:', check);
         if(!check){
           setTimeout(async () => {
-                  // console.log('ADDRESSES_TO_SAVE:',Api.addresses);
+                  // console.log('ADDRESSES_TO_SAVE:', Api.addresses);
                   await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
           }, 100);
         }
