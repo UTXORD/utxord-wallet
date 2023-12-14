@@ -50,10 +50,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="
-            Math.abs(dataForSign?.data?.costs?.amount -
-              dataForSign?.data?.costs?.expect_amount) || 0
-          "
+          :price="dataForSign?.data?.fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -66,7 +63,7 @@
         <span class="mr-2 text-[var(--text-color)]">Total Needed:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.amount || 0"
+          :price="Math.abs(dataForSign?.data?.fee + dataForSign?.data?.expect_amount) || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
