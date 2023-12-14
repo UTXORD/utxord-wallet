@@ -9,7 +9,6 @@ using namespace l15;
 
 const size_t MAX_PUSH = 520;
 const bytevector ORD_TAG {'o', 'r', 'd'};
-const bytevector ORD_PARENT_TAG {'o', 'r', 'p'};
 const opcodetype CONTENT_OP_TAG {OP_0};
 const bytevector CONTENT_TAG {'\0'};
 const opcodetype CONTENT_TYPE_OP_TAG {OP_1};

@@ -425,10 +425,10 @@ TEST_CASE("inscribe")
 //        }
 
         std::optional<Inscription> inscription;
-        CHECK_NOTHROW(inscription = Inscription(rawtx[1]));
+        CHECK_NOTHROW(inscription = ParseInscriptions(rawtx[1]).front());
         CHECK(inscription->GetIscriptionId() == genesis_tx.GetHash().GetHex() + "i" + std::to_string(0));
         CHECK(inscription->GetContentType() == content_type);
-        CHECK(hex(inscription->GetContent()) == content);
+        CHECK(inscription->GetContent() == content);
 
         if (condition.has_parent) {
             CHECK(inscription->GetCollectionId() == collection_id);
@@ -567,8 +567,8 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     REQUIRE(rawtxs.size() == 2);
 
-    Inscription inscr(rawtxs[1]);
-    const auto& result_metadata = inscr.GetMetadata();
+    Inscription inscr = ParseInscriptions(rawtxs[1]).front();
+    auto result_metadata = unhex<bytevector>(inscr.GetMetadata());
 
     CHECK(result_metadata == condition.metadata);
     std::clog << "metadata:\n" << nlohmann::json::from_cbor(result_metadata).dump() << std::endl;

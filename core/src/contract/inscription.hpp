@@ -8,11 +8,9 @@
 
 namespace utxord {
 
-using namespace l15;
-
-class InscriptionError : public Error {
+class InscriptionError : public l15::Error {
 public:
-    explicit InscriptionError(std::string&& details) : Error(move(details)) {}
+    explicit InscriptionError(std::string&& details) : l15::Error(move(details)) {}
     ~InscriptionError() override = default;
 
     const char* what() const noexcept override
@@ -28,28 +26,22 @@ public:
     { return "InscriptionFormatError"; }
 };
 
-std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script);
+std::list<std::pair<l15::bytevector, l15::bytevector>> ParseEnvelopeScript(const CScript& script, CScript::const_iterator& it);
 
-class Inscription;
-
-template<typename T> /*requires std::same_as<T, CMutableTransaction> || std::same_as<T, CTransaction>*/
-void ParseTransaction(Inscription& inscription, const T& tx, uint32_t nin);
 
 class Inscription
 {
     std::string m_inscription_id;
     std::string m_content_type;
-    bytevector m_content;
+    l15::bytevector m_content;
     std::string m_collection_id;
-    bytevector m_metadata;
-
-    friend void ParseTransaction<CMutableTransaction>(Inscription& inscription, const CMutableTransaction& tx, uint32_t nin);
-    friend void ParseTransaction<CTransaction>(Inscription& inscription, const CTransaction& tx, uint32_t nin);
+    l15::bytevector m_metadata;
 
 public:
-    explicit Inscription(const CMutableTransaction& tx, uint32_t nin = 0);
-    explicit Inscription(const CTransaction& tx, uint32_t nin = 0);
-    explicit Inscription(const std::string& hex_tx, uint32_t nin = 0);
+    Inscription() = default;
+
+    explicit Inscription(std::string inscription_id, std::list<std::pair<l15::bytevector, l15::bytevector>>&& tagged_data);
+
     Inscription(const Inscription& ) = default;
     Inscription(Inscription&& ) noexcept = default;
 
@@ -61,8 +53,8 @@ public:
 
     const std::string& GetContentType() const
     { return m_content_type; }
-    const bytevector& GetContent() const
-    { return m_content; }
+    std::string GetContent() const
+    { return l15::hex(m_content); }
 
     bool HasParent() const
     { return !m_collection_id.empty(); }
@@ -70,11 +62,11 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
-    const bytevector& GetMetadata() const
-    { return m_metadata; }
+    std::string GetMetadata() const
+    { return l15::hex(m_metadata); }
 };
 
-Inscription ParseInscription(const std::string& hex_tx);
+std::list<Inscription> ParseInscriptions(const std::string& hex_tx);
 
 } // utxord
 

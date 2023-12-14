@@ -10,7 +10,6 @@
 #include "interpreter.h"
 #include "core_io.h"
 #include "feerate.h"
-#include "streams.h"
 
 #include "create_inscription.hpp"
 #include "script_merkle_tree.hpp"
@@ -61,35 +60,6 @@ CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content
     return script;
 }
 
-CScript MakeCollectionScript(const xonly_pubkey& pk, const std::string& collection_id)
-{
-    CScript script;
-    script << pk;
-    script << OP_CHECKSIG;
-    script << OP_0;
-    script << OP_IF;
-    script << ORD_PARENT_TAG;
-    script << COLLECTION_ID_TAG;
-    script << SerializeInscriptionId(collection_id);
-    script << OP_ENDIF;
-
-    return script;
-}
-
-std::pair<xonly_pubkey, uint8_t> MakeCollectionTapRootPubKey(const string &collection_id, const xonly_pubkey &script_pk, const xonly_pubkey &internal_pk)
-{
-    ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, {MakeCollectionScript(script_pk, collection_id)});
-    uint256 root = tap_tree.CalculateRoot();
-
-    return core::ChannelKeys::AddTapTweak(internal_pk, root);
-}
-
-}
-
-std::string Collection::GetCollectionTapRootPubKey(const string &collection_id, const string &script_pk, const string &internal_pk)
-{
-    auto taproot = MakeCollectionTapRootPubKey(collection_id, unhex<xonly_pubkey>(script_pk), unhex<xonly_pubkey>(internal_pk));
-    return hex(taproot.first);
 }
 
 const uint32_t CreateInscriptionBuilder::s_protocol_version = 7;
@@ -112,10 +82,6 @@ const std::string CreateInscriptionBuilder::name_change_pk = "change_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_script_pk = "parent_collection_script_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_int_pk = "parent_collection_int_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_out_pk = "parent_collection_out_pk";
-//const std::string CreateInscriptionBuilder::name_collection_script_pk = "collection_script_pk";
-//const std::string CreateInscriptionBuilder::name_collection_int_pk = "collection_int_pk";
-//const std::string CreateInscriptionBuilder::name_collection_commit_sig = "collection_commit_sig";
-//const std::string CreateInscriptionBuilder::name_collection_out_pk = "collection_out_pk";
 
 const std::string CreateInscriptionBuilder::FEE_OPT_HAS_CHANGE = "change";
 const std::string CreateInscriptionBuilder::FEE_OPT_HAS_COLLECTION = "collection";
