@@ -259,7 +259,6 @@ const std::string ContractBuilder::name_params = "params";
 const std::string ContractBuilder::name_version = "protocol_version";
 const std::string ContractBuilder::name_mining_fee_rate = "mining_fee_rate";
 const std::string ContractBuilder::name_market_fee = "market_fee";
-const std::string ContractBuilder::name_market_fee_addr = "market_fee_addr";
 const char* ContractBuilder::name_utxo = "utxo";
 const std::string ContractBuilder::name_txid = "txid";
 const std::string ContractBuilder::name_nout = "nout";
@@ -269,6 +268,14 @@ const std::string ContractBuilder::name_addr = "addr";
 const std::string ContractBuilder::name_sig = "sig";
 const std::string ContractBuilder::name_change_addr = "change_addr";
 
+CScript ContractBuilder::MakeMultiSigScript(const xonly_pubkey& pk1, const xonly_pubkey& pk2)
+{
+    CScript script;
+    script << pk1 << OP_CHECKSIG;
+    script << pk2 << OP_CHECKSIGADD;
+    script << 2 << OP_NUMEQUAL;
+    return script;
+}
 
 CAmount ContractBuilder::CalculateWholeFee(const std::string& params) const {
     auto txs = GetTransactions();

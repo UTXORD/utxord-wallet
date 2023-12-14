@@ -117,8 +117,8 @@ enum InscribeType
 enum InscribePhase
 {
     "MARKET_TERMS",
-    "LASY_COLLECTION_MARKET_TERMS",
-    "LASY_COLLECTION_INSCRIPTION_SIGNATURE",
+    "LASY_INSCRIPTION_MARKET_TERMS",
+    "LASY_INSCRIPTION_SIGNATURE",
     "INSCRIPTION_SIGNATURE"
 };
 
@@ -134,12 +134,13 @@ interface CreateInscriptionBuilder
     void MetaData([Const] DOMString hexCborData);
     void InscribeAddress([Const] DOMString inscriptionAddr);
     void ChangeAddress([Const] DOMString changeAddr);
+    void InscribeScriptPubKey([Const] DOMString pk);
+    void InscribeInternalPubKey([Const] DOMString pk);
+    void FundMiningFeeInternalPubKey([Const] DOMString pk);
 
     void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
                                                    [Const] DOMString collectionAddr);
-    void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeeAddr);
-
-    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter, [Const] DOMString scriptPK);
+    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
     void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     //void SignFundMiningFee(KeyRegistry keyRegistry, [Const] DOMString key_filter);
@@ -152,7 +153,6 @@ interface CreateInscriptionBuilder
 
     [Const] static DOMString SupportedVersions();
 
-    [Value] string getIntermediateTaprootSK();
     [Value] string MakeInscriptionId();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
