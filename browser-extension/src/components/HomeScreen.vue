@@ -20,7 +20,7 @@
             <RefreshIcon />
           </Button>
           <PriceComp
-            class="home-screen_balance text-[var(--text-color)]"
+            class="home-screen_balance text-[var(--text-color)] flex flex-col gap-[0]"
             :price="balance?.confirmed || 0"
             :loading-size="6"
             :loading="!isSynchronized"
@@ -32,7 +32,7 @@
           />
         </template>
         <span
-          class="home-screen_balance-label text-center text-[var(--text-grey-color)]"
+          class="home-screen_balance-label text-center text-[var(--text-grey-color)] mt-3"
         >
           {{ status_message }}
         </span>
@@ -157,7 +157,7 @@ import useWallet from '~/popup/modules/useWallet'
 const store = useStore()
 const { balance, fundAddress } = toRefs(store)
 
-const { getBalance } = useWallet()
+const { getBalance, fetchUSDRate } = useWallet()
 
 async function connectToSite() {
   await sendMessage(CONNECT_TO_SITE, {}, 'background')
@@ -174,7 +174,8 @@ async function newFundAddress() {
 }
 
 function refreshBalance() {
-  store.setSyncToFalse();
+  store.setSyncToFalse()
+  fetchUSDRate()
   setTimeout(async () => {
     await getBalance(fundAddress.value);
   }, 1000)
@@ -217,7 +218,7 @@ const status_message = computed(() => {
 
   &_balance {
     font-weight: 600;
-    line-height: 55px;
+    line-height: normal;
 
     &-refresh {
       width: 25px;

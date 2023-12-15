@@ -22,6 +22,7 @@ import {
   GET_ALL_ADDRESSES,
   GET_BALANCE,
   GET_BALANCES,
+  GET_USD_RATE,
   GET_NETWORK,
   NEW_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
@@ -161,6 +162,11 @@ if (NETWORK === MAINNET){
       return balance;
     });
 
+    onMessage(GET_USD_RATE, async () => {
+      const usdRate = await Api.fetchUSDRate();
+      return usdRate;
+    });
+
     onMessage(GET_ADDRESSES, async () => {
       const {addresses} = await Api.genKeys();
       console.log('addresses:',addresses)
@@ -287,7 +293,7 @@ if (NETWORK === MAINNET){
 
           const balance = await Api.fetchBalance("UNUSED_VALUE");  // FIXME: currently address is still unused
           setTimeout(async () => {
-            postMessageToPopupIfOpen({id: BALANCE_REFRESH_DONE, data: {balance: balance?.data}});
+            postMessageToPopupIfOpen({ id: BALANCE_REFRESH_DONE, data: { balance: balance?.data }});
           }, 1000);
           // -------
         }
