@@ -916,6 +916,10 @@ async matchTapRootKey(payload, target, deep = 0){
     const response = await this.Rest.get(`/api/address/${address}/balance/`);
     return response;
   }
+  async fetchUSD() {
+    const response = await this.Rest.get('/api/wallet/prices/');
+    return response;
+  }
   async fetchExternalAddresses(){
     if(this.wallet.ext.keys.length<1) return;
 

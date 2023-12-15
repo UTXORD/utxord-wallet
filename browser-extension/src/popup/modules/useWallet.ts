@@ -1,15 +1,16 @@
+import { computed } from 'vue'
 import { useStore } from '~/popup/store/index'
 import { sendMessage } from 'webext-bridge'
-import { GET_BALANCE, GET_ADDRESSES, GET_NETWORK } from '~/config/events'
+import { GET_BALANCE, GET_USD, GET_ADDRESSES, GET_NETWORK } from '~/config/events'
 
 const useWallet = () => {
   const store = useStore()
 
-async function getNetWork(){
-  const network = await sendMessage(GET_NETWORK, {}, 'background')
-  console.log('network:',network)
-  return network;
-}
+  async function getNetWork(){
+    const network = await sendMessage(GET_NETWORK, {}, 'background')
+    console.log('network:',network)
+    return network;
+  }
   async function getFundAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
     const addresses = {};
@@ -60,6 +61,20 @@ async function getNetWork(){
     store.setDataForExportKeyPair(data || {})
   }
 
+  async function fetchUSD() {
+    try {
+      const usd = await sendMessage(GET_USD, {}, 'background')
+      console.log('USD', usd);
+      if (usd) {
+        store.setUSD(usd)
+      }
+    } catch (e) {
+      console.log('getBalance->error:', e);
+    }
+  }
+
+  const usd = computed((): number => store.getUSD || 0);
+
   return {
     getFundAddress,
     getOrdAddress,
@@ -67,6 +82,8 @@ async function getNetWork(){
     saveDataForSign,
     saveDataForExportKeyPair,
     getNetWork,
+    fetchUSD,
+    usd
   }
 }
 

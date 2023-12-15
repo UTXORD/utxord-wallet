@@ -59,3 +59,7 @@ export function copyToClipboard(text: string, message?: string) {
 export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
 }
+
+export function convertSatsToUSD(sats: number, usd: number): number {
+  return (sats || 0) * (1 / 100000000) * (usd || 0);
+}
