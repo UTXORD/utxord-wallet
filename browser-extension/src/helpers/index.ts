@@ -60,6 +60,6 @@ export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
 }
 
-export function convertSatsToUSD(sats: number, usd: number): number {
-  return (sats || 0) * (1 / 100000000) * (usd || 0);
+export function convertSatsToUSD(sats: number, usdRate: number): number {
+  return (sats || 0) * (1 / 100000000) * (usdRate || 0);
 }

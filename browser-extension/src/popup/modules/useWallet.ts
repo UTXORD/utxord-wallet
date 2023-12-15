@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { useStore } from '~/popup/store/index'
 import { sendMessage } from 'webext-bridge'
-import { GET_BALANCE, GET_USD, GET_ADDRESSES, GET_NETWORK } from '~/config/events'
+import { GET_BALANCE, GET_USD_RATE, GET_ADDRESSES, GET_NETWORK } from '~/config/events'
 
 const useWallet = () => {
   const store = useStore()
@@ -61,18 +61,18 @@ const useWallet = () => {
     store.setDataForExportKeyPair(data || {})
   }
 
-  async function fetchUSD() {
+  async function fetchUSDRate() {
     try {
-      const usd = await sendMessage(GET_USD, {}, 'background')
-      if (usd?.data?.USD) {
-        store.setUSD(usd.data.USD || 0)
+      const usdRate = await sendMessage(GET_USD_RATE, {}, 'background')
+      if (usdRate?.data?.USD) {
+        store.setUSD(usdRate.data.USD || 0)
       }
     } catch (e) {
       console.log('getBalance->error:', e);
     }
   }
 
-  const usd = computed((): number => store.getUSD || 0);
+  const usdRate = computed((): number => store.getUSDRate || 0);
 
   return {
     getFundAddress,
@@ -81,8 +81,8 @@ const useWallet = () => {
     saveDataForSign,
     saveDataForExportKeyPair,
     getNetWork,
-    fetchUSD,
-    usd
+    fetchUSDRate,
+    usdRate
   }
 }
 

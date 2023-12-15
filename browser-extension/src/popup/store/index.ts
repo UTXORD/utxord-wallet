@@ -17,7 +17,7 @@ interface IStore {
   dataForSign: {} | null
   dataForExportKeyPair: {} | null
   errorMessage: string | null
-  usd: number
+  usdRate: number
 }
 
 export const useStore = defineStore('store', {
@@ -37,14 +37,14 @@ export const useStore = defineStore('store', {
     dataForSign: null,
     dataForExportKeyPair: null,
     errorMessage: null,
-    usd: 0,
+    usdRate: 0,
   } as IStore),
   getters: {
-    getUSD: (state) => state.usd || 0,
+    getUSDRate: (state) => state.usdRate || 0,
   },
   actions: {
     setUSD(value: number) {
-      this.usd = value
+      this.usdRate = value
     },
     setBalance(value: IBalance) {
       console.log('... store.setBalance:');

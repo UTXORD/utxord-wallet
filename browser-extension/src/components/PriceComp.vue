@@ -44,7 +44,7 @@ const props = defineProps({
 })
 
 const { price, fontSizeBreakpoints } = toRefs(props)
-const { usd } = useWallet();
+const { usdRate } = useWallet();
 
 const fontSize = ref('16px')
 
@@ -54,7 +54,7 @@ const USDollar = new Intl.NumberFormat('en-US', {
 })
 
 const resultPrice = computed(() => USDollar.format(price.value || 0))
-const resultUSD = computed(() => convertSatsToUSD(price.value || 0, usd.value).toFixed(2))
+const resultUSD = computed(() => USDollar.format(convertSatsToUSD(price.value || 0, usdRate.value).toFixed(2)))
 
 function findClosestNumber(target: number, numbers: number[]) {
   return numbers.reduce(function (prev, curr) {

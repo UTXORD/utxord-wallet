@@ -157,7 +157,7 @@ import useWallet from '~/popup/modules/useWallet'
 const store = useStore()
 const { balance, fundAddress } = toRefs(store)
 
-const { getBalance, fetchUSD } = useWallet()
+const { getBalance, fetchUSDRate } = useWallet()
 
 async function connectToSite() {
   await sendMessage(CONNECT_TO_SITE, {}, 'background')
@@ -175,7 +175,7 @@ async function newFundAddress() {
 
 function refreshBalance() {
   store.setSyncToFalse()
-  fetchUSD()
+  fetchUSDRate()
   setTimeout(async () => {
     await getBalance(fundAddress.value);
   }, 1000)

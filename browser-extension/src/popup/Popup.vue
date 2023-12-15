@@ -36,7 +36,7 @@ const {
   getBalance,
   saveDataForSign,
   saveDataForExportKeyPair,
-  fetchUSD
+  fetchUSDRate
 } = useWallet()
 
 const store = useStore()
@@ -88,7 +88,7 @@ async function init() {
     redirectByQuery()
     runHeartbeat()
     // refreshBalance()
-    fetchUSD()
+    fetchUSDRate()
   } else {
     const tempMnemonic = localStorage?.getItem('temp-mnemonic')
     if (tempMnemonic) {

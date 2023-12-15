@@ -22,7 +22,7 @@ import {
   GET_ALL_ADDRESSES,
   GET_BALANCE,
   GET_BALANCES,
-  GET_USD,
+  GET_USD_RATE,
   GET_NETWORK,
   NEW_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
@@ -162,12 +162,9 @@ if (NETWORK === MAINNET){
       return balance;
     });
 
-    onMessage(GET_USD, async () => {
-      const usd = await Api.fetchUSD();
-      setTimeout(async () => {
-        await refreshBalanceAndAdressed();
-      }, 1000);
-      return usd;
+    onMessage(GET_USD_RATE, async () => {
+      const usdRate = await Api.fetchUSDRate();
+      return usdRate;
     });
 
     onMessage(GET_ADDRESSES, async () => {
