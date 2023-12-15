@@ -8,6 +8,8 @@ import { sendMessage } from 'webext-bridge';
 import * as cbor from 'cbor-js';
 import {
   EXCEPTION,
+  WARNING,
+  NOTIFICATION,
   SELL_INSCRIPTION,
   CREATE_INSCRIPTION,
   COMMIT_BUY_INSCRIPTION,
@@ -190,6 +192,21 @@ const STATUS_DEFAULT = {
 };
 
 class Api {
+  KNOWN_CORE_ERRORS: string[] = [
+    'ReferenceError',
+    'TypeError',
+    'ContractTermMissing',
+    'ContractTermWrongValue',
+    'ContractValueMismatch',
+    'ContractTermWrongFormat',
+    'ContractStateError',
+    'ContractProtocolError',
+    'SignatureError',
+    'WrongKeyError',
+    'KeyError',
+    'TransactionError'
+  ]
+
   constructor(network) {
     return (async () => {
       try {
@@ -245,19 +262,19 @@ class Api {
       }
       await myself.rememberIndexes();
       console.log('init...');
-      myself.genRootKey();
+      myself.genRootKey();  // TODO: was it intentionally moved out of if?
       if (myself.checkSeed() && myself.utxord && myself.bech) {
         myself.genKeys();
         myself.initPassword();
-        const fund = myself.wallet.fund.key?.PubKey();
-        const auth = myself.wallet.auth.key?.PubKey();
+        const fund = myself.wallet.fund.key?.GetLocalPubKey()?.c_str();
+        const auth = myself.wallet.auth.key?.GetLocalPubKey()?.c_str();
         if (fund && auth) {
           myself.status.initAccountData = true;
           return myself.status.initAccountData;
         }
       }
     } catch (e) {
-      console.log('init()->error:', myself.getErrorMessage(e));
+      console.log('init()->error:', myself.getErrorMessage(e));  // TODO: is it ok?
     }
   }
 
@@ -495,7 +512,7 @@ class Api {
     const myself = this;
 
     const keypair = new myself.utxord.ChannelKeys(keyhex);
-    const tmpAddress = this.bech.Encode(keypair.PubKey());
+    const tmpAddress = this.bech.Encode(keypair.PubKey());  // TODO: to use .cstr() ?
     if(!myself.checkAddress(tmpAddress, this.wallet.ext.keys)){
       let enkeyhex = keyhex;
       let enFlag = false;
@@ -507,7 +524,7 @@ class Api {
       this.wallet.ext.keys.push({
           key: keypair,
           p2tr: tmpAddress,
-          pubKeyStr: keypair.PubKey(),
+          pubKeyStr: keypair.PubKey(),  // TODO: to use .cstr() ?
           privKeyStr: enkeyhex,
           index:`${Number(enFlag)}/${enkeyhex}`,
           type: 'ext',
@@ -535,7 +552,7 @@ class Api {
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
     this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-    this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);
+    this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);  // TODO: to use .cstr() ?
      return true;
   }
 
@@ -562,7 +579,7 @@ class Api {
                 }
               }
             }
-            publicKeys.push({pubKeyStr: this.wallet[key].key.PubKey(), type: key});
+            publicKeys.push({pubKeyStr: this.wallet[key].key.PubKey(), type: key});  // TODO: to use .cstr() ?
           }
         }
       }
@@ -588,7 +605,7 @@ async getBranchKey(path, item){
     if(path[0]==='m'){
       const for_script = (item?.type === 'uns' || item?.type === 'intsk' || item?.type === 'scrsk' || item?.type === 'auth');
       const keypair = this.wallet.root.key.Derive(path, for_script);
-      const address = keypair.GetP2TRAddress(this.network);
+      const address = keypair.GetP2TRAddress(this.network);  // TODO: to use .cstr() ?
       return {address: address, key: keypair};
     }else{
       if(item?.type==='ext' || item?.type==='xord'){
@@ -601,6 +618,8 @@ async getBranchKey(path, item){
     console.log("getBranchKey->error:",e);
   }
 }
+
+  // TODO: are genAllBranchKeys and genAllKeys gone away
 
   async getAllAddresses(addresses){
     const myself = this;
@@ -800,7 +819,9 @@ selectByOrdOutput(txid, nout, inscriptions = []){
     }
   }
 
-  getCurrentNetWorkLabel(){
+  // TODO: is matchTapRootKey gone away?
+
+  getCurrentNetWorkLabel() {
     if (!this.network) { return ' '; }
     switch (this.network) {
       case this.utxord.TESTNET:
@@ -856,13 +877,40 @@ selectByOrdOutput(txid, nout, inscriptions = []){
   }
 
   getErrorMessage(exception: number) {
-    return this.utxord.Exception.prototype.getMessage(exception)
+    return this.utxord.Exception.prototype.getMessage(exception).c_str()
+  }
+
+  async sendNotificationMessage(type?: string, message: any) {
+    const currentWindow = await this.WinHelpers.getCurrentWindow()
+    sendMessage(NOTIFICATION , `${message}`, `popup@${currentWindow.id}`)
+    console.log(NOTIFICATION, type, message);
+    return true;
+  }
+
+  async sendWarningMessage(type?: string, warning: any) {
+    let errorMessage;
+    let errorStack;
+    if(typeof warning === 'number'){
+      errorMessage = this.getErrorMessage(Number.parseInt(warning, 10));
+
+    }else{
+      errorMessage = warning;
+      if(warning?.message){
+        errorMessage = warning?.message;
+        type = warning?.name;
+        errorStack = warning?.stack;
+      }
+    }
+    const currentWindow = await this.WinHelpers.getCurrentWindow()
+    sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`)
+    console.log(type, errorMessage, errorStack);
+    return type+errorMessage+errorStack;
   }
 
   async sendExceptionMessage(type?: string, exception: any) {
     let errorMessage;
     let errorStack;
-    if(typeof exception === 'number'){
+    if(typeof exception === 'number') {
       errorMessage = this.getErrorMessage(Number.parseInt(exception, 10));
 
     }else{
@@ -970,10 +1018,10 @@ console.log('args:', args,'type:', type);
   }
   //------------------------------------------------------------------------------
 
-  signToChallenge(challenge, tabId: number | undefined = undefined) {
+  signToChallenge(challenge, tabId: number | undefined = undefined): boolean {
     const myself = this;
     if (myself.wallet.auth.key) {
-      const signature = myself.wallet.auth.key.SignSchnorr(challenge);
+      const signature = myself.wallet.auth.key.SignSchnorr(challenge).c_str();
       console.log("SignSchnorr::challengeResult:", signature);
       myself.sendMessageToWebPage(CONNECT_RESULT, {
         challenge: challenge,
@@ -985,6 +1033,7 @@ console.log('args:', args,'type:', type);
     } else {
       myself.sendMessageToWebPage(CONNECT_RESULT, null, tabId);
     }
+    return myself.connect;
   }
 //------------------------------------------------------------------------------
 async getRawTransactions(builderObject, phase = undefined){
@@ -1018,7 +1067,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     errorMessage: null as string | null
   };
   try {
-    console.log('createInscription payload: ', payload);
+    console.log('createInscription payload: ', {...payload || {}});
 
     let collection;
     let flagsFundingOptions = "";
@@ -1026,39 +1075,46 @@ async createInscriptionContract(payload, theIndex = 0) {
 
 
     if(payload?.collection?.genesis_txid){
+      // if collection is present.. than finding an output with collection
       collection = myself.selectByOrdOutput(
          payload.collection.owner_txid,
          payload.collection.owner_nout
      );
       console.log("payload.collection:",payload.collection)
-      console.log('AddToCollectionSim:', collection);
+      console.log('AddToCollectionSim:', collection);  // to use simulation contract to calculate fees
       flagsFundingOptions += "collection";
     }
 
     const newOrd = new myself.utxord.CreateInscriptionBuilder(
-      myself.network,
+      myself.network,  // TODO: to discuss!
       myself.utxord.INSCRIPTION
     );
+    console.log('newOrd:',newOrd);
     const contract = {"contract_type":"CreateInscription","params":{"protocol_version":8,"market_fee":{"amount":0}}};
     newOrd.Deserialize(JSON.stringify(contract));
 
     newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
 
+    // For now it's just a support for title and description
     if(payload.metadata) {
       console.log('payload.metadata:',payload.metadata);
       const encoded = cbor.encode(payload.metadata);
-      await newOrd.MetaData(myself.arrayBufferToHex(encoded));
+      await newOrd.SetMetaData(myself.arrayBufferToHex(encoded));
     }
-    await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8));
+    await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8));  // payload.fee as Sat/kB
 
     if(payload?.collection?.genesis_txid){
+      // collection is empty no output has been found, see code above
       if(!collection){
         myself.sendExceptionMessage(
           'CREATE_INSCRIPTION',
           `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
         );
         setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        outData.raw = await myself.getRawTransactions(newOrd);
+        // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there are no fundings available.
+        // FIXME: l2xl response: it shouldn't work until fundings added with newOrd.AddUTXO
+        // outData.raw = await myself.getRawTransactions(newOrd);
+        outData.raw = [];
         return outData;
      }
 
@@ -1088,7 +1144,10 @@ async createInscriptionContract(payload, theIndex = 0) {
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
             "wait for several conformations or wait update on the server.";
-        outData.raw = await myself.getRawTransactions(newOrd);
+        // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there are no fundings available.
+        // FIXME: l2xl response: it shouldn't work until fundings added with newOrd.AddUTXO
+        // outData.raw = await myself.getRawTransactions(newOrd);
+        outData.raw = [];
         return outData;
      }
     const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
@@ -1106,7 +1165,10 @@ async createInscriptionContract(payload, theIndex = 0) {
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         outData.errorMessage = "There are no funds to create of the Inscription, please replenish the amount: "+
           `${min_fund_amount} sat`
-        outData.raw = await myself.getRawTransactions(newOrd);
+        // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there are no fundings available.
+        // FIXME: l2xl response: it shouldn't work until fundings added with newOrd.AddUTXO
+        // outData.raw = await myself.getRawTransactions(newOrd);
+        outData.raw = [];
         return outData;
     }
 
@@ -1122,30 +1184,31 @@ async createInscriptionContract(payload, theIndex = 0) {
     console.log("min_fund_amount:",min_fund_amount);
     console.log("utxo_list:",utxo_list);
 
-      for(const fund of utxo_list){
-        await newOrd.AddUTXO(
-          fund.txid,
-          fund.nout,
-          (myself.satToBtc(fund.amount)).toFixed(8),
-          fund.address
-        );
-      }
-try {
-  await newOrd.SignCommit(
-    myself.wallet.root.key,
-    'fund',
-    myself.wallet.uns.key.PubKey()
-  );
-} catch (e) {
-  console.log('SignCommit:',myself.getErrorMessage(e));
-}
+    for(const fund of utxo_list){
+      await newOrd.AddUTXO(
+        fund.txid,
+        fund.nout,
+        (myself.satToBtc(fund.amount)).toFixed(8),
+        fund.address  // TODO: to use .cstr() ?
+      );
+    }
 
-try {
+    try {
+      await newOrd.SignCommit(
+        myself.wallet.root.key,    // TODO: to use .cstr() ?
+        'fund',
+        myself.wallet.uns.key.PubKey()    // TODO: to use .cstr() ?
+      );
+    } catch (e) {
+      console.log('SignCommit:',myself.getErrorMessage(e));
+    }
+
+    try {
       // get front root ord and select to addres or pubkey
       // collection_utxo_key (root! image key) (current utxo key)
       if(payload?.collection?.genesis_txid) {
         await newOrd.SignCollection(
-          myself.wallet.root.key,
+          myself.wallet.root.key,  // TODO: to use .cstr() ?
           'ord'
         );
       }
@@ -1153,49 +1216,51 @@ try {
       console.log('SignCollection:',myself.getErrorMessage(e));
     }
 
-try {
+    try {
       await newOrd.SignInscription(
-        myself.wallet.root.key,
+        myself.wallet.root.key,  // TODO: to use .cstr() ?
         'uns'
       );
     } catch (e) {
       console.log('SignInscription:',myself.getErrorMessage(e));
     }
 
-      const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
-          `${flagsFundingOptions}`
-      ).c_str());
+    const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
+        `${flagsFundingOptions}`
+    ).c_str());
 
-      console.log('min_fund_amount_final_btc:',min_fund_amount_final_btc);
-      const min_fund_amount_final = await myself.btcToSat(min_fund_amount_final_btc);
+    console.log('min_fund_amount_final_btc:',min_fund_amount_final_btc);
+    const min_fund_amount_final = await myself.btcToSat(min_fund_amount_final_btc);
 
-      console.log('min_fund_amount_final:',min_fund_amount_final);
-      outData.amount = min_fund_amount_final;
+    console.log('min_fund_amount_final:',min_fund_amount_final);
+    outData.amount = min_fund_amount_final;
 
-      const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
-      outData.utxo_list = utxo_list_final;
+    const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
+    outData.utxo_list = utxo_list_final;
+
+    const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee().c_str()));
+    console.log('output_mining_fee:', output_mining_fee);
+    if(output_mining_fee < 546){
+      myself.sendNotificationMessage(
+        'CREATE_INSCRIPTION',
+        "There are too few coins left after creation and they will become part of the inscription balance"
+      );
+    }
 
       // SupportedVersions()
       outData.data = newOrd.Serialize(8, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
+      outData.raw = await myself.getRawTransactions(newOrd);
+
       const sk = newOrd.getIntermediateTaprootSK().c_str();
       myself.wallet.root.key.AddKeyToCache(sk);
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
+
       return outData;
-    } catch (exception){
+    } catch (exception) {
       const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, exception);
-      if(eout.indexOf('ReferenceError')!==-1) return;
-      if(eout.indexOf('TypeError')!==-1) return;
-      if(eout.indexOf('ContractTermMissing')!==-1) return;
-      if(eout.indexOf('ContractTermWrongValue')!==-1) return;
-      if(eout.indexOf('ContractValueMismatch')!==-1) return;
-      if(eout.indexOf('ContractTermWrongFormat')!==-1) return;
-      if(eout.indexOf('ContractStateError')!==-1) return;
-      if(eout.indexOf('ContractProtocolError')!==-1) return;
-      if(eout.indexOf('SignatureError')!==-1) return;
-      if(eout.indexOf('WrongKeyError')!==-1) return;
-      if(eout.indexOf('KeyError')!==-1) return;
-      if(eout.indexOf('TransactionError')!==-1) return;
+      if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return;
+
       console.info(CREATE_INSCRIPTION,'call:theIndex:',theIndex);
       theIndex++;
       if(theIndex>1000){
@@ -1231,7 +1296,8 @@ async createInscription(payload_data) {
           description: payload_data?.description,
           type: payload_data?.type
         });
-/*
+
+        /*
         myself.WinHelpers.closeCurrentWindow();
         await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, {
           contract: JSON.parse(payload_data.costs.data),
@@ -1246,7 +1312,8 @@ async createInscription(payload_data) {
           await myself.generateNewIndex('intsk');
           await myself.generateNewIndex('scrsk');
         }
-        await myself.genKeys();*/
+        await myself.genKeys();
+        */
       },1000);
 
 
@@ -1268,6 +1335,8 @@ async sellSignContract(utxoData, ord_price, market_fee, contract, txid, nout) {
     (myself.satToBtc(utxoData.amount)).toFixed(8),
     myself.wallet.ord.key.GetP2TRAddress(this.network)
   );
+
+  // TODO: CONTINUE_HERE !!!
   sellOrd.FundsPayoffAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
   sellOrd.SignOrdSwap(
     myself.wallet.root.key,
@@ -1507,18 +1576,8 @@ async  commitBuyInscriptionContract(payload, theIndex=0) {
         return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
-      if(eout.indexOf('ReferenceError')!==-1) return;
-      if(eout.indexOf('TypeError')!==-1) return;
-      if(eout.indexOf('ContractTermMissing')!==-1) return;
-      if(eout.indexOf('ContractTermWrongValue')!==-1) return;
-      if(eout.indexOf('ContractValueMismatch')!==-1) return;
-      if(eout.indexOf('ContractTermWrongFormat')!==-1) return;
-      if(eout.indexOf('ContractStateError')!==-1) return;
-      if(eout.indexOf('ContractProtocolError')!==-1) return;
-      if(eout.indexOf('SignatureError')!==-1) return;
-      if(eout.indexOf('WrongKeyError')!==-1) return;
-      if(eout.indexOf('KeyError')!==-1) return;
-      if(eout.indexOf('TransactionError')!==-1) return;
+      if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return;
+
       console.info(COMMIT_BUY_INSCRIPTION,'call:theIndex:',theIndex);
       theIndex++;
       if(theIndex>1000){
