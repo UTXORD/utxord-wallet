@@ -53,6 +53,48 @@ if (NETWORK === MAINNET){
   }
 }
 
+interface IInscriptionPayload {
+  collection: {},
+  content: string,
+  content_type: string,
+  addresses: [],
+  fee: number, // fee rate
+  expect_amount: number,
+  type: string,
+  name: string,
+  description: string,
+  metadata: {
+    name?: string,
+    description?: string,
+  }
+}
+
+interface ISingleInscription {
+  // To update after each inscription done, from out#1 of genesis tx
+  parent: {
+    txid: string,
+    nout: number,
+  },
+  draftUuid: string,
+  content: string,
+  contentType: string,
+  type: string,
+  name: string,
+  description: string,
+}
+
+interface IBulkInscriptionPayload {
+  feeRate: number,
+  expectAmount: number,
+  addresses: [],
+  inscriptions: ISingleInscription[],
+}
+
+interface ISingleInscriptionResult {
+  draftUuid: string,
+  contract: {},  // from JSON from core
+}
+
 (async () => {
 
   try {
