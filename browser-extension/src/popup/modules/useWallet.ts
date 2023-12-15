@@ -64,9 +64,8 @@ const useWallet = () => {
   async function fetchUSD() {
     try {
       const usd = await sendMessage(GET_USD, {}, 'background')
-      console.log('USD', usd);
-      if (usd) {
-        store.setUSD(usd)
+      if (usd?.data?.USD) {
+        store.setUSD(usd.data.USD || 0)
       }
     } catch (e) {
       console.log('getBalance->error:', e);
