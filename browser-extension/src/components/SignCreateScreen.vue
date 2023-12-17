@@ -78,6 +78,7 @@
       <PriceComp
         class="ml-auto"
         :price="balance?.confirmed || 0"
+        :loading="!isSynchronized"
         :font-size-breakpoints="{
           1000000: '15px'
         }"
@@ -110,6 +111,9 @@ const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 const toAddress = computed(() => {
   return ordAddress.value || fundAddress.value
 })
+
+const isSynchronized = computed(() => balance?.value?.sync)
+const connected = computed(() => balance?.value?.connect)
 
 const isInsufficientBalance = computed(() => {
   if (Number(dataForSign.value.data?.costs?.amount) > Number(balance.value?.confirmed)) return true

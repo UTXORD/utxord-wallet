@@ -23,7 +23,7 @@ import {
   POPUP_HEARTBEAT,
   DO_REFRESH_BALANCE,
   BALANCE_REFRESH_DONE,
-  PLUGIN_CONNECTED
+  UPDATE_PLUGIN_CONNECT
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 import { showError, showSuccess } from '~/helpers'
@@ -126,11 +126,12 @@ port.onMessage.addListener(async function(payload) {
       });
       break;
     }
-    case PLUGIN_CONNECTED: {
+    case UPDATE_PLUGIN_CONNECT: {
+      const justConnected = !balance?.value?.connect && payload.connect;
       store.setBalance({
         ...balance.value,
-        sync: false,
-        connect: true
+        sync: justConnected ? false : balance?.value?.sync,
+        connect: payload.connect
       });
       break;
     }
