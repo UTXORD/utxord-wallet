@@ -77,6 +77,7 @@
       <PriceComp
         class="ml-auto"
         :price="balance?.confirmed || 0"
+        :loading="!isSynchronized"
         :font-size-breakpoints="{
           1000000: '15px'
         }"
@@ -93,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs } from 'vue'
+import { toRefs, computed } from 'vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
@@ -108,6 +109,9 @@ const total = computed(
     (dataForSign.value?.data?.ord_price || 0) +
     (dataForSign.value?.data?.market_fee || 0)
 )
+
+const isSynchronized = computed(() => balance?.value?.sync)
+const connected = computed(() => balance?.value?.connect)
 
 const isInsufficientBalance = computed(() => {
   if (Number(total.value) > Number(balance.value?.confirmed)) return true
