@@ -27,7 +27,6 @@ import {
   NEW_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
   OPEN_START_PAGE,
-  PLUGIN_CONNECTED,
   PLUGIN_ID,
   PLUGIN_PUBLIC_KEY,
   POPUP_HEARTBEAT,
@@ -39,7 +38,10 @@ import {
   SUBMIT_SIGN,
   UNLOAD,
   UNLOAD_SEED,
-  UPDATE_PASSWORD
+  UPDATE_PASSWORD,
+  GET_CONNECT_STATUS,
+  SEND_CONNECT_STATUS,
+  UPDATE_PLUGIN_CONNECT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -192,6 +194,7 @@ interface ISingleInscriptionResult {
     async function refreshBalanceAndAdressed(tabId: number | undefined = undefined) {
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success, tabId);
+        await Api.sendMessageToWebPage(GET_CONNECT_STATUS, {}, tabId);
         await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses, tabId);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, tabId);
     };
@@ -304,10 +307,15 @@ interface ISingleInscriptionResult {
         payload.data._tabId = tabId;
       }
 
+      if (payload.type === SEND_CONNECT_STATUS) {
+        Api.connect = payload?.data?.connected;
+        postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: Api.connect});
+      }
+
       if (payload.type === CONNECT_TO_PLUGIN) {
         let success = Api.signToChallenge(payload.data, tabId);
         if (success) {
-          postMessageToPopupIfOpen({id: PLUGIN_CONNECTED});
+          postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: true});
           setTimeout(async () => {
             await refreshBalanceAndAdressed(tabId);
           }, 1000);
@@ -359,8 +367,6 @@ interface ISingleInscriptionResult {
       }
 
       if (payload.type === CREATE_INSCRIPTION) {
-        payload.data.fee_rate = payload.data.fee;
-
         let costs;
         console.log('payload?.data?.type:',payload?.data?.type)
         console.log('payload?.data?.collection?.genesis_txid:',payload?.data?.collection?.genesis_txid);

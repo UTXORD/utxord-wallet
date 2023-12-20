@@ -1063,8 +1063,9 @@ async createInscriptionContract(payload, theIndex = 0) {
     utxo_list: [],
     expect_amount: Number(payload.expect_amount),
     extra_amount: 0,
-    fee_rate: payload.fee,
-    size: (payload.content.length+payload.content_type.length),
+    fee_rate: payload.fee_rate,
+    fee: payload.fee,
+    size: (payload.content.length + payload.content_type.length),
     raw: [],
     errorMessage: null as string | null
   };
@@ -1101,9 +1102,10 @@ async createInscriptionContract(payload, theIndex = 0) {
       const encoded = cbor.encode(payload.metadata);
       await newOrd.SetMetaData(myself.arrayBufferToHex(encoded));
     }
-    await newOrd.MiningFeeRate((myself.satToBtc(payload.fee)).toFixed(8)); // payload.fee as Sat/kB
+    
+    await newOrd.MiningFeeRate((myself.satToBtc(payload.fee_rate)).toFixed(8)); // payload.fee as Sat/kB
 
-    if(payload?.collection?.genesis_txid){
+    if(payload?.collection?.genesis_txid) {
       // collection is empty no output has been found, see code above
       if(!collection) {
         myself.sendExceptionMessage(
@@ -1130,7 +1132,6 @@ async createInscriptionContract(payload, theIndex = 0) {
         collection_utxo_key.GetLocalPubKey().c_str()
       )
     }
-
     await newOrd.Data(payload.content_type, payload.content);
     // they have different derivation paths
     await newOrd.InscribePubKey(myself.wallet.ord.key.GetLocalPubKey().c_str());
@@ -1140,7 +1141,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       `${flagsFundingOptions}`
     ).c_str()));
     outData.amount = min_fund_amount;
-    if(!myself.fundings.length ){
+    if(!myself.fundings.length) {
       // TODO: REWORK FUNDS EXCEPTION
       // myself.sendExceptionMessage(
       //   'CREATE_INSCRIPTION',
@@ -1155,12 +1156,11 @@ async createInscriptionContract(payload, theIndex = 0) {
       outData.raw = [];
       return outData;
     }
-
     const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
     outData.utxo_list = utxo_list;
     const inputs_sum = await myself.sumAllFunds(utxo_list);
     outData.inputs_sum = inputs_sum;
-
+    
     if(utxo_list?.length < 1){
       // TODO: REWORK FUNDS EXCEPTION
       // this.sendExceptionMessage(

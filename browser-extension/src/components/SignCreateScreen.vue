@@ -1,27 +1,5 @@
 <template>
   <SignWrapper>
-    <!-- To address -->
-<!--
-    <div
-      class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
-    >
-      <div class="sign-screen_block-input flex flex-col">
-        <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >My ordinal address:</span
-        >
-        <CustomInput
-          :value="formatAddress(toAddress, 12, 12)"
-          class="w-full"
-          readonly
-        >
-          <CopyIcon
-            class="cursor-pointer"
-            @click="copyToClipboard(toAddress)"
-          />
-        </CustomInput>
-      </div>
-    </div>
--->
     <!-- TX Info -->
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
@@ -50,7 +28,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.fee || 0"
+          :price="miningFee"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -63,7 +41,7 @@
         <span class="mr-2 text-[var(--text-color)]">Total Needed:</span>
         <PriceComp
           class="ml-auto"
-          :price="Math.abs(dataForSign?.data?.fee + dataForSign?.data?.expect_amount) || 0"
+          :price="totalNeed"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -78,6 +56,7 @@
       <PriceComp
         class="ml-auto"
         :price="balance?.confirmed || 0"
+        :loading="!isSynchronized"
         :font-size-breakpoints="{
           1000000: '15px'
         }"
@@ -97,22 +76,26 @@
 
 <script setup lang="ts">
 import { toRefs, computed } from 'vue'
-import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
-import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
 
 
 const store = useStore()
-const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
+const { balance, dataForSign } = toRefs(store)
 
-const toAddress = computed(() => {
-  return ordAddress.value || fundAddress.value
-})
+const isSynchronized = computed(() => balance?.value?.sync)
+const connected = computed(() => balance?.value?.connect)
+
+const miningFee = computed(
+  () => Math.abs(dataForSign.value?.data?.costs?.amount -
+    dataForSign.value?.data?.costs?.expect_amount) || 0
+)
+
+const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
 
 const isInsufficientBalance = computed(() => {
-  if (Number(dataForSign.value.data?.costs?.amount) > Number(balance.value?.confirmed)) return true
+  if (Number(totalNeed.value) > Number(balance.value?.confirmed)) return true
   return false
 })
 
