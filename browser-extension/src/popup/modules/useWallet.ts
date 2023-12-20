@@ -68,7 +68,7 @@ const useWallet = () => {
         store.setUSD(usdRate.data.USD || 0)
       }
     } catch (e) {
-      console.log('getBalance->error:', e);
+      console.log('fetchUSDRate->error:', e);
     }
   }
 
