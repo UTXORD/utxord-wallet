@@ -325,8 +325,6 @@ if (NETWORK === MAINNET){
       }
 
       if (payload.type === CREATE_INSCRIPTION) {
-        payload.data.fee_rate = payload.data.fee;
-
         let costs;
         console.log('payload?.data?.type:',payload?.data?.type)
         console.log('payload?.data?.collection?.genesis_txid:',payload?.data?.collection?.genesis_txid);
