@@ -41,7 +41,9 @@ import {
   UPDATE_PASSWORD,
   GET_CONNECT_STATUS,
   SEND_CONNECT_STATUS,
-  UPDATE_PLUGIN_CONNECT
+  UPDATE_PLUGIN_CONNECT,
+  GET_INSCRIPTION_CONTRACT,
+  INSCRIPTION_CONTRACT_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -322,6 +324,11 @@ if (NETWORK === MAINNET){
         }
         console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);
         await Api.restoreAllTypeIndexes(payload.data.addresses);
+      }
+
+      if (payload.type === GET_INSCRIPTION_CONTRACT) {
+        const contract = await Api.createInscriptionContract(payload.data);
+        await Api.sendMessageToWebPage(INSCRIPTION_CONTRACT_RESULT, contract);
       }
 
       if (payload.type === CREATE_INSCRIPTION) {
