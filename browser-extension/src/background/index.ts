@@ -363,7 +363,13 @@ if (NETWORK === MAINNET){
         payload.data.costs = costs;
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
-          setTimeout(async  () => {
+          setTimeout(async () => {
+            if (payload.data.costs.output_mining_fee < 546) {
+              Api.sendNotificationMessage(
+                'CREATE_INSCRIPTION',
+                'There are too few coins left after creation and they will become part of the inscription balance'
+              );
+            }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
