@@ -1059,6 +1059,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     data: null,
     sk: null,
     amount: 0,
+    output_mining_fee: 0,
     inputs_sum: 0,
     utxo_list: [],
     expect_amount: Number(payload.expect_amount),
@@ -1228,14 +1229,8 @@ async createInscriptionContract(payload, theIndex = 0) {
     const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
     outData.utxo_list = utxo_list_final;
     const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee().c_str()));
+    outData.output_mining_fee = output_mining_fee;
     console.log('output_mining_fee:', output_mining_fee);
-
-    if(output_mining_fee < 546){
-      myself.sendNotificationMessage(
-        'CREATE_INSCRIPTION',
-        "There are too few coins left after creation and they will become part of the inscription balance"
-      );
-    }
 
     outData.data = newOrd.Serialize(7).c_str();
     outData.raw = await myself.getRawTransactions(newOrd);

@@ -41,7 +41,9 @@ import {
   UPDATE_PASSWORD,
   GET_CONNECT_STATUS,
   SEND_CONNECT_STATUS,
-  UPDATE_PLUGIN_CONNECT
+  UPDATE_PLUGIN_CONNECT,
+  GET_INSCRIPTION_CONTRACT,
+  INSCRIPTION_CONTRACT_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -324,6 +326,11 @@ if (NETWORK === MAINNET){
         await Api.restoreAllTypeIndexes(payload.data.addresses);
       }
 
+      if (payload.type === GET_INSCRIPTION_CONTRACT) {
+        const contract = await Api.createInscriptionContract(payload.data);
+        await Api.sendMessageToWebPage(INSCRIPTION_CONTRACT_RESULT, contract);
+      }
+
       if (payload.type === CREATE_INSCRIPTION) {
         let costs;
         console.log('payload?.data?.type:',payload?.data?.type)
@@ -356,7 +363,13 @@ if (NETWORK === MAINNET){
         payload.data.costs = costs;
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
-          setTimeout(async  () => {
+          setTimeout(async () => {
+            if (payload.data.costs.output_mining_fee < 546) {
+              Api.sendNotificationMessage(
+                'CREATE_INSCRIPTION',
+                'There are too few coins left after creation and they will become part of the inscription balance'
+              );
+            }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
