@@ -293,7 +293,7 @@ TEST_CASE("inscribe")
             CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
             CHECK_NOTHROW(builder_terms.AuthorFee("0.00001", author_fee_addr));
             CHECK_NOTHROW(builder_terms.MarketInscribeScriptPubKey(hex(market_script_key.PubKey())));
-            CHECK_NOTHROW(builder_terms.AddToCollection(collection_id, FormatAmount(collection_utxo.m_amount), collection_utxo.m_addr));
+            CHECK_NOTHROW(builder_terms.Collection(collection_id, FormatAmount(collection_utxo.m_amount), collection_utxo.m_addr));
             std::string market_terms;
             REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(8, LASY_INSCRIPTION_MARKET_TERMS));
 

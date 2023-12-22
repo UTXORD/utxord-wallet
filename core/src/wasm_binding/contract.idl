@@ -153,10 +153,11 @@ interface CreateInscriptionBuilder
 
     [Const] static DOMString SupportedVersions();
 
+    [Value] string GetIntermediateSecKey();
     [Value] string MakeInscriptionId();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
-    [Value] string GetGenesisTxMiningFee();
+    //[Value] string GetGenesisTxMiningFee(); // Why we need it at all??
 
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();

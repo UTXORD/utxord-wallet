@@ -124,7 +124,7 @@ public:
     std::string GetContent() const { return l15::hex(m_content.value()); }
     std::string GetInscribeAddress() const { return *m_destination_addr; }
 
-    std::string GetIntermediateSecKey(const KeyRegistry &master_key, const std::string& key_filter) const;
+    std::string GetIntermediateSecKey() const;
 
     void OrdAmount(const std::string& amount)
     { m_ord_amount = l15::ParseAmount(amount); }
@@ -166,7 +166,7 @@ public:
                                               const std::string& utxo_txid, uint32_t utxo_nout, const std::string& amount,
                                               const std::string& collection_addr);
 
-    void AddToCollection(const std::string& collection_id, const std::string& amount, const std::string& collection_addr)
+    void Collection(const std::string& collection_id, const std::string& amount, const std::string& collection_addr)
     { AddToCollection(collection_id, uint256(0).GetHex(), 1, amount, collection_addr); }
 
     std::string MakeInscriptionId() const;

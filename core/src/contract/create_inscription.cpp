@@ -225,7 +225,7 @@ const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>& CreateInscriptio
 }
 
 
-std::string CreateInscriptionBuilder::GetIntermediateSecKey(const KeyRegistry &master_key, const std::string& key_filter) const
+std::string CreateInscriptionBuilder::GetIntermediateSecKey() const
 {
     return hex(get<0>(GetInscriptionTapRoot()));
 }
