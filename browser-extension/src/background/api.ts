@@ -511,8 +511,8 @@ class Api {
   addToExternalKey(keyhex, pass){
     const myself = this;
 
-    const keypair = new myself.utxord.ChannelKeys(keyhex);
-    const tmpAddress = this.bech.Encode(keypair.PubKey());  // TODO: to use .cstr() ?
+    const keypair = new myself.utxord.KeyPair(keyhex);
+    const tmpAddress = this.bech.Encode(keypair.PubKey());
     if(!myself.checkAddress(tmpAddress, this.wallet.ext.keys)){
       let enkeyhex = keyhex;
       let enFlag = false;
@@ -524,7 +524,7 @@ class Api {
       this.wallet.ext.keys.push({
           key: keypair,
           p2tr: tmpAddress,
-          pubKeyStr: keypair.PubKey(),  // TODO: to use .cstr() ?
+          pubKeyStr: keypair.PubKey(),
           privKeyStr: enkeyhex,
           index:`${Number(enFlag)}/${enkeyhex}`,
           type: 'ext',
@@ -552,7 +552,7 @@ class Api {
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
     this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-    this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);  // TODO: to use .cstr() ?
+    this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);
      return true;
   }
 
@@ -579,7 +579,7 @@ class Api {
                 }
               }
             }
-            publicKeys.push({pubKeyStr: this.wallet[key].key.PubKey(), type: key});  // TODO: to use .cstr() ?
+            publicKeys.push({pubKeyStr: this.wallet[key].key.PubKey(), type: key});
           }
         }
       }
@@ -605,7 +605,7 @@ async getBranchKey(path, item){
     if(path[0]==='m'){
       const for_script = (item?.type === 'uns' || item?.type === 'intsk' || item?.type === 'scrsk' || item?.type === 'auth');
       const keypair = this.wallet.root.key.Derive(path, for_script);
-      const address = keypair.GetP2TRAddress(this.network);  // TODO: to use .cstr() ?
+      const address = keypair.GetP2TRAddress(this.network);
       return {address: address, key: keypair};
     }else{
       if(item?.type==='ext' || item?.type==='xord'){
@@ -1086,7 +1086,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     }
 
     const newOrd = new myself.utxord.CreateInscriptionBuilder(
-      myself.network,  // TODO: to discuss!
+      myself.network,
       myself.utxord.INSCRIPTION
     );
     console.log('newOrd:',newOrd);
@@ -1189,15 +1189,15 @@ async createInscriptionContract(payload, theIndex = 0) {
         fund.txid,
         fund.nout,
         (myself.satToBtc(fund.amount)).toFixed(8),
-        fund.address  // TODO: to use .cstr() ?
+        fund.address
       );
     }
 
     try {
       await newOrd.SignCommit(
-        myself.wallet.root.key,    // TODO: to use .cstr() ?
+        myself.wallet.root.key,
         'fund',
-        myself.wallet.uns.key.PubKey()    // TODO: to use .cstr() ?
+        myself.wallet.uns.key.PubKey()
       );
     } catch (e) {
       console.log('SignCommit:',myself.getErrorMessage(e));
@@ -1208,7 +1208,7 @@ async createInscriptionContract(payload, theIndex = 0) {
       // collection_utxo_key (root! image key) (current utxo key)
       if(payload?.collection?.genesis_txid) {
         await newOrd.SignCollection(
-          myself.wallet.root.key,  // TODO: to use .cstr() ?
+          myself.wallet.root.key,
           'ord'
         );
       }
@@ -1218,7 +1218,7 @@ async createInscriptionContract(payload, theIndex = 0) {
 
     try {
       await newOrd.SignInscription(
-        myself.wallet.root.key,  // TODO: to use .cstr() ?
+        myself.wallet.root.key,
         'uns'
       );
     } catch (e) {
