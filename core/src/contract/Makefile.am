@@ -23,7 +23,7 @@ AM_CPPFLAGS += \
 noinst_LTLIBRARIES = libutxord-contract.la
 libutxord_contract_la_SOURCES = \
     ecdsa.cpp \
-    address.cpp \
+    chainmode_spec.cpp \
     keypair.cpp \
 	contract_builder.cpp \
 	create_inscription.cpp \

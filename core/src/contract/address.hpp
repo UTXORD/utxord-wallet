@@ -12,22 +12,20 @@
 #include "util/strencodings.h"
 
 #include "common.hpp"
-
 #include "contract_error.hpp"
 
 namespace utxord {
 
 enum ChainMode {MAINNET, TESTNET, REGTEST};
 
-template <ChainMode M> struct Hrp;
-template <> struct Hrp<MAINNET> { const static char* const value; };
-template <> struct Hrp<TESTNET> { const static char* const value; };
-template <> struct Hrp<REGTEST> { const static char* const value; };
+}
+
+#include "chainmode_spec.hpp"
+
+namespace utxord {
 
 class Bech32
 {
-    typedef l15::bytevector bytevector;
-
     ChainMode chainmode;
     const char* hrptag;
 public:
@@ -46,21 +44,22 @@ public:
     ChainMode GetChainMode() const
     { return chainmode; }
 
-    std::string Encode(const auto& pk, bech32::Encoding encoding = bech32::Encoding::BECH32M) const {
+    template <typename KeyType>
+    std::string Encode(const KeyType& pk, bech32::Encoding encoding = bech32::Encoding::BECH32M) const {
         std::vector<unsigned char> bech32buf = {(encoding == bech32::Encoding::BECH32) ? (uint8_t)0 : (uint8_t)1};
         bech32buf.reserve(1 + ((pk.end() - pk.begin()) * 8 + 4) / 5);
         ConvertBits<8, 5, true>([&](unsigned char c) { bech32buf.push_back(c); }, pk.begin(), pk.end());
         return bech32::Encode(encoding, hrptag, bech32buf);
     }
 
-    std::tuple<unsigned, bytevector> Decode(const std::string& address) const
+    std::tuple<unsigned, l15::bytevector> Decode(const std::string& address) const
     {
         bech32::DecodeResult bech_result = bech32::Decode(address);
         if(bech_result.hrp != hrptag)
         {
             throw ContractTermWrongValue(std::string("Address prefix should be ") + hrptag + ". Address: " + address);
         }
-        if(bech_result.data.size() < 1)
+        if(bech_result.data.empty())
         {
             throw ContractTermWrongValue(std::string("Wrong bech32 data (no data decoded): ") + address);
         }
@@ -73,7 +72,7 @@ public:
             throw ContractTermWrongValue("Version 1+ witness address must use Bech32m checksum");
         }
 
-        bytevector data;
+        l15::bytevector data;
         data.reserve(32);
         auto I = cex::smartinserter(data, data.end());
         if(!ConvertBits<5, 8, false>([&](unsigned char c) { *I++ = c; }, bech_result.data.begin() + 1, bech_result.data.end()))
