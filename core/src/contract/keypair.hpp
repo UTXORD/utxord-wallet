@@ -62,8 +62,8 @@ class KeyRegistry
     std::list<l15::seckey> m_keys_cache;
 
 public:
-    KeyRegistry(Bech32 bech, const l15::bytevector& seed): m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), mBech(bech), m_key_type_filters(10), mMasterKey(m_ctx, seed) {}
     KeyRegistry(const secp256k1_context* ctx, Bech32 bech, const l15::bytevector& seed): m_ctx(ctx), mBech(bech), m_key_type_filters(10), mMasterKey(m_ctx, seed) {}
+    KeyRegistry(ChainMode bech, const std::string& seedhex): KeyRegistry(l15::core::ChannelKeys::GetStaticSecp256k1Context(), Bech32(bech), l15::unhex<l15::bytevector>(seedhex)) {}
 
     const secp256k1_context* Secp256k1Context() const
     { return m_ctx; }
@@ -90,6 +90,20 @@ public:
     KeyPair Lookup(const std::string& addr, const KeyLookupFilter& hint) const;
     KeyPair Lookup(const std::string& addr, const std::string& hint_json) const;
 };
+
+class ExtPubKey
+{
+    const secp256k1_context* m_ctx;
+    Bech32 mBech;
+    l15::core::ext_pubkey m_extpk;
+
+public:
+    ExtPubKey(const secp256k1_context* ctx, Bech32 bech, l15::core::ext_pubkey extpk): m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), mBech(bech), m_extpk(move(extpk)) {}
+    ExtPubKey(ChainMode chainmode, const std::string& extpk): ExtPubKey(l15::core::ChannelKeys::GetStaticSecp256k1Context(), Bech32(chainmode), l15::unhex<l15::core::ext_pubkey>(extpk)) {}
+
+    std::string Derive(uint32_t index) const { return hex(l15::core::MasterKey::DerivePubKey(m_ctx, m_extpk, index)); }
+};
+
 
 } // utxord
 

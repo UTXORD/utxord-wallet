@@ -86,7 +86,7 @@ struct TestCondition {
 
 TEST_CASE("singleinout")
 {
-    KeyRegistry master_key(*bech, seed);
+    KeyRegistry master_key(bech->GetChainMode(), hex(seed));
     master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
 
     KeyPair p2tr_utxo_key = master_key.Derive("m/86'/1'/0'/0/255", false);
@@ -175,7 +175,7 @@ TEST_CASE("singleinout")
 
 TEST_CASE("2ins2outs")
 {
-    KeyRegistry master_key(*bech, seed);
+    KeyRegistry master_key(bech->GetChainMode(), hex(seed));
     master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
     KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/0", false);
     KeyPair utxo_key1 = master_key.Derive("m/86'/1'/1'/0/1", false);
@@ -235,7 +235,7 @@ TEST_CASE("2ins2outs")
 
 TEST_CASE("txchain")
 {
-    KeyRegistry master_key(*bech, seed);
+    KeyRegistry master_key(bech->GetChainMode(), hex(seed));
     master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
     KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/100", false);
     KeyPair intermediate_key = master_key.Derive("m/86'/1'/1'/0/101", false);
