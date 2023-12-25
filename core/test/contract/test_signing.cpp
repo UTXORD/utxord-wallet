@@ -26,7 +26,7 @@ static const std::string derive_path = "m/86'/2'/0'/0/0";
 
 TEST_CASE("KeyFilter")
 {
-    KeyRegistry master(Bech32(utxord::Hrp<TESTNET>()), unhex<bytevector>("f35c7006dd5a72d1023dff8b856fd9c90bc5f334650c5f933da8218a183e8a14d0ea9c8fb1694b34edb7f5b1674edb2a8f90fee52325cc3a7968062608c61cce"));
+    KeyRegistry master(TESTNET, "f35c7006dd5a72d1023dff8b856fd9c90bc5f334650c5f933da8218a183e8a14d0ea9c8fb1694b34edb7f5b1674edb2a8f90fee52325cc3a7968062608c61cce");
 
     CHECK_NOTHROW(master.AddKeyType("oth", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["0'"],"change":["0"],"index_range":"0-16384"})"));
     CHECK_NOTHROW(master.AddKeyType("fund", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["1'"],"change":["0"],"index_range":"0-16384"})"));
@@ -38,7 +38,7 @@ TEST_CASE("KeyFilter")
 
 TEST_CASE("KeyLookup")
 {
-    KeyRegistry master(Bech32(utxord::Hrp<TESTNET>()), unhex<bytevector>("f35c7006dd5a72d1023dff8b856fd9c90bc5f334650c5f933da8218a183e8a14d0ea9c8fb1694b34edb7f5b1674edb2a8f90fee52325cc3a7968062608c61cce"));
+    KeyRegistry master(TESTNET, "f35c7006dd5a72d1023dff8b856fd9c90bc5f334650c5f933da8218a183e8a14d0ea9c8fb1694b34edb7f5b1674edb2a8f90fee52325cc3a7968062608c61cce");
 
     CHECK_NOTHROW(master.AddKeyType("oth", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["0'"],"change":["0"],"index_range":"0-16384"})"));
     CHECK_NOTHROW(master.AddKeyType("fund", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["1'"],"change":["0"],"index_range":"0-16384"})"));

@@ -94,7 +94,7 @@ TEST_CASE("Swap")
     const std::string ORD_PRICE = "0.0001";
     const std::string MARKET_FEE = "0.00001";
 
-    KeyRegistry master_key(*bech, seed);
+    KeyRegistry master_key(bech->GetChainMode(), hex(seed));
     master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
     master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
     master_key.AddKeyType("swap", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'"], "change":["0"], "index_range":"0-256"})");
@@ -374,7 +374,7 @@ TEST_CASE("SwapNoFee")
     const std::string ORD_PRICE = "0.0001";
     const std::string MARKET_FEE = "0";
 
-    KeyRegistry master_key(*bech, seed);
+    KeyRegistry master_key(bech->GetChainMode(), hex(seed));
     master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
     master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
     master_key.AddKeyType("swap", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'"], "change":["0"], "index_range":"0-256"})");
@@ -522,7 +522,7 @@ TEST_CASE("FundsNotEnough")
     const std::string ORD_PRICE = "0.0001";
     const std::string MARKET_FEE = "0.00001";
 
-    KeyRegistry master_key(*bech, seed);
+    KeyRegistry master_key(bech->GetChainMode(), hex(seed));
     master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
     master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
     master_key.AddKeyType("swap", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'"], "change":["0"], "index_range":"0-256"})");
