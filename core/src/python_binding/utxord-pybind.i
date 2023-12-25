@@ -16,6 +16,8 @@
 
 #include "common.hpp"
 #include "transaction.hpp"
+#include "address.hpp"
+#include "keypair.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "simple_transaction.hpp"
@@ -112,6 +114,8 @@ namespace l15 {
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
+%include "address.hpp"
+%include "keypair.hpp"
 %include "contract_builder.hpp"
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
