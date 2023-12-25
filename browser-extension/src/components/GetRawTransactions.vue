@@ -44,13 +44,13 @@ import { useStore } from '~/popup/store/index'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
 
 const store = useStore()
-const { dataForSign } = toRefs(store)
+const { metadataForSign } = toRefs(store)
 const textarea = ref('')
 const showContract = ref('')
 const activeTab = ref('')
 
 const raws = computed(() => {
-  return dataForSign.value?.data?.costs?.raw
+  return metadataForSign.value?.data?.costs?.raw
 })
 
 async function showRawTranscation(n){
@@ -67,7 +67,7 @@ async function whatSigning(){
     return;
   }
   showContract.value = true;
-  console.log(dataForSign.value.data)
+  console.log(metadataForSign.value.data)
   textarea.value = raws.value[0]
 }
 </script>

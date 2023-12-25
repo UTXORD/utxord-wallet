@@ -75,7 +75,7 @@ import Modal from '~/components/Modal.vue'
 import { isASCII } from '~/helpers/index'
 
 const store = useStore()
-const { balance, dataForSign } = toRefs(store)
+const { balance, metadataForSign } = toRefs(store)
 const loading = ref(true)
 const password = ref('')
 
@@ -83,13 +83,13 @@ const winHelpers = new WinHelpers()
 
 const total = computed(() => {
   let out = 0
-  if (dataForSign.value?.type === CREATE_INSCRIPTION) {
-    out += dataForSign.value?.data?.costs?.amount || 0
+  if (metadataForSign.value?.type === CREATE_INSCRIPTION) {
+    out += metadataForSign.value?.data?.costs?.amount || 0
   } else {
-    out += dataForSign.value?.data?.ord_price || 0
-    out += dataForSign.value?.data?.market_fee || 0
-    out += dataForSign.value?.data?.expect_amount || 0
-    out += dataForSign.value?.data?.market_fee || 0
+    out += metadataForSign.value?.data?.ord_price || 0
+    out += metadataForSign.value?.data?.market_fee || 0
+    out += metadataForSign.value?.data?.expect_amount || 0
+    out += metadataForSign.value?.data?.market_fee || 0
   }
   return out
 })
@@ -100,7 +100,7 @@ const isInsufficientBalance = computed(() => {
 })
 
 const isDisabled = computed(() => {
-  if (dataForSign.value?.type === SELL_INSCRIPTION) return false
+  if (metadataForSign.value?.type === SELL_INSCRIPTION) return false
   if (Number(balance.value?.confirmed) === 0) return true
   if (isInsufficientBalance.value) return true
   if (!isASCII(password.value)) return true
@@ -108,7 +108,7 @@ const isDisabled = computed(() => {
 })
 
 const isDisabledMessage = computed(() => {
-  if (dataForSign.value?.type === SELL_INSCRIPTION) return 'Sign'
+  if (metadataForSign.value?.type === SELL_INSCRIPTION) return 'Sign'
   if (Number(balance.value?.confirmed) === 0) return 'No Balance'
   if (isInsufficientBalance.value) return 'Insufficient Balance'
   return 'Sign'
@@ -121,9 +121,9 @@ const isDisabledPass = computed(() => {
 })
 
 async function onSign() {
-  dataForSign.value = { ...dataForSign.value, password: password.value }
+  metadataForSign.value = { ...metadataForSign.value, password: password.value }
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
-  await sendMessage(SUBMIT_SIGN, dataForSign.value, 'background')
+  await sendMessage(SUBMIT_SIGN, metadataForSign.value, 'background')
 }
 
 function cancel() {

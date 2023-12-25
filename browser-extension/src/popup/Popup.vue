@@ -18,7 +18,7 @@ import {
   EXCEPTION,
   WARNING,
   NOTIFICATION,
-  SAVE_DATA_FOR_SIGN,
+  SAVE_METADATA_FOR_SIGN,
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
   POPUP_HEARTBEAT,
   DO_REFRESH_BALANCE,
@@ -34,7 +34,7 @@ const {
   getFundAddress,
   getOrdAddress,
   getBalance,
-  saveDataForSign,
+  saveMetadataForSign,
   saveDataForExportKeyPair,
   fetchUSDRate
 } = useWallet()
@@ -153,8 +153,8 @@ onMessage(NOTIFICATION, (payload: any) => {
   return true
 })
 
-onMessage(SAVE_DATA_FOR_SIGN, (payload) => {
-  saveDataForSign(payload.data || {})
+onMessage(SAVE_METADATA_FOR_SIGN, (payload) => {
+  saveMetadataForSign(payload.data || {})
   return true
 })
 

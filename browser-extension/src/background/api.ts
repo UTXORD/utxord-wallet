@@ -1070,7 +1070,7 @@ async createInscriptionContract(payload, theIndex = 0) {
     errorMessage: null as string | null
   };
   try {
-    console.log('createInscription payload: ', {...payload || {}});
+    console.log('createInscriptionContract payload: ', {...payload || {}});
 
     let collection;
     let flagsFundingOptions = "";
@@ -1260,6 +1260,7 @@ async createInscription(payload_data) {
   const myself = this;
   if(!payload_data?.costs?.data) return;
   try{
+      console.log('createInscription payload: ', {...payload_data || {}});
       console.log("outData:", payload_data.costs.data);
       if(payload_data.costs){
         if(payload_data.costs?.xord){

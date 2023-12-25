@@ -52,8 +52,8 @@ const useWallet = () => {
     };
   }
 
-  async function saveDataForSign(data: {}) {
-    store.setDataForSign(data || {});
+  async function saveMetadataForSign(data: {}) {
+    store.setMetadataForSign(data || {});
     store.setErrorMessage(data['errorMessage'] || null);
   }
 
@@ -78,7 +78,7 @@ const useWallet = () => {
     getFundAddress,
     getOrdAddress,
     getBalance,
-    saveDataForSign,
+    saveMetadataForSign,
     saveDataForExportKeyPair,
     getNetWork,
     fetchUSDRate,

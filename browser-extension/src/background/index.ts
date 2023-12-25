@@ -31,7 +31,7 @@ import {
   PLUGIN_PUBLIC_KEY,
   POPUP_HEARTBEAT,
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
-  SAVE_DATA_FOR_SIGN,
+  SAVE_METADATA_FOR_SIGN,
   SAVE_GENERATED_SEED,
   SELL_INSCRIPTION,
   SEND_BALANCES,
@@ -41,10 +41,12 @@ import {
   UPDATE_PASSWORD,
   GET_CONNECT_STATUS,
   SEND_CONNECT_STATUS,
-  UPDATE_PLUGIN_CONNECT
+  UPDATE_PLUGIN_CONNECT,
+  CREATE_BULK_INSCRIPTION
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
+import {HashedStore} from "~/background/hashedStore";
 
 if (NETWORK === MAINNET){
   if(self){
@@ -86,6 +88,7 @@ interface ISingleInscription {
 }
 
 interface IBulkInscriptionPayload {
+  jobUuid: string;
   feeRate: number,
   expectAmount: number,
   addresses: [],
@@ -100,6 +103,8 @@ interface ISingleInscriptionResult {
 (async () => {
 
   try {
+    let store = HashedStore.getInstance();
+
     // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
     let popupPort: Port | null = null;
@@ -241,17 +246,32 @@ interface ISingleInscriptionResult {
 
     onMessage(SUBMIT_SIGN, async (payload) => {
 
-      // console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
+      console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
+      // console.debug("===== SUBMIT_SIGN: payload?.data?.data", {...payload?.data?.data})
       // console.debug("===== SUBMIT_SIGN: payload?.data?._tabId", payload?.data?._tabId)
       // console.debug("===== SUBMIT_SIGN: payload?.data?.data?._tabId", payload?.data?.data?._tabId)
 
-      if (payload.data.type === CREATE_INSCRIPTION) {
+      if (payload.data.type === CREATE_BULK_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
+          payload.data.data.content = store.pop(payload.data.data?.content_store_key);
           const success = await Api.createInscription(payload.data.data);
           await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
           await Api.encryptedWallet(payload.data.password);
           return success;
+        }
+        return false;
+      }
+
+      if (payload.data.type === CREATE_INSCRIPTION) {
+        const res = await Api.decryptedWallet(payload.data.password);
+        if(res){
+          payload.data.data.content = store.pop(payload.data.data?.content_store_key);
+          const success = await Api.createInscription(payload.data.data);
+          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
+          await Api.encryptedWallet(payload.data.password);
+          // return success;
+          return true;
         }
         return false;
       }
@@ -366,40 +386,39 @@ interface ISingleInscriptionResult {
         await Api.restoreAllTypeIndexes(payload.data.addresses);
       }
 
-      if (payload.type === CREATE_INSCRIPTION) {
+      if (payload.type === CREATE_BULK_INSCRIPTION) {
         let costs;
         console.log('payload?.data?.type:',payload?.data?.type)
         console.log('payload?.data?.collection?.genesis_txid:',payload?.data?.collection?.genesis_txid);
-        /*
-        if(payload?.data?.type==='AVATAR'){
-          console.log('run: Independent Collection')
-          costs =  await Api.createIndependentCollectionContract(payload.data);
-        }
-        if(payload?.data?.type==='INSCRIPTION'){
-          if(payload?.data?.collection?.genesis_txid){
-            console.log('run: Inscription In Collection');
-            costs =  await Api.createInscriptionInCollectionContract(payload.data);
-          }else{
-            console.log('run: Independent Inscription');
-            costs =  await Api.createIndependentInscriptionContract(payload.data);
-          }
-        }
-        if(payload?.data?.type==='COLLECTION'){
-          if(payload?.data?.collection?.genesis_txid){
-            console.log('run: Collection With Parent');
-            costs =  await Api.createCollectionWithParentContract(payload.data);
-          }else{
-            console.log('run: Independent Collection');
-            costs =  await Api.createIndependentCollectionContract(payload.data);
-          }
-        }
-*/
+
         costs = await Api.createInscriptionContract(payload.data);
         payload.data.costs = costs;
         console.log(CREATE_INSCRIPTION+':',payload.data);
+        payload.data.content_store_key = store.put(payload.data.content);
+        payload.data.content = null;
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
-            await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+            await sendMessage(SAVE_METADATA_FOR_SIGN, payload, `popup@${id}`);
+          }, 1000);
+        });
+      }
+
+      if (payload.type === CREATE_INSCRIPTION) {
+        let costs;
+        console.log('payload:', {...payload})
+        console.log('payload?.data?.type:', payload?.data?.type)
+        console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
+
+        costs = await Api.createInscriptionContract(payload.data);
+        console.log('costs:', costs)
+        payload.data.costs = costs;
+        console.log(CREATE_INSCRIPTION+':', {...payload.data});
+        payload.data.content_store_key = store.put(payload.data.content);
+        payload.data.content = null;
+        console.log(CREATE_INSCRIPTION+' (stored):', {...payload.data});
+        winManager.openWindow('sign-create-inscription', async (id) => {
+          setTimeout(async  () => {
+            await sendMessage(SAVE_METADATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
       }
@@ -409,7 +428,7 @@ interface ISingleInscriptionResult {
         console.log(SELL_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-sell', async (id) => {
           setTimeout(async  () => {
-            await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+            await sendMessage(SAVE_METADATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
       }
@@ -419,7 +438,7 @@ interface ISingleInscriptionResult {
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
           setTimeout(async () => {
-            await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+            await sendMessage(SAVE_METADATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
       }

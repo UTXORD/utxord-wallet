@@ -8,7 +8,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Inscribing on:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.expect_amount || 0"
+          :price="metadataForSign?.data?.costs?.expect_amount || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -18,7 +18,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Platform Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.market_fee || 0"
+          :price="metadataForSign?.data?.market_fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -82,17 +82,17 @@ import GetRawTransactions from '~/components/GetRawTransactions.vue'
 
 
 const store = useStore()
-const { balance, dataForSign } = toRefs(store)
+const { balance, metadataForSign } = toRefs(store)
 
 const isSynchronized = computed(() => balance?.value?.sync)
 const connected = computed(() => balance?.value?.connect)
 
 const miningFee = computed(
-  () => Math.abs(dataForSign.value?.data?.costs?.amount -
-    dataForSign.value?.data?.costs?.expect_amount) || 0
+  () => Math.abs(metadataForSign.value?.data?.costs?.amount -
+    metadataForSign.value?.data?.costs?.expect_amount) || 0
 )
 
-const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
+const totalNeed = computed(() => metadataForSign.value?.data?.costs?.amount ||  0)
 
 const isInsufficientBalance = computed(() => {
   if (Number(totalNeed.value) > Number(balance.value?.confirmed)) return true

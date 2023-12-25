@@ -41,7 +41,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Selling for:</span>
         <PriceComp
           class="ml-auto"
-          :price="btcToSat(dataForSign?.data?.ord_price) || 0"
+          :price="btcToSat(metadataForSign?.data?.ord_price) || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -51,7 +51,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Platform Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="btcToSat(dataForSign?.data?.market_fee) || 0"
+          :price="btcToSat(metadataForSign?.data?.market_fee) || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -73,7 +73,7 @@ import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
 
 const store = useStore()
-const { balance, fundAddress, dataForSign } = toRefs(store)
+const { balance, fundAddress, metadataForSign } = toRefs(store)
 
 function btcToSat(btc) {
   return Math.floor(Number(btc) * Math.pow(10, 8))

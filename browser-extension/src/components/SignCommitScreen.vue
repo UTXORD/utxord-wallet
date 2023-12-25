@@ -29,7 +29,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Purchase Price:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.ord_price || 0"
+          :price="metadataForSign?.data?.ord_price || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -39,7 +39,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Platform Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.market_fee || 0"
+          :price="metadataForSign?.data?.market_fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -49,7 +49,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.mining_fee || 0"
+          :price="metadataForSign?.data?.costs?.mining_fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -62,7 +62,7 @@
         <span class="mr-2 text-[var(--text-color)]">Total Needed:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.min_fund_amount || total"
+          :price="metadataForSign?.data?.costs?.min_fund_amount || total"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -102,12 +102,12 @@ import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
 
 const store = useStore()
-const { balance, dataForSign, ordAddress } = toRefs(store)
+const { balance, metadataForSign, ordAddress } = toRefs(store)
 
 const total = computed(
   () =>
-    (dataForSign.value?.data?.ord_price || 0) +
-    (dataForSign.value?.data?.market_fee || 0)
+    (metadataForSign.value?.data?.ord_price || 0) +
+    (metadataForSign.value?.data?.market_fee || 0)
 )
 
 const isSynchronized = computed(() => balance?.value?.sync)
