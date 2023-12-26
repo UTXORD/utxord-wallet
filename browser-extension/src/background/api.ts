@@ -875,7 +875,7 @@ class Api {
   }
 
   getErrorMessage(exception: number | Exception) {
-    if ('number' != typeof(exception)) {
+    if ('number' !== typeof(exception)) {
       return exception;
     }
     return this.utxord.Exception.prototype.getMessage(exception).c_str()
