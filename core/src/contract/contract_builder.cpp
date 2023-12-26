@@ -137,14 +137,11 @@ const char* P2Witness::type = "p2witness";
 
 P2Witness::P2Witness(Bech32 bech, const UniValue &json): mBech(bech)
 {
-    {
-        if (json[name_type].get_str() != type) {
-            throw ContractTermWrongValue(std::string(name_type));
-        }
-        m_amount = json[ContractBuilder::name_amount].getInt<CAmount>();
-        m_addr = json[ContractBuilder::name_addr].get_str();
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
+        throw ContractTermWrongValue(std::string(name_type));
     }
-
+    m_amount = json[ContractBuilder::name_amount].getInt<CAmount>();
+    m_addr = json[ContractBuilder::name_addr].get_str();
 }
 
 UniValue P2Witness::MakeJson() const
@@ -159,7 +156,7 @@ UniValue P2Witness::MakeJson() const
 
 void P2Witness::ReadJson(const UniValue &json)
 {
-    if (json[name_type].get_str() != type) {
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
     if (m_amount != json[ContractBuilder::name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(ContractBuilder::name_amount));
@@ -242,16 +239,17 @@ UniValue UTXO::MakeJson() const
 
 void UTXO::ReadJson(const UniValue &json)
 {
-    if (json[name_type].get_str() != type) {
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
     m_txid = json[name_txid].get_str();
     m_nout = json[name_nout].getInt<uint32_t >();
 
     UniValue dest = json[name_destination];
-    if (!dest.isNull()) {
-        m_destination = IContractDestination::ReadJson(mBech, dest);
-    }
+    if (dest.isNull())
+        throw ContractTermWrongValue(std::string(name_type));
+
+    m_destination = IContractDestination::ReadJson(mBech, dest);
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/

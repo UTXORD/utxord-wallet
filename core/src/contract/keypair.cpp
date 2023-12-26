@@ -191,6 +191,8 @@ KeyPair KeyRegistry::Lookup(const l15::bytevector &keyid, const KeyLookupFilter&
 
 KeyPair KeyRegistry::Lookup(const l15::xonly_pubkey &pk, const KeyLookupFilter& hint) const
 {
+    std::cout << "lookup for pk: " << hex(pk) << std::endl;
+
     KeyLookupFilter taproot_hint = hint;
     if (taproot_hint.type == KeyLookupFilter::DEFAULT) {
         taproot_hint.type = KeyLookupFilter::TAPROOT;

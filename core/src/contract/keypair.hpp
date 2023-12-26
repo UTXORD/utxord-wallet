@@ -77,6 +77,12 @@ public:
     void AddKeyToCache(l15::seckey sk)
     { m_keys_cache.emplace_back(move(sk)); }
 
+    void AddKeyToCache(const KeyPair& key)
+    { m_keys_cache.emplace_back(key.PrivKey()); }
+
+    void AddKeyToCache(const std::string& key)
+    { m_keys_cache.emplace_back(l15::unhex<l15::seckey>(key)); }
+
     void RemoveKeyFromCache(const std::string& addr);
 
     void RemoveKeyFromCache(l15::seckey sk)
