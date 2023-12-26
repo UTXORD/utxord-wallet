@@ -7,78 +7,151 @@ interface string
     [Const] DOMString c_str();
 };
 
-[Prefix="utxord::"]
-interface ChannelKeys
+enum ChainMode
+{
+    "MAINNET",
+    "TESTNET",
+    "REGTEST"
+};
+
+enum Bech32Encoding
+{
+    "BECH32",
+    "BECH32M"
+};
+
+[Prefix="utxord::wasm::"]
+interface Bech32
+{
+    void Bech32(ChainMode mode);
+    [Const] DOMString Encode([Const] DOMString value, Bech32Encoding encoding);
+};
+
+[Prefix="utxord::wasm::"]
+interface KeyPair
 {
     static void InitSecp256k1();
 
-    void ChannelKeys();
-    void ChannelKeys([Const] DOMString sk);
-    [Value] string GetLocalPrivKey();
-    [Value] string GetLocalPubKey();
-    [Value] string SignSchnorr([Const] DOMString m);
+    void KeyPair([Const] DOMString sk);
+    [Const] DOMString PrivKey();
+    [Const] DOMString PubKey();
+    [Const] DOMString SignSchnorr([Const] DOMString m);
+
+    [Const] DOMString GetP2TRAddress(ChainMode mode);
+    [Const] DOMString GetP2WPKHAddress(ChainMode mode);
 };
 
 
-[Prefix="utxord::"]
-interface MasterKey
+[Prefix="utxord::wasm::"]
+interface KeyRegistry
 {
-    void MasterKey([Const] DOMString seed);
-    ChannelKeys Derive([Const] DOMString path, boolean for_script);
+    void KeyRegistry(ChainMode mode, [Const] DOMString seed);
+
+    void AddKeyType([Const] DOMString name, [Const] DOMString filter_json);
+    void RemoveKeyType([Const] DOMString name);
+
+    void AddKeyToCache([Const] DOMString sk);
+    void RemoveKeyFromCache([Const] DOMString sk);
+    void RemoveKeyFromCacheByAddress([Const] DOMString addr);
+
+    KeyPair Derive([Const] DOMString path, boolean for_script);
+
+    KeyPair LookupPubKey([Const] DOMString pubkey, [Const] DOMString opt);
+    KeyPair LookupAddress([Const] DOMString address, [Const] DOMString opt);
 };
 
-
-enum NetworkMode
-{
-    "REGTEST",
-    "TESTNET",
-    "MAINNET"
-};
-
-
-[Prefix="utxord::"]
-interface Bech32
-{
-    void Bech32(NetworkMode network);
-    [Value] string Encode([Const] DOMString pk);
-    [Value] string Decode([Const] DOMString addr);
-};
-
-
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface Exception
 {
-    [Value] static string getMessage(any e);
+    [Const] static DOMString getMessage(any e);
 };
 
+[Prefix="utxord::wasm::"]
+interface IContractDestination
+{
+    void SetAmount([Const] DOMString amount);
+    [Value] string Amount();
+    [Value] string Address();
+};
+
+[Prefix="utxord::wasm::"]
+interface P2WPKH
+{
+    void P2WPKH(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
+    void SetAmount([Const] DOMString amount);
+    [Value] string Amount();
+    [Value] string Address();
+};
+
+[Prefix="utxord::wasm::"]
+interface P2TR
+{
+    void P2TR(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
+    void SetAmount([Const] DOMString amount);
+    [Value] string Amount();
+    [Value] string Address();
+};
+
+[Prefix="utxord::wasm::"]
+interface IContractOutput
+{
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+};
+
+[Prefix="utxord::wasm::"]
+interface UTXO : IContractOutput
+{
+    void UTXO(ChainMode mode, [Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString addr);
+};
+
+
+[Prefix="utxord::"]
+interface Collection
+{
+    [Value] string GetCollectionTapRootPubKey([Const] DOMString collectionId, [Const] DOMString scriptSK, [Const] DOMString internalSK);
+};
 
 enum InscribeType
 {
     "INSCRIPTION",
+    "LASY_INSCRIPTION",
     "COLLECTION"
 };
 
-[Prefix="utxord::"]
+enum InscribePhase
+{
+    "MARKET_TERMS",
+    "LASY_COLLECTION_MARKET_TERMS",
+    "LASY_COLLECTION_INSCRIPTION_SIGNATURE",
+    "INSCRIPTION_SIGNATURE"
+};
+
+[Prefix="utxord::wasm::"]
 interface CreateInscriptionBuilder
 {
-    void CreateInscriptionBuilder(InscribeType type, [Const] DOMString ordAmount);
-    [Ref] CreateInscriptionBuilder MiningFeeRate([Const] DOMString rate);
-    [Ref] CreateInscriptionBuilder AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pk);
-    [Ref] CreateInscriptionBuilder Data([Const] DOMString contentType, [Const] DOMString hexData);
-    [Ref] CreateInscriptionBuilder InscribePubKey([Const] DOMString inscribePK);
-    [Ref] CreateInscriptionBuilder ChangePubKey([Const] DOMString changePK);
+    void CreateInscriptionBuilder(ChainMode mode, InscribeType type);
+    void MarketFee([Const] DOMString amount, [Const] DOMString addr);
+    void OrdAmount([Const] DOMString amount);
+    void MiningFeeRate([Const] DOMString rate);
+    void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void Data([Const] DOMString contentType, [Const] DOMString hexData);
+    void MetaData([Const] DOMString hexCborData);
+    void InscribeAddress([Const] DOMString inscriptionAddr);
+    void ChangeAddress([Const] DOMString changeAddr);
 
-    [Ref] CreateInscriptionBuilder AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
-                                                   [Const] DOMString collectionPK);
-    [Ref] CreateInscriptionBuilder SetMetaData([Const] DOMString rate);
-    [Ref] CreateInscriptionBuilder AddFundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeePK);
+    void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
+                                                   [Const] DOMString collectionAddr);
+    void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeeAddr);
 
-    void SignCommit(long n, [Const] DOMString sk, [Const] DOMString scriptPK);
-    void SignInscription([Const] DOMString scriptSK);
-    void SignCollection([Const] DOMString collectionScriptSK);
-    void SignFundMiningFee(long n, [Const] DOMString sk);
+    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter, [Const] DOMString scriptPK);
+    void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
+    void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    //void SignFundMiningFee(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
-    [Value] string Serialize(long ver);
+    [Value] string Serialize(long ver, InscribePhase phase);
+    void Deserialize([Const] DOMString data, InscribePhase phase);
 
     long TransactionCount();
     [Value] string RawTransaction(long n);
@@ -107,22 +180,29 @@ enum SwapPhase
     "MARKET_SWAP_SIG",
 };
 
-[Prefix="utxord::"]
+[Prefix="utxord::wasm::"]
 interface SwapInscriptionBuilder
 {
-    void SwapInscriptionBuilder([Const] DOMString ord_price, [Const] DOMString market_fee);
+    void SwapInscriptionBuilder(ChainMode mode);
 
-    [Ref] SwapInscriptionBuilder OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount);
-    [Ref] SwapInscriptionBuilder AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString pubkey);
+    void OrdPrice([Const] DOMString price);
+    void MarketFee([Const] DOMString amount, [Const] DOMString addr);
 
-    [Ref] SwapInscriptionBuilder SwapScriptPubKeyA([Const] DOMString v);
-    [Ref] SwapInscriptionBuilder SwapScriptPubKeyB([Const] DOMString v);
+    void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
 
-    void SignOrdSwap([Const] DOMString sk);
+    void ChangeAddress([Const] DOMString changeAddr);
 
-    void SignFundsCommitment(long funds_index, [Const] DOMString sk);
-    void SignFundsSwap([Const] DOMString sk);
-    void SignFundsPayBack([Const] DOMString sk);
+    void OrdPayoffAddress([Const] DOMString addr);
+    void FundsPayoffAddress([Const] DOMString addr);
+
+    void SwapScriptPubKeyB([Const] DOMString v);
+
+    void SignOrdSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+
+    void SignFundsCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    void SignFundsSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    void SignFundsPayBack(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
     void CheckContractTerms(SwapPhase phase);
     [Value] string Serialize(long ver, SwapPhase phase);
@@ -136,4 +216,27 @@ interface SwapInscriptionBuilder
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
+};
+
+
+[Prefix="utxord::wasm::"]
+interface SimpleTransaction
+{
+    void SimpleTransaction(ChainMode mode);
+
+    [Value] string TxID();
+    unsigned long NOut();
+    IContractDestination Destination();
+
+    void MiningFeeRate([Const] DOMString rate);
+    [Value] string GetMinFundingAmount();
+
+    void AddInput(IContractOutput prevout);
+    void AddOutput(IContractDestination out);
+    void AddChangeOutput([Const] DOMString pk);
+
+    void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);
+
+    [Const] DOMString Serialize();
+    void Deserialize([Const] DOMString data);
 };

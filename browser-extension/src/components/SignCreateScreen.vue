@@ -99,6 +99,10 @@ const isInsufficientBalance = computed(() => {
   return false
 })
 
+const toAddress = computed(() => {
+  return ordAddress.value || fundAddress.value
+})
+
 </script>
 
 <style scoped>

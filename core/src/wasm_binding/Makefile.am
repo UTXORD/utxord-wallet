@@ -1,5 +1,5 @@
 
-AM_CPPFLAGS = -DWASM_MODULE \
+AM_CPPFLAGS = -DWASM -DWASM_MODULE \
  -I$(top_srcdir)/l15/src/common \
  -I$(top_srcdir)/l15/src/core \
  -I$(top_srcdir)/src/contract \

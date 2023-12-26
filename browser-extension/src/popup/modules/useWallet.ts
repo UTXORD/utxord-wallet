@@ -11,6 +11,7 @@ const useWallet = () => {
     console.log('network:',network)
     return network;
   }
+
   async function getFundAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
     const addresses = {};
@@ -22,6 +23,7 @@ const useWallet = () => {
       return addresses?.fund?.address
     }
   }
+
   async function getOrdAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
     const addresses = {};
@@ -41,8 +43,7 @@ const useWallet = () => {
         const balance = await sendMessage(GET_BALANCE, {
           address,
         }, 'background')
-        // console.log('===== getBalance(), balance:');
-        // console.dir(balance);
+        // console.log('===== getBalance(): ', balance);
         if (balance) {
           store.setBalance(balance?.data)
         }
