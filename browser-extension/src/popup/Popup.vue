@@ -16,6 +16,8 @@ import { useStore } from '~/popup/store/index'
 import {
   CHECK_AUTH,
   EXCEPTION,
+  WARNING,
+  NOTIFICATION,
   SAVE_DATA_FOR_SIGN,
   SAVE_DATA_FOR_EXPORT_KEY_PAIR
 } from '~/config/events'
@@ -85,8 +87,57 @@ async function init() {
   }
 }
 
+
+
+// We have to use chrome API instead of webext-bridge module due to following issue
+// https://github.com/zikaari/webext-bridge/issues/37
+let port = chrome.runtime.connect({
+  name: 'POPUP_MESSAGING_CHANNEL'
+});
+port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});
+port.onMessage.addListener(async function(payload) {
+  switch (payload.id) {
+    case DO_REFRESH_BALANCE: {
+      store.setBalance({
+        ...balance.value,
+        connect: payload.connect
+      });
+      refreshBalance();
+      break;
+    }
+    case BALANCE_REFRESH_DONE: {
+      const fresh_balance = payload.data?.balance
+      store.setBalance({
+        ...fresh_balance || balance.value,
+        sync: true,
+        connect: true
+      });
+      break;
+    }
+    case UPDATE_PLUGIN_CONNECT: {
+      const justConnected = !balance?.value?.connect && payload.connect;
+      store.setBalance({
+        ...balance.value,
+        sync: justConnected ? false : balance?.value?.sync,
+        connect: payload.connect
+      });
+      break;
+    }
+  }
+});
+
 onMessage(EXCEPTION, (payload: any) => {
   showError(EXCEPTION, payload?.data)
+  return true
+})
+
+onMessage(WARNING, (payload: any) => {
+  showError(WARNING, payload?.data)
+  return true
+})
+
+onMessage(NOTIFICATION, (payload: any) => {
+  showSuccess(NOTIFICATION, payload?.data, 10000)
   return true
 })
 
