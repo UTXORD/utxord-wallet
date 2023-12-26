@@ -14,15 +14,6 @@
 
 namespace utxord {
 
-class Collection
-{
-public:
-    static std::string GetCollectionTapRootPubKey(const std::string& collection_id,
-                                                  const std::string& script_pk,
-                                                  const std::string& internal_pk);
-};
-
-
 enum InscribeType { INSCRIPTION, LASY_INSCRIPTION };
 enum InscribePhase { MARKET_TERMS, LASY_COLLECTION_MARKET_TERMS, LASY_COLLECTION_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 

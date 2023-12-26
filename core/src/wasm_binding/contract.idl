@@ -111,8 +111,7 @@ interface UTXO : IContractOutput
 enum InscribeType
 {
     "INSCRIPTION",
-    "LASY_INSCRIPTION",
-    "COLLECTION"
+    "LASY_INSCRIPTION"
 };
 
 enum InscribePhase

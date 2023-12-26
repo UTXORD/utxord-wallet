@@ -23,7 +23,6 @@ namespace {
 
 const std::string val_create_inscription("CreateInscription");
 const std::string val_lasy_create_inscription("LasyCreateInscription");
-const std::string val_create_collection("CreateCollection");
 
 CScript MakeInscriptionScript(const xonly_pubkey& pk, const std::string& content_type, const bytevector& data,
                               const std::optional<std::string>& collection_id,
@@ -270,9 +269,6 @@ std::vector<std::string> CreateInscriptionBuilder::RawTransactions()
 
 void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
 {
-    if (m_type == COLLECTION) {
-        throw std::runtime_error("Collection commit is not supported");
-    }
     switch (phase) {
     case INSCRIPTION_SIGNATURE:
         if (m_collection_input) {
