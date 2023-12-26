@@ -8,6 +8,7 @@ BUILD_DIR="/utxord-wallet/core/build/src/python_binding"
 HOST_DIR="./build/python_binding_from_docker"
 
 # Build the Docker image
+docker rmi $IMAGE_NAME
 docker build -t $IMAGE_NAME -f $FILE_NAME .
 
 # Create and run a temporary container
