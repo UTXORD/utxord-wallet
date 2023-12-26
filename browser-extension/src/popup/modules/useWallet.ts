@@ -5,11 +5,12 @@ import { GET_BALANCE, GET_USD_RATE, GET_ADDRESSES, GET_NETWORK } from '~/config/
 const useWallet = () => {
   const store = useStore()
 
-async function getNetWork(){
-  const network = await sendMessage(GET_NETWORK, {}, 'background')
-  console.log('network:',network)
-  return network;
-}
+  async function getNetWork(){
+    const network = await sendMessage(GET_NETWORK, {}, 'background')
+    console.log('network:',network)
+    return network;
+  }
+
   async function getFundAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
     const addresses = {};
@@ -21,6 +22,7 @@ async function getNetWork(){
       return addresses?.fund?.address
     }
   }
+
   async function getOrdAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
     const addresses = {};

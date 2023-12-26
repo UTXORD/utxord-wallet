@@ -1070,8 +1070,7 @@ class Api {
       nxord: null,
       xord_address: null,
       data: null,
-      // TODO: use/create ticket for excluded sk (UT-???)
-      // sk: null,
+      // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
       amount: 0,
       output_mining_fee: 0,
       inputs_sum: 0,
@@ -1267,7 +1266,7 @@ class Api {
       outData.raw = await myself.getRawTransactions(newOrd);
       const sk = newOrd.getIntermediateTaprootSK().c_str();
       myself.wallet.root.key.AddKeyToCache(sk);
-      // outData.sk = newOrd.getIntermediateTaprootSK().c_str();
+      // outData.sk = newOrd.getIntermediateTaprootSK().c_str();  // TODO: use/create ticket for excluded sk (UT-???)
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
 

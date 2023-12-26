@@ -3,17 +3,25 @@
     :style="{ fontSize }"
     class="price-comp text-[var(--text-color)] flex items-center gap-[5px]"
   >
-    <LoaderIcon
-      v-if="loading"
-      :class="`loader animate-spin w-${loadingSize} h-${loadingSize}`"
-    />
-    <template v-else> {{ resultPrice }} </template>
-    Sat
+    <div class="flex items-center gap-[5px]">
+      <LoaderIcon
+        v-if="loading"
+        :class="`loader animate-spin w-${loadingSize} h-${loadingSize}`"
+      />
+      <template v-else> {{ resultPrice }} </template>
+      Sat
+    </div>
+    <span class="opacity-50 text-xs">
+      (~${{ resultUSD }})
+    </span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, defineProps, ref, watch, toRefs } from 'vue'
+import { convertSatsToUSD } from '~/helpers'
+import useWallet from '~/popup/modules/useWallet'
+
 import LoaderIcon from '~/components/Icons/LoaderIcon.vue'
 
 const props = defineProps({
@@ -36,6 +44,7 @@ const props = defineProps({
 })
 
 const { price, fontSizeBreakpoints } = toRefs(props)
+const { usdRate } = useWallet();
 
 const fontSize = ref('16px')
 
@@ -45,6 +54,7 @@ const USDollar = new Intl.NumberFormat('en-US', {
 })
 
 const resultPrice = computed(() => USDollar.format(price.value || 0))
+const resultUSD = computed(() => USDollar.format(convertSatsToUSD(price.value || 0, usdRate.value).toFixed(2)))
 
 function findClosestNumber(target: number, numbers: number[]) {
   return numbers.reduce(function (prev, curr) {

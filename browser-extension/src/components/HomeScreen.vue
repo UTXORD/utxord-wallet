@@ -20,7 +20,7 @@
             <RefreshIcon />
           </Button>
           <PriceComp
-            class="home-screen_balance text-[var(--text-color)]"
+            class="home-screen_balance text-[var(--text-color)] flex flex-col gap-[0]"
             :price="balance?.confirmed || 0"
             :loading-size="6"
             :loading="!isSynchronized"
@@ -32,10 +32,17 @@
           />
         </template>
         <span
-          class="home-screen_balance-label text-center text-[var(--text-grey-color)]"
+          class="home-screen_balance-label text-center text-[var(--text-grey-color)] mt-3"
         >
           {{ status_message }}
         </span>
+        <template v-if="!connected">
+        <Button
+        outline
+        @click="connectToSite"
+        class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+        >Connect to site</Button>
+        </template>
       </div>
 
       <!-- Balance -->
@@ -144,15 +151,21 @@ import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
-import { NEW_FUND_ADDRESS } from '~/config/events'
+import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 
 const store = useStore()
 const { balance, fundAddress } = toRefs(store)
 
-const { getBalance } = useWallet()
+const { getBalance, fetchUSDRate } = useWallet()
+
+async function connectToSite() {
+  await sendMessage(CONNECT_TO_SITE, {}, 'background')
+  await refreshBalance()
+}
 
 async function newFundAddress() {
+  await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   const response = await sendMessage(NEW_FUND_ADDRESS, {}, 'background')
   const addr = response?.addresses?.find(
     (item) => item.type === 'fund'
@@ -162,8 +175,9 @@ async function newFundAddress() {
 
 function refreshBalance() {
   store.setSyncToFalse()
-  setTimeout(() => {
-    getBalance(fundAddress)
+  fetchUSDRate()
+  setTimeout(async () => {
+    await getBalance(fundAddress.value);
   }, 1000)
 }
 
@@ -172,7 +186,7 @@ const connected = computed(() => balance?.value?.connect)
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)
-    return 'On the site, press "Connect to wallet" button.'
+    return 'On the site, press "Connect to wallet" button or'
   if (!balance?.value?.sync) return 'Synchronizing...'
   if (balance?.value?.confirmed > 0 || balance?.value?.sync)
     return 'Synchronized.'
@@ -204,7 +218,7 @@ const status_message = computed(() => {
 
   &_balance {
     font-weight: 600;
-    line-height: 55px;
+    line-height: normal;
 
     &-refresh {
       width: 25px;

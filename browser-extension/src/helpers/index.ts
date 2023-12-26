@@ -1,23 +1,25 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
+import {sendMessage} from "webext-bridge";
+import {ADDRESS_COPIED} from "~/config/events";
 
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
 
-export function showSuccess(title: string, text: string) {
+export function showSuccess(title: string, text: string, duration: number = 4000) { // 4s
   notify({
     group: 'success',
     title,
     text
-  }, 4000) // 4s
+  }, duration)
 }
 
-export function showError(title: string, text: string) {
+export function showError(title: string, text: string, duration: number = 10000) { // 10s
   notify({
     group: 'error',
     title,
     text
-  }, 10000) // 10s
+  }, duration)
 }
 
 export function formatAddress(address: string, start?: number, end?: number) {
@@ -47,6 +49,7 @@ export function copyToClipboard(text: string, message?: string) {
     document.execCommand('copy');
     document.body.removeChild(tempInput);
 
+    sendMessage(ADDRESS_COPIED, {}, 'background')
     showSuccess('Success', message || 'Address was copied!');
     return text;
   }
@@ -55,4 +58,8 @@ export function copyToClipboard(text: string, message?: string) {
 
 export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
+}
+
+export function convertSatsToUSD(sats: number, usdRate: number): number {
+  return (sats || 0) * (1 / 100000000) * (usdRate || 0);
 }

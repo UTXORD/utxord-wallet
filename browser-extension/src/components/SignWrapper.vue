@@ -66,7 +66,8 @@ import { useStore } from '~/popup/store/index'
 import {
   SELL_INSCRIPTION,
   CREATE_INSCRIPTION,
-  SUBMIT_SIGN
+  SUBMIT_SIGN,
+  BALANCE_CHANGE_PRESUMED
 } from '~/config/events'
 import LoadingScreen from '~/components/LoadingScreen.vue'
 import CustomInput from '~/components/CustomInput.vue'
@@ -121,6 +122,7 @@ const isDisabledPass = computed(() => {
 
 async function onSign() {
   dataForSign.value = { ...dataForSign.value, password: password.value }
+  await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   await sendMessage(SUBMIT_SIGN, dataForSign.value, 'background')
 }
 

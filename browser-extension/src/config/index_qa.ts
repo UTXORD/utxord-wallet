@@ -1,5 +1,5 @@
 export const PROD_URL = 'https://api.utxord.com';
-export const STAGE_URL = 'https://qa.utxord.com/b';
+export const STAGE_URL = 'https://api.qa.utxord.com';
 export const ETWOE_URL ='https://e2e.utxord.com';
 export const TESTNET = 't';
 export const MAINNET = 'm';

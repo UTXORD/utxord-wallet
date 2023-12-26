@@ -1,5 +1,5 @@
 import {MAINNET, NETWORK, TESTNET} from '~/config/index';
-import { onMessage, sendMessage } from 'webext-bridge'
+import {onMessage, sendMessage} from 'webext-bridge'
 import '~/background/api'
 import WinManager from '~/background/winManager';
 import {
@@ -58,7 +58,7 @@ if (NETWORK === MAINNET){
 }
 
 (async () => {
- try{
+  try {
     // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
     let popupPort: Port | null = null;
@@ -171,7 +171,7 @@ if (NETWORK === MAINNET){
       return usdRate;
     });
 
-    onMessage(GET_ADDRESSES, async() => {
+    onMessage(GET_ADDRESSES, async () => {
       const {addresses} = await Api.genKeys();
       console.log('addresses:',addresses)
       return addresses;
@@ -272,12 +272,18 @@ if (NETWORK === MAINNET){
       }
 
       if (payload.type === CONNECT_TO_PLUGIN) {
-        await Api.signToChallenge(payload.data, tabId)
+        let success = Api.signToChallenge(payload.data, tabId);
+        if (success) {
+          postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: true});
+          setTimeout(async () => {
+            await refreshBalanceAndAdressed(tabId);
+          }, 1000);
+        }
       }
 
       if (payload.type === SEND_BALANCES) {
         console.log('SEND_BALANCES:',payload.data)
-        if(payload.data?.addresses){
+        if(payload.data?.addresses) {
           Api.balances = payload.data;
           // -------
           Api.sync = true;    // FIXME: Seems useless because happening too much late.
@@ -305,13 +311,13 @@ if (NETWORK === MAINNET){
       if (payload.type === GET_ALL_ADDRESSES) {
         Api.all_addresses = await Api.freeBalance(Api.all_addresses);
         Api.all_addresses = await Api.getAllAddresses(payload.data.addresses);
-        console.log('GET_ALL_ADDRESSES:',payload.data.addresses);
+        console.log('GET_ALL_ADDRESSES:', payload.data.addresses);
         // console.log('Api.addresses:', Api.addresses);
         const check = Api.checkAddresess(payload.data.addresses);
         console.log('Api.checkAddresess:', check);
         if(!check){
           setTimeout(async () => {
-                  console.log('ADDRESSES_TO_SAVE:', Api.addresses);
+                  // console.log('ADDRESSES_TO_SAVE:', Api.addresses);
                   await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
           }, 100);
         }
@@ -325,8 +331,6 @@ if (NETWORK === MAINNET){
       }
 
       if (payload.type === CREATE_INSCRIPTION) {
-        // payload.data.fee_rate = payload.data.fee;  // TODO: check it against api.ts changes
-
         let costs;
         console.log('payload?.data?.type:',payload?.data?.type)
         console.log('payload?.data?.collection?.genesis_txid:',payload?.data?.collection?.genesis_txid);
@@ -360,7 +364,7 @@ if (NETWORK === MAINNET){
         delete payload.data.costs['errorMessage'];
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
-          setTimeout(async  () => {
+          setTimeout(async () => {
             if (payload.data.costs.output_mining_fee < 546) {
               Api.sendNotificationMessage(
                 'CREATE_INSCRIPTION',
@@ -438,11 +442,11 @@ if (NETWORK === MAINNET){
     await chrome.alarms.create(alarmName, { periodInMinutes: 10 });
     chrome.alarms.onAlarm.addListener(async (alarm) => {
       if (alarm.name == alarmName) {
-          const success = await Api.checkSeed();
-          await Api.sendMessageToWebPage(AUTH_STATUS, success);
-          // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
-          // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
-        }
+        const success = await Api.checkSeed();
+        await Api.sendMessageToWebPage(AUTH_STATUS, success);
+        // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+        // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+      }
     });
 
     let scheduler = Scheduler.getInstance();
@@ -456,7 +460,7 @@ if (NETWORK === MAINNET){
     await scheduler.run();
     await watchdog.run();
 
-  }catch(e){
+  } catch(e) {
     console.log('background:index.ts:',e);
   }
 })();

@@ -50,10 +50,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="
-            Math.abs(dataForSign?.data?.costs?.amount -
-              dataForSign?.data?.costs?.expect_amount) || 0
-          "
+          :price="miningFee"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -66,7 +63,7 @@
         <span class="mr-2 text-[var(--text-color)]">Total Needed:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.amount || 0"
+          :price="totalNeed"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -81,6 +78,7 @@
       <PriceComp
         class="ml-auto"
         :price="balance?.confirmed || 0"
+        :loading="!isSynchronized"
         :font-size-breakpoints="{
           1000000: '15px'
         }"
@@ -110,13 +108,23 @@ import GetRawTransactions from '~/components/GetRawTransactions.vue'
 const store = useStore()
 const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 
-const toAddress = computed(() => {
-  return ordAddress.value || fundAddress.value
-})
+const isSynchronized = computed(() => balance?.value?.sync)
+const connected = computed(() => balance?.value?.connect)
+
+const miningFee = computed(
+  () => Math.abs(dataForSign.value?.data?.costs?.amount -
+    dataForSign.value?.data?.costs?.expect_amount) || 0
+)
+
+const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
 
 const isInsufficientBalance = computed(() => {
-  if (Number(dataForSign.value.data?.costs?.amount) > Number(balance.value?.confirmed)) return true
+  if (Number(totalNeed.value) > Number(balance.value?.confirmed)) return true
   return false
+})
+
+const toAddress = computed(() => {
+  return ordAddress.value || fundAddress.value
 })
 
 </script>

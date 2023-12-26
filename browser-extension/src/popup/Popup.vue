@@ -19,10 +19,15 @@ import {
   WARNING,
   NOTIFICATION,
   SAVE_DATA_FOR_SIGN,
-  SAVE_DATA_FOR_EXPORT_KEY_PAIR
+  SAVE_DATA_FOR_EXPORT_KEY_PAIR,
+  POPUP_HEARTBEAT,
+  DO_REFRESH_BALANCE,
+  BALANCE_REFRESH_DONE,
+  UPDATE_PLUGIN_CONNECT
 } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-import { showError } from '~/helpers'
+import { showError, showSuccess } from '~/helpers'
+import { toRefs } from 'vue'
 
 const { push } = useRouter()
 const {
@@ -30,9 +35,12 @@ const {
   getOrdAddress,
   getBalance,
   saveDataForSign,
-  saveDataForExportKeyPair
+  saveDataForExportKeyPair,
+  fetchUSDRate
 } = useWallet()
+
 const store = useStore()
+const { balance, fundAddress } = toRefs(store)
 
 function redirectByQuery() {
   const pageHref = window.location.search
@@ -57,26 +65,30 @@ async function checkAuth(): Promise<boolean> {
     showError(EXCEPTION, error.message)
     console.log(error)
   }
+  return false;
 }
 
-async function updateBalance() {
-  const address = await getFundAddress()
-  await getOrdAddress()
-  getBalance(address)
+function runHeartbeat() {
   setInterval(async () => {
-    store.setRefreshingBalance()
-    setTimeout(() => {
-      getBalance(address)
-      store.unsetRefreshingBalance()
-    }, 1000)
-  }, 5000)
+      await sendMessage(POPUP_HEARTBEAT, {}, 'background')
+  }, 10000)
+}
+
+
+function refreshBalance() {
+  store.setSyncToFalse();
+  setTimeout(async () => {
+    await getBalance(fundAddress.value)
+  }, 1000)
 }
 
 async function init() {
   const success = await checkAuth()
   if (success) {
     redirectByQuery()
-    updateBalance()
+    runHeartbeat()
+    // refreshBalance()
+    fetchUSDRate()
   } else {
     const tempMnemonic = localStorage?.getItem('temp-mnemonic')
     if (tempMnemonic) {
@@ -142,16 +154,17 @@ onMessage(NOTIFICATION, (payload: any) => {
 })
 
 onMessage(SAVE_DATA_FOR_SIGN, (payload) => {
-  saveDataForSign(payload.data)
+  saveDataForSign(payload.data || {})
   return true
 })
 
 onMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, (payload) => {
-  saveDataForExportKeyPair(payload.data)
+  saveDataForExportKeyPair(payload.data || {})
   return true
 })
 
 onBeforeMount(() => {
+  console.log('===== onBeforeMount')
   init()
 })
 </script>
