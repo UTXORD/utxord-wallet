@@ -75,7 +75,7 @@ interface IInscriptionPayload {
 
 interface ISingleInscription {
   // To update after each inscription done, from out#1 of genesis tx
-  parent: {
+  parent: null | {
     txid: string,
     nout: number,
   },
@@ -87,8 +87,8 @@ interface ISingleInscription {
   description: string,
 }
 
-interface IBulkInscriptionPayload {
-  jobUuid: string;
+interface IChunkInscriptionPayload {
+  jobUuid: string;  // plugin needs it to identify all chunks as a single bulk
   feeRate: number,
   expectAmount: number,
   addresses: [],
@@ -98,6 +98,14 @@ interface IBulkInscriptionPayload {
 interface ISingleInscriptionResult {
   draftUuid: string,
   contract: {},  // from JSON from core
+}
+
+interface IChunkInscriptionResult {
+  inscriptionResults: ISingleInscriptionResult[];
+  lastInscriptionOut: {
+    txid: string,
+    nout: number,
+  }
 }
 
 (async () => {
