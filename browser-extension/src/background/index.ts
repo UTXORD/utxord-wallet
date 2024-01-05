@@ -42,7 +42,11 @@ import {
   GET_CONNECT_STATUS,
   SEND_CONNECT_STATUS,
   UPDATE_PLUGIN_CONNECT,
-  CREATE_BULK_INSCRIPTION
+  GET_INSCRIPTION_CONTRACT,
+  GET_INSCRIPTION_CONTRACT_RESULT,
+  CREATE_BULK_INSCRIPTION,
+  GET_BULK_INSCRIPTION_ESTIMATION,
+  GET_BULK_INSCRIPTION_ESTIMATION_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -57,21 +61,21 @@ if (NETWORK === MAINNET){
   }
 }
 
-interface IInscriptionPayload {
-  collection: {},
-  content: string,
-  content_type: string,
-  addresses: [],
-  fee: number, // fee rate
-  expect_amount: number,
-  type: string,
-  name: string,
-  description: string,
-  metadata: {
-    name?: string,
-    description?: string,
-  }
-}
+// interface IInscription {
+//   collection: {},
+//   content: string,
+//   content_type: string,
+//   addresses: [],
+//   fee: number, // fee rate
+//   expect_amount: number,
+//   type: string,
+//   name: string,
+//   description: string,
+//   metadata: {
+//     name?: string,
+//     description?: string,
+//   }
+// }
 
 interface ISingleInscription {
   // To update after each inscription done, from out#1 of genesis tx
@@ -87,12 +91,32 @@ interface ISingleInscription {
   description: string,
 }
 
-interface IChunkInscriptionPayload {
+interface IChunkInscription {
   jobUuid: string;  // plugin needs it to identify all chunks as a single bulk
   feeRate: number,
   expectAmount: number,
   addresses: [],
   inscriptions: ISingleInscription[],
+}
+
+interface ISingleInscriptionEstimation {
+  content_length: number;
+  content_type: string;
+  expectAmount: number | undefined,
+  feeRate: number | undefined,
+  fee: number | undefined,
+}
+
+interface IBulkInscriptionEstimation {
+  expectAmount: number,
+  feeRate: number,
+  fee: number,
+  inscriptionsContent: ISingleInscriptionEstimation[];
+}
+
+interface IBulkInscriptionEstimationResult {
+  amount: number;
+  expect_amount: number,
 }
 
 interface ISingleInscriptionResult {
@@ -392,6 +416,29 @@ interface IChunkInscriptionResult {
         }
         console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);
         await Api.restoreAllTypeIndexes(payload.data.addresses);
+      }
+
+      if (payload.type === GET_INSCRIPTION_CONTRACT) {
+        const contract = await Api.createInscriptionContract(payload.data);
+        await Api.sendMessageToWebPage(GET_INSCRIPTION_CONTRACT_RESULT, contract);
+      }
+
+      if (payload.type === GET_BULK_INSCRIPTION_ESTIMATION) {
+        const data = payload.data as IBulkInscriptionEstimation;
+        let bulkAmount = 0;
+        let bulkExpectAmount = 0;
+        for (const item of data.inscriptionsContent) {
+          item.expectAmount = data.expectAmount;
+          item.feeRate = data.feeRate;
+          item.fee = data.fee;
+          const contract = await Api.estimateInscription(item);
+          bulkAmount += contract.amount;
+          bulkExpectAmount += contract.expect_amount;
+        }
+        await Api.sendMessageToWebPage(GET_BULK_INSCRIPTION_ESTIMATION_RESULT, {
+          amount: bulkAmount,
+          expect_amount: bulkExpectAmount
+        });
       }
 
       if (payload.type === CREATE_BULK_INSCRIPTION) {
