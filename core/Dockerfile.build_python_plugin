@@ -6,13 +6,13 @@ RUN apt update && apt upgrade -y && \
                    git \
                    make \
                    cmake \
-                   gcc \
+                   gcc-12 \
                    autotools-dev \
                    autoconf \
                    autoconf-archive \
                    pkg-config \
                    libtool \
-                   g++ \
+                   g++-12 \
                    libtbb-dev \
                    libzmq5-dev \
                    bison \
@@ -29,7 +29,7 @@ WORKDIR /utxord-wallet
 RUN cd /utxord-wallet && git clone https://github.com/zeromq/libzmq.git
 RUN cd libzmq/ && \
       ./autogen.sh && \
-      ./configure --without-docs --enable-drafts && \
+      CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ./configure --without-docs --enable-drafts && \
       make -j8 && \
       make install && \
       cd /utxord-wallet
@@ -37,7 +37,7 @@ RUN cd libzmq/ && \
 RUN git clone https://github.com/swig/swig.git && \
       cd swig && \
       ./autogen.sh && \
-      ./configure && \
+      CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ./configure && \
       make -j8 && \
       make install && \
       cd /utxord-wallet
@@ -46,7 +46,7 @@ RUN git clone https://github.com/zeromq/cppzmq.git && \
       cd cppzmq && \
       mkdir build && \
       cd build && \
-      cmake .. && \
+      CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 cmake .. && \
       make -j8 && \
       make install && \
       cd /utxord-wallet
@@ -56,7 +56,8 @@ WORKDIR /utxord-wallet/core
 RUN cd /utxord-wallet/core && ./autogen.sh
 RUN mkdir /utxord-wallet/core/build
 WORKDIR /utxord-wallet/core/build
-RUN cd /utxord-wallet/core/build && ../configure --enable-python-binding
+RUN cd /utxord-wallet/core/build && \
+    CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ../configure --enable-python-binding
 
 RUN make -j8
 WORKDIR /utxord-wallet/core/build/src/python_binding

@@ -58,7 +58,6 @@ if (NETWORK === MAINNET){
 }
 
 (async () => {
-
   try {
     // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
@@ -116,7 +115,7 @@ if (NETWORK === MAINNET){
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       await Api.genKeys();
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.GetLocalPubKey().c_str());
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
       return await Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {
@@ -190,8 +189,8 @@ if (NETWORK === MAINNET){
       if (res) {
         const item = Api.selectByOrdOutput(payload.data.txid, payload.data.nout);
         const keypair = {
-          publicKey: item.key.GetLocalPubKey().c_str(),
-          privateKey: item.key.GetLocalPrivKey().c_str()
+          publicKey: item.key.PubKey(),
+          privateKey: item.key.PrivKey()
         };
         await Api.encryptedWallet(payload.data.password);
         return keypair;
@@ -361,6 +360,8 @@ if (NETWORK === MAINNET){
 */
         costs = await Api.createInscriptionContract(payload.data);
         payload.data.costs = costs;
+        payload.data.errorMessage = payload.data?.costs?.errorMessage;
+        delete payload.data.costs['errorMessage'];
         console.log(CREATE_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async () => {
@@ -386,6 +387,8 @@ if (NETWORK === MAINNET){
       }
       if (payload.type === COMMIT_BUY_INSCRIPTION) {
         payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
+        payload.data.errorMessage = payload.data?.costs?.errorMessage;
+        delete payload.data.costs['errorMessage'];
         console.log(COMMIT_BUY_INSCRIPTION+':',payload);
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
@@ -423,7 +426,7 @@ if (NETWORK === MAINNET){
       console.log(PLUGIN_ID, chrome.runtime.id);
       console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.GetLocalPubKey().c_str());
+      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
       return true;
     }
 
@@ -457,7 +460,7 @@ if (NETWORK === MAINNET){
     await scheduler.run();
     await watchdog.run();
 
-  } catch (e) {
+  } catch(e) {
     console.log('background:index.ts:',e);
   }
 })();
