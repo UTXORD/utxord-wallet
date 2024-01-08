@@ -477,7 +477,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     REQUIRE(rawtxs.size() == 2);
 
     Inscription inscr = ParseInscriptions(rawtxs[1]).front();
-    auto result_metadata = unhex<bytevector>(inscr.GetMetadata());
+    auto result_metadata = inscr.GetMetadata();
 
     CHECK(result_metadata == condition.metadata);
     std::clog << "metadata:\n" << nlohmann::json::from_cbor(result_metadata).dump() << std::endl;

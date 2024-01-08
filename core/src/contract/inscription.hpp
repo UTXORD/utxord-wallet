@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <concepts>
 
 #include "common.hpp"
 #include "common_error.hpp"
@@ -53,8 +52,8 @@ public:
 
     const std::string& GetContentType() const
     { return m_content_type; }
-    std::string GetContent() const
-    { return l15::hex(m_content); }
+    const l15::bytevector& GetContent() const
+    { return m_content; }
 
     bool HasParent() const
     { return !m_collection_id.empty(); }
@@ -62,8 +61,8 @@ public:
     const std::string& GetCollectionId() const
     { return m_collection_id; }
 
-    std::string GetMetadata() const
-    { return l15::hex(m_metadata); }
+    const l15::bytevector& GetMetadata() const
+    { return m_metadata; }
 };
 
 std::list<Inscription> ParseInscriptions(const std::string& hex_tx);
