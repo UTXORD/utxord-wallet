@@ -59,6 +59,8 @@ const WALLET = {
     coin_type: 1,
     key: null,
     p2tr: null,
+    address: null,
+    typeAddress: 0,
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
@@ -74,6 +76,8 @@ const WALLET = {
     coin_type: 1,
     key: null,
     p2tr: null,
+    address: null,
+    typeAddress: 0,
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
@@ -89,6 +93,8 @@ const WALLET = {
     coin_type: 1,
     key: null,
     p2tr: null,
+    address: null,
+    typeAddress: 0,
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
@@ -105,6 +111,8 @@ const WALLET = {
     coin_type: 1,
     key: null,
     p2tr: null,
+    address: null,
+    typeAddress: 0,
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
@@ -121,6 +129,8 @@ const WALLET = {
     coin_type: 1,
     key: null,
     p2tr: null,
+    address: null,
+    typeAddress: 0,
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
@@ -137,6 +147,8 @@ const WALLET = {
     coin_type: 1,
     key: null,
     p2tr: null,
+    address: null,
+    typeAddress: 0,
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
@@ -154,11 +166,15 @@ const WALLET = {
         path: null,
         key: null,
         p2tr: null,
+        address: null,
+        typeAddress: 0,
         pubKeyStr: null,
         privKeyStr: null,
       }],
       rootKey: null,
       rootP2tr: null,
+      address: null,
+      typeAddress: 0,
       rootPubKeyStr: null,
       rootPrivKeyStr: null,
       type: null,
@@ -167,6 +183,8 @@ const WALLET = {
       path: null,
       key: null,
       p2tr: null,
+      address: null,
+      typeAddress: 0,
       pubKeyStr: null,
       privKeyStr: null,
       type: null,
@@ -311,7 +329,13 @@ class Api {
     const i = this.wallet[type].index;
      return `m/86'/${t}'/${a}'/${c}/${i}`;
   }
+  async setTypeAddress(type, value){
+    if(!this.wallet_types.includes(type)) return false;
+    if(!this.checkSeed()) return false;
+    if(type==='xord' || type==='ext') return false;
+    this.wallet[type].typeAddress = value;
 
+  }
   async generateNewIndex(type) {
     if(!this.wallet_types.includes(type)) return false;
     if(!this.checkSeed()) return false;
@@ -554,6 +578,10 @@ class Api {
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
     this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
+    if(this.typeAddress === 1){
+      this.wallet[type].address = this.wallet[type].key.GetP2WPKHAddress(this.network);
+      return true;
+    }
     this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);
      return true;
   }

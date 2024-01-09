@@ -184,9 +184,10 @@ if (NETWORK === MAINNET){
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
       return newKeys;
     });
-    onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload) => {
+
+    onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
       console.log(payload);
-      //await Api.generateNewIndex('fund');
+      await Api.setTypeAddress('fund', payload.data?.type);
       const newKeys = Api.genKeys();
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
       return newKeys;
