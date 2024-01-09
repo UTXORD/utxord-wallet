@@ -14,6 +14,7 @@ interface IStore {
   balance: IBalance;
   fundAddress: string | null
   ordAddress: string | null
+  typeAddress: number
   dataForSign: {} | null
   dataForExportKeyPair: {} | null
   errorMessage: string | null
@@ -34,6 +35,7 @@ export const useStore = defineStore('store', {
     refreshingBalance: false,
     fundAddress: null,
     ordAddress: null,
+    typeAddress: 0,
     dataForSign: null,
     dataForExportKeyPair: null,
     errorMessage: null,
@@ -55,6 +57,9 @@ export const useStore = defineStore('store', {
     },
     setOrdAddress(addr: string) {
       this.ordAddress = addr
+    },
+    setTypeAddress(type: number){
+      this.typeAddress = type
     },
     setDataForSign(data: {}) {
       this.dataForSign = data
