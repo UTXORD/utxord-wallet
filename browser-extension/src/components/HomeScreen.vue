@@ -174,13 +174,14 @@ async function connectToSite() {
 }
 
 async function toogleAddress(){
-store.setTypeAddress(Number(!typeAddress.value));
+
 await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
-let ta = typeAddress.value;
+let ta = Number(!typeAddress.value);
+store.setTypeAddress(ta);
 const response = await sendMessage(
   CHANGE_TYPE_FUND_ADDRESS,
   {
-    type: Number(ta)
+    type: ta
   },
   'background'
   )
