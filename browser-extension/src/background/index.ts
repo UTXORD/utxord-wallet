@@ -186,9 +186,10 @@ if (NETWORK === MAINNET){
     });
 
     onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
-      console.log(payload);
+      console.log('CHANGE_TYPE_FUND_ADDRESS:',payload.data?.type);
       await Api.setTypeAddress('fund', payload.data?.type);
-      const newKeys = Api.genKeys();
+      const newKeys = await Api.genKeys();
+      console.log('newKeys', newKeys);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
       return newKeys;
     });

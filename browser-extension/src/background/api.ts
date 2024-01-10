@@ -197,6 +197,8 @@ const WALLET = {
     account: 214748364,
     coin_type: 214748364,
     key: null,
+    address: null,
+    typeAddress: 0,
     filter: {
       look_cache: true,
       key_type: "AUTH",
@@ -286,8 +288,8 @@ class Api {
       if (myself.checkSeed() && myself.utxord && myself.bech) {
         myself.genKeys();
         myself.initPassword();
-        const fund = myself.wallet.fund.key?.GetLocalPubKey()?.c_str();
-        const auth = myself.wallet.auth.key?.GetLocalPubKey()?.c_str();
+        const fund = myself.wallet.fund.key?.PubKey();
+        const auth = myself.wallet.auth.key?.PubKey();
         if (fund && auth) {
           myself.status.initAccountData = true;
           return myself.status.initAccountData;
@@ -327,14 +329,16 @@ class Api {
     const a = this.wallet[type].account;
     const c = this.wallet[type].change;
     const i = this.wallet[type].index;
-     return `m/86'/${t}'/${a}'/${c}/${i}`;
+    let purpose = 86;
+    if(this.wallet[type].typeAddress === 1) purpose = 84;
+     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
   }
   async setTypeAddress(type, value){
     if(!this.wallet_types.includes(type)) return false;
     if(!this.checkSeed()) return false;
     if(type==='xord' || type==='ext') return false;
-    this.wallet[type].typeAddress = value;
-
+    this.wallet[type].typeAddress = Number(value);
+    return true;
   }
   async generateNewIndex(type) {
     if(!this.wallet_types.includes(type)) return false;
@@ -577,11 +581,12 @@ class Api {
     if(!this.checkSeed()) return false;
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
-    this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-    if(this.typeAddress === 1){
+    if(this.wallet[type].typeAddress === 1){
+      this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
       this.wallet[type].address = this.wallet[type].key.GetP2WPKHAddress(this.network);
       return true;
     }
+    this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
     this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);
      return true;
   }
@@ -596,6 +601,7 @@ class Api {
               this.addresses.push({
                 address: this.wallet[key].address,
                 type: key,
+                typeAddress: this.wallet[key].typeAddress,
                 index: this.path(key)
               });
             }else{
@@ -604,12 +610,16 @@ class Api {
                   this.addresses[i] = {
                     address: this.wallet[key].address,
                     type: key,
+                    typeAddress: this.wallet[key].typeAddress,
                     index: this.path(key)
                   };
                 }
               }
             }
-            publicKeys.push({pubKeyStr: this.wallet[key].key.PubKey(), type: key});
+            publicKeys.push({
+              pubKeyStr: this.wallet[key].key.PubKey(),
+              type: key,
+            });
           }
         }
       }

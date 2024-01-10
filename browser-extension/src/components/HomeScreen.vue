@@ -117,7 +117,7 @@
           <label class="switch">
           <div class="label">{{ nameTypeAddress }}</div>
           <input type="checkbox"
-            :checked="typeAddress || 0"
+            :checked="Boolean(typeAddress)"
             @click="toogleAddress">
             <span class="slider round"></span>
           </label>
@@ -176,10 +176,11 @@ async function connectToSite() {
 async function toogleAddress(){
 store.setTypeAddress(Number(!typeAddress.value));
 await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
+let ta = typeAddress.value;
 const response = await sendMessage(
   CHANGE_TYPE_FUND_ADDRESS,
   {
-    type: Number(!typeAddress.value)
+    type: Number(ta)
   },
   'background'
   )
@@ -210,7 +211,7 @@ function refreshBalance() {
 const isSynchronized = computed(() => balance?.value?.sync)
 const connected = computed(() => balance?.value?.connect)
 
-const nameTypeAddress = computed(() => (!typeAddress.value)?'P2TR':'P2WPKH')
+const nameTypeAddress = computed(() => (typeAddress?.value===1)?'P2WPKH':'P2TR')
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)

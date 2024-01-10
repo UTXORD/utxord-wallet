@@ -20,6 +20,7 @@ const useWallet = () => {
     }
     if (addresses?.fund) {
       store.setFundAddress(addresses?.fund?.address)
+      store.setTypeAddress(addresses?.fund?.typeAddress)
       return addresses?.fund?.address
     }
   }
