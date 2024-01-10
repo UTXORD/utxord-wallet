@@ -416,7 +416,7 @@ TEST_CASE("SwapNoFee")
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
     builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, FormatAmount(get<1>(ord_prevout).nValue), ord_addr);
-    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(*bech)));
+    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(w->btc().GetNewAddress()));
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "ord"));
 
@@ -449,6 +449,7 @@ TEST_CASE("SwapNoFee")
 
     builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr);
     spent_outs.emplace_back(ParseAmount(funds_amount), CScript() << 1 << funds_utxo_key.PubKey());
+    REQUIRE_NOTHROW(builderOrdBuyer.OrdPayoffAddress(w->btc().GetNewAddress()));
     REQUIRE_NOTHROW(builderOrdBuyer.SignFundsCommitment(master_key, "fund"));
 
 
@@ -565,7 +566,7 @@ TEST_CASE("FundsNotEnough")
     builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, "0.0001", ord_addr);
     CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(*bech)));
 
-    REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "swap"));
+    REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "ord"));
 
     string ordSellerTerms = builderOrdSeller.Serialize(5, ORD_SWAP_SIG);
 
