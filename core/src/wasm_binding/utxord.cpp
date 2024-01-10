@@ -134,9 +134,8 @@ public:
     void RemoveKeyType(const char* name)
     { utxord::KeyRegistry::RemoveKeyType(name); }
 
-//    void AddKeyToCache(const char* sk)
-//    { utxord::KeyRegistry::AddKeyToCache(unhex<l15::seckey>(sk)); }
-//
+    using utxord::KeyRegistry::AddKeyToCache;
+
     void RemoveKeyFromCache(const char* sk)
     { utxord::KeyRegistry::RemoveKeyFromCache(unhex<l15::seckey>(sk)); }
 
