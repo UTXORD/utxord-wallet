@@ -64,7 +64,7 @@ private:
     void CheckBuildArgs() const;
     void CheckContractTerms() const;
 
-    void RestoreTransactions();
+    void RestoreTransactions() const;
 
     const CScript& GetInscriptionScript() const;
     std::vector<CTxOut> GetGenesisTxSpends() const;
@@ -150,13 +150,17 @@ public:
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 
-    std::vector<std::string> RawTransactions();
+    std::vector<std::string> RawTransactions() const;
 
     uint32_t TransactionCount() const
     { return 2; }
 
     std::string RawTransaction(uint32_t n)
     { return (n < TransactionCount()) ? RawTransactions()[n] : std::string(); }
+
+    std::string GetInscriptionLocation() const;
+    std::string GetCollectionLocation() const;
+    std::string GetChangeLocation() const;
 
     std::string Serialize(uint32_t version) const;
     void Deserialize(const std::string& data);

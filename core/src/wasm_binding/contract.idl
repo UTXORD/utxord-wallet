@@ -93,6 +93,10 @@ interface CreateInscriptionBuilder
 
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
+
+    [Value] string GetInscriptionLocation();
+    [Value] string GetCollectionLocation();
+    [Value] string GetChangeLocation();
 };
 
 enum SwapPhase
