@@ -1316,8 +1316,9 @@ class Api {
           type: payload_data?.type
         });
 
-        // TODO: Commented out for debug purposes until backend ready
-        /*
+        // ======================================================================
+        // TODO: to debug this part when backend will ready for addresses support
+        // ----------------------------------------------------------------------
         myself.WinHelpers.closeCurrentWindow();
         await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, {
           contract: JSON.parse(payload_data.costs.data),
@@ -1332,8 +1333,8 @@ class Api {
           await myself.generateNewIndex('intsk');
           await myself.generateNewIndex('scrsk');
         }
-        await myself.genKeys();
-        */
+        myself.genKeys();
+        // ======================================================================
       },1000);
 
 
