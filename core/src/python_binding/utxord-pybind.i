@@ -16,10 +16,15 @@
 
 #include "common.hpp"
 #include "transaction.hpp"
+#include "address.hpp"
+#include "keypair.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
+
+using namespace utxord;
+using namespace l15;
 
 %}
 
@@ -87,10 +92,19 @@
                 Py_XDECREF(n);
             }
 
-            if (l15::core::IsTaproot($1.vout[i])) {
-                PyObject *scriptpubkey = PyString_FromString(l15::core::GetTaprootPubKey($1.vout[i]).c_str());
-                PyDict_SetItemString(out, "pubKey", scriptpubkey);
+            int witversion;
+            l15::bytevector witnessprogram;
+            if ($1.vout[i].scriptPubKey.IsWitnessProgram(witversion, witnessprogram)) {
+
+                PyObject *scriptpubkey = PyBytes_FromStringAndSize((const char*)($1.vout[i].scriptPubKey.data()), $1.vout[i].scriptPubKey.size());
+                PyDict_SetItemString(out, "scriptPubKey", scriptpubkey);
                 Py_XDECREF(scriptpubkey);
+
+                if (witversion == 1) {
+                    PyObject *scriptpubkey = PyString_FromString(l15::core::GetTaprootPubKey($1.vout[i]).c_str());
+                    PyDict_SetItemString(out, "pubKey", scriptpubkey);
+                    Py_XDECREF(scriptpubkey);
+                }
             }
 
             PyList_SET_ITEM(outputs, i, out);
@@ -102,8 +116,24 @@
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
 
+%typemap(in) const bytevector& (bytevector param, const char *begin) {
+    if (!PyBytes_Check($input)) {
+        SWIG_exception_fail(SWIG_TypeError, "in method '" "GetAddress" "', argument " "1"" of type '" "bytes""'");
+    }
+    begin = PyBytes_AsString($input);
+    param.assign(begin, begin+PyBytes_Size($input));
+    $1 = &param;
+}
+
+%typemap(out) const l15::bytevector& {
+    $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size());
+}
+
 %include "common_error.hpp"
 %include "contract_error.hpp"
+%include "address.hpp"
+%include "keypair.hpp"
+%include "contract_builder.hpp"
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
 %include "transaction.hpp"

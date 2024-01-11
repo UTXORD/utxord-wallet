@@ -14,28 +14,31 @@
 
 namespace utxord {
 
-enum InscribeType { INSCRIPTION, COLLECTION };
+enum InscribeType { INSCRIPTION, LASY_INSCRIPTION };
+enum InscribePhase { MARKET_TERMS, LASY_COLLECTION_MARKET_TERMS, LASY_COLLECTION_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 
 class CreateInscriptionBuilder: public ContractBuilder
 {
     static const std::string FEE_OPT_HAS_CHANGE;
     static const std::string FEE_OPT_HAS_COLLECTION;
     static const std::string FEE_OPT_HAS_XTRA_UTXO;
+    static const std::string FEE_OPT_HAS_P2WPKH_INPUT;
 
     static const CAmount COLLECTION_SCRIPT_ADD_VSIZE = 18;
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_market_fee;
     static const char* s_versions;
 
     InscribeType m_type;
-    CAmount m_ord_amount;
+    std::optional<CAmount> m_ord_amount;
 
-    std::list<Transfer> m_utxo;
-    std::list<Transfer> m_xtra_utxo;
+    std::list<ContractInput> m_inputs;
+    std::list<ContractInput> m_extra_inputs;
 
     std::optional<std::string> m_parent_collection_id;
-    std::optional<Transfer> m_collection_utxo;
+    std::optional<ContractInput> m_collection_input;
 
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
@@ -51,9 +54,7 @@ class CreateInscriptionBuilder: public ContractBuilder
     std::optional<seckey> m_inscribe_int_sk; //taproot
     std::optional<xonly_pubkey> m_inscribe_int_pk; //taproot
 
-    std::optional<xonly_pubkey> m_destination_pk;
-    std::optional<xonly_pubkey> m_change_pk;
-
+    std::optional<std::string> m_destination_addr;
 
     mutable std::optional<CScript> mInscriptionScript;
     mutable std::optional<CMutableTransaction> mCommitTx;
@@ -62,7 +63,7 @@ class CreateInscriptionBuilder: public ContractBuilder
 
 private:
     void CheckBuildArgs() const;
-    void CheckContractTerms() const;
+    void CheckContractTerms(InscribePhase phase) const;
 
     void RestoreTransactions();
 
@@ -71,7 +72,7 @@ private:
     CAmount CalculateWholeFee(const std::string& params) const override;
 
     CMutableTransaction MakeCommitTx() const;
-    CMutableTransaction MakeGenesisTx(bool to_sign) const;
+    CMutableTransaction MakeGenesisTx(bool for_inscribe_signature) const;
 
     CMutableTransaction CreateGenesisTxTemplate() const;
 
@@ -92,17 +93,17 @@ public:
     static const std::string name_inscribe_script_pk;
     static const std::string name_inscribe_int_pk;
     static const std::string name_inscribe_sig;
-    static const std::string name_destination_pk;
-    static const std::string name_change_pk;
+    static const std::string name_destination_addr;
 //    static const std::string name_parent_collection_script_pk;
 //    static const std::string name_parent_collection_int_pk;
 //    static const std::string name_parent_collection_out_pk;
 
-    CreateInscriptionBuilder() : m_type(INSCRIPTION), m_ord_amount(0) {}
+    //CreateInscriptionBuilder() : m_type(INSCRIPTION) {}
     CreateInscriptionBuilder(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder(CreateInscriptionBuilder&&) noexcept = default;
 
-    explicit CreateInscriptionBuilder(InscribeType type, const std::string& amount) : m_type(type), m_ord_amount(ParseAmount(amount)) {}
+    explicit CreateInscriptionBuilder(Bech32 bech, InscribeType type) : ContractBuilder(bech), m_type(type) {}
+//    explicit CreateInscriptionBuilder(ChainMode mode, InscribeType type) : CreateInscriptionBuilder(Bech32(mode), type) {}
 
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
@@ -111,21 +112,29 @@ public:
 
     const std::string& GetContentType() const { return *m_content_type; }
     std::string GetContent() const { return l15::hex(m_content.value()); }
-    std::string GetDestinationPubKey() const { return l15::hex(m_destination_pk.value()); }
+    std::string GetInscribeAddress() const { return *m_destination_addr; }
 
     std::string GetIntermediateSecKey() const { return l15::hex(m_inscribe_taproot_sk.value()); }
 
-    CreateInscriptionBuilder& MiningFeeRate(const std::string& rate);
-    CreateInscriptionBuilder& AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
-    CreateInscriptionBuilder& Data(const std::string& content_type, const std::string& hex_data);
-    CreateInscriptionBuilder& InscribePubKey(const std::string& inscribe_pk);
-    CreateInscriptionBuilder& ChangePubKey(const std::string& change_pk);
-    //CreateInscriptionBuilder& CollectionCommitPubKeys(const std::string& script_pk, const std::string& int_pk);
-    CreateInscriptionBuilder& AddToCollection(const std::string& collection_id,
+    void OrdAmount(const std::string& amount)
+    { m_ord_amount = l15::ParseAmount(amount); }
+
+    void AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& addr);
+    void Data(const std::string& content_type, const std::string& hex_data);
+
+    void MetaData(const std::string& metadata);
+
+    void InscribeAddress(const std::string& addr)
+    {
+        bech32().Decode(addr);
+        m_destination_addr = addr;
+    }
+
+    //void CollectionCommitPubKeys(const std::string& script_pk, const std::string& int_pk);
+    void AddToCollection(const std::string& collection_id,
                                               const std::string& utxo_txid, uint32_t utxo_nout, const std::string& utxo_amount,
-                                              const std::string& collection_pk);
-    CreateInscriptionBuilder& SetMetaData(const std::string& data);
-    CreateInscriptionBuilder& AddFundMiningFee(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& pk);
+                                              const std::string& collection_addr);
+    void FundMiningFee(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& addr);
 
     std::string MakeInscriptionId() const;
 
@@ -142,11 +151,11 @@ public:
 
     std::string GetGenesisTxMiningFee() const;
 
-    void SignCommit(uint32_t n, const std::string& sk, const std::string& inscribe_script_pk);
-    void SignInscription(const std::string& insribe_script_sk);
+    void SignCommit(const KeyRegistry &master_key, const std::string& key_filter, const std::string& inscribe_script_pk);
+    void SignInscription(const KeyRegistry &master_key, const std::string& key_filter);
 
-    void SignCollection(const std::string& script_sk);
-    void SignFundMiningFee(uint32_t n, const std::string& sk);
+    void SignCollection(const KeyRegistry &master_key, const std::string& key_filter);
+    void SignFundMiningFee(const KeyRegistry& master_key, const std::string& key_filter);
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 
@@ -158,8 +167,8 @@ public:
     std::string RawTransaction(uint32_t n)
     { return (n < TransactionCount()) ? RawTransactions()[n] : std::string(); }
 
-    std::string Serialize(uint32_t version) const;
-    void Deserialize(const std::string& data);
+    std::string Serialize(uint32_t version, InscribePhase phase) const;
+    void Deserialize(const std::string& data, InscribePhase phase);
 
 };
 

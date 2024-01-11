@@ -10,16 +10,56 @@
 #include "key.h"
 #include "util/spanparsing.h"
 #include "utils.hpp"
+#include "keypair.hpp"
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 using namespace l15;
+using namespace utxord;
 
 static const std::vector<std::byte> seed = unhex<std::vector<std::byte>>(
 "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
 
 static const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
 static const std::string derive_path = "m/86'/2'/0'/0/0";
+
+
+TEST_CASE("KeyFilter")
+{
+    KeyRegistry master(TESTNET, "f35c7006dd5a72d1023dff8b856fd9c90bc5f334650c5f933da8218a183e8a14d0ea9c8fb1694b34edb7f5b1674edb2a8f90fee52325cc3a7968062608c61cce");
+
+    CHECK_NOTHROW(master.AddKeyType("oth", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["0'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("fund", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["1'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("ord", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["2'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("uns", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["3'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("intsk", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["4'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("scrsk", R"({"look_cache":true,"key_type":"TAPSCRIPT","accounts":["5'"],"change":["0"],"index_range":"0-16384"})"));
+}
+
+TEST_CASE("KeyLookup")
+{
+    KeyRegistry master(TESTNET, "f35c7006dd5a72d1023dff8b856fd9c90bc5f334650c5f933da8218a183e8a14d0ea9c8fb1694b34edb7f5b1674edb2a8f90fee52325cc3a7968062608c61cce");
+
+    CHECK_NOTHROW(master.AddKeyType("oth", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["0'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("fund", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["1'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("ord", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["2'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("uns", R"({"look_cache":true,"key_type":"TAPSCRIPT","accounts":["3'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("intsk", R"({"look_cache":true,"key_type":"TAPSCRIPT","accounts":["4'"],"change":["0"],"index_range":"0-16384"})"));
+    CHECK_NOTHROW(master.AddKeyType("scrsk", R"({"look_cache":true,"key_type":"TAPSCRIPT","accounts":["5'"],"change":["0"],"index_range":"0-16384"})"));
+
+    KeyPair derived = master.Derive("m/86'/1'/1'/0/0", false);
+
+    std::clog << "Derived addr: " << derived.GetP2TRAddress(Bech32(utxord::Hrp<TESTNET>())) << std::endl;
+
+    KeyPair keypair;
+    REQUIRE_NOTHROW(keypair = master.Lookup("tb1p673hxdtlaa07z46wc4pz2kewz0l37dta7j367dep3ytgk6nlxq6st04x8m", "fund"));
+
+    KeyPair derived2 = master.Derive("m/86'/1'/3'/0/0", true);
+
+    KeyPair keypair2;
+    REQUIRE_NOTHROW(keypair2 = master.Lookup(derived2.PubKey(), "uns"));
+}
+
 
 TEST_CASE("Derive")
 {

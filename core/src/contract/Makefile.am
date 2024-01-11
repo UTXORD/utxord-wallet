@@ -1,5 +1,11 @@
 
-AM_CPPFLAGS = \
+AM_CPPFLAGS =
+
+if BIND_WASM
+AM_CPPFLAGS += -DWASM
+endif
+
+AM_CPPFLAGS += \
  -I$(top_srcdir)/contrib/nlohmann_json \
  -I$(top_srcdir)/bitcoin/src \
  -I$(top_srcdir)/bitcoin/src/univalue/include \
@@ -16,9 +22,13 @@ AM_CPPFLAGS = \
 
 noinst_LTLIBRARIES = libutxord-contract.la
 libutxord_contract_la_SOURCES = \
+    ecdsa.cpp \
+    chainmode_spec.cpp \
+    keypair.cpp \
 	contract_builder.cpp \
 	create_inscription.cpp \
-	swap_inscription.cpp
+	swap_inscription.cpp \
+	simple_transaction.cpp
 
 if !BIND_WASM
 libutxord_contract_la_SOURCES += inscription.cpp

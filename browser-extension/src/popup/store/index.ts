@@ -47,8 +47,7 @@ export const useStore = defineStore('store', {
       this.usdRate = value
     },
     setBalance(value: IBalance) {
-      console.log('... store.setBalance:');
-      console.dir(value);
+      // console.log('... store.setBalance: ', value);
       this.balance = value
     },
     setFundAddress(addr: string) {

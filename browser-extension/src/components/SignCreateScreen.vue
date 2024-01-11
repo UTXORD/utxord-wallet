@@ -1,5 +1,27 @@
 <template>
   <SignWrapper>
+    <!-- To address -->
+<!--
+    <div
+      class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
+    >
+      <div class="sign-screen_block-input flex flex-col">
+        <span class="mb-2 w-full text-[var(--text-grey-color)]"
+          >My ordinal address:</span
+        >
+        <CustomInput
+          :value="formatAddress(toAddress, 12, 12)"
+          class="w-full"
+          readonly
+        >
+          <CopyIcon
+            class="cursor-pointer"
+            @click="copyToClipboard(toAddress)"
+          />
+        </CustomInput>
+      </div>
+    </div>
+-->
     <!-- TX Info -->
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
@@ -76,13 +98,15 @@
 
 <script setup lang="ts">
 import { toRefs, computed } from 'vue'
+import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
+import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
 
 
 const store = useStore()
-const { balance, dataForSign } = toRefs(store)
+const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 
 const isSynchronized = computed(() => balance?.value?.sync)
 const connected = computed(() => balance?.value?.connect)
@@ -97,6 +121,10 @@ const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
 const isInsufficientBalance = computed(() => {
   if (Number(totalNeed.value) > Number(balance.value?.confirmed)) return true
   return false
+})
+
+const toAddress = computed(() => {
+  return ordAddress.value || fundAddress.value
 })
 
 </script>
