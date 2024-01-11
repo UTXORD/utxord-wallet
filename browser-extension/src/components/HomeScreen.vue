@@ -113,6 +113,15 @@
           <p class="p-0 mr-auto text-[var(--text-color)]">
             {{ formatAddress(fundAddress, 6, 6) }}
           </p>
+
+          <label class="switch">
+          <div class="label">{{ nameTypeAddress }}</div>
+          <input type="checkbox"
+            :checked="Boolean(typeAddress)"
+            @click="toogleAddress">
+            <span class="slider round"></span>
+          </label>
+
           <Button
             outline
             @click="newFundAddress"
@@ -151,17 +160,36 @@ import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
-import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CONNECT_TO_SITE} from '~/config/events'
+import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 
 const store = useStore()
-const { balance, fundAddress } = toRefs(store)
+const { balance, fundAddress, typeAddress } = toRefs(store)
 
 const { getBalance, fetchUSDRate } = useWallet()
 
 async function connectToSite() {
   await sendMessage(CONNECT_TO_SITE, {}, 'background')
   await refreshBalance()
+}
+
+async function toogleAddress(){
+
+await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
+let ta = Number(!typeAddress.value);
+store.setTypeAddress(ta);
+const response = await sendMessage(
+  CHANGE_TYPE_FUND_ADDRESS,
+  {
+    type: ta
+  },
+  'background'
+  )
+const addr = response?.addresses?.find(
+  (item) => item.type === 'fund'
+)?.address
+store.setFundAddress(addr)
+
 }
 
 async function newFundAddress() {
@@ -183,6 +211,8 @@ function refreshBalance() {
 
 const isSynchronized = computed(() => balance?.value?.sync)
 const connected = computed(() => balance?.value?.connect)
+
+const nameTypeAddress = computed(() => (typeAddress?.value===1)?'P2WPKH':'P2TR')
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)
@@ -235,5 +265,70 @@ const status_message = computed(() => {
       letter-spacing: -0.32px;
     }
   }
+}
+
+.label{
+  margin-top: -1.1rem;
+  font-size: 0.6rem;
+}
+
+.switch {
+  margin-right: 0.5rem;
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 15px;
+  width: 15px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #6d7175;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #6d7175;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(17px);
+  -ms-transform: translateX(17px);
+  transform: translateX(17px);
+}
+
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
 }
 </style>

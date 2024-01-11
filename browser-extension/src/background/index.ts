@@ -25,6 +25,7 @@ import {
   GET_USD_RATE,
   GET_NETWORK,
   NEW_FUND_ADDRESS,
+  CHANGE_TYPE_FUND_ADDRESS,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
   OPEN_START_PAGE,
   PLUGIN_ID,
@@ -180,6 +181,15 @@ if (NETWORK === MAINNET){
     onMessage(NEW_FUND_ADDRESS, async () => {
       await Api.generateNewIndex('fund');
       const newKeys = Api.genKeys();
+      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
+      return newKeys;
+    });
+
+    onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
+      console.log('CHANGE_TYPE_FUND_ADDRESS:',payload.data?.type);
+      await Api.setTypeAddress('fund', payload.data?.type);
+      const newKeys = await Api.genKeys();
+      console.log('newKeys', newKeys);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
       return newKeys;
     });
