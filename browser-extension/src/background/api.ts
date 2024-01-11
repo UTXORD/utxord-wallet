@@ -1069,7 +1069,7 @@ class Api {
   signToChallenge(challenge, tabId: number | undefined = undefined): boolean {
     const myself = this;
     if (myself.wallet.auth.key) {
-      const signature = myself.wallet.auth.key.SignSchnorr(challenge).c_str();
+      const signature = myself.wallet.auth.key.SignSchnorr(challenge);
       console.log("SignSchnorr::challengeResult:", signature);
       myself.sendMessageToWebPage(CONNECT_RESULT, {
         challenge: challenge,
