@@ -1107,9 +1107,10 @@ class Api {
       );
       console.log('newOrd:',newOrd);
       // TODO: we need to receive it from backend via frontend
-      // const contract = {"contract_type":"CreateInscription","params":{"protocol_version":8,"market_fee":{"amount":0}}};
-      // TODO: to ensure that frontend is passing it here from backend!
-      const contract = payload?.contract;
+      const contract = payload?.contract || {
+        "contract_type": "CreateInscription",
+        "params": {"protocol_version": 8, "market_fee": {"amount": 0}}
+      };
       newOrd.Deserialize(JSON.stringify(contract));
 
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
