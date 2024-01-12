@@ -41,7 +41,7 @@ public:
     ~ContractTermMismatch() override = default;
 
     const char* what() const noexcept override
-    { return "ContractValueMismatch"; }
+    { return "ContractTermMismatch"; }
 };
 
 class ContractTermWrongFormat : public ContractError {

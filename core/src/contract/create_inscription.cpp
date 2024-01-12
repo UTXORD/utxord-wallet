@@ -790,7 +790,7 @@ std::string CreateInscriptionBuilder::GetChangeLocation() const
 {
     UniValue res(UniValue::VOBJ);
 
-    if (m_change_pk) {
+    if (m_change_addr) {
         CMutableTransaction commitTx = CommitTx();
         if (m_parent_collection_id) {
             if (commitTx.vout.size() == 3) {
