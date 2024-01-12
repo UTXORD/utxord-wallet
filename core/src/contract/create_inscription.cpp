@@ -255,7 +255,7 @@ void CreateInscriptionBuilder::SignFundMiningFee(const KeyRegistry& master_key, 
     }
 }
 
-std::vector<std::string> CreateInscriptionBuilder::RawTransactions()
+std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
 {
     if (!mCommitTx || !mGenesisTx) {
         RestoreTransactions();
@@ -481,7 +481,7 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     CheckContractTerms(phase);
 }
 
-void CreateInscriptionBuilder::RestoreTransactions()
+void CreateInscriptionBuilder::RestoreTransactions() const
 {
     if (!m_inscribe_script_pk) throw ContractTermMissing(std::string(name_inscribe_script_pk));
     if (!m_inscribe_int_pk) throw ContractTermMissing(std::string(name_inscribe_int_pk));
@@ -764,6 +764,49 @@ CAmount CreateInscriptionBuilder::CalculateWholeFee(const std::string& params) c
     }
 
     return genesis_fee + CFeeRate(*m_mining_fee_rate).GetFee(genesis_vsize_add + commit_vsize);
+}
+
+std::string CreateInscriptionBuilder::GetInscriptionLocation() const
+{
+    UniValue res(UniValue::VOBJ);
+
+    res.pushKV("txid", GenesisTx().GetHash().GetHex());
+    res.pushKV("nout", 0);
+
+    return res.write();
+}
+
+std::string CreateInscriptionBuilder::GetCollectionLocation() const
+{
+    UniValue res(UniValue::VOBJ);
+
+    res.pushKV("txid", GenesisTx().GetHash().GetHex());
+    res.pushKV("nout", 1);
+
+    return res.write();
+}
+
+std::string CreateInscriptionBuilder::GetChangeLocation() const
+{
+    UniValue res(UniValue::VOBJ);
+
+    if (m_change_pk) {
+        CMutableTransaction commitTx = CommitTx();
+        if (m_parent_collection_id) {
+            if (commitTx.vout.size() == 3) {
+                res.pushKV("txid", commitTx.GetHash().GetHex());
+                res.pushKV("nout", 2);
+            }
+        }
+        else {
+            if (commitTx.vout.size() == 2) {
+                res.pushKV("txid", commitTx.GetHash().GetHex());
+                res.pushKV("nout", 1);
+            }
+        }
+    }
+
+    return res.write();
 }
 
 }

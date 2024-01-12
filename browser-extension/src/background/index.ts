@@ -44,10 +44,14 @@ import {
   SEND_CONNECT_STATUS,
   UPDATE_PLUGIN_CONNECT,
   GET_INSCRIPTION_CONTRACT,
-  INSCRIPTION_CONTRACT_RESULT
+  GET_INSCRIPTION_CONTRACT_RESULT,
+  CREATE_BULK_INSCRIPTION,
+  GET_BULK_INSCRIPTION_ESTIMATION,
+  GET_BULK_INSCRIPTION_ESTIMATION_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
+import {HashedStore} from "~/background/hashedStore";
 
 if (NETWORK === MAINNET){
   if(self){
@@ -58,8 +62,81 @@ if (NETWORK === MAINNET){
   }
 }
 
+// interface IInscription {
+//   collection: {},
+//   content: string,
+//   content_type: string,
+//   addresses: [],
+//   fee: number, // fee rate
+//   expect_amount: number,
+//   type: string,
+//   name: string,
+//   description: string,
+//   metadata: {
+//     name?: string,
+//     description?: string,
+//   }
+// }
+
+interface ISingleInscription {
+  // To update after each inscription done, from out#1 of genesis tx
+  parent: null | {
+    txid: string,
+    nout: number,
+  },
+  draftUuid: string,
+  content: string,
+  contentType: string,
+  type: string,
+  name: string,
+  description: string,
+}
+
+interface IChunkInscription {
+  jobUuid: string;  // plugin needs it to identify all chunks as a single bulk
+  feeRate: number,
+  expectAmount: number,
+  addresses: [],
+  inscriptions: ISingleInscription[],
+}
+
+interface ISingleInscriptionEstimation {
+  content_length: number;
+  content_type: string;
+  expectAmount: number | undefined,
+  feeRate: number | undefined,
+  fee: number | undefined,
+}
+
+interface IBulkInscriptionEstimation {
+  expectAmount: number,
+  feeRate: number,
+  fee: number,
+  inscriptionsContent: ISingleInscriptionEstimation[];
+}
+
+interface IBulkInscriptionEstimationResult {
+  amount: number;
+  expect_amount: number,
+}
+
+interface ISingleInscriptionResult {
+  draftUuid: string,
+  contract: {},  // from JSON from core
+}
+
+interface IChunkInscriptionResult {
+  inscriptionResults: ISingleInscriptionResult[];
+  lastInscriptionOut: {
+    txid: string,
+    nout: number,
+  }
+}
+
 (async () => {
   try {
+    let store = HashedStore.getInstance();
+
     // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
     let popupPort: Port | null = null;
@@ -210,17 +287,32 @@ if (NETWORK === MAINNET){
 
     onMessage(SUBMIT_SIGN, async (payload) => {
 
-      // console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
+      console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
+      // console.debug("===== SUBMIT_SIGN: payload?.data?.data", {...payload?.data?.data})
       // console.debug("===== SUBMIT_SIGN: payload?.data?._tabId", payload?.data?._tabId)
       // console.debug("===== SUBMIT_SIGN: payload?.data?.data?._tabId", payload?.data?.data?._tabId)
 
-      if (payload.data.type === CREATE_INSCRIPTION) {
+      if (payload.data.type === CREATE_BULK_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
+          payload.data.data.content = store.pop(payload.data.data?.content_store_key);
           const success = await Api.createInscription(payload.data.data);
           await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
           await Api.encryptedWallet(payload.data.password);
           return success;
+        }
+        return false;
+      }
+
+      if (payload.data.type === CREATE_INSCRIPTION) {
+        const res = await Api.decryptedWallet(payload.data.password);
+        if(res){
+          payload.data.data.content = store.pop(payload.data.data?.content_store_key);
+          const success = await Api.createInscription(payload.data.data);
+          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
+          await Api.encryptedWallet(payload.data.password);
+          // return success;
+          return true;
         }
         return false;
       }
@@ -337,44 +429,67 @@ if (NETWORK === MAINNET){
 
       if (payload.type === GET_INSCRIPTION_CONTRACT) {
         const contract = await Api.createInscriptionContract(payload.data);
-        await Api.sendMessageToWebPage(INSCRIPTION_CONTRACT_RESULT, contract);
+        await Api.sendMessageToWebPage(GET_INSCRIPTION_CONTRACT_RESULT, contract);
+      }
+
+      if (payload.type === GET_BULK_INSCRIPTION_ESTIMATION) {
+        const data = payload.data as IBulkInscriptionEstimation;
+        let bulkAmount = 0;
+        let bulkExpectAmount = 0;
+        for (const item of data.inscriptionsContent) {
+          item.expectAmount = data.expectAmount;
+          item.feeRate = data.feeRate;
+          item.fee = data.fee;
+          const contract = await Api.estimateInscription(item);
+          bulkAmount += contract.amount;
+          bulkExpectAmount += contract.expect_amount;
+        }
+        await Api.sendMessageToWebPage(GET_BULK_INSCRIPTION_ESTIMATION_RESULT, {
+          amount: bulkAmount,
+          expect_amount: bulkExpectAmount
+        });
+      }
+
+      if (payload.type === CREATE_BULK_INSCRIPTION) {
+        let costs;
+        console.log('payload?.data?.type:',payload?.data?.type)
+        console.log('payload?.data?.collection?.genesis_txid:',payload?.data?.collection?.genesis_txid);
+
+        costs = await Api.createInscriptionContract(payload.data);
+        payload.data.costs = costs;
+        console.log(CREATE_INSCRIPTION+':',payload.data);
+        payload.data.content_store_key = store.put(payload.data.content);
+        payload.data.content = null;
+        winManager.openWindow('sign-create-inscription', async (id) => {
+          setTimeout(async  () => {
+            // if (payload.data.costs.output_mining_fee < 546) {
+            //   Api.sendNotificationMessage(
+            //     'CREATE_BULK_INSCRIPTION',
+            //     'There are too few coins left after creation and they will become part of the inscription balance'
+            //   );
+            // }
+            await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+          }, 1000);
+        });
       }
 
       if (payload.type === CREATE_INSCRIPTION) {
         let costs;
-        console.log('payload?.data?.type:',payload?.data?.type)
-        console.log('payload?.data?.collection?.genesis_txid:',payload?.data?.collection?.genesis_txid);
-        /*
-        if(payload?.data?.type==='AVATAR'){
-          console.log('run: Independent Collection')
-          costs =  await Api.createIndependentCollectionContract(payload.data);
-        }
-        if(payload?.data?.type==='INSCRIPTION'){
-          if(payload?.data?.collection?.genesis_txid){
-            console.log('run: Inscription In Collection');
-            costs =  await Api.createInscriptionInCollectionContract(payload.data);
-          }else{
-            console.log('run: Independent Inscription');
-            costs =  await Api.createIndependentInscriptionContract(payload.data);
-          }
-        }
-        if(payload?.data?.type==='COLLECTION'){
-          if(payload?.data?.collection?.genesis_txid){
-            console.log('run: Collection With Parent');
-            costs =  await Api.createCollectionWithParentContract(payload.data);
-          }else{
-            console.log('run: Independent Collection');
-            costs =  await Api.createIndependentCollectionContract(payload.data);
-          }
-        }
-*/
+        console.log('payload:', {...payload})
+        console.log('payload?.data?.type:', payload?.data?.type)
+        console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
+
         costs = await Api.createInscriptionContract(payload.data);
+        console.log('costs:', costs)
         payload.data.costs = costs;
+        console.log(CREATE_INSCRIPTION+':', {...payload.data});
+        payload.data.content_store_key = store.put(payload.data.content);
+        payload.data.content = null;
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
         delete payload.data.costs['errorMessage'];
-        console.log(CREATE_INSCRIPTION+':',payload.data);
+        console.log(CREATE_INSCRIPTION+' (stored):', {...payload.data});
         winManager.openWindow('sign-create-inscription', async (id) => {
-          setTimeout(async () => {
+          setTimeout(async  () => {
             if (payload.data.costs.output_mining_fee < 546) {
               Api.sendNotificationMessage(
                 'CREATE_INSCRIPTION',
@@ -391,6 +506,12 @@ if (NETWORK === MAINNET){
         console.log(SELL_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-sell', async (id) => {
           setTimeout(async  () => {
+            // if (payload.data.costs.output_mining_fee < 546) {
+            //   Api.sendNotificationMessage(
+            //     'SELL_INSCRIPTION',
+            //     'There are too few coins left after creation and they will become part of the inscription balance'
+            //   );
+            // }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -403,6 +524,12 @@ if (NETWORK === MAINNET){
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
           setTimeout(async () => {
+            // if (payload.data.costs.output_mining_fee < 546) {
+            //   Api.sendNotificationMessage(
+            //     'COMMIT_BUY_INSCRIPTION',
+            //     'There are too few coins left after creation and they will become part of the inscription balance'
+            //   );
+            // }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });

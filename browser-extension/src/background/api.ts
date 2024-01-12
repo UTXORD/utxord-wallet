@@ -1101,6 +1101,16 @@ class Api {
 
   //------------------------------------------------------------------------------
 
+  async estimateInscription(payload) {
+    return await this.createInscriptionContract({
+      ...payload,
+      content: new ArrayBuffer(payload.content_length),
+      content_length: undefined
+    });
+  }
+
+  //------------------------------------------------------------------------------
+
   async createInscriptionContract(payload, theIndex = 0) {
     const myself = this;
     const outData = {
@@ -1117,12 +1127,12 @@ class Api {
       extra_amount: 0,
       fee_rate: payload.fee_rate,
       fee: payload.fee,
-      size: (payload.content.length+payload.content_type.length),
+      size: (payload.content.length + payload.content_type.length),
       raw: [],
       errorMessage: null as string | null
     };
     try {
-      console.log('createInscription payload: ', {...payload || {}});
+      console.log('createInscriptionContract payload: ', {...payload || {}});
 
       let collection;
       let flagsFundingOptions = "";
@@ -1327,11 +1337,13 @@ class Api {
   }
 
   //------------------------------------------------------------------------------
+
   async createInscription(payload_data) {
     const myself = this;
     if(!payload_data?.costs?.data) return;
     try{
-      console.log("outData:", payload_data.costs.data);
+      console.log('createInscription payload: ', {...payload_data || {}});
+      // console.log("outData:", payload_data.costs.data);
       if(payload_data.costs) {
         if(payload_data.costs?.xord) {
           myself.addToXordPubKey(payload_data.costs?.xord);
