@@ -45,7 +45,7 @@ import {
   UPDATE_PLUGIN_CONNECT,
   GET_INSCRIPTION_CONTRACT,
   GET_INSCRIPTION_CONTRACT_RESULT,
-  CREATE_BULK_INSCRIPTION,
+  CREATE_CHUNK_INSCRIPTION,
   GET_BULK_INSCRIPTION_ESTIMATION,
   GET_BULK_INSCRIPTION_ESTIMATION_RESULT
 } from '~/config/events';
@@ -78,41 +78,19 @@ if (NETWORK === MAINNET){
 //   }
 // }
 
-interface ISingleInscription {
-  // To update after each inscription done, from out#1 of genesis tx
-  parent: null | {
-    txid: string,
-    nout: number,
-  },
-  draftUuid: string,
-  content: string,
-  contentType: string,
-  type: string,
-  name: string,
-  description: string,
-}
-
-interface IChunkInscription {
-  jobUuid: string;  // plugin needs it to identify all chunks as a single bulk
-  feeRate: number,
-  expectAmount: number,
-  addresses: [],
-  inscriptions: ISingleInscription[],
-}
-
 interface ISingleInscriptionEstimation {
   content_length: number;
   content_type: string;
-  expectAmount: number | undefined,
-  feeRate: number | undefined,
+  expect_amount: number | undefined,
+  fee_rate: number | undefined,
   fee: number | undefined,
 }
 
 interface IBulkInscriptionEstimation {
-  expectAmount: number,
-  feeRate: number,
+  expect_amount: number,
+  fee_rate: number,
   fee: number,
-  inscriptionsContent: ISingleInscriptionEstimation[];
+  inscriptions_content: ISingleInscriptionEstimation[];
 }
 
 interface IBulkInscriptionEstimationResult {
@@ -120,16 +98,43 @@ interface IBulkInscriptionEstimationResult {
   expect_amount: number,
 }
 
+interface ISingleInscription {
+  // To update after each inscription done, from out#1 of genesis tx
+  draft_uuid: string,
+  content: string,
+  content_type: string,
+  type: string,
+  metadata: {
+    title: string,
+    description: string,
+  }
+}
+
+interface IChunkInscription {
+  job_uuid: string;  // plugin needs it to identify all chunks as a single bulk
+  expect_amount: number,
+  fee_rate: number,
+  fee: number,
+  addresses: [],
+  parent: null | {
+    genesis_txid: string,
+    owner_txid: string,
+    owner_nout: number,
+  },
+  inscriptions: ISingleInscription[],
+}
+
 interface ISingleInscriptionResult {
-  draftUuid: string,
+  draft_uuid: string,
   contract: {},  // from JSON from core
 }
 
 interface IChunkInscriptionResult {
-  inscriptionResults: ISingleInscriptionResult[];
-  lastInscriptionOut: {
-    txid: string,
-    nout: number,
+  inscription_results: ISingleInscriptionResult[];
+  last_inscription_out: null | {
+    genesis_txid: string,
+    owner_txid: string,
+    owner_nout: number,
   }
 }
 
@@ -192,7 +197,7 @@ interface IChunkInscriptionResult {
       const sup = await Api.setUpPassword(payload.data.password);
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
-      await Api.genKeys();
+      Api.genKeys();
       await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
       return await Api.checkSeed();
     });
@@ -250,7 +255,7 @@ interface IChunkInscriptionResult {
     });
 
     onMessage(GET_ADDRESSES, async () => {
-      const {addresses} = await Api.genKeys();
+      const {addresses} = Api.genKeys();
       console.log('addresses:',addresses)
       return addresses;
     });
@@ -265,7 +270,7 @@ interface IChunkInscriptionResult {
     onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
       console.log('CHANGE_TYPE_FUND_ADDRESS:',payload.data?.type);
       await Api.setTypeAddress('fund', payload.data?.type);
-      const newKeys = await Api.genKeys();
+      const newKeys = Api.genKeys();
       console.log('newKeys', newKeys);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
       return newKeys;
@@ -292,7 +297,7 @@ interface IChunkInscriptionResult {
       // console.debug("===== SUBMIT_SIGN: payload?.data?._tabId", payload?.data?._tabId)
       // console.debug("===== SUBMIT_SIGN: payload?.data?.data?._tabId", payload?.data?.data?._tabId)
 
-      if (payload.data.type === CREATE_BULK_INSCRIPTION) {
+      if (payload.data.type === CREATE_CHUNK_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
           payload.data.data.content = store.pop(payload.data.data?.content_store_key);
@@ -393,12 +398,10 @@ interface IChunkInscriptionResult {
                               // FIXME: Probably due to high balance refresh frequency.
           console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
-          // console.debug('... Api.fundings after Api.freeBalance:', Api.fundings);
           Api.inscriptions = await Api.freeBalance(Api.inscriptions);
           const balances = await Api.prepareBalances(payload.data.addresses);
           Api.fundings = balances.funds;
-          // console.debug('... Api.fundings after Api.prepareBalances:', Api.fundings);
-          Api.inscriptions = await balances.inscriptions;
+          Api.inscriptions = balances.inscriptions;
           console.log('Api.fundings:', Api.fundings);
           console.log('Api.inscriptions:', Api.inscriptions);
 
@@ -436,9 +439,9 @@ interface IChunkInscriptionResult {
         const data = payload.data as IBulkInscriptionEstimation;
         let bulkAmount = 0;
         let bulkExpectAmount = 0;
-        for (const item of data.inscriptionsContent) {
-          item.expectAmount = data.expectAmount;
-          item.feeRate = data.feeRate;
+        for (const item of data.inscriptions_content) {
+          item.expect_amount = data.expect_amount;
+          item.fee_rate = data.fee_rate;
           item.fee = data.fee;
           const contract = await Api.estimateInscription(item);
           bulkAmount += contract.amount;
@@ -449,28 +452,87 @@ interface IChunkInscriptionResult {
           expect_amount: bulkExpectAmount
         });
       }
+      /*
+      interface ISingleInscription {
+        // To update after each inscription done, from out#1 of genesis tx
+        draft_uuid: string,
+        content: string,
+        content_type: string,
+        type: string,
+        metadata: {
+          title: string,
+          description: string,
+        }
+      }
 
-      if (payload.type === CREATE_BULK_INSCRIPTION) {
-        let costs;
-        console.log('payload?.data?.type:',payload?.data?.type)
-        console.log('payload?.data?.collection?.genesis_txid:',payload?.data?.collection?.genesis_txid);
+      interface IChunkInscription {
+        job_uuid: string;  // plugin needs it to identify all chunks as a single bulk
+        expect_amount: number,
+        fee_rate: number,
+        fee: number,
+        addresses: [],
+        parent: null | {
+          txid: string,
+          nout: number,
+        },
+        inscriptions: ISingleInscription[],
+      }
+      */
 
-        costs = await Api.createInscriptionContract(payload.data);
-        payload.data.costs = costs;
-        console.log(CREATE_INSCRIPTION+':',payload.data);
-        payload.data.content_store_key = store.put(payload.data.content);
-        payload.data.content = null;
-        winManager.openWindow('sign-create-inscription', async (id) => {
-          setTimeout(async  () => {
-            // if (payload.data.costs.output_mining_fee < 546) {
-            //   Api.sendNotificationMessage(
-            //     'CREATE_BULK_INSCRIPTION',
-            //     'There are too few coins left after creation and they will become part of the inscription balance'
-            //   );
-            // }
-            await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
-          }, 1000);
-        });
+      function _fixChunkInscriptionPayload(data: IChunkInscription) {
+
+        if (data.parent?.genesis_txid) {
+          data.collection.genesis_txid =
+        }
+
+        for (let inscrData of Array.from(data?.inscriptions || [])) {
+          inscrData.metadata = {
+            title: inscrData.name,
+            description: inscrData.description,
+          };
+          delete inscrData.name;
+          delete inscrData.description;
+
+          inscrData.expect_amount = data.expect_amount;
+          inscrData.fee_rate = data.fee_rate;
+          inscrData.fee = data.fee;
+        }
+        return data;
+      }
+
+      if (payload.type === CREATE_CHUNK_INSCRIPTION) {
+        console.debug('payload?.data:', {...payload?.data || {}});
+        console.log('payload?.data?.type:', payload?.data?.type);
+        console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
+
+        let chunkData = _fixChunkInscriptionPayload(payload?.data) as IChunkInscription;
+
+        // refresh balances first..
+        const balances = await Api.prepareBalances(chunkData.addresses);
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
+        let contracts = [];
+
+
+        for (const inscrData of Array.from(chunkData?.inscriptions || [])) {
+          console.debug('chunk inscrData: ', inscrData);
+          const contract = await Api.createInscriptionContract(inscrData);
+          // check errors;
+          contracts.push(contract);
+        }
+        console.debug('chunk contracts: ', contracts);
+
+        // costs = await Api.createInscriptionContract(payload.data);
+        // payload.data.costs = costs;
+        // console.log(CREATE_INSCRIPTION+':',payload.data);
+        // payload.data.content_store_key = store.put(payload.data.content);
+        // payload.data.content = null;
+        // winManager.openWindow('sign-create-inscription', async (id) => {
+        //   setTimeout(async  () => {
+        //     await sendMessage(SAVE_METADATA_FOR_SIGN, payload, `popup@${id}`);
+        //   }, 1000);
+        // });
       }
 
       if (payload.type === CREATE_INSCRIPTION) {
@@ -506,12 +568,6 @@ interface IChunkInscriptionResult {
         console.log(SELL_INSCRIPTION+':',payload.data);
         winManager.openWindow('sign-sell', async (id) => {
           setTimeout(async  () => {
-            // if (payload.data.costs.output_mining_fee < 546) {
-            //   Api.sendNotificationMessage(
-            //     'SELL_INSCRIPTION',
-            //     'There are too few coins left after creation and they will become part of the inscription balance'
-            //   );
-            // }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -524,12 +580,6 @@ interface IChunkInscriptionResult {
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {
           setTimeout(async () => {
-            // if (payload.data.costs.output_mining_fee < 546) {
-            //   Api.sendNotificationMessage(
-            //     'COMMIT_BUY_INSCRIPTION',
-            //     'There are too few coins left after creation and they will become part of the inscription balance'
-            //   );
-            // }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
