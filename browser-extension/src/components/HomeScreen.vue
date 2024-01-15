@@ -40,7 +40,7 @@
         <Button
         outline
         @click="connectToSite"
-        class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+        class="min-w-[40px] px-3 py-1 mt-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
         >Connect to site</Button>
         </template>
       </div>
