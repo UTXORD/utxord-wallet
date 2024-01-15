@@ -32,7 +32,7 @@
           />
         </template>
         <span
-          class="home-screen_balance-label text-center text-[var(--text-grey-color)] mt-3"
+          class="home-screen_balance-label text-center text-[var(--text-grey-color)]"
         >
           {{ status_message }}
         </span>
