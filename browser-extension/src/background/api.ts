@@ -916,7 +916,7 @@ class Api {
     if ('number' !== typeof(exception)) {
       return exception;
     }
-    return this.utxord.Exception.prototype.getMessage(exception).c_str()
+    return this.utxord.Exception.prototype.getMessage(exception)
   }
 
   async sendNotificationMessage(type?: string, message: any) {
@@ -1147,7 +1147,11 @@ class Api {
       // TODO: we need to receive it from backend via frontend
       const contract = payload?.contract || {
         "contract_type": "CreateInscription",
-        "params": {"protocol_version": 8, "market_fee": {"amount": 0}}
+        "params": {
+          "protocol_version": 8,
+          "market_fee": {"amount": 0},
+          "author_fee": {"amount": 0}
+        }
       };
       newOrd.Deserialize(JSON.stringify(contract));
 
