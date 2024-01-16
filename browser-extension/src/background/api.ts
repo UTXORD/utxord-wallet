@@ -285,7 +285,7 @@ class Api {
       await myself.rememberIndexes();
       console.log('init...');
       myself.genRootKey();
-      if (myself.checkSeed() && myself.utxord && myself.bech) {
+      if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
         myself.genKeys();
         myself.initPassword();
         const fund = myself.wallet.fund.key?.PubKey();
@@ -498,7 +498,7 @@ class Api {
     if(!this.checkSeed()) return false;
     if (this.wallet.root.key) return this.wallet.root.key;
     console.log('seed:',this.getSeed());
-    this.wallet.root.key = new this.utxord.KeyRegistry(this.network, this.getSeed());
+    this.wallet.root.key = new this.utxord?.KeyRegistry(this.network, this.getSeed());
     for(const type of this.wallet_types) {
       if(type !== 'auth') {
         console.log('type: ',type,'|json: ',JSON.stringify(this.wallet[type].filter))
