@@ -1157,7 +1157,7 @@ class Api {
       if(payload.metadata) {
         console.log('payload.metadata:',payload.metadata);
         const encoded = cbor.encode(payload.metadata);
-        await newOrd.SetMetaData(myself.arrayBufferToHex(encoded));
+        await newOrd.MetaData(myself.arrayBufferToHex(encoded));
       }
 
       await newOrd.MiningFeeRate((myself.satToBtc(payload.fee_rate)).toFixed(8));  // payload.fee_rate as Sat/kB
