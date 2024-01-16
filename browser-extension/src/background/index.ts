@@ -436,7 +436,9 @@ if (NETWORK === MAINNET){
       console.log(PLUGIN_ID, chrome.runtime.id);
       console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
+      if(Api.wallet.auth.key){
+        await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
+      }
       return true;
     }
 
