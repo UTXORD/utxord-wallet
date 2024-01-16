@@ -1114,7 +1114,6 @@ class Api {
       inputs_sum: 0,
       utxo_list: [],
       expect_amount: Number(payload.expect_amount),
-      extra_amount: 0,
       fee_rate: payload.fee_rate,
       fee: payload.fee,
       size: (payload.content.length+payload.content_type.length),
@@ -1240,10 +1239,6 @@ class Api {
         flagsFundingOptions += "change";
       }
 
-      const extra_amount = myself.btcToSat(Number(newOrd.GetGenesisTxMiningFee().c_str()));
-      outData.extra_amount = extra_amount;
-
-      console.log("extra_amount:",extra_amount);
       console.log("min_fund_amount:",min_fund_amount);
       console.log("utxo_list:",utxo_list);
 
