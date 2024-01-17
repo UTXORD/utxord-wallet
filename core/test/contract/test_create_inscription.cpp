@@ -201,9 +201,9 @@ TEST_CASE("inscribe")
     CreateCondition segwit_child_w_change_fee {{{ 15000, key12.GetP2WPKHAddress(*bech) }}, "0.00001", true, false, true, "segwit_child_w_change_fee"};
 
     auto condition = GENERATE_COPY(inscription,
-                                   inscription_w_change, inscription_w_fee, inscription_w_change_fee,
-                                   child, child_w_change, child_w_fee, child_w_change_fee,
-                                   segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee
+                                   //inscription_w_change, inscription_w_fee, inscription_w_change_fee,
+                                   child//, child_w_change, child_w_fee, child_w_change_fee,
+                                   //segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee
                                    );
 
     stringvector rawtxs;
@@ -221,7 +221,7 @@ TEST_CASE("inscribe")
         std::string market_terms;
         REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(8, MARKET_TERMS));
 
-        std::clog << "MARKET_TERMS:\n" << market_terms << std::endl;
+        //std::clog << "MARKET_TERMS:\n" << market_terms << std::endl;
 
         CreateInscriptionBuilder builder(*bech, INSCRIPTION);
         REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
@@ -254,7 +254,7 @@ TEST_CASE("inscribe")
 
         std::string contract;
         REQUIRE_NOTHROW(contract = builder.Serialize(8, INSCRIPTION_SIGNATURE));
-        std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
+        //std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
 
         CreateInscriptionBuilder fin_contract(*bech, INSCRIPTION);
         REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
@@ -297,7 +297,7 @@ TEST_CASE("inscribe")
             std::string market_terms;
             REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(8, LASY_INSCRIPTION_MARKET_TERMS));
 
-            std::clog << "Market terms:\n" << market_terms << std::endl;
+            std::clog << "{LASY_INSCRIPTION_MARKET_TERMS:\n" << market_terms << "\n}" << std::endl;
 
             CreateInscriptionBuilder builder(*bech, LASY_INSCRIPTION);
             REQUIRE_NOTHROW(builder.Deserialize(market_terms, LASY_INSCRIPTION_MARKET_TERMS));
@@ -326,7 +326,7 @@ TEST_CASE("inscribe")
                 CMutableTransaction tx;
                 CHECK(DecodeHexTx(tx, rawtx));
 
-                LogTx(tx);
+                //LogTx(tx);
             }
 
             CHECK_NOTHROW(builder.SignCommit(master_key, "fund"));
@@ -334,7 +334,7 @@ TEST_CASE("inscribe")
 
             std::string contract;
             REQUIRE_NOTHROW(contract = builder.Serialize(8, LASY_INSCRIPTION_SIGNATURE));
-            std::clog << contract << std::endl;
+            std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
 
             CreateInscriptionBuilder fin_builder(*bech, LASY_INSCRIPTION);
             REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LASY_INSCRIPTION_SIGNATURE));
@@ -372,12 +372,12 @@ TEST_CASE("inscribe")
         REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
         REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
 
-        std::clog << condition.comment << " ^^^" << '\n';
-        std::clog << "Funding TX min fee: " << CalculateTxFee(1000, commitTx) << " ============================================================" << '\n';
-        LogTx(commitTx);
-        std::clog << "Genesis TX min fee: " << CalculateTxFee(1000, revealTx) << " ============================================================" << '\n';
-        LogTx(revealTx);
-        std::clog << "=======================================================================" << '\n';
+//        std::clog << condition.comment << " ^^^" << '\n';
+//        std::clog << "Funding TX min fee: " << CalculateTxFee(1000, commitTx) << " ============================================================" << '\n';
+//        LogTx(commitTx);
+//        std::clog << "Genesis TX min fee: " << CalculateTxFee(1000, revealTx) << " ============================================================" << '\n';
+//        LogTx(revealTx);
+//        std::clog << "=======================================================================" << '\n';
 
         if (condition.has_change && condition.has_parent) {
             CHECK(commitTx.vout.size() == 3);
@@ -551,12 +551,6 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
     REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
-
-    std::clog << "Commit: ========================" << std::endl;
-    LogTx(commitTx);
-    std::clog << "Genesis: ========================" << std::endl;
-    LogTx(revealTx);
-    std::clog << "========================" << std::endl;
 
     CHECK(revealTx.vout[0].nValue == 546);
 

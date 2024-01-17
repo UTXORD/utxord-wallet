@@ -47,10 +47,6 @@ const std::string CreateInscriptionBuilder::name_author_fee = "author_fee";
 //const std::string CreateInscriptionBuilder::name_parent_collection_int_pk = "parent_collection_int_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_out_pk = "parent_collection_out_pk";
 
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_CHANGE = "change";
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_COLLECTION = "collection";
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_XTRA_UTXO = "extra_utxo";
-const std::string CreateInscriptionBuilder::FEE_OPT_HAS_P2WPKH_INPUT = "p2wpkh_utxo";
 
 CScript CreateInscriptionBuilder::MakeInscriptionScript() const
 {
@@ -314,7 +310,7 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
             if (!m_collection_input) throw ContractTermMissing(name_collection.c_str());
         }
         if (m_collection_input) {
-            if (!m_collection_input->witness) throw ContractTermMissing(name_collection + '.' + ContractInput::name_witness);
+            if (!m_collection_input->witness) throw ContractTermMissing(name_collection + '.' + TxInput::name_witness);
             if (!m_parent_collection_id) throw ContractTermMissing(name_collection_id.c_str());
         }
         //no break
@@ -576,7 +572,7 @@ const CMutableTransaction& CreateInscriptionBuilder::GenesisTx() const
     if (!mGenesisTx) {
         if (!m_inscribe_sig) throw ContractStateError(std::string(name_inscribe_sig));
         if (m_collection_input && !m_collection_input->output) throw ContractStateError(name_collection + '.' + name_sig);
-        if (m_collection_input && !m_collection_input->witness) throw ContractStateError(name_collection + '.' + ContractInput::name_witness);
+        if (m_collection_input && !m_collection_input->witness) throw ContractStateError(name_collection + '.' + TxInput::name_witness);
         if (m_collection_input && !m_fund_mining_fee_sig) throw ContractStateError(std::string(name_fund_mining_fee_sig));
 
         mGenesisTx = MakeGenesisTx();
