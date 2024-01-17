@@ -1501,7 +1501,7 @@ class Api {
     console.log('all_funds_list:',all_funds_list);
     for(const al of all_funds_list) {
       let aloutput=`${al.txid}:${al.nout}`;
-      if(!excepts?.includes(aloutput)) {
+      if (!excepts?.includes(aloutput) && !al.is_locked && !al.in_queue) {
         all_funds.push({...al, output: aloutput});
       }
     }
