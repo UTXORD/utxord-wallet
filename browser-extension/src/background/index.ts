@@ -116,7 +116,9 @@ if (NETWORK === MAINNET){
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       await Api.genKeys();
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
+      if(Api.wallet.auth.key) {
+        await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
+      }
       return await Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {

@@ -285,7 +285,7 @@ class Api {
       await myself.rememberIndexes();
       console.log('init...');
       myself.genRootKey();
-      if (myself.checkSeed() && myself.utxord && myself.bech) {
+      if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
         myself.genKeys();
         myself.initPassword();
         const fund = myself.wallet.fund.key?.PubKey();
@@ -498,7 +498,7 @@ class Api {
     if(!this.checkSeed()) return false;
     if (this.wallet.root.key) return this.wallet.root.key;
     console.log('seed:',this.getSeed());
-    this.wallet.root.key = new this.utxord.KeyRegistry(this.network, this.getSeed());
+    this.wallet.root.key = new this.utxord?.KeyRegistry(this.network, this.getSeed());
     for(const type of this.wallet_types) {
       if(type !== 'auth') {
         console.log('type: ',type,'|json: ',JSON.stringify(this.wallet[type].filter))
@@ -916,7 +916,7 @@ class Api {
     if ('number' !== typeof(exception)) {
       return exception;
     }
-    return this.utxord.Exception.prototype.getMessage(exception).c_str()
+    return this.utxord.Exception.prototype.getMessage(exception);
   }
 
   async sendNotificationMessage(type?: string, message: any) {
@@ -1039,7 +1039,10 @@ class Api {
         url: BASE_URL_PATTERN,
       });
     }
-    console.log('args:', args,'type:', type);
+    if(!args){
+      console.error('sendMessageToWebPage-> error no args:', args,'type:', type);
+      return null;
+    }
     // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
     for (let tab of tabs) {
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {
@@ -1114,7 +1117,6 @@ class Api {
       inputs_sum: 0,
       utxo_list: [],
       expect_amount: Number(payload.expect_amount),
-      extra_amount: 0,
       fee_rate: payload.fee_rate,
       fee: payload.fee,
       size: (payload.content.length+payload.content_type.length),
@@ -1147,7 +1149,11 @@ class Api {
       // TODO: we need to receive it from backend via frontend
       const contract = payload?.contract || {
         "contract_type": "CreateInscription",
-        "params": {"protocol_version": 8, "market_fee": {"amount": 0}}
+        "params": {
+          "protocol_version": 8,
+          "market_fee": {"amount": 0},
+          "author_fee": {"amount": 0}
+        }
       };
       newOrd.Deserialize(JSON.stringify(contract));
 
@@ -1157,7 +1163,7 @@ class Api {
       if(payload.metadata) {
         console.log('payload.metadata:',payload.metadata);
         const encoded = cbor.encode(payload.metadata);
-        await newOrd.SetMetaData(myself.arrayBufferToHex(encoded));
+        await newOrd.MetaData(myself.arrayBufferToHex(encoded));
       }
 
       await newOrd.MiningFeeRate((myself.satToBtc(payload.fee_rate)).toFixed(8));  // payload.fee_rate as Sat/kB
@@ -1236,10 +1242,6 @@ class Api {
         flagsFundingOptions += "change";
       }
 
-      const extra_amount = myself.btcToSat(Number(newOrd.GetGenesisTxMiningFee().c_str()));
-      outData.extra_amount = extra_amount;
-
-      console.log("extra_amount:",extra_amount);
       console.log("min_fund_amount:",min_fund_amount);
       console.log("utxo_list:",utxo_list);
 
