@@ -1170,8 +1170,8 @@ class Api {
             `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
           );
           setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there are no fundings available.
-          // FIXME: l2xl response: it shouldn't work until fundings added with newOrd.AddUTXO
+          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
+          // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
           outData.raw = [];
           return outData;
@@ -1203,8 +1203,8 @@ class Api {
           // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
           outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
               "wait for several conformations or wait update on the server.";
-          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there are no fundings available.
-          // FIXME: l2xl response: it shouldn't work until fundings added with newOrd.AddUTXO
+          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
+          // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
           outData.raw = [];
           return outData;
@@ -1224,8 +1224,8 @@ class Api {
           // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
           outData.errorMessage = "There are no funds to create of the Inscription, please replenish the amount: "+
             `${min_fund_amount} sat`
-          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there are no fundings available.
-          // FIXME: l2xl response: it shouldn't work until fundings added with newOrd.AddUTXO
+          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
+          // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
           outData.raw = [];
           return outData;
