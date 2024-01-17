@@ -119,7 +119,7 @@ if (NETWORK === MAINNET){
       if(Api.wallet.auth.key) {
         await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
       }
-      return await Api.checkSeed();
+      return Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {
       const checkOld = await Api.checkPassword(payload.data.old);
