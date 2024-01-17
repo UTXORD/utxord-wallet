@@ -198,8 +198,10 @@ interface IChunkInscriptionResult {
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       Api.genKeys();
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
-      return await Api.checkSeed();
+      if(Api.wallet.auth.key) {
+        await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
+      }
+      return Api.checkSeed();
     });
     onMessage(UPDATE_PASSWORD, async (payload) => {
       const checkOld = await Api.checkPassword(payload.data.old);
