@@ -115,7 +115,7 @@ if (NETWORK === MAINNET){
       const sup = await Api.setUpPassword(payload.data.password);
       console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
-      await Api.genKeys();
+      Api.genKeys();
       if(Api.wallet.auth.key) {
         await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
       }
@@ -175,7 +175,7 @@ if (NETWORK === MAINNET){
     });
 
     onMessage(GET_ADDRESSES, async () => {
-      const {addresses} = await Api.genKeys();
+      const {addresses} = Api.genKeys();
       console.log('addresses:',addresses)
       return addresses;
     });
@@ -190,7 +190,7 @@ if (NETWORK === MAINNET){
     onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
       console.log('CHANGE_TYPE_FUND_ADDRESS:',payload.data?.type);
       await Api.setTypeAddress('fund', payload.data?.type);
-      const newKeys = await Api.genKeys();
+      const newKeys = Api.genKeys();
       console.log('newKeys', newKeys);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
       return newKeys;
