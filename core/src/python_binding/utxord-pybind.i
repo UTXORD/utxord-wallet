@@ -43,6 +43,21 @@ using namespace l15;
         }
 }
 
+%typemap(in) const bytevector& (bytevector param, const char *begin) {
+    if (!PyBytes_Check($input)) {
+        SWIG_exception_fail(SWIG_TypeError, "in method '" "GetAddress" "', argument " "1"" of type '" "bytes""'");
+    }
+    begin = PyBytes_AsString($input);
+    param.assign(begin, begin+PyBytes_Size($input));
+    $1 = &param;
+}
+
+%typemap(out) const l15::bytevector& { $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size()); }
+%typemap(out) l15::bytevector { $result = PyBytes_FromStringAndSize((const char*)($1.data()), $1.size()); }
+
+%apply l15::bytevector { l15::xonly_pubkey };
+%apply l15::bytevector { l15::signature };
+
 %typemap(out) CMutableTransaction (PyObject* obj)
 %{
     obj = PyDict_New();
@@ -117,18 +132,6 @@ using namespace l15;
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
 
-%typemap(in) const bytevector& (bytevector param, const char *begin) {
-    if (!PyBytes_Check($input)) {
-        SWIG_exception_fail(SWIG_TypeError, "in method '" "GetAddress" "', argument " "1"" of type '" "bytes""'");
-    }
-    begin = PyBytes_AsString($input);
-    param.assign(begin, begin+PyBytes_Size($input));
-    $1 = &param;
-}
-
-%typemap(out) const l15::bytevector& {
-    $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size());
-}
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
