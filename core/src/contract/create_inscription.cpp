@@ -772,6 +772,7 @@ std::string CreateInscriptionBuilder::GetInscriptionLocation() const
 
     res.pushKV("txid", GenesisTx().GetHash().GetHex());
     res.pushKV("nout", 0);
+    res.pushKV("amount", FormatAmount(GenesisTx().vout[0].nValue));
 
     return res.write();
 }
@@ -782,6 +783,7 @@ std::string CreateInscriptionBuilder::GetCollectionLocation() const
 
     res.pushKV("txid", GenesisTx().GetHash().GetHex());
     res.pushKV("nout", 1);
+    res.pushKV("amount", FormatAmount(GenesisTx().vout[1].nValue));
 
     return res.write();
 }
@@ -796,12 +798,14 @@ std::string CreateInscriptionBuilder::GetChangeLocation() const
             if (commitTx.vout.size() == 3) {
                 res.pushKV("txid", commitTx.GetHash().GetHex());
                 res.pushKV("nout", 2);
+                res.pushKV("amount", FormatAmount(commitTx.vout[2].nValue));
             }
         }
         else {
             if (commitTx.vout.size() == 2) {
                 res.pushKV("txid", commitTx.GetHash().GetHex());
                 res.pushKV("nout", 1);
+                res.pushKV("amount", FormatAmount(commitTx.vout[1].nValue));
             }
         }
     }
