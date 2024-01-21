@@ -185,7 +185,8 @@ public:
     P2WPKH() = delete;
     P2WPKH(const P2WPKH&) = default;
     P2WPKH(P2WPKH&&) noexcept = default;
-    P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
+    P2WPKH(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
+    P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2WPKH(Bech32(m), amount, move(addr)) {}
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override
     { return { bytevector(72), bytevector(33) }; }
@@ -197,7 +198,8 @@ public:
     P2TR() = delete;
     P2TR(const P2TR &) = default;
     P2TR(P2TR &&) noexcept = default;
-    P2TR(ChainMode m, CAmount amount, std::string addr) : P2Witness(Bech32(m), amount, move(addr)) {}
+    P2TR(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
+    P2TR(ChainMode m, CAmount amount, std::string addr) : P2TR(Bech32(m), amount, move(addr)) {}
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
 };
@@ -207,6 +209,7 @@ class IContractMultiOutput {
 public:
     virtual std::string TxID() const = 0;
     virtual std::vector<std::shared_ptr<IContractDestination>> Destinations() const = 0;
+    virtual uint32_t CountDestinations() const = 0;
 };
 
 class IContractOutput {

@@ -22,7 +22,7 @@ enum SwapPhase {
 
 class SwapInscriptionBuilder : public ContractBuilder
 {
-    static const CAmount TX_SWAP_BASE_VSIZE = 154;
+    static const CAmount TX_SWAP_BASE_VSIZE = 413;
 
     static const uint32_t s_protocol_version;
     static const char* s_versions;
@@ -107,7 +107,7 @@ public:
     void CommitFunds(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
     void Brick1SwapUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
     void Brick2SwapUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
-    void MainSwapUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
+    void AddMainSwapUTXO(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr);
 
     void OrdPayoffAddress(const std::string& addr)
     {
@@ -140,6 +140,7 @@ public:
 
     CAmount CalculateWholeFee(const std::string& params) const override;
     std::string GetMinFundingAmount(const std::string& params) const override;
+    std::string GetMinSwapFundingAmount() const;
 };
 
 } // namespace l15::utxord

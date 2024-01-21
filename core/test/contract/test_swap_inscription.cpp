@@ -19,6 +19,7 @@
 #include "policy/policy.h"
 
 #include "test_case_wrapper.hpp"
+#include "testutils.hpp"
 
 using namespace l15;
 using namespace l15::core;
@@ -90,6 +91,7 @@ struct SwapCondition
 
 TEST_CASE("Swap")
 {
+    const CAmount DUST_AMOUNT = Dust(3000);
     const std::string ORD_AMOUNT = "0.00000546";
     const std::string ORD_PRICE = "0.0001";
 
@@ -169,8 +171,8 @@ TEST_CASE("Swap")
     CMutableTransaction ordCommit, ordSwap;
     REQUIRE(DecodeHexTx(ordCommit, ordCommitHex));
     REQUIRE(DecodeHexTx(ordSwap, ordSwapHex));
-    LogTx(ordCommit);
-    LogTx(ordSwap);
+//    LogTx(ordCommit);
+//    LogTx(ordSwap);
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdCommitment(master_key, "ord+balance"));
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "script"));
@@ -209,26 +211,35 @@ TEST_CASE("Swap")
     //--------------------------------------------------------------------------
 
     CAmount market_fee = GENERATE(1000, 0, 600);
+    //CAmount market_fee = GENERATE(1000);
 
     REQUIRE_NOTHROW(builderMarket.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(builderMarket.MarketFee(FormatAmount(market_fee), market_fee_addr));
     REQUIRE_NOTHROW(builderMarket.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(*bech)));
     REQUIRE_NOTHROW(builderMarket.ChangeAddress(change_key.GetP2TRAddress(*bech)));
 
-    CAmount min_funding = ParseAmount(builderMarket.GetMinFundingAmount(""));
-    CAmount min_funding_change = ParseAmount(builderMarket.GetMinFundingAmount("change"));
-    CAmount dust = Dust(3000);
+    SwapInscriptionBuilder builderMarket1(*bech);
 
-    const SwapCondition fund_min_cond = {{min_funding}, false};
-    const SwapCondition fund_min_3000_cond = {{min_funding + 3000}, true};
-    const SwapCondition fund_min_dust_cond = {{min_funding_change + dust - 1}, false};
-    const SwapCondition fund_min_dust_1_cond = {{min_funding_change + dust}, true};
-    const SwapCondition fund_min_dust_100_cond = {{min_funding + dust - 100}, false};
-    const SwapCondition fund_min_50_cond = {{min_funding + 50}, false};
+    bool complete_swap = false;
+    CAmount swapFundsIn = ordCommit.vout.front().nValue;
 
-    const SwapCondition fund_min_3000_cond_2 = {{min_funding, 3000}, true};
+    SECTION("Commit Funds") {
+        std::clog << "Commit Funds ================================================================" << std::endl;
+        complete_swap = true;
 
-    auto condition = GENERATE_REF(
+        CAmount min_funding = ParseAmount(builderMarket.GetMinFundingAmount(""));
+        CAmount min_funding_change = ParseAmount(builderMarket.GetMinFundingAmount("change"));
+
+        const SwapCondition fund_min_cond = {{min_funding}, false};
+        const SwapCondition fund_min_3000_cond = {{min_funding + 3000}, true};
+        const SwapCondition fund_min_dust_cond = {{min_funding_change + DUST_AMOUNT - 1}, false};
+        const SwapCondition fund_min_dust_1_cond = {{min_funding_change + DUST_AMOUNT}, true};
+        const SwapCondition fund_min_dust_100_cond = {{min_funding + DUST_AMOUNT - 100}, false};
+        const SwapCondition fund_min_50_cond = {{min_funding + 50}, false};
+
+        const SwapCondition fund_min_3000_cond_2 = {{min_funding, 3000}, true};
+
+        auto condition = GENERATE_REF(
                 fund_min_cond,
                 fund_min_3000_cond,
                 fund_min_dust_cond,
@@ -236,41 +247,37 @@ TEST_CASE("Swap")
                 fund_min_dust_100_cond,
                 fund_min_50_cond,
                 fund_min_3000_cond_2
-            );
+        );
 
-    //Fund commitment
-    string funds_addr = funds_utxo_key.GetP2TRAddress(*bech);
-    std::vector<CTxOut> spent_outs;
+        //Fund commitment
+        string funds_addr = funds_utxo_key.GetP2TRAddress(*bech);
+        std::vector<CTxOut> spent_outs;
 
-    for (CAmount amount: condition.funds) {
-        const std::string funds_amount = FormatAmount(amount);
+        for (CAmount amount: condition.funds) {
+            const std::string funds_amount = FormatAmount(amount);
 
-        string funds_txid = w->btc().SendToAddress(funds_addr, funds_amount);
-        auto funds_prevout = w->btc().CheckOutput(funds_txid, funds_addr);
+            string funds_txid = w->btc().SendToAddress(funds_addr, funds_amount);
+            auto funds_prevout = w->btc().CheckOutput(funds_txid, funds_addr);
 
-        REQUIRE_NOTHROW(builderMarket.CommitFunds(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr));
-        spent_outs.emplace_back(ParseAmount(funds_amount), CScript() << 1 << funds_utxo_key.PubKey());
-    }
+            REQUIRE_NOTHROW(builderMarket.CommitFunds(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr));
+            spent_outs.emplace_back(ParseAmount(funds_amount), CScript() << 1 << funds_utxo_key.PubKey());
+        }
 
-    string marketFundsConditions;
-    REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(6, FUNDS_TERMS));
+        string marketFundsConditions;
+        REQUIRE_NOTHROW(marketFundsConditions = builderMarket.Serialize(6, FUNDS_TERMS));
 
-    std::clog << "FUNDS_TERMS: ===========================================\n"
-              << marketFundsConditions << std::endl;
+        std::clog << "FUNDS_TERMS: ===========================================\n"
+                  << marketFundsConditions << std::endl;
 
-    SwapInscriptionBuilder builderOrdBuyer(*bech);
-    REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
+        SwapInscriptionBuilder builderOrdBuyer(*bech);
+        REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
 
-    CHECK(builderOrdBuyer.TransactionCount(FUNDS_COMMIT_SIG) == 1);
+        CHECK(builderOrdBuyer.TransactionCount(FUNDS_COMMIT_SIG) == 1);
 
-    CMutableTransaction fundsCommitTx;
-    REQUIRE_NOTHROW(DecodeHexTx(fundsCommitTx, builderOrdBuyer.RawTransaction(FUNDS_COMMIT_SIG, 0)));
-    LogTx(fundsCommitTx);
+        REQUIRE_NOTHROW(builderOrdBuyer.SignFundsCommitment(master_key, "fund"));
 
-    REQUIRE_NOTHROW(builderOrdBuyer.SignFundsCommitment(master_key, "fund"));
-
-    //auto commitTx = builderOrdBuyer.GetFundsCommitTx();
-    //LogTx(commitTx);
+        //auto commitTx = builderOrdBuyer.GetFundsCommitTx();
+        //LogTx(commitTx);
 
 //    PrecomputedTransactionData txdata;
 //    txdata.Init(commitTx, move(spent_outs), true);
@@ -282,66 +289,136 @@ TEST_CASE("Swap")
 //        REQUIRE(res);
 //    }
 
-    string ordBuyerTerms;
-    REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(6, FUNDS_COMMIT_SIG));
+        string ordBuyerTerms;
+        REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(6, FUNDS_COMMIT_SIG));
 
-    std::clog << "FUNDS_COMMIT_SIG: ===========================================\n"
-              << ordBuyerTerms << std::endl;
+        std::clog << "FUNDS_COMMIT_SIG: ===========================================\n"
+                  << ordBuyerTerms << std::endl;
 
-    SwapInscriptionBuilder builderMarket1(*bech);
-    REQUIRE_NOTHROW(builderMarket1.Deserialize(ordBuyerTerms));
-    REQUIRE_NOTHROW(builderMarket1.CheckContractTerms(FUNDS_COMMIT_SIG));
+        REQUIRE_NOTHROW(builderMarket1.Deserialize(ordBuyerTerms));
+        REQUIRE_NOTHROW(builderMarket1.CheckContractTerms(FUNDS_COMMIT_SIG));
 
-    CMutableTransaction fundCommitTx;
-    REQUIRE(DecodeHexTx(fundCommitTx, builderMarket1.FundsCommitRawTransaction()));
-    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(fundCommitTx)));
-    w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+        CMutableTransaction fundCommitTx;
+        REQUIRE(DecodeHexTx(fundCommitTx, builderMarket1.FundsCommitRawTransaction()));
 
-    // MARKET confirm terms
-    //--------------------------------------------------------------------------
+        for (const auto& out: fundCommitTx.vout) swapFundsIn += out.nValue;
+
+        REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(fundCommitTx)));
+        w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+    }
 
     REQUIRE_NOTHROW(builderMarket1.Deserialize(ordSellerTerms));
     REQUIRE_NOTHROW(builderMarket1.CheckContractTerms(ORD_SWAP_SIG));
 
-    REQUIRE_NOTHROW(builderMarket1.SignMarketSwap(master_key, "script"));
+    SECTION("Ready Funds") {
+        std::clog << "Ready Funds ================================================================" << std::endl;
+        complete_swap = true;
 
-    string ordSwapTerms;
-    REQUIRE_NOTHROW(ordSwapTerms = builderMarket1.Serialize(6, FUNDS_SWAP_TERMS));
+        REQUIRE_NOTHROW(builderMarket1.MiningFeeRate(fee_rate));
+        REQUIRE_NOTHROW(builderMarket1.MarketFee(FormatAmount(market_fee), market_fee_addr));
+        REQUIRE_NOTHROW(builderMarket1.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(*bech)));
+        REQUIRE_NOTHROW(builderMarket1.ChangeAddress(change_key.GetP2TRAddress(*bech)));
 
-    std::clog << "FUNDS_SWAP_TERMS: ===========================================\n"
-              << ordSwapTerms << std::endl;
+        //Brick1 = Dust
+        //----
+        //Brick2 = (market_fee >= Dust * 2) ? (market_fee - DUST_AMOUNT) : any
+        //----
+        //Ord
+        //----
+        //GetMinSwapFundingAmount()
 
-    REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(ordSwapTerms));
-    REQUIRE_NOTHROW(builderOrdBuyer.CheckContractTerms(FUNDS_SWAP_TERMS));
+        string funds_addr = funds_utxo_key.GetP2TRAddress(*bech);
 
-    REQUIRE_NOTHROW(builderOrdBuyer.SignFundsSwap(master_key, "fund"));
+        const std::string brick1_amount = FormatAmount(DUST_AMOUNT);
+        const std::string brick2_amount = (market_fee >= DUST_AMOUNT * 2) ? FormatAmount(market_fee - DUST_AMOUNT) : FormatAmount(1000);
+        const std::string min_amount = builderMarket1.GetMinSwapFundingAmount();
 
-    string ordFundsSignature;
-    REQUIRE_NOTHROW(ordFundsSignature = builderOrdBuyer.Serialize(6, FUNDS_SWAP_SIG));
+        const SwapCondition fund_min_cond = {{ParseAmount(min_amount)}, false};
+        const SwapCondition fund_min_3000_cond = {{ParseAmount(min_amount) + 3000}, true};
+        const SwapCondition fund_min_dust_cond = {{ParseAmount(min_amount) + DUST_AMOUNT - 1 + ParseAmount(builderMarket1.GetNewOutputMiningFee())}, false};
+        const SwapCondition fund_min_dust_1_cond = {{ParseAmount(min_amount) + DUST_AMOUNT + ParseAmount(builderMarket1.GetNewOutputMiningFee())}, true};
+        const SwapCondition fund_min_dust_100_cond = {{ParseAmount(min_amount) + DUST_AMOUNT - 100}, false};
 
-    REQUIRE_NOTHROW(builderMarket1.Deserialize(ordFundsSignature));
+        const SwapCondition fund_min_3000_cond_2 = {{ParseAmount(min_amount), 3000}, true};
 
-    string ord_swap_raw_tx = builderMarket1.OrdSwapRawTransaction();
+        auto condition = GENERATE_REF(
+                fund_min_cond,
+                fund_min_3000_cond,
+                fund_min_dust_cond,
+                fund_min_dust_1_cond,
+                fund_min_dust_100_cond,
+                fund_min_3000_cond_2
+        );
 
-    CMutableTransaction swapTx;
-    REQUIRE(DecodeHexTx(swapTx, ord_swap_raw_tx));
+        string brick1_txid = w->btc().SendToAddress(funds_addr, brick1_amount);
+        auto brick1_prevout = w->btc().CheckOutput(brick1_txid, funds_addr);
 
-    LogTx(swapTx);
+        string brick2_txid = w->btc().SendToAddress(funds_addr, brick2_amount);
+        auto brick2_prevout = w->btc().CheckOutput(brick2_txid, funds_addr);
 
-    REQUIRE(swapTx.vout.size() >= 3);
-    CHECK(swapTx.vout[1].nValue == ParseAmount(ORD_AMOUNT));
-    CHECK(swapTx.vout[2].nValue == ParseAmount(ORD_PRICE));
+        builderMarket1.Brick1SwapUTXO(brick1_txid, get<0>(brick1_prevout).n, brick1_amount, funds_addr);
+        builderMarket1.Brick2SwapUTXO(brick2_txid, get<0>(brick2_prevout).n, brick2_amount, funds_addr);
 
-    if (market_fee >= l15::Dust(DUST_RELAY_TX_FEE) * 2) {
-        CHECK(swapTx.vout.size() == (condition.has_change ? 4 : 3));
-        CHECK(swapTx.vout[0].nValue == market_fee);
-    }
-    else {
-        CHECK(swapTx.vout.size() == (market_fee ? 4 : 3));
-        if (market_fee) {
-            CHECK(swapTx.vout[3].nValue == market_fee);
+        //std::vector<CTxOut> spent_outs;
+
+        for (CAmount amount: condition.funds) {
+            const std::string funds_amount = FormatAmount(amount);
+
+            string funds_txid = w->btc().SendToAddress(funds_addr, funds_amount);
+            auto funds_prevout = w->btc().CheckOutput(funds_txid, funds_addr);
+
+            REQUIRE_NOTHROW(builderMarket1.AddMainSwapUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr));
+
+            swapFundsIn += amount;
         }
     }
+
+    // MARKET confirm terms
+    //--------------------------------------------------------------------------
+
+    if (complete_swap) {
+        REQUIRE_NOTHROW(builderMarket1.SignMarketSwap(master_key, "script"));
+
+        string ordSwapTerms;
+        REQUIRE_NOTHROW(ordSwapTerms = builderMarket1.Serialize(6, FUNDS_SWAP_TERMS));
+
+        std::clog << "FUNDS_SWAP_TERMS: ===========================================\n"
+                  << ordSwapTerms << std::endl;
+
+        SwapInscriptionBuilder builderOrdBuyer(*bech);
+        REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(ordSwapTerms));
+        REQUIRE_NOTHROW(builderOrdBuyer.CheckContractTerms(FUNDS_SWAP_TERMS));
+
+        REQUIRE_NOTHROW(builderOrdBuyer.SignFundsSwap(master_key, "fund"));
+
+        string ordFundsSignature;
+        REQUIRE_NOTHROW(ordFundsSignature = builderOrdBuyer.Serialize(6, FUNDS_SWAP_SIG));
+
+        REQUIRE_NOTHROW(builderMarket1.Deserialize(ordFundsSignature));
+
+        string swap_raw_tx = builderMarket1.OrdSwapRawTransaction();
+
+        CMutableTransaction swapTx;
+        REQUIRE(DecodeHexTx(swapTx, swap_raw_tx));
+//
+//        LogTx(swapTx);
+//
+//        std::clog << "Swap TX mining fee:  " << l15::CalculateTxFee(1000, swapTx) << std::endl;
+
+        REQUIRE(swapTx.vout.size() >= 3);
+        CHECK(swapTx.vout[1].nValue == ParseAmount(ORD_AMOUNT));
+        CHECK(swapTx.vout[2].nValue == ParseAmount(ORD_PRICE));
+
+//        if (market_fee >= l15::Dust(DUST_RELAY_TX_FEE) * 2) {
+//            //CHECK(swapTx.vout.size() == (condition.has_change ? 4 : 3));
+//            CHECK(swapTx.vout[0].nValue == market_fee);
+//        }
+//        else {
+//            CHECK(swapTx.vout.size() == (market_fee ? 4 : 3));
+//            if (market_fee) {
+//                CHECK(swapTx.vout[3].nValue == market_fee);
+//            }
+//        }
 
 //    PrecomputedTransactionData txdata;
 //    txdata.Init(ordSwapTx, {ord_commit_tx.vout[0], funds_commit_tx.vout[0]}, / * force=* / true);
@@ -356,50 +433,12 @@ TEST_CASE("Swap")
 //    bool fundsPath = VerifyScript(txin.scriptSig, funds_commit_tx.vout[0].scriptPubKey, &txin.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, tx_checker);
 //    REQUIRE(fundsPath);
 
-    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(swapTx)));
+        CHECK(CheckMiningFee(swapFundsIn, swapTx, 1000) < l15::Dust() + 43);
 
-    w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+        REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(swapTx)));
 
-
-        // BUYER spends his ord
-        //--------------------------------------------------------------------------
-
-//        xonly_pubkey payoff_pk = w->bech32().Decode(w->btc().GetNewAddress());
-//        CScript buyer_pubkeyscript = CScript() << 1 << payoff_pk;
-//
-//        CMutableTransaction ord_payoff_tx;
-//        ord_payoff_tx.vin = {CTxIn(ord_transfer_tx.GetHash(), 0)};
-//        ord_payoff_tx.vin.front().scriptWitness.stack.emplace_back(64);
-//        ord_payoff_tx.vout = {CTxOut(ord_transfer_tx.vout[0].nValue, buyer_pubkeyscript)};
-//        ord_payoff_tx.vout.front().nValue = CalculateOutputAmount(ord_transfer_tx.vout[0].nValue, ParseAmount(fee_rate), ord_payoff_tx);
-//
-//        REQUIRE_NOTHROW(ord_payoff_tx.vin.front().scriptWitness.stack[0] = swap_script_key_B.SignTaprootTx(ord_payoff_tx, 0, {ord_transfer_tx.vout[0]}, {}));
-//
-//        REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(ord_payoff_tx)));
-//
-//        w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
-
-//        if (condition.has_change) {
-//            // BUYER spends his change
-//            //--------------------------------------------------------------------------
-//
-//            CMutableTransaction ord_change_spend_tx;
-//            ord_change_spend_tx.vin = {CTxIn(funds_commit_tx.GetHash(), 1)};
-//            ord_change_spend_tx.vin.front().scriptWitness.stack.emplace_back(64);
-//            ord_change_spend_tx.vout = {CTxOut(funds_commit_tx.vout[1].nValue, bech->PubKeyScript(change_key.GetP2TRAddress(*bech)))};
-//
-//
-//            if (CalculateTxFee(ParseAmount(fee_rate), ord_change_spend_tx) + Dust(3000) < funds_commit_tx.vout[1].nValue) {
-//                ord_change_spend_tx.vout.front().nValue = CalculateOutputAmount(funds_commit_tx.vout[1].nValue, ParseAmount(fee_rate), ord_change_spend_tx);
-//
-//                ChannelKeys changeKey(change_key.PrivKey());
-//                REQUIRE_NOTHROW(ord_change_spend_tx.vin.front().scriptWitness.stack[0] = changeKey.SignTaprootTx(ord_change_spend_tx, 0, {funds_commit_tx.vout[1]}, {}));
-//                REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(ord_change_spend_tx)));
-//            }
-//
-//        }
-//
-//        w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+        w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+    }
 }
 
 

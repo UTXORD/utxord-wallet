@@ -228,6 +228,19 @@ struct IContractOutput
     virtual std::shared_ptr<utxord::IContractOutput> Share() = 0;
 };
 
+struct IContractMultiOutput
+{
+    virtual ~IContractMultiOutput() = default;
+
+    virtual std::string TxID() const = 0;
+
+    virtual uint32_t CountDestinations() const = 0;
+
+    virtual IContractDestination *Destination(uint32_t n) = 0;
+
+    virtual std::shared_ptr<utxord::IContractMultiOutput> Share() = 0;
+};
+
 class ContractOutputWrapper : public IContractOutput
 {
     std::shared_ptr<utxord::IContractOutput> m_ptr;
@@ -249,6 +262,27 @@ public:
 
 };
 
+class ContractMultiOutputWrapper : public IContractMultiOutput
+{
+    std::shared_ptr<utxord::IContractMultiOutput> m_ptr;
+public:
+    explicit ContractMultiOutputWrapper(std::shared_ptr<utxord::IContractMultiOutput> ptr) : m_ptr(move(ptr))
+    {}
+
+    std::string TxID() const final
+    { return m_ptr->TxID(); }
+
+    uint32_t CountDestinations() const final
+    { return m_ptr->CountDestinations(); }
+
+    IContractDestination *Destination(uint32_t n) final
+    { return new ContractDestinationWrapper(m_ptr->Destinations()[n]); }
+
+    std::shared_ptr<utxord::IContractMultiOutput> Share() final
+    { return m_ptr; }
+
+};
+
 class UTXO : public ContractOutputWrapper
 {
 public:
@@ -257,7 +291,7 @@ public:
     {}
 };
 
-class SimpleTransaction : public IContractOutput
+class SimpleTransaction : public IContractMultiOutput
 {
     std::shared_ptr<utxord::SimpleTransaction> m_ptr;
 public:
@@ -267,11 +301,11 @@ public:
     std::string TxID() const final
     { return m_ptr->TxID(); }
 
-    uint32_t NOut() const final
-    { return m_ptr->NOut(); }
+    uint32_t CountDestinations() const final
+    { return m_ptr->CountDestinations(); }
 
-    IContractDestination *Destination() final
-    { return new ContractDestinationWrapper(m_ptr->Destination()); }
+    IContractDestination *Destination(uint32_t n) final
+    { return new ContractDestinationWrapper(m_ptr->Destinations()[n]); }
 
     void MiningFeeRate(const std::string &rate)
     { m_ptr->MiningFeeRate(rate); }
@@ -297,7 +331,7 @@ public:
     void Deserialize(const std::string &data)
     { m_ptr->Deserialize(data); }
 
-    std::shared_ptr<utxord::IContractOutput> Share() final
+    std::shared_ptr<utxord::IContractMultiOutput> Share() final
     { return m_ptr; }
 };
 
@@ -324,14 +358,17 @@ public:
     void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::SwapInscriptionBuilder::SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
+    void SignMarketSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::SwapInscriptionBuilder::SignMarketSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignOrdCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::SwapInscriptionBuilder::SignOrdCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
     void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::SwapInscriptionBuilder::SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::SwapInscriptionBuilder::SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
-
-    void SignFundsPayBack(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::SwapInscriptionBuilder::SignFundsPayBack(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 };
 
 } // wasm

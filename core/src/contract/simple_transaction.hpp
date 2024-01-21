@@ -60,14 +60,17 @@ public:
 
     std::vector<std::string> RawTransactions() const;
 
-    UniValue MakeJson() const;
-    void ReadJson(const UniValue& json);
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json) override;
 
     CMutableTransaction MakeTxTemplate() const;
     CMutableTransaction MakeTx() const;
 
     std::string TxID() const override
     { return MakeTx().GetHash().GetHex(); }
+
+    uint32_t CountDestinations() const override
+    { return m_outputs.size(); }
 
     std::vector<std::shared_ptr<IContractDestination>> Destinations() const override
     { return std::vector<std::shared_ptr<IContractDestination>>(m_outputs.begin(), m_outputs.end()); }

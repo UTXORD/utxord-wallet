@@ -72,6 +72,8 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx() const
         swap_tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
         if (input.witness)
             swap_tx.vin.back().scriptWitness.stack = input.witness;
+        else
+            swap_tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
     }
 
     if (m_swap_inputs.size() == 1) {
@@ -81,8 +83,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx() const
         swap_tx.vout.reserve(5);
         swap_tx.vout.emplace_back(m_swap_inputs[0].output->Destination()->Amount() + m_swap_inputs[1].output->Destination()->Amount(), CScript());
         swap_tx.vout.resize(3);
-        if (m_market_fee->Amount() >= l15::Dust(DUST_RELAY_TX_FEE) * 2) {
-            assert(swap_tx.vout[0].nValue == m_market_fee->Amount());
+        if (m_market_fee->Amount() == swap_tx.vout.front().nValue) {
             swap_tx.vout[0].scriptPubKey = m_market_fee->PubKeyScript();
         }
         else {
@@ -97,22 +98,17 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx() const
         swap_tx.vout[2].nValue = *m_ord_price;
         swap_tx.vout[2].scriptPubKey = bech32().PubKeyScript(*m_funds_payoff_addr);
 
-        // if MARKET FEE is at the first output
-        // then we need to add separate output for change if presented
-        if (m_market_fee->Amount() >= l15::Dust(DUST_RELAY_TX_FEE) * 2) {
-            CAmount tx_fee = CalculateSwapTxFee(false);
-            CAmount total_in = std::accumulate(m_swap_inputs.begin(), m_swap_inputs.end(), 0, [](CAmount part_sum, const auto &input) { return part_sum + input.output->Destination()->Amount(); });
-            CAmount total_out = std::accumulate(swap_tx.vout.begin(), swap_tx.vout.end(), 0, [](CAmount part_sum, const auto &out) { return part_sum + out.nValue; });
+        // Check if we need to add separate output for change if presented
+        CAmount tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
+        CAmount total_in = std::accumulate(m_swap_inputs.begin(), m_swap_inputs.end(), 0, [](CAmount part_sum, const auto &input) { return part_sum + input.output->Destination()->Amount(); });
+        CAmount total_out = std::accumulate(swap_tx.vout.begin(), swap_tx.vout.end(), 0, [](CAmount part_sum, const auto &out) { return part_sum + out.nValue; });
+        if (total_in - (tx_fee + TAPROOT_VOUT_VSIZE) - total_out >= l15::Dust()) {
+            swap_tx.vout.emplace_back(0, bech32().PubKeyScript(*m_change_addr));
 
-            if (total_in - (tx_fee + TAPROOT_VOUT_VSIZE) - total_out >= l15::Dust(DUST_RELAY_TX_FEE)) {
-                swap_tx.vout.emplace_back(0, bech32().PubKeyScript(*m_change_addr));
+            tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
+            swap_tx.vout.back().nValue = total_in - total_out - tx_fee;
 
-                tx_fee = CalculateSwapTxFee(true);
-
-                swap_tx.vout.back().nValue = total_in - total_out - tx_fee;
-
-                assert(swap_tx.vout.back().nValue >= l15::Dust(DUST_RELAY_TX_FEE));
-            }
+            assert(swap_tx.vout.back().nValue >= l15::Dust());
         }
     }
 
@@ -208,16 +204,18 @@ void SwapInscriptionBuilder::SignOrdSwap(const KeyRegistry &masterKey, const std
 
 void SwapInscriptionBuilder::SignMarketSwap(const KeyRegistry &masterKey, const std::string& key_filter)
 {
-    CheckContractTerms(ORD_SWAP_SIG);
-    CheckContractTerms(FUNDS_COMMIT_SIG);
+    CheckContractTerms(FUNDS_SWAP_TERMS);
 
-    if (m_swap_inputs.size() != 1) throw ContractStateError(name_swap_inputs + " has inconsistent size: " + std::to_string(m_swap_inputs.size()));
+    if (mCommitBuilder) {
+        if (m_swap_inputs.size() != 1) throw ContractStateError(name_swap_inputs + " has inconsistent size: " + std::to_string(m_swap_inputs.size()));
 
-    m_swap_inputs.front().nin = 2;
-    m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<ContractOutput>(mCommitBuilder, 0));
-    m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<ContractOutput>(mCommitBuilder, 1));
-    m_swap_inputs.emplace_back(bech32(), 3, std::make_shared<ContractOutput>(mCommitBuilder, 2));
-    std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
+        m_swap_inputs.front().nin = 2;
+        m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<ContractOutput>(mCommitBuilder, 0));
+        m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<ContractOutput>(mCommitBuilder, 1));
+        m_swap_inputs.emplace_back(bech32(), 3, std::make_shared<ContractOutput>(mCommitBuilder, 2));
+        std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
+    }
+    if (m_swap_inputs.size() < 4) throw ContractStateError(name_swap_inputs + " has inconsistent size: " + std::to_string(m_swap_inputs.size()));
 
     KeyPair keypair = masterKey.Lookup(*m_market_script_pk, key_filter);
     ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
@@ -226,10 +224,7 @@ void SwapInscriptionBuilder::SignMarketSwap(const KeyRegistry &masterKey, const 
 
     std::vector<CTxOut> spend_outs;
     spend_outs.reserve(m_swap_inputs.size());
-    for(const auto& input: m_swap_inputs) {
-        const auto& dest = input.output->Destination();
-        spend_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
-    }
+    std::transform(m_swap_inputs.begin(), m_swap_inputs.end(), cex::smartinserter(spend_outs, spend_outs.end()), [](const auto& txin){ return CTxOut(txin.output->Destination()->Amount(), txin.output->Destination()->PubKeyScript()); });
 
     signature sig = schnorr.SignTaprootTx(swap_tx, 2, move(spend_outs), OrdSwapScript());
     m_swap_inputs[2].witness.Set(0, move(sig));
@@ -349,10 +344,21 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
     switch (phase) {
     case ORD_SWAP_SIG:
         if (m_swap_inputs.empty()) throw ContractTermMissing(name_swap_inputs + "[ord]");
-        if (m_swap_inputs.size() != 1) throw ContractStateError(name_swap_inputs + " size > 1");
-        if (!m_swap_inputs.front().output->Destination()) throw ContractTermMissing(name_swap_inputs + "[ord]");
-        if (m_swap_inputs.front().output->Destination()->Amount() < l15::Dust(DUST_RELAY_TX_FEE)) throw ContractTermWrongValue(move((((name_swap_inputs + "[ord].") += name_amount) += ": ") += std::to_string(m_swap_inputs.front().output->Destination()->Amount())));
-        if (!m_swap_inputs.front().witness) throw ContractTermMissing(move((name_swap_inputs + "[ord].") += TxInput::name_witness));
+        if (m_swap_inputs.size() != 1 && m_swap_inputs.size() < 4) throw ContractStateError(name_swap_inputs + " size: " + std::to_string(m_swap_inputs.size()));
+        if (m_swap_inputs.size() == 1) {
+            if (!m_swap_inputs.front().output->Destination()) throw ContractTermMissing(name_swap_inputs + "[ord]");
+            if (m_swap_inputs.front().output->Destination()->Amount() < l15::Dust(DUST_RELAY_TX_FEE)) throw ContractTermWrongValue(
+                        move((((name_swap_inputs + "[ord].") += name_amount) += ": ") += std::to_string(
+                                m_swap_inputs.front().output->Destination()->Amount())));
+            if (!m_swap_inputs.front().witness) throw ContractTermMissing(move((name_swap_inputs + "[ord].") += TxInput::name_witness));
+        }
+        else {
+            if (!m_swap_inputs[2].output->Destination()) throw ContractTermMissing(name_swap_inputs + "[ord]");
+            if (m_swap_inputs[2].output->Destination()->Amount() < l15::Dust(DUST_RELAY_TX_FEE)) throw ContractTermWrongValue(
+                        move((((name_swap_inputs + "[ord].") += name_amount) += ": ") += std::to_string(
+                                m_swap_inputs[2].output->Destination()->Amount())));
+            if (!m_swap_inputs[2].witness) throw ContractTermMissing(move((name_swap_inputs + "[ord].") += TxInput::name_witness));
+        }
         if (!m_ord_script_pk) throw ContractTermMissing(std::string (name_ord_script_pk));
         if (!m_ord_int_pk) throw ContractTermMissing(std::string (name_ord_int_pk));
         // no break;
@@ -393,10 +399,10 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
             if (!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
             if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
             if (!m_change_addr) throw ContractTermMissing(std::string(name_change_addr));
-            if (m_swap_inputs.size() > 4) throw ContractTermWrongValue(name_swap_inputs + " has inconsistent (>4) inputs");
-            if (m_swap_inputs.size() != 4) {
+            if (m_swap_inputs.size() < 4) {
                 if (m_swap_inputs.empty()) throw ContractTermMissing(std::string(name_swap_inputs));
                 if (m_swap_inputs.size() == 1) throw ContractTermMissing(name_swap_inputs + ": looks there is ord input only");
+                throw ContractTermMissing(name_swap_inputs + " size: " + std::to_string(m_swap_inputs.size()));
             }
         }
         break;
@@ -542,13 +548,13 @@ void SwapInscriptionBuilder::CommitFunds(const string &txid, uint32_t nout, cons
         mCommitBuilder = std::make_shared<SimpleTransaction>(bech32());
         mCommitBuilder->MiningFeeRate(GetMiningFeeRate());
 
-        mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), dust, addr));
+        mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32(), dust, addr));
 
         if (m_market_fee->Amount() >= dust * 2) {
-            mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), m_market_fee->Amount() - dust, addr));
+            mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32(), m_market_fee->Amount() - dust, addr));
         }
         else {
-            mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), dust, addr));
+            mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32(), dust, addr));
         }
     }
     try {
@@ -611,6 +617,8 @@ void SwapInscriptionBuilder::BuildOrdCommit()
     mOrdCommitBuilder->AddChangeOutput(change_addr);
 
     m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<ContractOutput>(mOrdCommitBuilder, 0));
+    m_swap_inputs.front().witness.Set(0, signature());
+    m_swap_inputs.front().witness.Set(1, bytevector(65));
     m_swap_inputs.front().witness.Set(2, bytevector(script.begin(), script.end()));
     m_swap_inputs.front().witness.Set(3, move(controlblock));
 
@@ -635,6 +643,11 @@ void SwapInscriptionBuilder::OrdIntPubKey(const std::string& pk)
 void SwapInscriptionBuilder::Brick1SwapUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
 {
     if (mCommitBuilder) throw ContractStateError("Brick 1 swap tx input already defined");
+    if (m_swap_inputs.empty()) throw ContractStateError(name_ord_commit + " is not defined");
+    if (m_swap_inputs.size() == 1) {
+        if (m_swap_inputs.front().nin != 0) throw ContractStateError(name_swap_inputs + " are inconsistent");
+        m_swap_inputs.front().nin = 2;
+    }
 
     m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
@@ -643,16 +656,26 @@ void SwapInscriptionBuilder::Brick1SwapUTXO(const string &txid, uint32_t nout, c
 void SwapInscriptionBuilder::Brick2SwapUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
 {
     if (mCommitBuilder) throw ContractStateError("Brick 2 swap tx input already defined");
+    if (m_swap_inputs.empty()) throw ContractStateError(name_ord_commit + " is not defined");
+    if (m_swap_inputs.size() == 1) {
+        if (m_swap_inputs.front().nin != 0) throw ContractStateError(name_swap_inputs + " are inconsistent");
+        m_swap_inputs.front().nin = 2;
+    }
 
     m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
-void SwapInscriptionBuilder::MainSwapUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
+void SwapInscriptionBuilder::AddMainSwapUTXO(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr)
 {
     if (mCommitBuilder) throw ContractStateError("Main swap tx input already defined");
+    if (m_swap_inputs.empty()) throw ContractStateError(name_ord_commit + " is not defined");
+    if (m_swap_inputs.size() == 1) {
+        if (m_swap_inputs.front().nin != 0) throw ContractStateError(name_swap_inputs + " are inconsistent");
+        m_swap_inputs.front().nin = 2;
+    }
 
-    m_swap_inputs.emplace_back(bech32(), 2, std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
+    m_swap_inputs.emplace_back(bech32(), m_swap_inputs.back().nin + 1, std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
@@ -664,15 +687,15 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
     CScript ordSwapScript = OrdSwapScript();
     if (mSwapTx) {
         for (const auto &input: m_swap_inputs) {
-            if ((m_swap_inputs.size() == 1 && input.nin == 0) || (m_swap_inputs.size() == 4 && input.nin == 2)) {
-                if (!input.witness[0].empty()) {
+            if ((m_swap_inputs.size() == 1 && input.nin == 0) || (m_swap_inputs.size() != 1 && input.nin == 2)) {
+                if (!input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
                     VerifyTxSignature(*m_market_script_pk, input.witness[0], *mSwapTx, input.nin, spent_outs, ordSwapScript);
                 }
-                if (!input.witness[1].empty()) {
+                if (!input.witness[1].empty() && !l15::IsZeroArray(input.witness[1])) {
                     VerifyTxSignature(*m_ord_script_pk, input.witness[1], *mSwapTx, input.nin, spent_outs, ordSwapScript);
                 }
             } else {
-                if (input.witness && !input.witness[0].empty()) {
+                if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
                     VerifyTxSignature(input.output->Destination()->Address(), input.witness, *mSwapTx, input.nin, spent_outs);
                 }
             }
@@ -681,15 +704,15 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
     else {
         CMutableTransaction swap_tx = MakeSwapTx();
         for (const auto &input: m_swap_inputs) {
-            if ((m_swap_inputs.size() == 1 && input.nin == 0) || (m_swap_inputs.size() == 4 && input.nin == 2)) {
-                if (!input.witness[0].empty()) {
+            if ((m_swap_inputs.size() == 1 && input.nin == 0) || (m_swap_inputs.size() != 1 && input.nin == 2)) {
+                if (!input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
                     VerifyTxSignature(*m_market_script_pk, input.witness[0], swap_tx, input.nin, spent_outs, ordSwapScript);
                 }
-                if (!input.witness[1].empty()) {
+                if (!input.witness[1].empty() && !l15::IsZeroArray(input.witness[1])) {
                     VerifyTxSignature(*m_ord_script_pk, input.witness[1], swap_tx, input.nin, spent_outs, ordSwapScript);
                 }
             } else {
-                if (input.witness && !input.witness[0].empty()) {
+                if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
                     VerifyTxSignature(input.output->Destination()->Address(), input.witness, swap_tx, input.nin, spent_outs);
                 }
             }
@@ -699,8 +722,10 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
 
 CAmount SwapInscriptionBuilder::CalculateSwapTxFee(bool change) const
 {
-    CAmount swap_vsize = TX_SWAP_BASE_VSIZE + TAPROOT_KEYSPEND_VIN_VSIZE * 3 + TAPROOT_VOUT_VSIZE * 2;
-    if (change || (m_market_fee->Amount() > 0 && m_market_fee->Amount() < l15::Dust(DUST_RELAY_TX_FEE) * 2)) swap_vsize += TAPROOT_VOUT_VSIZE;
+    CAmount swap_vsize = TX_SWAP_BASE_VSIZE;
+    if (m_market_fee->Amount() >= l15::Dust() && m_market_fee->Amount() < l15::Dust() * 2) swap_vsize += TAPROOT_VOUT_VSIZE;
+    if (m_swap_inputs.size() > 4) swap_vsize += (m_swap_inputs.size() - 4) * TAPROOT_KEYSPEND_VIN_VSIZE;
+    if (change) swap_vsize += TAPROOT_VOUT_VSIZE;
     return CFeeRate(*m_mining_fee_rate).GetFee(swap_vsize);
 }
 
@@ -733,15 +758,31 @@ CAmount SwapInscriptionBuilder::CalculateWholeFee(const std::string& params) con
         }
     }
 
-    return CalculateSwapTxFee(change) + CFeeRate(*m_mining_fee_rate).GetFee(commit_vsize);
+    return CalculateSwapTxFee(m_market_fee->Amount() >= l15::Dust(DUST_RELAY_TX_FEE) * 2) + CFeeRate(*m_mining_fee_rate).GetFee(commit_vsize);
 }
 
 
 std::string SwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
 {
+    if (!m_ord_price) throw ContractStateError(name_ord_price + " not defined");
+    if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
+
     CAmount res = *m_ord_price + m_market_fee->Amount() + CalculateWholeFee(params);
-    if (m_market_fee->Amount() < l15::Dust(DUST_RELAY_TX_FEE) * 2)
-        res += l15::Dust(DUST_RELAY_TX_FEE) * 2;
+    if (m_market_fee->Amount() < l15::Dust() * 2)
+        res += l15::Dust() * 2;
+
+    return FormatAmount(res);
+}
+
+
+std::string SwapInscriptionBuilder::GetMinSwapFundingAmount() const
+{
+    if (!m_ord_price) throw ContractStateError(name_ord_price + " not defined");
+    if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
+
+    CAmount res = *m_ord_price + CalculateSwapTxFee(false);
+    if (m_market_fee->Amount() < l15::Dust() * 2)
+        res += m_market_fee->Amount();
 
     return FormatAmount(res);
 }

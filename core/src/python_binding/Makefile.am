@@ -3,6 +3,7 @@ COMMON_INCLUDES = \
  -I$(top_srcdir)/bitcoin/src/secp256k1/include \
  -I$(top_srcdir)/bitcoin/src/univalue/include \
  -I$(top_srcdir)/bitcoin/src/consensus \
+ -I$(top_srcdir)/bitcoin/src/policy \
  -I$(top_srcdir)/bitcoin/src/primitives \
  -I$(top_srcdir)/bitcoin/src/script \
  -I$(top_srcdir)/bitcoin/src/support \
