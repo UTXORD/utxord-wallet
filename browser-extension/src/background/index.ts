@@ -743,8 +743,8 @@ interface IChunkInscriptionResult {
       // const [tab] = await chrome.tabs.query({ active: true });
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) return;
 
-      // console.log(PLUGIN_ID, chrome.runtime.id);
-      // console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
+      console.log(PLUGIN_ID, chrome.runtime.id);
+      console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
       await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
       return true;
