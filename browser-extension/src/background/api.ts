@@ -593,32 +593,32 @@ class Api {
 
   genKeys() { //current keys
     const publicKeys = [];
-    for(const key of this.wallet_types) {
-      if(this.genKey(key)) {
-        if(key!=='auth' && key!=='xord' && key!=='ext') {
-          if(!this.checkAddress(this.wallet[key].address)) {
-            if(!this.checkAddressType(key)) {
+    for(const type of this.wallet_types) {
+      if(this.genKey(type)) {
+        if(type!=='auth' && type!=='xord' && type!=='ext') {
+          if(!this.checkAddress(this.wallet[type].address)) {
+            if(!this.checkAddressType(type)) {
               this.addresses.push({
-                address: this.wallet[key].address,
-                type: key,
-                typeAddress: this.wallet[key].typeAddress,
-                index: this.path(key)
+                address: this.wallet[type].address,
+                type: type,
+                typeAddress: this.wallet[type].typeAddress,
+                index: this.path(type)
               });
             }else{
               for(const i in this.addresses) {
-                if(this.addresses[i].type === key) {
+                if(this.addresses[i].type === type) {
                   this.addresses[i] = {
-                    address: this.wallet[key].address,
-                    type: key,
-                    typeAddress: this.wallet[key].typeAddress,
-                    index: this.path(key)
+                    address: this.wallet[type].address,
+                    type: type,
+                    typeAddress: this.wallet[type].typeAddress,
+                    index: this.path(type)
                   };
                 }
               }
             }
             publicKeys.push({
-              pubKeyStr: this.wallet[key].key.PubKey(),
-              type: key,
+              pubKeyStr: this.wallet[type].key.PubKey(),
+              type: type,
             });
           }
         }
@@ -640,43 +640,37 @@ class Api {
     return {addresses: this.addresses, publicKeys};
   }
 
-  async getBranchKey(path, item) {
-    try{
-      if(path[0]==='m') {
-        const for_script = (item?.type === 'uns' || item?.type === 'intsk' || item?.type === 'scrsk' || item?.type === 'auth');
-        const keypair = this.wallet.root.key.Derive(path, for_script);
-        const address = keypair.GetP2TRAddress(this.network);
-        return {address: address, key: keypair};
-      }else{
-        if(item?.type==='ext' || item?.type==='xord') {
-          let pubkey='';
-          if(item?.type === 'xord'){ pubkey = item.index.split('/')[1]; }
-          return {address: item.address, key: { pubKeyStr: pubkey }};
-        }
-      }
-    }catch(e) {
-      console.log("getBranchKey->error:",e);
-    }
-  }
+  // async getBranchKey(path, item) {
+  //   try{
+  //     if(path[0]==='m') {
+  //       const for_script = (item?.type === 'uns' || item?.type === 'intsk' || item?.type === 'scrsk' || item?.type === 'auth');
+  //       const keypair = this.wallet.root.key.Derive(path, for_script);
+  //       const address = keypair.GetP2TRAddress(this.network);
+  //       return {address: address, key: keypair};
+  //     }else{
+  //       if(item?.type==='ext' || item?.type==='xord') {
+  //         let pubkey='';
+  //         if(item?.type === 'xord'){ pubkey = item.index.split('/')[1]; }
+  //         return {address: item.address, key: { pubKeyStr: pubkey }};
+  //       }
+  //     }
+  //   }catch(e) {
+  //     console.log("getBranchKey->error:",e);
+  //   }
+  // }
 
   async getAllAddresses(addresses) {
     const myself = this;
     const ret = [];
-    if(addresses?.length) {
-      for(const item of addresses) {
-        let br = await myself.getBranchKey(item?.index, item);
-        if(br?.address !== item?.address) {
-          console.log("skip: getAllAddresses->1|address:",br?.address,"|item.address:",item?.address);
-        }else{
-          ret.push({
-            ...item,
-            path: item.index,
-            key: br.key,
-          });
-        }
+    if (addresses?.length) {
+      for (const item of addresses) {
+        ret.push({
+          ...item,
+          path: item.index,
+        });
       }
     }
-   return ret;
+    return ret;
   }
 
  async freeBalance(balance) {
@@ -687,51 +681,44 @@ class Api {
  }
 
   async prepareBalances(balances) {
-     const myself = this;
-     let list = this.balances?.addresses;
-     if(balances) {
-       list = balances;
-     }
-     const funds = [];
-     const inscriptions = [];
-     if(list?.length) {
-       for (const item of list) {
-         for (const i of item?.utxo_set || []) {
-           let br = await myself.getBranchKey(item.index, item);
-             if(br?.address === item?.address) {
-               if (!i?.is_inscription) {
-                 funds.push({
-                   ...i,
-                   address: item.address,
-                   path: item.index,
-                   key: br.key,
-                 });
-                }else{
-                inscriptions.push({
-                     ...i,
-                     address: item.address,
-                     path: item.index,
-                     key: br.key,
-                   });
-                }
-             }else{
-               console.log("skip: prepareBalances->1|address:", br?.address,"|item.address:", item?.address);
-             }
+    const myself = this;
+    let list = this.balances?.addresses;
+    if (balances) {
+      list = balances;
+    }
+    const funds = [];
+    const inscriptions = [];
+    if (list?.length) {
+      for (const item of list) {
+        for (const i of item?.utxo_set || []) {
+          if (!i?.is_inscription) {
+            funds.push({
+              ...i,
+              address: item.address,
+              path: item.index,
+            });
+          } else {
+            inscriptions.push({
+              ...i,
+              address: item.address,
+              path: item.index,
+            });
           }
-       }
+        }
+      }
     }
     return {funds, inscriptions};
   }
 
   async sumAllFunds(all_funds) {
     if(!all_funds) return 0;
-    console.log('sumAllFunds:',all_funds)
+    // console.log('sumAllFunds:',all_funds)
     return all_funds?.reduce((a,b)=>a+b?.amount, 0);
   }
 
   async sumMyInscribtions(inscriptions) {
     if(!inscriptions) return 0;
-    console.log('sumMyInscribtions:',inscriptions)
+    // console.log('sumMyInscribtions:',inscriptions)
     return inscriptions?.reduce((a,b)=>a+b?.amount, 0);
   }
 
@@ -823,15 +810,15 @@ class Api {
     return;
   }
 
-  async selectByFundOutput(txid, nout, fundings = []) {
+  selectByFundOutput(txid, nout, fundings = []) {
     const myself = this;
     let list = myself.fundings;
-    if(fundings.length > 0) {
+    if (fundings.length > 0) {
       list = fundings;
     }
-    if(list) {
-      for(const item of list) {
-        if(txid === item.txid && nout === item.nout) {
+    if (list) {
+      for (const item of list) {
+        if (txid === item.txid && nout === item.nout) {
           return item;
         }
       }
@@ -1013,7 +1000,7 @@ class Api {
 
     const total = await this.sumAllFunds(all_funds);
     const sum_my_inscr = await this.sumMyInscribtions(my);
-    console.log('this.all_addresses:',this.all_addresses);
+    // console.log('this.all_addresses:',this.all_addresses);
     return {
       data: {
         sync: this.sync,
@@ -1025,6 +1012,26 @@ class Api {
         inscriptions: my || []
       }
     };
+  }
+
+  updateFundsByOutputs(fund_list, update = {}) {
+    for (const fund of fund_list) {
+      let utxo = this.selectByFundOutput(fund.txid, fund.nout);
+      Object.assign(utxo, update);
+    }
+  }
+
+  pushChangeToFunds(change) {
+    this.fundings.push({
+      address: change?.address,
+      txid: change?.txid,
+      nout: change?.nout,
+      amount: this.btcToSat(change?.amount || "0.0"),
+      is_inscription: false,
+      is_locked: false,
+      in_queue: true,
+      path: "",
+    });
   }
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
@@ -1114,7 +1121,7 @@ class Api {
 
   //------------------------------------------------------------------------------
 
-  async createInscriptionContract(payload, theIndex = 0) {
+  async createInscriptionContract(payload, theIndex = 0, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
       xord: null,
@@ -1131,6 +1138,11 @@ class Api {
       fee: payload.fee,
       size: (payload.content.length + payload.content_type.length),
       raw: [],
+      outputs: {
+        collection: {} as object | null,
+        inscription: {} as object | null,
+        change: {} as object | null,
+      },
       errorMessage: null as string | null
     };
     try {
@@ -1172,8 +1184,7 @@ class Api {
       // For now it's just a support for title and description
       if(payload.metadata) {
         console.log('payload.metadata:',payload.metadata);
-        const encoded = cbor.encode(payload.metadata);
-        await newOrd.MetaData(myself.arrayBufferToHex(encoded));
+        await newOrd.MetaData(myself.arrayBufferToHex(cbor.encode(payload.metadata)));
       }
 
       await newOrd.MiningFeeRate((myself.satToBtc(payload.fee_rate)).toFixed(8));  // payload.fee_rate as Sat/kB
@@ -1203,8 +1214,13 @@ class Api {
       }
 
       await newOrd.Data(payload.content_type, payload.content);
-      await newOrd.InscribeAddress(myself.wallet.ord.key.GetP2TRAddress(this.network));
-      await newOrd.ChangeAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
+
+
+      const collection_addr = payload.collection.btc_owner_address;
+      const inscription_addr = myself.wallet.ord.key.GetP2TRAddress(this.network);
+      const change_addr = myself.wallet.fund.key.GetP2TRAddress(this.network);
+      await newOrd.InscribeAddress(inscription_addr);
+      await newOrd.ChangeAddress(change_addr);
 
       const min_fund_amount = myself.btcToSat(Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
@@ -1225,7 +1241,7 @@ class Api {
           outData.raw = [];
           return outData;
       }
-      const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
+      const utxo_list = await myself.selectKeysByFunds(min_fund_amount, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list;
       const inputs_sum = await myself.sumAllFunds(utxo_list);
       outData.inputs_sum = inputs_sum;
@@ -1322,6 +1338,12 @@ class Api {
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
 
+      outData.outputs = {
+        collection: {...JSON.parse(newOrd.GetCollectionLocation().c_str() || "{}"), address: collection_addr},
+        inscription: {...JSON.parse(newOrd.GetInscriptionLocation().c_str() || "{}"), address: inscription_addr},
+        change: {...JSON.parse(newOrd.GetChangeLocation().c_str() || "{}"), address: change_addr},
+      };
+
       return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, exception);
@@ -1337,6 +1359,47 @@ class Api {
       }
       return await myself.createInscriptionContract(payload, theIndex);
     }
+  }
+
+  //------------------------------------------------------------------------------
+
+  async createInscriptionForChunk(payload_data) {
+    const myself = this;
+    console.log('createInscriptionForChunk payload: ', {...payload_data || {}});
+
+    if(!payload_data?.costs?.data) return null;
+
+    if(payload_data.costs) {
+      if(payload_data.costs?.xord) {
+        myself.addToXordPubKey(payload_data.costs?.xord);
+      }
+      if(payload_data.costs?.nxord) {
+        myself.addToXordPubKey(payload_data.costs?.nxord);
+      }
+      // TODO: Check it against server/backend. Are we still need it?
+      // if(payload_data.costs?.sk){
+      //   myself.addToExternalKey(payload_data.costs?.sk);
+      //   console.log(" sk:", payload_data.costs?.sk);
+      // }
+    }
+    const result = {
+      contract: JSON.parse(payload_data.costs.data),
+      name: payload_data.name,
+      description: payload_data?.description,
+      type: payload_data?.type
+    };
+    // console.debug("createInscriptionForChunk: result:", result);
+
+    // TODO: to debug this part when backend will ready for addresses support
+    await myself.generateNewIndex('ord');
+    await myself.generateNewIndex('uns');
+    if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
+      await myself.generateNewIndex('intsk');
+      await myself.generateNewIndex('scrsk');
+    }
+    myself.genKeys();
+
+    return result;
   }
 
   //------------------------------------------------------------------------------
@@ -1495,7 +1558,7 @@ class Api {
 
   //----------------------------------------------------------------------------
 
-  async selectKeysByFunds(target: number, fundings = [], except_items = []) {
+  async selectKeysByFunds(target: number, fundings = [], except_items = [], use_funds_in_queue = false) {
     const addr_list = [];
 
     // use custom funds if provided, otherwise use default ones
@@ -1511,7 +1574,7 @@ class Api {
     console.log('all_funds_list:', all_funds_list);
     for (const al of all_funds_list) {
       let aloutput = `${al.txid}:${al.nout}`;
-      if (!excepts?.includes(aloutput)) {
+      if (!excepts?.includes(aloutput) && !al.is_locked && (!al.in_queue || use_funds_in_queue)) {
         selected_funds.push({...al, output: aloutput});
       }
     }
@@ -1548,20 +1611,13 @@ class Api {
     console.log('selectKeysByFunds2->selected_funds:', selected_funds);
     for (const utxo of selected_funds) {
       sum_addr += utxo.amount;
-      let br = await this.getBranchKey(utxo.path, utxo);
-      if (br?.address !== utxo?.address) {
-        console.log("selectKeysByFunds->2|address:", br?.address, "|utxo.address:", utxo?.address);
-      } else {
-        console.log('iter2->key:', br?.key, '|', utxo?.address);
-        addr_list.push({
-          amount: utxo?.amount,
-          nout: utxo?.nout,
-          txid: utxo?.txid,
-          path: utxo?.path,
-          address: utxo?.address,
-          key: br?.key
-        });
-      }
+      addr_list.push({
+        amount: utxo?.amount,
+        nout: utxo?.nout,
+        txid: utxo?.txid,
+        path: utxo?.path,
+        address: utxo?.address,
+      });
       if (sum_addr >= target) {
         return addr_list;
       }

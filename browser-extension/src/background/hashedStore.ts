@@ -30,11 +30,11 @@ export class HashedStore {
     delete this._items[key];
   }
 
-  public put(item: any): string {
+  public put(item: any, key: string | null = null): string {
     let itemValue = {value: item};
-    let key = Md5.hashStr(json5.stringify(itemValue));
-    this._items[key] = itemValue;
-    return key;
+    const itemKey = key || Md5.hashStr(json5.stringify(itemValue));
+    this._items[itemKey] = itemValue;
+    return itemKey;
   }
 
   public get(key: string): any {

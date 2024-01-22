@@ -47,11 +47,12 @@ import {
   GET_INSCRIPTION_CONTRACT_RESULT,
   CREATE_CHUNK_INSCRIPTION,
   GET_BULK_INSCRIPTION_ESTIMATION,
-  GET_BULK_INSCRIPTION_ESTIMATION_RESULT
+  GET_BULK_INSCRIPTION_ESTIMATION_RESULT, CREATE_INSCRIBE_RESULT, CREATE_CHUNK_INSCRIPTION_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
 import {HashedStore} from "~/background/hashedStore";
+import {bookmarks} from "webextension-polyfill";
 
 if (NETWORK === MAINNET){
   if(self){
@@ -124,6 +125,11 @@ interface IChunkInscription {
   inscriptions: ISingleInscription[],
 }
 
+// interface IChunkInscriptionPopupData extends IChunkInscription {
+//   content_store_key: string | null,
+//   password: string
+// }
+
 interface ISingleInscriptionResult {
   draft_uuid: string,
   contract: {},  // from JSON from core
@@ -135,7 +141,8 @@ interface IChunkInscriptionResult {
     genesis_txid: string,
     owner_txid: string,
     owner_nout: number,
-  }
+  },
+  error: null | string
 }
 
 (async () => {
@@ -195,7 +202,7 @@ interface IChunkInscriptionResult {
 
     onMessage(SAVE_GENERATED_SEED, async (payload) => {
       const sup = await Api.setUpPassword(payload.data.password);
-      console.log('Api.setUpPassword:',sup);
+      // console.log('Api.setUpPassword:',sup);
       await Api.setSeed(payload.data.seed, payload.data?.passphrase);
       Api.genKeys();
       if(Api.wallet.auth.key) {
@@ -292,20 +299,121 @@ interface IChunkInscriptionResult {
       return false;
     });
 
+
+    async function createChunkInscription(chunkData: IChunkInscription) {
+      console.debug("createChunkInscription: chunkData:", chunkData);
+
+      Scheduler.getInstance().deactivate();
+      let parentInscription = null;
+      let results = [];
+      let error = null;
+
+      try {
+
+        // refresh balances first..
+        const balances = await Api.prepareBalances(chunkData.addresses);
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
+        // prepare first parent
+        const inCollection = Boolean(chunkData.parent?.genesis_txid).valueOf();
+        parentInscription = chunkData.parent?.genesis_txid ? {...chunkData.parent} : {
+          genesis_txid: "",
+          owner_txid: "",
+          owner_nout: 0,
+        };
+
+        const inscriptions = Array.from(chunkData?.inscriptions || []);
+        // console.debug("createChunkInscription: inscriptions:", inscriptions);
+
+        for (let contractData of inscriptions) {
+          contractData.collection = parentInscription;
+
+          // console.debug('createChunkInscription: chunk contractData: ', contractData);
+          const contract = await Api.createInscriptionContract(contractData, 0, true);
+          console.debug('createChunkInscription: contract: ', contract);
+
+          // update parent for next inscription
+          if (inCollection) {
+            parentInscription = {
+              genesis_txid: chunkData.parent?.genesis_txid,
+              owner_txid: contract.outputs?.inscription?.txid,
+              owner_nout: contract.outputs?.inscription?.nout,
+            };
+          }
+
+          console.debug('createChunkInscription: parent:', parentInscription);
+
+          // mark all used utxo as spent
+          Api.updateFundsByOutputs(contract.utxo_list, {is_locked: true});
+
+          // add change utxo (if any) to funding
+          const change = contract.outputs?.change;
+          if (change?.txid) {
+            Api.pushChangeToFunds(change);
+          }
+          console.debug("createChunkInscription: Api.fundings:", [...Api.fundings]);
+
+          const contractResult = await Api.createInscriptionForChunk({
+            ...contractData,
+            costs: contract
+          });
+          console.debug('createChunkInscription: contractResult: ', contractResult);
+          results.push({
+            draft_uuid: contractData.draft_uuid,
+            contract: contractResult
+          });
+          console.debug('createChunkInscription: results: ', results);
+        }
+      } catch (e) {
+        console.error(`createChunkInscription: ${e.message}`, e.stack);
+        error = `${CREATE_CHUNK_INSCRIPTION}: ${e.message || "unknown error"}`;
+        await Api.sendExceptionMessage(CREATE_CHUNK_INSCRIPTION, error);
+      }
+
+      const chunkResults = {
+        inscription_results: results,
+        last_inscription_out: parentInscription,
+        // error: error
+      };
+      await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, chunkData?._tabId);
+      await Api.sendMessageToWebPage(CREATE_CHUNK_INSCRIPTION_RESULT, chunkResults, chunkData?._tabId);
+      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, chunkData?._tabId);
+
+      Scheduler.getInstance().activate();
+
+      console.debug("createChunkInscription: chunkResults:", chunkResults);
+      return chunkResults;
+    }
+
     onMessage(SUBMIT_SIGN, async (payload) => {
-
       console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
-      // console.debug("===== SUBMIT_SIGN: payload?.data?.data", {...payload?.data?.data})
-      // console.debug("===== SUBMIT_SIGN: payload?.data?._tabId", payload?.data?._tabId)
-      // console.debug("===== SUBMIT_SIGN: payload?.data?.data?._tabId", payload?.data?.data?._tabId)
 
-      if (payload.data.type === CREATE_CHUNK_INSCRIPTION) {
-        const res = await Api.decryptedWallet(payload.data.password);
-        if(res){
-          payload.data.data.content = store.pop(payload.data.data?.content_store_key);
-          const success = await Api.createInscription(payload.data.data);
-          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
-          await Api.encryptedWallet(payload.data.password);
+      const signData = payload?.data;
+      const chunkData = payload?.data?.data;
+
+      if (signData?.type === CREATE_CHUNK_INSCRIPTION) {
+        const res = await Api.decryptedWallet(signData.password);
+        if (res) {
+          const passwordId = `job:password:${chunkData.job_uuid}`;
+          store.put(signData.password, passwordId);
+
+          chunkData.inscriptions = store.pop(chunkData?.content_store_key) || [];
+          delete chunkData['content_store_key'];
+
+          // console.debug('SUBMIT_SIGN.CREATE_CHUNK_INSCRIPTION: chunkData:', chunkData);
+          const chunkResults = await createChunkInscription(chunkData);
+          // console.debug(`SUBMIT_SIGN.CREATE_CHUNK_INSCRIPTION: chunkResults:`, chunkResults);
+
+          setTimeout(async () => {
+            Api.WinHelpers.closeCurrentWindow();
+          },1000);
+
+          await Api.encryptedWallet(signData.password);
+
+          const success = chunkResults?.inscription_results?.length == chunkData?.inscriptions?.length
+              && !chunkResults.error;
+          // console.debug(`SUBMIT_SIGN.CREATE_CHUNK_INSCRIPTION: success: ${success}`);
           return success;
         }
         return false;
@@ -398,14 +506,14 @@ interface IChunkInscriptionResult {
           Api.sync = true;    // FIXME: Seems useless because happening too much late.
           Api.connect = true; // FIXME: However it's working for some reason in v1.1.5.
                               // FIXME: Probably due to high balance refresh frequency.
-          console.log('payload.data.addresses: ',payload.data.addresses);
+          // console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
           Api.inscriptions = await Api.freeBalance(Api.inscriptions);
           const balances = await Api.prepareBalances(payload.data.addresses);
           Api.fundings = balances.funds;
           Api.inscriptions = balances.inscriptions;
-          console.log('Api.fundings:', Api.fundings);
-          console.log('Api.inscriptions:', Api.inscriptions);
+          // console.log('Api.fundings:', Api.fundings);
+          // console.log('Api.inscriptions:', Api.inscriptions);
 
           const balance = await Api.fetchBalance("UNUSED_VALUE");  // FIXME: currently address is still unused
           setTimeout(async () => {
@@ -421,14 +529,14 @@ interface IChunkInscriptionResult {
         console.log('GET_ALL_ADDRESSES:', payload.data.addresses);
         // console.log('Api.addresses:', Api.addresses);
         const check = Api.checkAddresess(payload.data.addresses);
-        console.log('Api.checkAddresess:', check);
+        // console.log('Api.checkAddresess:', check);
         if(!check){
           setTimeout(async () => {
                   // console.log('ADDRESSES_TO_SAVE:', Api.addresses);
                   await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
           }, 100);
         }
-        console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);
+        // console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);
         await Api.restoreAllTypeIndexes(payload.data.addresses);
       }
 
@@ -482,15 +590,15 @@ interface IChunkInscriptionResult {
       */
 
       function _fixChunkInscriptionPayload(data: IChunkInscription) {
-
-        if (data.parent?.genesis_txid) {
-          data.collection.genesis_txid =
-        }
-
         for (let inscrData of Array.from(data?.inscriptions || [])) {
+          // inscrData.collection = {
+          //   genesis_txid: "",
+          //   owner_txid: "",
+          //   owner_nout: 0,
+          // };
           inscrData.metadata = {
-            title: inscrData.name,
-            description: inscrData.description,
+            title: inscrData.name || "",
+            description: inscrData.description || "",
           };
           delete inscrData.name;
           delete inscrData.description;
@@ -502,39 +610,62 @@ interface IChunkInscriptionResult {
         return data;
       }
 
+      function _prepareInscriptionForPopup(data: object) {
+          data.market_fee = 0;  // TODO: receive from frontend (expect_amount + mining_fee)
+          data.costs = {
+            expect_amount: data.expect_amount,
+            fee_rate: data.fee_rate,
+            fee: data.fee,
+            metadata: data.metadata,
+            amount: data.expect_amount,  // TODO: receive from frontend (expect_amount + mining_fee)
+            raw: []
+          };
+        return data;
+      }
+
       if (payload.type === CREATE_CHUNK_INSCRIPTION) {
         console.debug('payload?.data:', {...payload?.data || {}});
-        console.log('payload?.data?.type:', payload?.data?.type);
-        console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
+        // console.log('payload?.data?.type:', payload?.data?.type);
+        // console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
         let chunkData = _fixChunkInscriptionPayload(payload?.data) as IChunkInscription;
 
-        // refresh balances first..
-        const balances = await Api.prepareBalances(chunkData.addresses);
-        Api.fundings = balances.funds;
-        Api.inscriptions = balances.inscriptions;
+        const passwordId = `job:password:${chunkData.job_uuid}`;
+        const password = store.get(passwordId);
+        if (!password) {
+          // Store content locally in background script. Don't pass it via message
+          // NOTE: update for each chunk
+          chunkData.content_store_key = store.put(chunkData.inscriptions);
+          chunkData.inscriptions = [];
 
-        let contracts = [];
+          // Simulate some CreateInscriptionContract fields setup to make popup use them
+          _prepareInscriptionForPopup(chunkData) as IChunkInscription;
 
+          winManager.openWindow('sign-create-inscription', async (id) => {
+            setTimeout(async () => {
+              await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+            }, 1000);
+          });
+          return true;
+        } else {
+          const res = await Api.decryptedWallet(password);
+          if (res) {
+            chunkData.inscriptions = store.pop(chunkData?.content_store_key) || [];
+            delete chunkData['content_store_key'];
 
-        for (const inscrData of Array.from(chunkData?.inscriptions || [])) {
-          console.debug('chunk inscrData: ', inscrData);
-          const contract = await Api.createInscriptionContract(inscrData);
-          // check errors;
-          contracts.push(contract);
+            console.debug('CREATE_CHUNK_INSCRIPTION: chunkData:', chunkData);
+
+            const chunkResults = await createChunkInscription(chunkData);
+
+            await Api.encryptedWallet(password);
+
+            const success = chunkResults?.inscription_results?.length == chunkData?.inscriptions?.length
+                && !chunkResults.error;
+            console.debug(`CREATE_CHUNK_INSCRIPTION: success: ${success}`);
+            return success;
+          }
+          return false;
         }
-        console.debug('chunk contracts: ', contracts);
-
-        // costs = await Api.createInscriptionContract(payload.data);
-        // payload.data.costs = costs;
-        // console.log(CREATE_INSCRIPTION+':',payload.data);
-        // payload.data.content_store_key = store.put(payload.data.content);
-        // payload.data.content = null;
-        // winManager.openWindow('sign-create-inscription', async (id) => {
-        //   setTimeout(async  () => {
-        //     await sendMessage(SAVE_METADATA_FOR_SIGN, payload, `popup@${id}`);
-        //   }, 1000);
-        // });
       }
 
       if (payload.type === CREATE_INSCRIPTION) {
@@ -612,8 +743,8 @@ interface IChunkInscriptionResult {
       // const [tab] = await chrome.tabs.query({ active: true });
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) return;
 
-      console.log(PLUGIN_ID, chrome.runtime.id);
-      console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
+      // console.log(PLUGIN_ID, chrome.runtime.id);
+      // console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
       await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
       return true;
