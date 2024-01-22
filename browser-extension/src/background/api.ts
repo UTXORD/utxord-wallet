@@ -857,6 +857,15 @@ class Api {
     }
   }
 
+  async getSupportedVersions() {
+    const builderObject = new this.utxord.CreateInscriptionBuilder(
+      this.network,
+      this.utxord.INSCRIPTION
+    );
+    const versions = JSON.parse(builderObject.SupportedVersions() || '[8]');
+    return versions;
+  }
+
   getCurrentNetWorkLabel() {
     if (!this.network) { return ' '; }
     switch (this.network) {
