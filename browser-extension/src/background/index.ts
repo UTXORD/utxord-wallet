@@ -114,6 +114,8 @@ interface ISingleInscription {
 interface IChunkInscription {
   job_uuid: string;  // plugin needs it to identify all chunks as a single bulk
   expect_amount: number,
+  total_expect_amount: number,
+  total_amount: number,
   fee_rate: number,
   fee: number,
   addresses: [],

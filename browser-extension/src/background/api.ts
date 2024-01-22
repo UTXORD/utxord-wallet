@@ -1189,6 +1189,7 @@ class Api {
 
       await newOrd.MiningFeeRate((myself.satToBtc(payload.fee_rate)).toFixed(8));  // payload.fee_rate as Sat/kB
 
+      let collection_addr = null;
       if(payload?.collection?.genesis_txid) {
         // collection is empty no output has been found, see code above
         if(!collection) {
@@ -1202,8 +1203,7 @@ class Api {
           // outData.raw = await myself.getRawTransactions(newOrd);
           outData.raw = [];
           return outData;
-       }
-
+        }
         newOrd.AddToCollection(
           `${payload.collection.genesis_txid}i0`,  // inscription ID = <genesis_txid>i<envelope(inscription)_number>
           payload.collection.owner_txid,  // current collection utxo
@@ -1211,12 +1211,11 @@ class Api {
           (myself.satToBtc(collection.amount)).toFixed(8),  // amount from collection utxo
           payload.collection.btc_owner_address
         )
+        collection_addr = payload.collection.btc_owner_address;
       }
 
       await newOrd.Data(payload.content_type, payload.content);
 
-
-      const collection_addr = payload.collection.btc_owner_address;
       const inscription_addr = myself.wallet.ord.key.GetP2TRAddress(this.network);
       const change_addr = myself.wallet.fund.key.GetP2TRAddress(this.network);
       await newOrd.InscribeAddress(inscription_addr);
@@ -1345,15 +1344,18 @@ class Api {
       };
 
       return outData;
-    } catch (exception) {
-      const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, exception);
+    } catch (e) {
+      console.error(`${CREATE_INSCRIPTION}: ${e.message}`, e.stack);
+      const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
       if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return;
 
       console.info(CREATE_INSCRIPTION,'call:theIndex:',theIndex);
       theIndex++;
       // if (theIndex > 1000) {
       if (theIndex > 0) {
-        await this.sendExceptionMessage(CREATE_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
+        const error = 'error loading wasm libraries, try reloading the extension or this page';
+        console.error(error);
+        await this.sendExceptionMessage(CREATE_INSCRIPTION, error);
         setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         return outData;
       }
