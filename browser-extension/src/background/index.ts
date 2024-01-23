@@ -606,7 +606,9 @@ interface IChunkInscriptionResult {
           delete inscrData.description;
 
           inscrData.expect_amount = data.expect_amount;
+          inscrData.amount = data.total_amount;
           inscrData.fee_rate = data.fee_rate;
+          inscrData.platform_fee = data.platform_fee;
           inscrData.fee = data.fee;
         }
         return data;
@@ -626,7 +628,7 @@ interface IChunkInscriptionResult {
       }
 
       if (payload.type === CREATE_CHUNK_INSCRIPTION) {
-        console.debug('payload?.data:', {...payload?.data || {}});
+        console.debug(`${CREATE_CHUNK_INSCRIPTION}: payload?.data:`, {...payload?.data || {}});
         // console.log('payload?.data?.type:', payload?.data?.type);
         // console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
