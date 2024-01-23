@@ -274,7 +274,7 @@ interface IChunkInscriptionResult {
     onMessage(NEW_FUND_ADDRESS, async () => {
       await Api.generateNewIndex('fund');
       const newKeys = Api.genKeys();
-      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
+      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
       return newKeys;
     });
 
@@ -283,7 +283,7 @@ interface IChunkInscriptionResult {
       await Api.setTypeAddress('fund', payload.data?.type);
       const newKeys = Api.genKeys();
       console.log('newKeys', newKeys);
-      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses)
+      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
       return newKeys;
     });
 
@@ -302,6 +302,10 @@ interface IChunkInscriptionResult {
     });
 
 
+    function _addressesMap(addresses: object[]) {
+      return Object.fromEntries(addresses.map(addr => [addr.address, addr]));
+    }
+
     async function createChunkInscription(chunkData: IChunkInscription) {
       console.debug("createChunkInscription: chunkData:", chunkData);
 
@@ -309,9 +313,9 @@ interface IChunkInscriptionResult {
       let parentInscription = null;
       let results = [];
       let error = null;
+      let usedAddressesMap = {};
 
       try {
-
         // refresh balances first..
         const balances = await Api.prepareBalances(chunkData.addresses);
         Api.fundings = balances.funds;
@@ -329,8 +333,10 @@ interface IChunkInscriptionResult {
         // console.debug("createChunkInscription: inscriptions:", inscriptions);
 
         for (let contractData of inscriptions) {
-          contractData.collection = parentInscription;
+          // Collect used addressed
+          usedAddressesMap = {...usedAddressesMap, ..._addressesMap(Api.addresses)};
 
+          contractData.collection = parentInscription;
           // console.debug('createChunkInscription: chunk contractData: ', contractData);
           const contract = await Api.createInscriptionContract(contractData, 0, true);
           console.debug('createChunkInscription: contract: ', contract);
@@ -343,8 +349,7 @@ interface IChunkInscriptionResult {
               owner_nout: contract.outputs?.inscription?.nout,
             };
           }
-
-          console.debug('createChunkInscription: parent:', parentInscription);
+          console.debug('createChunkInscription: parentInscription:', parentInscription);
 
           // mark all used utxo as spent
           Api.updateFundsByOutputs(contract.utxo_list, {is_locked: true});
@@ -361,11 +366,17 @@ interface IChunkInscriptionResult {
             costs: contract
           });
           console.debug('createChunkInscription: contractResult: ', contractResult);
+
           results.push({
             draft_uuid: contractData.draft_uuid,
             contract: contractResult.contract
           });
-          console.debug('createChunkInscription: results: ', results);
+
+          const contractParams = contractResult.contract.params;
+          console.debug('createChunkInscription: result destination_addr:', contractParams.destination_addr);
+          console.debug('createChunkInscription: result change_addr:', contractParams.change_addr);
+          // console.debug('createChunkInscription: results: ', results);
+          // console.debug('createChunkInscription: Api.addresses:', [...Api.addresses]);
         }
       } catch (e) {
         console.error(`createChunkInscription: ${e.message}`, e.stack);
@@ -378,7 +389,10 @@ interface IChunkInscriptionResult {
         last_inscription_out: parentInscription,
         // error: error
       };
-      await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, chunkData?._tabId);
+
+      // Add new current addresses
+      usedAddressesMap = {...usedAddressesMap, ..._addressesMap(Api.addresses)};
+      await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Object.values(usedAddressesMap), chunkData?._tabId);
       await Api.sendMessageToWebPage(CREATE_CHUNK_INSCRIPTION_RESULT, chunkResults, chunkData?._tabId);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, chunkData?._tabId);
 
@@ -526,20 +540,19 @@ interface IChunkInscriptionResult {
       }
 
       if (payload.type === GET_ALL_ADDRESSES) {
-        Api.all_addresses = await Api.freeBalance(Api.all_addresses);
-        Api.all_addresses = await Api.getAllAddresses(payload.data.addresses);
-        console.log('GET_ALL_ADDRESSES:', payload.data.addresses);
-        // console.log('Api.addresses:', Api.addresses);
-        const check = Api.checkAddresess(payload.data.addresses);
-        // console.log('Api.checkAddresess:', check);
-        if(!check){
+        console.log('GET_ALL_ADDRESSES: payload.data.addresses:', payload.data.addresses);
+        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.addresses]);
+        const allAddressesSaved = Api.hasAllLocalAddressesIn(payload.data.addresses);
+        console.debug('Api.hasAllLocalAddressesIn payload.data.addresses: ', allAddressesSaved);
+        if(!allAddressesSaved){
           setTimeout(async () => {
-                  // console.log('ADDRESSES_TO_SAVE:', Api.addresses);
+                  console.debug('ADDRESSES_TO_SAVE:', [...Api.addresses]);
                   await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
           }, 100);
         }
         // console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);
         await Api.restoreAllTypeIndexes(payload.data.addresses);
+        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.addresses]);
       }
 
       if (payload.type === GET_INSCRIPTION_CONTRACT) {
@@ -564,32 +577,6 @@ interface IChunkInscriptionResult {
           expect_amount: bulkExpectAmount
         });
       }
-      /*
-      interface ISingleInscription {
-        // To update after each inscription done, from out#1 of genesis tx
-        draft_uuid: string,
-        content: string,
-        content_type: string,
-        type: string,
-        metadata: {
-          title: string,
-          description: string,
-        }
-      }
-
-      interface IChunkInscription {
-        job_uuid: string;  // plugin needs it to identify all chunks as a single bulk
-        expect_amount: number,
-        fee_rate: number,
-        fee: number,
-        addresses: [],
-        parent: null | {
-          txid: string,
-          nout: number,
-        },
-        inscriptions: ISingleInscription[],
-      }
-      */
 
       function _fixChunkInscriptionPayload(data: IChunkInscription) {
         for (let inscrData of Array.from(data?.inscriptions || [])) {
@@ -768,8 +755,8 @@ interface IChunkInscriptionResult {
       if (alarm.name == alarmName) {
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success);
-        // await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
-        // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+        // await Api.sendMessageToWebPage(GET_BALANCES, [...Api.addresses]);
+        // await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, [...Api.addresses]);
       }
     });
 

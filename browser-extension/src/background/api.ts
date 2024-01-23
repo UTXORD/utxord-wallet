@@ -249,7 +249,6 @@ class Api {
         this.balances = [];
         this.fundings = [];
         this.inscriptions = [];
-        this.all_addresses = [];
         this.connect = false;
         this.sync = false;
 
@@ -307,14 +306,14 @@ class Api {
     return await chrome.storage.sync.set(Obj);
   }
 
-  async getIndexToStorage(type) {
+  async getIndexFromStorage(type) {
     if(type==='xord' || type==='ext') return;
     return (await chrome.storage.sync.get([`${type}Index`]))[`${type}Index`] || 0
   }
 
   async rememberIndexes() {
     for (const wt of this.wallet_types) {
-      this.wallet[wt].index = await this.getIndexToStorage(wt);
+      this.wallet[wt].index = await this.getIndexFromStorage(wt);
     }
     return true;
   }
@@ -365,70 +364,77 @@ class Api {
     return this.wallet[type].index + 1;
   }
 
-  checkAddresess(ext_addresses = []) {
-    if(ext_addresses.length === 0) return false;
-    if(this.addresses.length === 0) return false;
+  hasAllLocalAddressesIn(ext_addresses = []) {
+    if (ext_addresses.length === 0) return false;
+    if (this.addresses.length === 0) return false;
 
     const list = [];
-    for(const item of ext_addresses) {
+    for (const item of ext_addresses) {
       list.push(item.address);
     }
-    for(const value of this.addresses) {
-      if(list.indexOf(value.address) === -1){return false;}
+    for (const value of this.addresses) {
+      if (list.indexOf(value.address) === -1) {
+        return false;
+      }
     }
     return true;
   }
 
-  checkAddress(address, addresses) {
-    if(!addresses){addresses = this.addresses;}
-    for(const item of addresses) {
-      if(item.address === address){return true;}
+  hasAddress(address: string, addresses: object[] | undefined = undefined) {
+    if (!addresses) {
+      addresses = this.addresses;
+    }
+    for (const item of addresses) {
+      if (item.address === address) {
+        return true;
+      }
     }
     return false;
   }
 
-  checkAddressType(type, addresses) {
-    if(!addresses){addresses = this.addresses;}
-    for(const item of addresses) {
-      if(item.type === type){return true;}
+  hasAddressType(type: string, addresses: object[] | undefined = undefined) {
+    if (!addresses) {
+      addresses = this.addresses;
+    }
+    for (const item of addresses) {
+      if (item.type === type) {
+        return true;
+      }
     }
     return false;
   }
-
 
   async restoreTypeIndexFromServer(type, addresses) {
-    let sindex = 0;
     let store_index = 0;
     let wallet_index = 0;
-    if(type!=='xord' && type!=='ext') {
-      sindex = await this.getIndexToStorage(type);
-      store_index = Number(sindex);
+    if (type !== 'xord' && type !== 'ext') {
+      store_index = Number(await this.getIndexFromStorage(type));
       wallet_index = Number(this.getIndex(type));
-      if(store_index > wallet_index) {
+      if (store_index > wallet_index) {
         await this.setIndex(type, store_index)
       }
-      if(store_index < wallet_index) {
+      if (store_index < wallet_index) {
         await this.setIndexToStorage(type, wallet_index);
       }
     }
-    if(addresses) {
-      for(const v of addresses) {
-        if(v.type===type && type!=='xord' && type!=='ext') {
-          const currind = Number(v.index.split('/').pop())
+    if (addresses) {
+      for (const addr of addresses) {
+        if (addr.type === type && type !== 'xord' && type !== 'ext') {
+          const currind = Number(addr.index.split('/').pop())
           if (currind > wallet_index) {
-          //  console.log(`currind for type - ${type}:`,currind)
+            //  console.log(`currind for type - ${type}:`,currind)
             await this.setIndex(type, currind)
             await this.setIndexToStorage(type, currind);
           }
-        }else{
-          if(type==='xord') {
-            let p = v?.index?.split('/')[0];
-            let xord = v?.index?.split('/')[1];
+        } else {
+          if (type === 'xord') {
+            let p = addr?.index?.split('/')[0];
+            let xord = addr?.index?.split('/')[1];
             this.addToXordPubKey(xord);
           }
-          if(type==='ext') {
-            let p = v?.index?.split('/')[0];
-            let ext = v?.index?.split('/')[1];
+          if (type === 'ext') {
+            let p = addr?.index?.split('/')[0];
+            let ext = addr?.index?.split('/')[1];
             this.addToExternalKey(ext);
           }
         }
@@ -436,10 +442,11 @@ class Api {
       }
     }
   }
+
   async restoreAllTypeIndexes(addresses) {
-    for (const key of this.wallet_types) {
-      //console.log(`this.restoreTypeIndexFromServer(${key}, ${addresses})`)
-      await this.restoreTypeIndexFromServer(key, addresses)
+    for (const type of this.wallet_types) {
+      //console.log(`this.restoreTypeIndexFromServer(${type}, ${addresses})`)
+      await this.restoreTypeIndexFromServer(type, addresses)
     }
     return await this.genKeys();
   }
@@ -523,17 +530,17 @@ class Api {
   addToXordPubKey(xordPubkey) {
     const myself = this;
     const tmpAddress = myself.pubKeyStrToP2tr(xordPubkey);
-    if(!myself.checkAddress(tmpAddress, myself.wallet.xord)) {
+    if (!myself.hasAddress(tmpAddress, myself.wallet.xord)) {
       myself.wallet.xord.push({
         p2tr: tmpAddress,
         pubKeyStr: xordPubkey,
         index: `0/${xordPubkey}`
       });
       const xord_keys = []
-      for(const item of this.wallet.xord) {
+      for (const item of this.wallet.xord) {
         xord_keys.push(item.pubKeyStr);
       }
-      chrome.storage.sync.set({ xord_keys: xord_keys});
+      chrome.storage.sync.set({xord_keys: xord_keys});
     }
     return true;
   }
@@ -543,76 +550,81 @@ class Api {
 
     const keypair = new myself.utxord.KeyPair(keyhex);
     const tmpAddress = this.bech.Encode(keypair.PubKey());
-    if(!myself.checkAddress(tmpAddress, this.wallet.ext.keys)) {
+    if (!myself.hasAddress(tmpAddress, this.wallet.ext.keys)) {
       let enkeyhex = keyhex;
       let enFlag = false;
-      if(pass) {
+      if (pass) {
         enkeyhex = this.encrypt(keyhex, pass);
         enFlag = true;
       }
-      console.log('ExternalKeyAddress:',tmpAddress);
+      console.log('ExternalKeyAddress:', tmpAddress);
       this.wallet.ext.keys.push({
         key: keypair,
         p2tr: tmpAddress,
         pubKeyStr: keypair.PubKey(),
         privKeyStr: enkeyhex,
-        index:`${Number(enFlag)}/${enkeyhex}`,
+        index: `${Number(enFlag)}/${enkeyhex}`,
         type: 'ext',
       });
       const ext_keys = []
-      for(const item of this.wallet.ext.keys) {
+      for (const item of this.wallet.ext.keys) {
         ext_keys.push(item.privKeyStr);
       }
-      chrome.storage.sync.set({ ext_keys: ext_keys});
+      chrome.storage.sync.set({ext_keys: ext_keys});
     }
     return true;
   }
 
   resExtKeys(ext_keys) {
     this.wallet.ext.keys = [];
-    for(const item of ext_keys) {
+    for (const item of ext_keys) {
       this.addToExternalKey(item);
     }
     return this.wallet.ext.keys;
   }
 
   genKey(type) {
-    if(!this.wallet_types.includes(type)) return false;
-    if(!this.checkSeed()) return false;
+    if (!this.wallet_types.includes(type)) return false;
+    if (!this.checkSeed()) return false;
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
-    if(this.wallet[type].typeAddress === 1){
+    if (this.wallet[type].typeAddress === 1) {
       this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
       this.wallet[type].address = this.wallet[type].key.GetP2WPKHAddress(this.network);
       return true;
     }
     this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
     this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);
-     return true;
+    return true;
   }
 
   genKeys() { //current keys
     const publicKeys = [];
-    for(const type of this.wallet_types) {
-      if(this.genKey(type)) {
-        if(type!=='auth' && type!=='xord' && type!=='ext') {
-          if(!this.checkAddress(this.wallet[type].address)) {
-            if(!this.checkAddressType(type)) {
-              this.addresses.push({
+    for (const type of this.wallet_types) {
+      if (this.genKey(type)) {
+        if (type !== 'auth' && type !== 'xord' && type !== 'ext') {
+          if (!this.hasAddress(this.wallet[type].address)) {
+            if (!this.hasAddressType(type)) {
+              const newAddress = {
                 address: this.wallet[type].address,
                 type: type,
                 typeAddress: this.wallet[type].typeAddress,
                 index: this.path(type)
-              });
-            }else{
-              for(const i in this.addresses) {
-                if(this.addresses[i].type === type) {
-                  this.addresses[i] = {
+              };
+              console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
+              this.addresses.push(newAddress);
+            } else {
+              for (const i in this.addresses) {
+                if (this.addresses[i].type === type) {
+                  console.debug(`genKeys(): update "${type}" addresses from:`, this.addresses[i]);
+                  const newAddress = {
                     address: this.wallet[type].address,
                     type: type,
                     typeAddress: this.wallet[type].typeAddress,
                     index: this.path(type)
                   };
+                  console.debug(`genKeys(): update "${type}" addresses to:`, newAddress);
+                  this.addresses[i] = newAddress;
                 }
               }
             }
@@ -620,14 +632,16 @@ class Api {
               pubKeyStr: this.wallet[type].key.PubKey(),
               type: type,
             });
+          } else {
+            console.debug(`genKeys(): already has "${type}" address "${this.wallet[type].address}"`);
           }
         }
       }
     }
     //add ExternalKeyAddress
     //add XordPubKey
-    for(const item of this.wallet.xord) {
-      if(!this.checkAddress(item.address)) {
+    for (const item of this.wallet.xord) {
+      if (!this.hasAddress(item.address)) {
         this.addresses.push({
           address: item.address,
           type: 'xord',
@@ -640,45 +654,12 @@ class Api {
     return {addresses: this.addresses, publicKeys};
   }
 
-  // async getBranchKey(path, item) {
-  //   try{
-  //     if(path[0]==='m') {
-  //       const for_script = (item?.type === 'uns' || item?.type === 'intsk' || item?.type === 'scrsk' || item?.type === 'auth');
-  //       const keypair = this.wallet.root.key.Derive(path, for_script);
-  //       const address = keypair.GetP2TRAddress(this.network);
-  //       return {address: address, key: keypair};
-  //     }else{
-  //       if(item?.type==='ext' || item?.type==='xord') {
-  //         let pubkey='';
-  //         if(item?.type === 'xord'){ pubkey = item.index.split('/')[1]; }
-  //         return {address: item.address, key: { pubKeyStr: pubkey }};
-  //       }
-  //     }
-  //   }catch(e) {
-  //     console.log("getBranchKey->error:",e);
-  //   }
-  // }
-
-  async getAllAddresses(addresses) {
-    const myself = this;
-    const ret = [];
-    if (addresses?.length) {
-      for (const item of addresses) {
-        ret.push({
-          ...item,
-          path: item.index,
-        });
-      }
+  async freeBalance(balance) {
+    for (const item of balance) {
+      this.destroy(item.key);
     }
-    return ret;
+    return [];
   }
-
- async freeBalance(balance) {
-   for(const item of balance) {
-     this.destroy(item.key);
-   }
-   return [];
- }
 
   async prepareBalances(balances) {
     const myself = this;
@@ -1000,7 +981,6 @@ class Api {
 
     const total = await this.sumAllFunds(all_funds);
     const sum_my_inscr = await this.sumMyInscribtions(my);
-    // console.log('this.all_addresses:',this.all_addresses);
     return {
       data: {
         sync: this.sync,
@@ -1216,10 +1196,8 @@ class Api {
 
       await newOrd.Data(payload.content_type, payload.content);
 
-      const inscription_addr = myself.wallet.ord.key.GetP2TRAddress(this.network);
-      const change_addr = myself.wallet.fund.key.GetP2TRAddress(this.network);
-      await newOrd.InscribeAddress(inscription_addr);
-      await newOrd.ChangeAddress(change_addr);
+      await newOrd.InscribeAddress(myself.wallet.ord.address);
+      await newOrd.ChangeAddress(myself.wallet.fund.address);
 
       const min_fund_amount = myself.btcToSat(Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
@@ -1338,9 +1316,17 @@ class Api {
       // or wait and check utxo this translation on balances
 
       outData.outputs = {
-        collection: {...JSON.parse(newOrd.GetCollectionLocation().c_str() || "{}"), address: collection_addr},
-        inscription: {...JSON.parse(newOrd.GetInscriptionLocation().c_str() || "{}"), address: inscription_addr},
-        change: {...JSON.parse(newOrd.GetChangeLocation().c_str() || "{}"), address: change_addr},
+        collection: {
+          ...JSON.parse(newOrd.GetCollectionLocation().c_str() || "{}"),
+          address: collection_addr
+        },
+        inscription: {
+          ...JSON.parse(newOrd.GetInscriptionLocation().c_str() || "{}"),
+          address: myself.wallet.ord.address
+        },
+        change: {
+          ...JSON.parse(newOrd.GetChangeLocation().c_str() || "{}"),
+          address: myself.wallet.fund.address},
       };
 
       return outData;
@@ -1390,7 +1376,6 @@ class Api {
       description: payload_data?.description,
       type: payload_data?.type
     };
-    // console.debug("createInscriptionForChunk: result:", result);
 
     // TODO: to debug this part when backend will ready for addresses support
     await myself.generateNewIndex('ord');
