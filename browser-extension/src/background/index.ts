@@ -363,7 +363,7 @@ interface IChunkInscriptionResult {
           console.debug('createChunkInscription: contractResult: ', contractResult);
           results.push({
             draft_uuid: contractData.draft_uuid,
-            contract: contractResult
+            contract: contractResult.contract
           });
           console.debug('createChunkInscription: results: ', results);
         }
