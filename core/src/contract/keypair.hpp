@@ -99,15 +99,28 @@ public:
 
 class ExtPubKey
 {
+    ChainMode m_chainmode;
     const secp256k1_context* m_ctx;
-    Bech32 mBech;
     l15::core::ext_pubkey m_extpk;
 
 public:
-    ExtPubKey(const secp256k1_context* ctx, Bech32 bech, l15::core::ext_pubkey extpk): m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), mBech(bech), m_extpk(move(extpk)) {}
-    ExtPubKey(ChainMode chainmode, const std::string& extpk): ExtPubKey(l15::core::ChannelKeys::GetStaticSecp256k1Context(), Bech32(chainmode), l15::unhex<l15::core::ext_pubkey>(extpk)) {}
+    ExtPubKey(ChainMode chainmode, const secp256k1_context* ctx, l15::core::ext_pubkey extpk): m_chainmode(chainmode), m_ctx(l15::core::ChannelKeys::GetStaticSecp256k1Context()), m_extpk(move(extpk)) {}
+    ExtPubKey(ChainMode chainmode, const std::string& extpk);
 
-    std::string Derive(uint32_t index) const { return hex(l15::core::MasterKey::DerivePubKey(m_ctx, m_extpk, index)); }
+    ExtPubKey(const ExtPubKey&) = default;
+    ExtPubKey& operator=(const ExtPubKey&) = default;
+    ExtPubKey& operator=(ExtPubKey&&) noexcept = default;
+
+    uint256 GetChainCode() const
+    { return uint256(Span<const uint8_t >(m_extpk.data(), 32)); }
+    l15::xonly_pubkey GetPubKey() const
+    { return l15::xonly_pubkey(m_extpk.begin() + 33, m_extpk.end()); }
+
+
+    ExtPubKey Derive(uint32_t index) const
+    { return ExtPubKey(m_chainmode, m_ctx, l15::core::MasterKey::Derive(m_ctx, m_extpk, index)); }
+
+    std::string DeriveAddress(const std::string& path) const;
 };
 
 

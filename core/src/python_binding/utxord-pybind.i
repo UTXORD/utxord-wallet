@@ -22,6 +22,7 @@
 #include "swap_inscription.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
+#include "simple_transaction.hpp"
 
 using namespace utxord;
 using namespace l15;
@@ -136,6 +137,7 @@ using namespace l15;
 %include "contract_builder.hpp"
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
+%include "simple_transaction.hpp"
 %include "transaction.hpp"
 %include "transaction.h"
 %include "inscription.hpp"

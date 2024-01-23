@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <vector>
+#include <tuple>
 
 #define CATCH_CONFIG_RUNNER
 #include "catch/catch.hpp"
@@ -20,10 +21,12 @@
 
 #include "test_case_wrapper.hpp"
 #include "univalue.h"
+#include "script_merkle_tree.hpp"
 
 using namespace l15;
 using namespace l15::core;
 using namespace utxord;
+using std::get;
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
@@ -120,6 +123,29 @@ TEST_CASE("Fee")
 
     CAmount double_vout_fee = CalculateTxFee(1000, tx);
     std::clog << "Taproot vout vsize: " << (double_vout_fee - double_vin_fee) << std::endl;
+
+    ChannelKeys key;
+    l15::ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { ContractBuilder::MakeMultiSigScript(xonly_pubkey(), xonly_pubkey()) });
+    auto tr = core::ChannelKeys::AddTapTweak(key.GetLocalPubKey(), tap_tree.CalculateRoot());
+
+    std::vector<uint256> scriptpath = tap_tree.CalculateScriptPath(tap_tree.GetScripts().front());
+    bytevector control_block;
+    control_block.reserve(1 + xonly_pubkey().size() + scriptpath.size() * uint256::size());
+    control_block.emplace_back(static_cast<uint8_t>(0xc0 | get<1>(tr)));
+    control_block.insert(control_block.end(), key.GetLocalPubKey().begin(), key.GetLocalPubKey().end());
+
+    for (uint256 &branch_hash: scriptpath)
+        control_block.insert(control_block.end(), branch_hash.begin(), branch_hash.end());
+
+    tx.vin.emplace_back(uint256(), 0);
+    tx.vin.back().scriptWitness.stack.emplace_back(signature());
+    tx.vin.back().scriptWitness.stack.emplace_back(signature());
+    tx.vin.back().scriptWitness.stack.emplace_back(tap_tree.GetScripts().front().begin(), tap_tree.GetScripts().front().end());
+    tx.vin.back().scriptWitness.stack.emplace_back(move(control_block));
+
+    CAmount msig_vin_fee = CalculateTxFee(1000, tx);
+    std::clog << "Taproot multi-sig vin vsize: " << (msig_vin_fee - double_vout_fee) << std::endl;
+
 
     CMutableTransaction p2wpkhtx;
     p2wpkhtx.vin.emplace_back(uint256(), 0);

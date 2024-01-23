@@ -262,11 +262,12 @@ TEST_CASE("txchain")
     tx_contract->MiningFeeRate(fee_rate);
     tx1_contract->MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx1_contract->AddInput(tx_contract));
-    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 546, destination_addr)));
-
     REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(*bech, funds_txid, get<0>(prevout).n, 10000, addr)));
     REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 10000, intermediate_key.GetP2TRAddress(*bech))));
+
+    REQUIRE_NOTHROW(tx1_contract->AddInput(make_shared<ContractOutput>(tx_contract, 0)));
+    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(bech->GetChainMode(), 546, destination_addr)));
+
     REQUIRE_NOTHROW(tx_contract->Outputs().back()->Amount(ParseAmount(tx1_contract->GetMinFundingAmount(""))));
     REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_addr));
 

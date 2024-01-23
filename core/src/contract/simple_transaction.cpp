@@ -5,6 +5,7 @@
 
 #include "utils.hpp"
 #include "simple_transaction.hpp"
+#include "policy.h"
 
 namespace utxord {
 
@@ -12,6 +13,25 @@ const  std::string SimpleTransaction::name_outputs = "outputs";
 
 const char* const SimpleTransaction::type = "transaction";
 const uint32_t SimpleTransaction::m_protocol_version = 1;
+
+CMutableTransaction SimpleTransaction::MakeTxTemplate() const
+{
+    CMutableTransaction tx;
+
+    for(const auto& input: m_inputs) {
+        tx.vin.emplace_back(uint256(), 0);
+        tx.vin.back().scriptWitness.stack = input.witness;
+        if (tx.vin.back().scriptWitness.stack.empty()) {
+            tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
+        }
+    }
+
+    for(const auto& out: m_outputs) {
+        tx.vout.emplace_back(out->Amount(), out->PubKeyScript());
+    }
+
+    return tx;
+}
 
 CMutableTransaction SimpleTransaction::MakeTx() const
 {
@@ -34,7 +54,7 @@ CMutableTransaction SimpleTransaction::MakeTx() const
 
 void SimpleTransaction::AddChangeOutput(const std::string& addr)
 {
-    if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
+    if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
 
     unsigned v;
     bytevector arg;
@@ -53,10 +73,10 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
 
     CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
-    if (required > total) throw ContractStateError("inputs too small");
+    //if (required > total) throw ContractStateError("inputs too small");
     CAmount change = total - required;
 
-    if (change > l15::Dust(*m_mining_fee_rate)) {
+    if (change >= l15::Dust(DUST_RELAY_TX_FEE)) {
         m_outputs.back()->Amount(change);
     }
     else {
@@ -70,13 +90,13 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string ke
 
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
-    for(auto& input: m_inputs) {
+    for(const auto& input: m_inputs) {
         const auto& dest = input.output->Destination();
         spent_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
     }
 
     for(auto& input: m_inputs) {
-        auto& dest = input.output->Destination();
+        auto dest = input.output->Destination();
         auto keypair = dest->LookupKey(master_key, key_filter_tag);
 
         std::vector<bytevector> stack = keypair->Sign(tx, input.nin, spent_outs, SIGHASH_ALL);
@@ -152,10 +172,27 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
     }
 }
 
+CAmount SimpleTransaction::CalculateWholeFee(const string &params) const
+{
+    return l15::CalculateTxFee(*m_mining_fee_rate, MakeTxTemplate());
+}
+
 std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
-    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx()) + total_out);
+    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTxTemplate()) + total_out);
+}
+
+void SimpleTransaction::CheckSig() const
+{
+    std::vector<CTxOut> spent_outs;
+    spent_outs.reserve(m_inputs.size());
+    std::transform(m_inputs.begin(), m_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()), [](const auto& txin){ return CTxOut(txin.output->Destination()->Amount(), txin.output->Destination()->PubKeyScript()); });
+
+    CMutableTransaction tx = MakeTx();
+    for (const auto &input: m_inputs) {
+        VerifyTxSignature(input.output->Destination()->Address(), input.witness, tx, input.nin, spent_outs);
+    }
 }
 
 } // l15::utxord

@@ -117,8 +117,8 @@ enum InscribeType
 enum InscribePhase
 {
     "MARKET_TERMS",
-    "LASY_COLLECTION_MARKET_TERMS",
-    "LASY_COLLECTION_INSCRIPTION_SIGNATURE",
+    "LASY_INSCRIPTION_MARKET_TERMS",
+    "LASY_INSCRIPTION_SIGNATURE",
     "INSCRIPTION_SIGNATURE"
 };
 
@@ -134,12 +134,13 @@ interface CreateInscriptionBuilder
     void MetaData([Const] DOMString hexCborData);
     void InscribeAddress([Const] DOMString inscriptionAddr);
     void ChangeAddress([Const] DOMString changeAddr);
+    void InscribeScriptPubKey([Const] DOMString pk);
+    void InscribeInternalPubKey([Const] DOMString pk);
+    void FundMiningFeeInternalPubKey([Const] DOMString pk);
 
     void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
                                                    [Const] DOMString collectionAddr);
-    void FundMiningFee([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString fundMiningFeeAddr);
-
-    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter, [Const] DOMString scriptPK);
+    void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
     void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     //void SignFundMiningFee(KeyRegistry keyRegistry, [Const] DOMString key_filter);
@@ -152,11 +153,11 @@ interface CreateInscriptionBuilder
 
     [Const] static DOMString SupportedVersions();
 
-    [Value] string getIntermediateTaprootSK();
+    [Value] string GetIntermediateSecKey();
     [Value] string MakeInscriptionId();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
-    [Value] string GetGenesisTxMiningFee();
+    //[Value] string GetGenesisTxMiningFee(); // Why we need it at all??
 
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
@@ -165,13 +166,11 @@ interface CreateInscriptionBuilder
 enum SwapPhase
 {
     "ORD_TERMS",
+    "ORD_SWAP_SIG",
     "FUNDS_TERMS",
     "FUNDS_COMMIT_SIG",
-    "MARKET_PAYOFF_TERMS",
-    "MARKET_PAYOFF_SIG",
-    "ORD_SWAP_SIG",
-    "FUNDS_SWAP_SIG",
-    "MARKET_SWAP_SIG",
+    "FUNDS_SWAP_TERMS",
+    "FUNDS_SWAP_SIG"
 };
 
 [Prefix="utxord::wasm::"]
@@ -182,21 +181,30 @@ interface SwapInscriptionBuilder
     void OrdPrice([Const] DOMString price);
     void MarketFee([Const] DOMString amount, [Const] DOMString addr);
 
-    void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
-    void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void CommitOrdinal([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void FundCommitOrdinal([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr, [Const] DOMString change_addr);
+    void CommitFunds([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+
+    void Brick1SwapUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void Brick2SwapUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void AddMainSwapUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
 
     void ChangeAddress([Const] DOMString changeAddr);
 
     void OrdPayoffAddress([Const] DOMString addr);
     void FundsPayoffAddress([Const] DOMString addr);
 
-    void SwapScriptPubKeyB([Const] DOMString v);
+    void MarketScriptPubKey([Const] DOMString v);
+
+    void OrdScriptPubKey([Const] DOMString v);
+    void OrdIntPubKey([Const] DOMString v);
 
     void SignOrdSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    void SignMarketSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
+    void SignOrdCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignFundsCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignFundsSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
-    void SignFundsPayBack(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
     void CheckContractTerms(SwapPhase phase);
     [Value] string Serialize(long ver, SwapPhase phase);
@@ -208,6 +216,7 @@ interface SwapInscriptionBuilder
     [Const] static DOMString SupportedVersions();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
+    [Value] string GetMinSwapFundingAmount();
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
 };
@@ -219,8 +228,8 @@ interface SimpleTransaction
     void SimpleTransaction(ChainMode mode);
 
     [Value] string TxID();
-    unsigned long NOut();
-    IContractDestination Destination();
+    long CountDestinations();
+    IContractDestination Destination(long n);
 
     void MiningFeeRate([Const] DOMString rate);
     [Value] string GetMinFundingAmount();

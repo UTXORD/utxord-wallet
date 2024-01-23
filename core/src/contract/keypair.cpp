@@ -5,6 +5,8 @@
 
 #include "keypair.hpp"
 #include "utils.hpp"
+#include "chainmode_spec.hpp"
+#include "base58.h"
 
 namespace utxord {
 
@@ -264,6 +266,54 @@ void KeyRegistry::RemoveKeyFromCache(const string &addr)
         m_keys_cache.remove_if([&](const auto& el){ return KeyPair(m_ctx, el).GetP2WPKHAddress(mBech) == addr; });
     else
         throw std::invalid_argument("address: " + addr);
+}
+
+ExtPubKey::ExtPubKey(ChainMode chainmode, const std::string &extpk) : m_chainmode(chainmode)
+{
+    l15::bytevector data;
+    if (!DecodeBase58Check(extpk, data, 78))
+        throw l15::KeyError("Bad base58chech encoding: " + extpk);
+
+    const uint8_t* prefix = chainmode == ChainMode::MAINNET ? XPubPrefix<MAINNET>::value : XPubPrefix<TESTNET>::value;
+    if (!std::equal(prefix, prefix+4, data.begin()))
+        throw l15::KeyError("Wrong extpubkey prefix: " + extpk);
+
+    if (data.size() != 78)
+        throw l15::KeyError("Wrong extpubkey data size: " + std::to_string(data.size()));
+
+    std::clog << "Raw ExtPubKey data: " << l15::hex(data) << std::endl;
+
+    std::copy(data.begin() + 13, data.end(), m_extpk.begin());
+}
+
+std::string ExtPubKey::DeriveAddress(const string &path) const
+{
+    auto branches = spanparsing::Split(path, '/');
+    std::vector<uint32_t> uint_branches;
+    uint_branches.reserve(branches.size());
+
+    for (const auto& branch: branches) {
+        uint32_t index;
+        if (branch[branch.size() - 1] == '\'') throw l15::KeyError("Pubkey derivation cannot use hardened algo");
+
+            // non hardened
+        auto conv_res = std::from_chars(branch.begin(), branch.end(), index);
+        if (conv_res.ec == std::errc::invalid_argument) {
+            throw std::invalid_argument("Wrong hex string");
+        }
+        uint_branches.push_back(index);
+    }
+
+    ExtPubKey extPk = *this;
+    for (uint32_t b: uint_branches) {
+        extPk = extPk.Derive(b);
+    }
+
+    auto tweaked_pk = l15::core::ChannelKeys::AddTapTweak(extPk.GetPubKey());
+
+    Bech32 bech(m_chainmode);
+
+    return bech.Encode(std::get<0>(tweaked_pk));
 }
 
 } // utxord
