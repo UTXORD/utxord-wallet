@@ -30,6 +30,7 @@ import {
   OPEN_START_PAGE,
   PLUGIN_ID,
   PLUGIN_PUBLIC_KEY,
+  PLUGIN_SUPPORTED_VERSIONS,
   POPUP_HEARTBEAT,
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
   SAVE_DATA_FOR_SIGN,
@@ -737,7 +738,10 @@ interface IChunkInscriptionResult {
       console.log(PLUGIN_ID, chrome.runtime.id);
       console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key.PubKey());
+      if(Api.wallet.auth.key) await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
+      const versions = await Api.getSupportedVersions();
+      console.log(PLUGIN_SUPPORTED_VERSIONS, versions);
+      await Api.sendMessageToWebPage(PLUGIN_SUPPORTED_VERSIONS, versions);
       return true;
     }
 
