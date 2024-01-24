@@ -338,7 +338,7 @@ interface IChunkInscriptionResult {
           usedAddressesMap = {...usedAddressesMap, ..._addressesMap(Api.addresses)};
 
           contractData.collection = parentInscription;
-          // console.debug('createChunkInscription: chunk contractData: ', contractData);
+          console.debug('createChunkInscription: chunk contractData: ', contractData);
           const contract = await Api.createInscriptionContract(contractData, 0, true);
           console.debug('createChunkInscription: contract: ', contract);
 
@@ -360,7 +360,7 @@ interface IChunkInscriptionResult {
           if (change?.txid) {
             Api.pushChangeToFunds(change);
           }
-          console.debug("createChunkInscription: Api.fundings:", [...Api.fundings]);
+          // console.debug("createChunkInscription: Api.fundings:", [...Api.fundings]);
 
           const contractResult = await Api.createInscriptionForChunk({
             ...contractData,
@@ -377,7 +377,6 @@ interface IChunkInscriptionResult {
           console.debug('createChunkInscription: result destination_addr:', contractParams.destination_addr);
           console.debug('createChunkInscription: result change_addr:', contractParams.change_addr);
           // console.debug('createChunkInscription: results: ', results);
-          // console.debug('createChunkInscription: Api.addresses:', [...Api.addresses]);
         }
       } catch (e) {
         console.error(`createChunkInscription: ${e.message}`, e.stack);
@@ -393,6 +392,8 @@ interface IChunkInscriptionResult {
 
       // Add new current addresses
       usedAddressesMap = {...usedAddressesMap, ..._addressesMap(Api.addresses)};
+      console.debug('createChunkInscription: usedAddressesMap:', usedAddressesMap);
+
       await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Object.values(usedAddressesMap), chunkData?._tabId);
       await Api.sendMessageToWebPage(CREATE_CHUNK_INSCRIPTION_RESULT, chunkResults, chunkData?._tabId);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, chunkData?._tabId);
