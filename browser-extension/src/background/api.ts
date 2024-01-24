@@ -943,7 +943,7 @@ class Api {
     }
     const currentWindow = await this.WinHelpers.getCurrentWindow()
     sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
-    console.log(type, errorMessage, errorStack);
+    console.error(type, errorMessage, errorStack);
     return type+errorMessage+errorStack;
   }
 
@@ -1017,6 +1017,19 @@ class Api {
       nout: change?.nout,
       amount: this.btcToSat(change?.amount || "0.0"),
       is_inscription: false,
+      is_locked: false,
+      in_queue: true,
+      path: "",
+    });
+  }
+
+  pushOrdToInscriptions(ord) {
+    this.inscriptions.push({
+      address: ord?.address,
+      txid: ord?.txid,
+      nout: ord?.nout,
+      amount: this.btcToSat(ord?.amount || "0.0"),
+      is_inscription: true,
       is_locked: false,
       in_queue: true,
       path: "",
@@ -1340,21 +1353,22 @@ class Api {
 
       return outData;
     } catch (e) {
-      console.error(`${CREATE_INSCRIPTION}: ${e.message}`, e.stack);
       const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
-      if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return;
+      if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return null;
 
-      console.info(CREATE_INSCRIPTION,'call:theIndex:',theIndex);
-      theIndex++;
-      // if (theIndex > 1000) {
-      if (theIndex > 0) {
-        const error = 'error loading wasm libraries, try reloading the extension or this page';
-        console.error(error);
-        await this.sendExceptionMessage(CREATE_INSCRIPTION, error);
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        return outData;
-      }
-      return await myself.createInscriptionContract(payload, theIndex);
+      return null;
+
+      // console.info('createInscriptionContract: call:theIndex:',theIndex);
+      // theIndex++;
+      // // if (theIndex > 1000) {
+      // if (theIndex > 0) {
+      //   const error = 'error loading wasm libraries, try reloading the extension or this page';
+      //   console.error(error);
+      //   await this.sendExceptionMessage(CREATE_INSCRIPTION, error);
+      //   setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+      //   return outData;
+      // }
+      // return await myself.createInscriptionContract(payload, theIndex);
     }
   }
 

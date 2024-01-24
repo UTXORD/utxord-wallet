@@ -121,6 +121,7 @@ interface IChunkInscription {
   fee: number,
   addresses: [],
   parent: null | {
+    btc_owner_address: string,
     genesis_txid: string,
     owner_txid: string,
     owner_nout: number,
@@ -325,6 +326,7 @@ interface IChunkInscriptionResult {
         // prepare first parent
         const inCollection = Boolean(chunkData.parent?.genesis_txid).valueOf();
         parentInscription = chunkData.parent?.genesis_txid ? {...chunkData.parent} : {
+          btc_owner_address: "",
           genesis_txid: "",
           owner_txid: "",
           owner_nout: 0,
@@ -345,6 +347,7 @@ interface IChunkInscriptionResult {
           // update parent for next inscription
           if (inCollection) {
             parentInscription = {
+              btc_owner_address: chunkData.parent?.btc_owner_address,
               genesis_txid: chunkData.parent?.genesis_txid,
               owner_txid: contract.outputs?.inscription?.txid,
               owner_nout: contract.outputs?.inscription?.nout,
@@ -359,6 +362,11 @@ interface IChunkInscriptionResult {
           const change = contract.outputs?.change;
           if (change?.txid) {
             Api.pushChangeToFunds(change);
+          }
+          // add ordinal utxo (if any) to inscriptions
+          const ordinal = contract.outputs?.inscription;
+          if (ordinal?.txid) {
+            Api.pushOrdToInscriptions(ordinal);
           }
           // console.debug("createChunkInscription: Api.fundings:", [...Api.fundings]);
 
@@ -582,11 +590,6 @@ interface IChunkInscriptionResult {
 
       function _fixChunkInscriptionPayload(data: IChunkInscription) {
         for (let inscrData of Array.from(data?.inscriptions || [])) {
-          // inscrData.collection = {
-          //   genesis_txid: "",
-          //   owner_txid: "",
-          //   owner_nout: 0,
-          // };
           inscrData.metadata = {
             title: inscrData.name || "",
             description: inscrData.description || "",
