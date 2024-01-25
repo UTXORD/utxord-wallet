@@ -318,6 +318,15 @@ interface IChunkInscriptionResult {
       let usedAddressesMap = {};
 
       try {
+        /*
+        const debugContractResult = {}
+        const debugOrd = new Api.utxord.CreateInscriptionBuilder(Api.network, Api.utxord.INSCRIPTION);
+        debugOrd.Deserialize(JSON.stringify(debugContractResult));
+        const debugRawTx = await Api.getRawTransactions(debugOrd);
+        console.debug('createChunkInscription: debugContractResult:', debugContractResult);
+        console.debug('createChunkInscription: debugRawTx:', debugRawTx);
+        */
+
         // refresh balances first..
         const balances = await Api.prepareBalances(chunkData.addresses);
         Api.fundings = balances.funds;
@@ -343,6 +352,12 @@ interface IChunkInscriptionResult {
           console.debug('createChunkInscription: chunk contractData: ', contractData);
           const contract = await Api.createInscriptionContract(contractData, 0, true);
           console.debug('createChunkInscription: contract: ', contract);
+
+          // debug log output for rawTx
+          const contractOrd = new Api.utxord.CreateInscriptionBuilder(Api.network, Api.utxord.INSCRIPTION);
+          contractOrd.Deserialize(contract.data);
+          const debugRawTx = await Api.getRawTransactions(contractOrd);
+          console.debug('createChunkInscription: rawTx:', debugRawTx);
 
           // update parent for next inscription
           if (inCollection) {
@@ -384,12 +399,9 @@ interface IChunkInscriptionResult {
           const contractParams = contractResult.contract.params;
           console.debug('createChunkInscription: result destination_addr:', contractParams.destination_addr);
           console.debug('createChunkInscription: result change_addr:', contractParams.change_addr);
-          // console.debug('createChunkInscription: results: ', results);
         }
       } catch (e) {
-        console.error(`createChunkInscription: ${e.message}`, e.stack);
-        error = `${CREATE_CHUNK_INSCRIPTION}: ${e.message || "unknown error"}`;
-        await Api.sendExceptionMessage(CREATE_CHUNK_INSCRIPTION, error);
+        await Api.sendExceptionMessage("createChunkInscription", e);
       }
 
       const chunkResults = {
@@ -427,14 +439,10 @@ interface IChunkInscriptionResult {
           chunkData.inscriptions = store.pop(chunkData?.content_store_key) || [];
           delete chunkData['content_store_key'];
 
-          // console.debug('SUBMIT_SIGN.CREATE_CHUNK_INSCRIPTION: chunkData:', chunkData);
           const chunkResults = await createChunkInscription(chunkData);
-          // console.debug(`SUBMIT_SIGN.CREATE_CHUNK_INSCRIPTION: chunkResults:`, chunkResults);
-
           setTimeout(async () => {
             Api.WinHelpers.closeCurrentWindow();
           },1000);
-
           await Api.encryptedWallet(signData.password);
 
           const success = chunkResults?.inscription_results?.length == chunkData?.inscriptions?.length
@@ -646,18 +654,11 @@ interface IChunkInscriptionResult {
         } else {
           const res = await Api.decryptedWallet(password);
           if (res) {
-            chunkData.inscriptions = store.pop(chunkData?.content_store_key) || [];
-            delete chunkData['content_store_key'];
-
-            console.debug('CREATE_CHUNK_INSCRIPTION: chunkData:', chunkData);
-
             const chunkResults = await createChunkInscription(chunkData);
-
             await Api.encryptedWallet(password);
-
             const success = chunkResults?.inscription_results?.length == chunkData?.inscriptions?.length
                 && !chunkResults.error;
-            console.debug(`CREATE_CHUNK_INSCRIPTION: success: ${success}`);
+            // console.debug(`CREATE_CHUNK_INSCRIPTION: success: ${success}`);
             return success;
           }
           return false;
