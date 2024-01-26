@@ -400,6 +400,9 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     UniValue root;
     root.read(data);
 
+    if (!root.isObject() || !root[name_contract_type].isStr() || !root[name_params].isObject())
+        throw ContractProtocolError("JSON is not CreateInscription contract");
+
     if (root[name_contract_type].get_str() == val_create_inscription) {
         if (m_type != INSCRIPTION) throw ContractTermMismatch (std::string(name_contract_type));
     } else if (root[name_contract_type].get_str() == val_lasy_create_inscription) {

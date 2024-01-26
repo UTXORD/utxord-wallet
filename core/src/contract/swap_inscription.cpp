@@ -734,6 +734,9 @@ void SwapInscriptionBuilder::Deserialize(const string &data)
     UniValue root;
     root.read(data);
 
+    if (!root.isObject() || !root[name_contract_type].isStr() || !root[name_params].isObject())
+        throw ContractProtocolError("JSON is not SwapInscription contract");
+
     if (root[name_contract_type].get_str() != val_swap_inscription) {
         throw ContractProtocolError("SwapInscription contract does not match " + root[name_contract_type].getValStr());
     }
