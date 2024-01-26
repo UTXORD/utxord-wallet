@@ -1179,6 +1179,17 @@ class Api {
           "author_fee": {"amount": 0}
         }
       };
+      const versions = await this.getSupportedVersions();
+      const protocol_version = Number(contract?.params?.protocol_version);
+      if(versions.indexOf(protocol_version) === -1) {
+        myself.sendExceptionMessage(
+          'CREATE_INSCRIPTION',
+          `The plugin version is outdated and no longer compatible with the server, please update to new version.`
+        );
+        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        outData.raw = [];
+        return outData;
+     }
       newOrd.Deserialize(JSON.stringify(contract));
 
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
@@ -1328,8 +1339,7 @@ class Api {
       outData.output_mining_fee = output_mining_fee;
       console.log('output_mining_fee:', output_mining_fee);
 
-      // SupportedVersions()
-      outData.data = newOrd.Serialize(8, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
+      outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
       const sk = newOrd.getIntermediateTaprootSK().c_str();
       myself.wallet.root.key.AddKeyToCache(sk);
@@ -1473,6 +1483,7 @@ class Api {
     const myself = this;
     try {
       const sellOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
+      const protocol_version = Number(contract?.params?.protocol_version);
       sellOrd.Deserialize(JSON.stringify(contract));
       sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
 
@@ -1491,7 +1502,7 @@ class Api {
       const raw = await myself.getRawTransactions(sellOrd, myself.utxord.ORD_SWAP_SIG);
       return {
         raw: raw,
-        contract_data: sellOrd.Serialize(5, myself.utxord.ORD_SWAP_SIG).c_str()
+        contract_data: sellOrd.Serialize(protocol_version, myself.utxord.ORD_SWAP_SIG).c_str()
       };
     } catch (exception) {
       await this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
@@ -1681,6 +1692,7 @@ class Api {
       console.log("utxo_list:",utxo_list);
 
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
+      const protocol_version = Number(payload.swap_ord_terms.contract?.params?.protocol_version);
       buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       buyOrd.CheckContractTerms(myself.utxord.FUNDS_TERMS);
       // outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
@@ -1725,7 +1737,7 @@ class Api {
         return outData;
       }
       outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
-      outData.data = buyOrd.Serialize(5, myself.utxord.FUNDS_COMMIT_SIG).c_str();
+      outData.data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_COMMIT_SIG).c_str();
       return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
@@ -1769,6 +1781,7 @@ class Api {
 
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       // console.log("aaaa");
+      const protocol_version = Number(payload.swap_ord_terms.contract?.params?.protocol_version);
       buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
       buyOrd.SignFundsSwap(
@@ -1776,7 +1789,7 @@ class Api {
         'scrsk'
       );
       const raw = [];  // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
-      const data = buyOrd.Serialize(5, myself.utxord.FUNDS_SWAP_SIG).c_str();
+      const data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_SWAP_SIG).c_str();
 
       await (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
