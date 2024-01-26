@@ -18,7 +18,7 @@ class Rest {
         }
       }
     }catch(e){
-      console.log('Rest::get->error:',e);
+      console.error(`Rest::get->error: ${e.message}`, e.stack);
     }
   }
 }

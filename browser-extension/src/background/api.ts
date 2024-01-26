@@ -249,7 +249,6 @@ class Api {
         this.balances = [];
         this.fundings = [];
         this.inscriptions = [];
-        this.all_addresses = [];
         this.connect = false;
         this.sync = false;
 
@@ -307,39 +306,39 @@ class Api {
     return await chrome.storage.sync.set(Obj);
   }
 
-  async getIndexToStorage(type) {
+  async getIndexFromStorage(type) {
     if(type==='xord' || type==='ext') return;
     return (await chrome.storage.sync.get([`${type}Index`]))[`${type}Index`] || 0
   }
 
   async rememberIndexes() {
     for (const wt of this.wallet_types) {
-      this.wallet[wt].index = await this.getIndexToStorage(wt);
+      this.wallet[wt].index = await this.getIndexFromStorage(wt);
     }
     return true;
   }
 
   path(type) {
-    if(!this.wallet_types.includes(type)) return false;
-    if(!this.checkSeed()) return false;
-    if(type==='xord' || type==='ext') return false;
+    if (!this.wallet_types.includes(type)) return false;
+    if (!this.checkSeed()) return false;
+    if (type === 'xord' || type === 'ext') return false;
     //m / purpose' / coin_type' / account' / change / index
-    let t = this.wallet[type].coin_type;
-    if(this.network === this.utxord.MAINNET  && type!=='auth')  t = 0;
+    const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
     const a = this.wallet[type].account;
     const c = this.wallet[type].change;
     const i = this.wallet[type].index;
-    let purpose = 86;
-    if(this.wallet[type].typeAddress === 1) purpose = 84;
-     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
+    const purpose = (this.wallet[type].typeAddress === 1) ? 84 : 86;
+    return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
   }
-  async setTypeAddress(type, value){
-    if(!this.wallet_types.includes(type)) return false;
-    if(!this.checkSeed()) return false;
-    if(type==='xord' || type==='ext') return false;
+
+  async setTypeAddress(type, value) {
+    if (!this.wallet_types.includes(type)) return false;
+    if (!this.checkSeed()) return false;
+    if (type === 'xord' || type === 'ext') return false;
     this.wallet[type].typeAddress = Number(value);
     return true;
   }
+
   async generateNewIndex(type) {
     if(!this.wallet_types.includes(type)) return false;
     if(!this.checkSeed()) return false;
@@ -365,70 +364,77 @@ class Api {
     return this.wallet[type].index + 1;
   }
 
-  checkAddresess(ext_addresses = []) {
-    if(ext_addresses.length === 0) return false;
-    if(this.addresses.length === 0) return false;
+  hasAllLocalAddressesIn(ext_addresses = []) {
+    if (ext_addresses.length === 0) return false;
+    if (this.addresses.length === 0) return false;
 
     const list = [];
-    for(const item of ext_addresses) {
+    for (const item of ext_addresses) {
       list.push(item.address);
     }
-    for(const value of this.addresses) {
-      if(list.indexOf(value.address) === -1){return false;}
+    for (const value of this.addresses) {
+      if (list.indexOf(value.address) === -1) {
+        return false;
+      }
     }
     return true;
   }
 
-  checkAddress(address, addresses) {
-    if(!addresses){addresses = this.addresses;}
-    for(const item of addresses) {
-      if(item.address === address){return true;}
+  hasAddress(address: string, addresses: object[] | undefined = undefined) {
+    if (!addresses) {
+      addresses = this.addresses;
+    }
+    for (const item of addresses) {
+      if (item.address === address) {
+        return true;
+      }
     }
     return false;
   }
 
-  checkAddressType(type, addresses) {
-    if(!addresses){addresses = this.addresses;}
-    for(const item of addresses) {
-      if(item.type === type){return true;}
+  hasAddressType(type: string, addresses: object[] | undefined = undefined) {
+    if (!addresses) {
+      addresses = this.addresses;
+    }
+    for (const item of addresses) {
+      if (item.type === type) {
+        return true;
+      }
     }
     return false;
   }
-
 
   async restoreTypeIndexFromServer(type, addresses) {
-    let sindex = 0;
     let store_index = 0;
     let wallet_index = 0;
-    if(type!=='xord' && type!=='ext') {
-      sindex = await this.getIndexToStorage(type);
-      store_index = Number(sindex);
+    if (type !== 'xord' && type !== 'ext') {
+      store_index = Number(await this.getIndexFromStorage(type));
       wallet_index = Number(this.getIndex(type));
-      if(store_index > wallet_index) {
+      if (store_index > wallet_index) {
         await this.setIndex(type, store_index)
       }
-      if(store_index < wallet_index) {
+      if (store_index < wallet_index) {
         await this.setIndexToStorage(type, wallet_index);
       }
     }
-    if(addresses) {
-      for(const v of addresses) {
-        if(v.type===type && type!=='xord' && type!=='ext') {
-          const currind = Number(v.index.split('/').pop())
+    if (addresses) {
+      for (const addr of addresses) {
+        if (addr.type === type && type !== 'xord' && type !== 'ext') {
+          const currind = Number(addr.index.split('/').pop())
           if (currind > wallet_index) {
-          //  console.log(`currind for type - ${type}:`,currind)
+            //  console.log(`currind for type - ${type}:`,currind)
             await this.setIndex(type, currind)
             await this.setIndexToStorage(type, currind);
           }
-        }else{
-          if(type==='xord') {
-            let p = v?.index?.split('/')[0];
-            let xord = v?.index?.split('/')[1];
+        } else {
+          if (type === 'xord') {
+            let p = addr?.index?.split('/')[0];
+            let xord = addr?.index?.split('/')[1];
             this.addToXordPubKey(xord);
           }
-          if(type==='ext') {
-            let p = v?.index?.split('/')[0];
-            let ext = v?.index?.split('/')[1];
+          if (type === 'ext') {
+            let p = addr?.index?.split('/')[0];
+            let ext = addr?.index?.split('/')[1];
             this.addToExternalKey(ext);
           }
         }
@@ -436,10 +442,11 @@ class Api {
       }
     }
   }
+
   async restoreAllTypeIndexes(addresses) {
-    for (const key of this.wallet_types) {
-      //console.log(`this.restoreTypeIndexFromServer(${key}, ${addresses})`)
-      await this.restoreTypeIndexFromServer(key, addresses)
+    for (const type of this.wallet_types) {
+      //console.log(`this.restoreTypeIndexFromServer(${type}, ${addresses})`)
+      await this.restoreTypeIndexFromServer(type, addresses)
     }
     return await this.genKeys();
   }
@@ -523,17 +530,17 @@ class Api {
   addToXordPubKey(xordPubkey) {
     const myself = this;
     const tmpAddress = myself.pubKeyStrToP2tr(xordPubkey);
-    if(!myself.checkAddress(tmpAddress, myself.wallet.xord)) {
+    if (!myself.hasAddress(tmpAddress, myself.wallet.xord)) {
       myself.wallet.xord.push({
         p2tr: tmpAddress,
         pubKeyStr: xordPubkey,
         index: `0/${xordPubkey}`
       });
       const xord_keys = []
-      for(const item of this.wallet.xord) {
+      for (const item of this.wallet.xord) {
         xord_keys.push(item.pubKeyStr);
       }
-      chrome.storage.sync.set({ xord_keys: xord_keys});
+      chrome.storage.sync.set({xord_keys: xord_keys});
     }
     return true;
   }
@@ -543,91 +550,98 @@ class Api {
 
     const keypair = new myself.utxord.KeyPair(keyhex);
     const tmpAddress = this.bech.Encode(keypair.PubKey());
-    if(!myself.checkAddress(tmpAddress, this.wallet.ext.keys)) {
+    if (!myself.hasAddress(tmpAddress, this.wallet.ext.keys)) {
       let enkeyhex = keyhex;
       let enFlag = false;
-      if(pass) {
+      if (pass) {
         enkeyhex = this.encrypt(keyhex, pass);
         enFlag = true;
       }
-      console.log('ExternalKeyAddress:',tmpAddress);
+      console.log('ExternalKeyAddress:', tmpAddress);
       this.wallet.ext.keys.push({
         key: keypair,
         p2tr: tmpAddress,
         pubKeyStr: keypair.PubKey(),
         privKeyStr: enkeyhex,
-        index:`${Number(enFlag)}/${enkeyhex}`,
+        index: `${Number(enFlag)}/${enkeyhex}`,
         type: 'ext',
       });
       const ext_keys = []
-      for(const item of this.wallet.ext.keys) {
+      for (const item of this.wallet.ext.keys) {
         ext_keys.push(item.privKeyStr);
       }
-      chrome.storage.sync.set({ ext_keys: ext_keys});
+      chrome.storage.sync.set({ext_keys: ext_keys});
     }
     return true;
   }
 
   resExtKeys(ext_keys) {
     this.wallet.ext.keys = [];
-    for(const item of ext_keys) {
+    for (const item of ext_keys) {
       this.addToExternalKey(item);
     }
     return this.wallet.ext.keys;
   }
 
   genKey(type) {
-    if(!this.wallet_types.includes(type)) return false;
-    if(!this.checkSeed()) return false;
+    if (!this.wallet_types.includes(type)) return false;
+    if (!this.checkSeed()) return false;
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
-    if(this.wallet[type].typeAddress === 1){
+    if (this.wallet[type].typeAddress === 1) {
       this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
       this.wallet[type].address = this.wallet[type].key.GetP2WPKHAddress(this.network);
       return true;
     }
     this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
     this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);
-     return true;
+    return true;
   }
 
   genKeys() { //current keys
     const publicKeys = [];
-    for(const key of this.wallet_types) {
-      if(this.genKey(key)) {
-        if(key!=='auth' && key!=='xord' && key!=='ext') {
-          if(!this.checkAddress(this.wallet[key].address)) {
-            if(!this.checkAddressType(key)) {
-              this.addresses.push({
-                address: this.wallet[key].address,
-                type: key,
-                typeAddress: this.wallet[key].typeAddress,
-                index: this.path(key)
-              });
-            }else{
-              for(const i in this.addresses) {
-                if(this.addresses[i].type === key) {
-                  this.addresses[i] = {
-                    address: this.wallet[key].address,
-                    type: key,
-                    typeAddress: this.wallet[key].typeAddress,
-                    index: this.path(key)
+    for (const type of this.wallet_types) {
+      if (this.genKey(type)) {
+        if (type !== 'auth' && type !== 'xord' && type !== 'ext') {
+          if (!this.hasAddress(this.wallet[type].address)) {
+            if (!this.hasAddressType(type)) {
+              const newAddress = {
+                address: this.wallet[type].address,
+                type: type,
+                typeAddress: this.wallet[type].typeAddress,
+                index: this.path(type)
+              };
+              console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
+              this.addresses.push(newAddress);
+            } else {
+              for (const i in this.addresses) {
+                if (this.addresses[i].type === type) {
+                  console.debug(`genKeys(): update "${type}" addresses from:`, this.addresses[i]);
+                  const newAddress = {
+                    address: this.wallet[type].address,
+                    type: type,
+                    typeAddress: this.wallet[type].typeAddress,
+                    index: this.path(type)
                   };
+                  console.debug(`genKeys(): update "${type}" addresses to:`, newAddress);
+                  this.addresses[i] = newAddress;
                 }
               }
             }
             publicKeys.push({
-              pubKeyStr: this.wallet[key].key.PubKey(),
-              type: key,
+              pubKeyStr: this.wallet[type].key.PubKey(),
+              type: type,
             });
+          } else {
+            console.debug(`genKeys(): already has "${type}" address "${this.wallet[type].address}"`);
           }
         }
       }
     }
     //add ExternalKeyAddress
     //add XordPubKey
-    for(const item of this.wallet.xord) {
-      if(!this.checkAddress(item.address)) {
+    for (const item of this.wallet.xord) {
+      if (!this.hasAddress(item.address)) {
         this.addresses.push({
           address: item.address,
           type: 'xord',
@@ -637,101 +651,55 @@ class Api {
       }
     }
 
-    return { addresses: this.addresses, publicKeys };
+    return {addresses: this.addresses, publicKeys};
   }
 
-  async getBranchKey(path, item) {
-    try{
-      if(path[0]==='m') {
-        const for_script = (item?.type === 'uns' || item?.type === 'intsk' || item?.type === 'scrsk' || item?.type === 'auth');
-        const keypair = this.wallet.root.key.Derive(path, for_script);
-        const address = keypair.GetP2TRAddress(this.network);
-        return {address: address, key: keypair};
-      }else{
-        if(item?.type==='ext' || item?.type==='xord') {
-          let pubkey='';
-          if(item?.type === 'xord'){ pubkey = item.index.split('/')[1]; }
-          return {address: item.address, key: { pubKeyStr: pubkey }};
-        }
-      }
-    }catch(e) {
-      console.log("getBranchKey->error:",e);
+  async freeBalance(balance) {
+    for (const item of balance) {
+      this.destroy(item.key);
     }
+    return [];
   }
-
-  async getAllAddresses(addresses) {
-    const myself = this;
-    const ret = [];
-    if(addresses?.length) {
-      for(const item of addresses) {
-        let br = await myself.getBranchKey(item?.index, item);
-        if(br?.address !== item?.address) {
-          console.log("skip: getAllAddresses->1|address:",br?.address,"|item.address:",item?.address);
-        }else{
-          ret.push({
-            ...item,
-            path: item.index,
-            key: br.key,
-          });
-        }
-      }
-    }
-   return ret;
-  }
-
- async freeBalance(balance) {
-   for(const item of balance) {
-     this.destroy(item.key);
-   }
-   return [];
- }
 
   async prepareBalances(balances) {
-     const myself = this;
-     let list = this.balances?.addresses;
-     if(balances) {
-       list = balances;
-     }
-     const funds = [];
-     const inscriptions = [];
-     if(list?.length) {
-       for (const item of list) {
-         for (const i of item?.utxo_set || []) {
-           let br = await myself.getBranchKey(item.index, item);
-             if(br?.address === item?.address) {
-               if (!i?.is_inscription) {
-                 funds.push({
-                   ...i,
-                   address: item.address,
-                   path: item.index,
-                   key: br.key,
-                 });
-                }else{
-                inscriptions.push({
-                     ...i,
-                     address: item.address,
-                     path: item.index,
-                     key: br.key,
-                   });
-                }
-             }else{
-               console.log("skip: prepareBalances->1|address:", br?.address,"|item.address:", item?.address);
-             }
+    const myself = this;
+    let list = this.balances?.addresses;
+    if (balances) {
+      list = balances;
+    }
+    const funds = [];
+    const inscriptions = [];
+    if (list?.length) {
+      for (const item of list) {
+        for (const i of item?.utxo_set || []) {
+          if (!i?.is_inscription) {
+            funds.push({
+              ...i,
+              address: item.address,
+              path: item.index,
+            });
+          } else {
+            inscriptions.push({
+              ...i,
+              address: item.address,
+              path: item.index,
+            });
           }
-       }
+        }
+      }
     }
     return {funds, inscriptions};
   }
 
   async sumAllFunds(all_funds) {
     if(!all_funds) return 0;
-    console.log('sumAllFunds:',all_funds)
+    // console.log('sumAllFunds:',all_funds)
     return all_funds?.reduce((a,b)=>a+b?.amount, 0);
   }
 
   async sumMyInscribtions(inscriptions) {
     if(!inscriptions) return 0;
-    console.log('sumMyInscribtions:',inscriptions)
+    // console.log('sumMyInscribtions:',inscriptions)
     return inscriptions?.reduce((a,b)=>a+b?.amount, 0);
   }
 
@@ -823,15 +791,15 @@ class Api {
     return;
   }
 
-  async selectByFundOutput(txid, nout, fundings = []) {
+  selectByFundOutput(txid, nout, fundings = []) {
     const myself = this;
     let list = myself.fundings;
-    if(fundings.length > 0) {
+    if (fundings.length > 0) {
       list = fundings;
     }
-    if(list) {
-      for(const item of list) {
-        if(txid === item.txid && nout === item.nout) {
+    if (list) {
+      for (const item of list) {
+        if (txid === item.txid && nout === item.nout) {
           return item;
         }
       }
@@ -975,7 +943,7 @@ class Api {
     }
     const currentWindow = await this.WinHelpers.getCurrentWindow()
     sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
-    console.log(type, errorMessage, errorStack);
+    console.error(type, errorMessage, errorStack);
     return type+errorMessage+errorStack;
   }
 
@@ -1022,7 +990,6 @@ class Api {
 
     const total = await this.sumAllFunds(all_funds);
     const sum_my_inscr = await this.sumMyInscribtions(my);
-    console.log('this.all_addresses:',this.all_addresses);
     return {
       data: {
         sync: this.sync,
@@ -1034,6 +1001,39 @@ class Api {
         inscriptions: my || []
       }
     };
+  }
+
+  updateFundsByOutputs(fund_list, update = {}) {
+    for (const fund of fund_list) {
+      let utxo = this.selectByFundOutput(fund.txid, fund.nout);
+      Object.assign(utxo, update);
+    }
+  }
+
+  pushChangeToFunds(change) {
+    this.fundings.push({
+      address: change?.address,
+      txid: change?.txid,
+      nout: change?.nout,
+      amount: this.btcToSat(change?.amount || "0.0"),
+      is_inscription: false,
+      is_locked: false,
+      in_queue: true,
+      path: "",
+    });
+  }
+
+  pushOrdToInscriptions(ord) {
+    this.inscriptions.push({
+      address: ord?.address,
+      txid: ord?.txid,
+      nout: ord?.nout,
+      amount: this.btcToSat(ord?.amount || "0.0"),
+      is_inscription: true,
+      is_locked: false,
+      in_queue: true,
+      path: "",
+    });
   }
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
@@ -1113,7 +1113,17 @@ class Api {
 
   //------------------------------------------------------------------------------
 
-  async createInscriptionContract(payload, theIndex = 0) {
+  async estimateInscription(payload) {
+    return await this.createInscriptionContract({
+      ...payload,
+      content: new ArrayBuffer(payload.content_length),
+      content_length: undefined
+    });
+  }
+
+  //------------------------------------------------------------------------------
+
+  async createInscriptionContract(payload, theIndex = 0, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
       xord: null,
@@ -1128,12 +1138,17 @@ class Api {
       expect_amount: Number(payload.expect_amount),
       fee_rate: payload.fee_rate,
       fee: payload.fee,
-      size: (payload.content.length+payload.content_type.length),
+      size: (payload.content.length + payload.content_type.length),
       raw: [],
+      outputs: {
+        collection: {} as object | null,
+        inscription: {} as object | null,
+        change: {} as object | null,
+      },
       errorMessage: null as string | null
     };
     try {
-      console.log('createInscription payload: ', {...payload || {}});
+      console.log('createInscriptionContract payload: ', {...payload || {}});
 
       let collection;
       let flagsFundingOptions = "";
@@ -1182,12 +1197,12 @@ class Api {
       // For now it's just a support for title and description
       if(payload.metadata) {
         console.log('payload.metadata:',payload.metadata);
-        const encoded = cbor.encode(payload.metadata);
-        await newOrd.MetaData(myself.arrayBufferToHex(encoded));
+        await newOrd.MetaData(myself.arrayBufferToHex(cbor.encode(payload.metadata)));
       }
 
       await newOrd.MiningFeeRate((myself.satToBtc(payload.fee_rate)).toFixed(8));  // payload.fee_rate as Sat/kB
 
+      let collection_addr = null;
       if(payload?.collection?.genesis_txid) {
         // collection is empty no output has been found, see code above
         if(!collection) {
@@ -1201,8 +1216,7 @@ class Api {
           // outData.raw = await myself.getRawTransactions(newOrd);
           outData.raw = [];
           return outData;
-       }
-
+        }
         newOrd.AddToCollection(
           `${payload.collection.genesis_txid}i0`,  // inscription ID = <genesis_txid>i<envelope(inscription)_number>
           payload.collection.owner_txid,  // current collection utxo
@@ -1210,11 +1224,13 @@ class Api {
           (myself.satToBtc(collection.amount)).toFixed(8),  // amount from collection utxo
           payload.collection.btc_owner_address
         )
+        collection_addr = payload.collection.btc_owner_address;
       }
 
       await newOrd.Data(payload.content_type, payload.content);
-      await newOrd.InscribeAddress(myself.wallet.ord.key.GetP2TRAddress(this.network));
-      await newOrd.ChangeAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
+
+      await newOrd.InscribeAddress(myself.wallet.ord.address);
+      await newOrd.ChangeAddress(myself.wallet.fund.address);
 
       const min_fund_amount = myself.btcToSat(Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
@@ -1235,7 +1251,7 @@ class Api {
           outData.raw = [];
           return outData;
       }
-      const utxo_list = await myself.selectKeysByFunds(min_fund_amount);
+      const utxo_list = await myself.selectKeysByFunds(min_fund_amount, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list;
       const inputs_sum = await myself.sumAllFunds(utxo_list);
       outData.inputs_sum = inputs_sum;
@@ -1331,28 +1347,89 @@ class Api {
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
 
-      return outData;
-    } catch (exception) {
-      const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, exception);
-      if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return;
+      outData.outputs = {
+        collection: {
+          ...JSON.parse(newOrd.GetCollectionLocation().c_str() || "{}"),
+          address: collection_addr
+        },
+        inscription: {
+          ...JSON.parse(newOrd.GetInscriptionLocation().c_str() || "{}"),
+          address: myself.wallet.ord.address
+        },
+        change: {
+          ...JSON.parse(newOrd.GetChangeLocation().c_str() || "{}"),
+          address: myself.wallet.fund.address},
+      };
 
-      console.info(CREATE_INSCRIPTION,'call:theIndex:',theIndex);
-      theIndex++;
-      if(theIndex>1000) {
-        this.sendExceptionMessage(CREATE_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        return outData;
-      }
-      return await myself.createInscriptionContract(payload, theIndex);
+      return outData;
+    } catch (e) {
+      const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
+      if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return null;
+
+      return null;
+
+      // console.info('createInscriptionContract: call:theIndex:',theIndex);
+      // theIndex++;
+      // // if (theIndex > 1000) {
+      // if (theIndex > 0) {
+      //   const error = 'error loading wasm libraries, try reloading the extension or this page';
+      //   console.error(error);
+      //   await this.sendExceptionMessage(CREATE_INSCRIPTION, error);
+      //   setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+      //   return outData;
+      // }
+      // return await myself.createInscriptionContract(payload, theIndex);
     }
   }
 
   //------------------------------------------------------------------------------
+
+  async createInscriptionForChunk(payload_data) {
+    const myself = this;
+    console.log('createInscriptionForChunk payload: ', {...payload_data || {}});
+
+    if(!payload_data?.costs?.data) return null;
+
+    if(payload_data.costs) {
+      if(payload_data.costs?.xord) {
+        myself.addToXordPubKey(payload_data.costs?.xord);
+      }
+      if(payload_data.costs?.nxord) {
+        myself.addToXordPubKey(payload_data.costs?.nxord);
+      }
+      // TODO: Check it against server/backend. Are we still need it?
+      // if(payload_data.costs?.sk){
+      //   myself.addToExternalKey(payload_data.costs?.sk);
+      //   console.log(" sk:", payload_data.costs?.sk);
+      // }
+    }
+    const result = {
+      contract: JSON.parse(payload_data.costs.data),
+      name: payload_data.name,
+      description: payload_data?.description,
+      type: payload_data?.type
+    };
+
+    // TODO: to debug this part when backend will ready for addresses support
+    await myself.generateNewIndex('ord');
+    await myself.generateNewIndex('uns');
+    if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
+      await myself.generateNewIndex('intsk');
+      await myself.generateNewIndex('scrsk');
+    }
+    myself.genKeys();
+
+    return result;
+  }
+
+  //------------------------------------------------------------------------------
+
   async createInscription(payload_data) {
     const myself = this;
     if(!payload_data?.costs?.data) return;
     try{
-      console.log("outData:", payload_data.costs.data);
+      console.log('createInscription payload: ', {...payload_data || {}});
+      // console.log("outData:", payload_data.costs.data);
       if(payload_data.costs) {
         if(payload_data.costs?.xord) {
           myself.addToXordPubKey(payload_data.costs?.xord);
@@ -1371,23 +1448,19 @@ class Api {
       }
 
       setTimeout(async () => {
-        console.log(CREATE_INSCRIBE_RESULT,": ",{
+        const result = {
           contract: JSON.parse(payload_data.costs.data),
           name: payload_data.name,
           description: payload_data?.description,
           type: payload_data?.type
-        });
+        };
+        console.log(CREATE_INSCRIBE_RESULT,": ", result);
 
         // ======================================================================
         // TODO: to debug this part when backend will ready for addresses support
         // ----------------------------------------------------------------------
         myself.WinHelpers.closeCurrentWindow();
-        await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, {
-          contract: JSON.parse(payload_data.costs.data),
-          name: payload_data.name,
-          description: payload_data?.description,
-          type: payload_data?.type
-        }, payload_data._tabId);
+        await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, result, payload_data._tabId);
 
         await myself.generateNewIndex('ord');
         await myself.generateNewIndex('uns');
@@ -1399,9 +1472,8 @@ class Api {
         // ======================================================================
       },1000);
 
-
     } catch (exception) {
-      this.sendExceptionMessage(CREATE_INSCRIPTION, exception)
+      await this.sendExceptionMessage(CREATE_INSCRIPTION, exception)
     }
   }
 
@@ -1433,7 +1505,7 @@ class Api {
         contract_data: sellOrd.Serialize(protocol_version, myself.utxord.ORD_SWAP_SIG).c_str()
       };
     } catch (exception) {
-      this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
+      await this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
     }
   }
 
@@ -1471,7 +1543,7 @@ class Api {
       };
 
     } catch (exception) {
-      this.sendExceptionMessage('SELL_INSCRIPTION_CONTRACT', exception);
+      await this.sendExceptionMessage('SELL_INSCRIPTION_CONTRACT', exception);
     }
   }
 
@@ -1491,7 +1563,7 @@ class Api {
       })(data);
 
     } catch (exception) {
-      this.sendExceptionMessage(SELL_INSCRIPTION, exception)
+      await this.sendExceptionMessage(SELL_INSCRIPTION, exception)
     }
   }
 
@@ -1507,73 +1579,73 @@ class Api {
 
   //----------------------------------------------------------------------------
 
-  async selectKeysByFunds(target: number, fundings = [], except_items = []) {
+  async selectKeysByFunds(target: number, fundings = [], except_items = [], use_funds_in_queue = false) {
     const addr_list = [];
-    let iter = 0;
 
+    // use custom funds if provided, otherwise use default ones
     let all_funds_list = this.fundings;
-    if(fundings.length > 0) {
+    if (fundings.length > 0) {
       all_funds_list = fundings;
     }
-    let all_funds = [];
+    let selected_funds = [];
+
+    // select non-excluded funds
     const excepts = this.exOutputs(except_items);
-    console.log('excepts:',excepts);
-    console.log('all_funds_list:',all_funds_list);
-    for(const al of all_funds_list) {
-      let aloutput=`${al.txid}:${al.nout}`;
-      if(!excepts?.includes(aloutput)) {
-        all_funds.push({...al, output: aloutput});
+    console.log('excepts:', excepts);
+    console.log('all_funds_list:', all_funds_list);
+    for (const al of all_funds_list) {
+      let aloutput = `${al.txid}:${al.nout}`;
+      if (!excepts?.includes(aloutput) && !al.is_locked && (!al.in_queue || use_funds_in_queue)) {
+        selected_funds.push({...al, output: aloutput});
       }
     }
-    console.log('all_funds:',all_funds);
-    const sum_funds = await this.sumAllFunds(all_funds);
+    console.log('selected_funds:', selected_funds);
 
-    if(sum_funds < target) {
-      console.log(sum_funds,"sum<target",target);
+    // check total available amount
+    const sum_funds = await this.sumAllFunds(selected_funds);
+    if (sum_funds < target) {
+      console.log(sum_funds, "sum<target", target);
       return [];
     }
-    if(all_funds?.length === 0) {
-      console.log(all_funds,"no funds");
+    if (selected_funds?.length === 0) {
+      console.log(selected_funds, "no funds");
       return [];
-
     }
-    console.log("selectKeysByFunds->getAllFunds->all_funds:",all_funds);
+    console.log("selectKeysByFunds->getAllFunds->selected_funds:", selected_funds);
 
-    all_funds = all_funds.sort((a, b) => {
-      if (a.amount > b.amount) { return 1; }
-      if (a.amount < b.amount) { return -1; }
+    selected_funds = selected_funds.sort((a, b) => {
+      if (a.amount > b.amount) return 1;
+      if (a.amount < b.amount) return -1;
       return 0;
     });
 
-    for(const al of all_funds) {
-      if(al.amount >= target) {
-        addr_list.push({...al});
+    // Use single fund that is enough if possible
+    for (const selected of selected_funds) {
+      if (selected.amount >= target) {
+        addr_list.push({...selected});
         return addr_list;
       }
     }
 
+    // Collect funds for target amount
     let sum_addr = 0;
-    console.log('selectKeysByFunds2->all_funds:',all_funds);
-    for(const utxo of all_funds) {
-          sum_addr += utxo.amount;
-          iter += 1;
-          let br = await this.getBranchKey(utxo.path, utxo);
-          if(br?.address !== utxo?.address) {
-            console.log("selectKeysByFunds->2|address:",br?.address,"|utxo.address:",utxo?.address);
-          }else{
-            console.log('iter2->key:',br?.key,'|',utxo?.address);
-            addr_list.push({
-              amount: utxo?.amount,
-              nout: utxo?.nout,
-              txid: utxo?.txid,
-              path: utxo?.path,
-              address: utxo?.address,
-              key: br?.key
-            });
-          }
-          if(sum_addr>=target){ return addr_list;}
-        }
-}
+    console.log('selectKeysByFunds2->selected_funds:', selected_funds);
+    for (const utxo of selected_funds) {
+      sum_addr += utxo.amount;
+      addr_list.push({
+        amount: utxo?.amount,
+        nout: utxo?.nout,
+        txid: utxo?.txid,
+        path: utxo?.path,
+        address: utxo?.address,
+      });
+      if (sum_addr >= target) {
+        return addr_list;
+      }
+      // It shouldn't happen due to sum_funds check above. However, let it be for a sake of style.
+      return [];
+    }
+  }
 
   async  commitBuyInscriptionContract(payload, theIndex=0) {
     const myself = this;
@@ -1674,7 +1746,7 @@ class Api {
       console.info(COMMIT_BUY_INSCRIPTION,'call:theIndex:',theIndex);
       theIndex++;
       if(theIndex>1000) {
-        this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
+        await this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
         setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         return outData;
       }
@@ -1695,7 +1767,7 @@ class Api {
           contract: JSON.parse(payload_data.costs.data)
         }, payload_data?._tabId);
     } catch (exception) {
-      this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
+      await this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
     }
   }
 
@@ -1719,7 +1791,7 @@ class Api {
       const raw = [];  // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
       const data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_SWAP_SIG).c_str();
 
-      (async (data, payload) => {
+      await (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
         await myself.sendMessageToWebPage(
           SIGN_BUY_INSCRIBE_RESULT,
@@ -1728,11 +1800,11 @@ class Api {
         );
         await myself.generateNewIndex('scrsk');
         await myself.generateNewIndex('ord');
-        await myself.genKeys();
+        myself.genKeys();
       })(data, payload);
 
     } catch (exception) {
-      this.sendExceptionMessage(BUY_INSCRIPTION, exception)
+      await this.sendExceptionMessage(BUY_INSCRIPTION, exception)
     }
   }
 
@@ -1835,7 +1907,7 @@ class Api {
     const ps = await this.checkPassword(password);
     //console.log('ps',ps,'password:',password)
     if(!ps) {
-      this.sendExceptionMessage(
+      await this.sendExceptionMessage(
         DECRYPTED_WALLET,
         "The wallet is encrypted please enter the correct password to unlock the keys"
       );
