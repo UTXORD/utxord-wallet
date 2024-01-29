@@ -40,6 +40,7 @@ class CreateInscriptionBuilder: public ContractBuilder
 
     std::optional<std::string> m_parent_collection_id;
     std::optional<ContractInput> m_collection_input;
+    std::optional<std::string> m_collection_address_override;
 
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
@@ -168,6 +169,9 @@ public:
 
     void Collection(const std::string& collection_id, const std::string& amount, const std::string& collection_addr)
     { AddToCollection(collection_id, uint256(0).GetHex(), 1, amount, collection_addr); }
+
+    void OverrideCollectionAddress(const std::string& addr)
+    { m_collection_address_override = addr; }
 
     std::string MakeInscriptionId() const;
 
