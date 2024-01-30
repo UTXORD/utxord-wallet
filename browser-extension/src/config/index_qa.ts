@@ -14,7 +14,7 @@ export const NETWORK = TESTNET;
 
 export const PROD_URL_PATTERN = 'https://utxord.com/*';
 export const STAGE_URL_PATTERN = 'https://qa.utxord.com/*';
-export const TEMP_STAGE_URL_PATTERN = 'http://10.1.10.100:8000/*';
+export const TEMP_STAGE_URL_PATTERN = 'http://10.1.10.100:8080/*';
 export const ETWOE_URL_PATTERN = 'https://e2e.utxord.com/*';
 export const LOCAL_URL_PATTERN = 'http://localhost:9000/*';
 
