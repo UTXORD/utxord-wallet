@@ -35,6 +35,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
         matches: [
             'https://utxord.com/*',
             'https://qa.utxord.com/*',
+            'http://10.1.10.100:8080/*',
             'https://e2e.utxord.com/*',
             'http://localhost/*',
             'http://127.0.0.1/*'
@@ -45,6 +46,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     host_permissions: [
         'https://utxord.com/*',
         'https://qa.utxord.com/*',
+        'http://10.1.10.100:8080/*',
         'https://e2e.utxord.com/*',
         'http://localhost/*',
         'http://127.0.0.1/*'
