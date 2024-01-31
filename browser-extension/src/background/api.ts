@@ -228,6 +228,62 @@ class Api {
     'KeyError',
     'TransactionError'
   ]
+  exception_count: number = 0
+  warning_count: number = 0
+
+  async exportProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
+    const out = {name, props, list, args, proto, lvl};
+    const myself = this;
+    if(obj == null) return out;
+    let methods = Object.getOwnPropertyNames(obj).filter((n) => n[0]!== '_');
+    if(methods.length === 3 && methods.indexOf('length') !== -1 && methods.indexOf('prototype') !== -1){
+      out.args = obj.length;
+      out.lvl += 1;
+      out.proto = true;
+      return await this.exportProps(
+        obj.prototype,
+        out.name,
+        out.props,
+        out.list,
+        out.args,
+        out.proto,
+        out.lvl
+      );
+    }
+    for (let m of methods){
+      if((typeof obj[m]) === 'function' &&
+        m.indexOf('dynCall') === -1 &&
+        m.indexOf('constructor') === -1 &&
+        out.lvl < 8){
+        out.list.push(m);
+        let prps = await this.exportProps(obj[m],m,{},[],0,false, out.lvl+1);
+        out.props[m] = prps;
+        obj[`$_${m}`] = obj[m];
+        obj[`$_${m}`].prototype = obj[m].prototype;
+        obj[`_${m}`] = function(){
+            try{
+              let o;
+              if(!out.proto && out.lvl === 0){
+                o = new (obj[`$_${m}`])(...arguments);
+              }else{
+                o = this[`$_${m}`](...arguments);
+              }
+              return o;
+            }catch(e){
+              myself.sendExceptionMessage(m, e);
+              return null;
+            }
+        };
+        delete(obj[m]);
+        obj[m] = obj[`_${m}`];
+        obj[m].prototype = obj[`$_${m}`].prototype;
+        delete(obj[`_${m}`]);
+
+      }
+    }
+    return out;
+  }
+
 
   constructor(network) {
     return (async () => {
@@ -257,7 +313,6 @@ class Api {
       } catch(e) {
         console.log('constructor->error:',e);
         chrome.runtime.reload();
-
       }
     })();
   }
@@ -283,6 +338,7 @@ class Api {
       }
       await myself.rememberIndexes();
       console.log('init...');
+      await myself.exportProps(myself.utxord, 'utxord'); // add wrapper
       myself.genRootKey();
       if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
         myself.genKeys();
@@ -295,7 +351,7 @@ class Api {
         }
       }
     } catch (e) {
-      console.log('init()->error:', myself.getErrorMessage(e));
+       myself.sendExceptionMessage('PLUGIN_INIT', e);
     }
   }
 
@@ -506,6 +562,7 @@ class Api {
     if (this.wallet.root.key) return this.wallet.root.key;
     console.log('seed:',this.getSeed());
     this.wallet.root.key = new this.utxord?.KeyRegistry(this.network, this.getSeed());
+    console.log('root',this.wallet.root);
     for(const type of this.wallet_types) {
       if(type !== 'auth') {
         console.log('type: ',type,'|json: ',JSON.stringify(this.wallet[type].filter))
@@ -524,7 +581,7 @@ class Api {
   }
 
   pubKeyStrToP2tr(publicKey) {
-    return this.bech.Encode(publicKey).c_str();
+    return this.bech.Encode(publicKey)?.c_str();
   }
 
   addToXordPubKey(xordPubkey) {
@@ -889,62 +946,56 @@ class Api {
     return buffer.Buffer.from(hex, 'hex');
   }
 
-  getErrorMessage(exception: number | Exception) {
-    if ('number' !== typeof(exception)) {
-      return exception;
-    }
-    return this.utxord.Exception.prototype.getMessage(exception);
-  }
+  getErrorMessage(exception: any) {
+   if(typeof exception === 'number'){
+     return this.utxord.Exception.prototype.getMessage(Number.parseInt(exception, 10))
+   }
+   return exception;
+ }
 
   async sendNotificationMessage(type?: string, message: any) {
+    console.info(NOTIFICATION, type, message);
+    if(this.exception_count > 0 || this.warning_count > 0) return ;
     const currentWindow = await this.WinHelpers.getCurrentWindow()
     sendMessage(NOTIFICATION , `${message}`, `popup@${currentWindow.id}`)
-    console.log(NOTIFICATION, type, message);
-    return true;
+    return `${message}`;
   }
 
   async sendWarningMessage(type?: string, warning: any) {
-    let errorMessage;
-    let errorStack;
-    if(typeof warning === 'number') {
-      errorMessage = this.getErrorMessage(Number.parseInt(warning, 10));
+    let errorStack = '';
+    warning = this.getErrorMessage(warning);
+    const errorMessage = warning?.message || warning;
+    if(warning?.name) type = warning?.name;
+    if(warning?.stack) errorStack = warning?.stack;
 
-    }else{
-      errorMessage = warning;
-      if(warning?.message) {
-        errorMessage = warning?.message;
-        type = warning?.name;
-        errorStack = warning?.stack;
-      }
-    }
     const currentWindow = await this.WinHelpers.getCurrentWindow()
-    sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`)
-    console.log(type, errorMessage, errorStack);
-    return type+errorMessage+errorStack;
+    this.warning_count += 1;
+    if(this.warning_count === 1){
+      sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`);
+      setTimeout(() =>this.warning_count = 0, 3000);
+    }
+    console.warn(type, errorMessage, errorStack);
+
+
+    return `${type} ${errorMessage} ${errorStack}`;
   }
 
   async sendExceptionMessage(type?: string, exception: any) {
-    let errorMessage;
-    let errorStack;
-    if(typeof exception === 'number') {
-      errorMessage = this.getErrorMessage(Number.parseInt(exception, 10));
+    let errorStack = '';
+    exception = this.getErrorMessage(exception);
+    const errorMessage = exception?.message || exception;
+    if(exception?.name) type = exception?.name;
+    if(exception?.stack) errorStack = exception?.stack;
 
-    }else{
-      errorMessage = exception;
-      if(exception?.message) {
-        errorMessage = exception?.message;
-        type = exception?.name;
-        errorStack = exception?.stack;
-      }
-    }
-    if(errorMessage.indexOf('Aborted(OOM)')!==-1) {
-      console.log('wasm->load::Error{',errorMessage,'}');
-      return errorMessage;
-    }
     const currentWindow = await this.WinHelpers.getCurrentWindow()
-    sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
+    this.exception_count += 1;
+    if(this.exception_count === 1){
+      sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
+      setTimeout(() =>this.exception_count = 0, 3000);
+    }
     console.error(type, errorMessage, errorStack);
-    return type+errorMessage+errorStack;
+
+    return `${type} ${errorMessage} ${errorStack}`;
   }
 
   async fetchAddress(address: string) {
@@ -1049,7 +1100,7 @@ class Api {
       });
     }
     if(!args){
-      console.error('sendMessageToWebPage-> error no args:', args,'type:', type);
+      console.warn('sendMessageToWebPage-> error no args:', args,'type:', type);
       return null;
     }
     // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
@@ -1103,9 +1154,9 @@ class Api {
     const raw = [];
     for(let i = 0; i < raw_size; i += 1) {
       if(phase!==undefined) {
-        raw.push(builderObject.RawTransaction(phase, i).c_str())
+        raw.push(builderObject.RawTransaction(phase, i)?.c_str())
       }else{
-        raw.push(builderObject.RawTransaction(i).c_str())
+        raw.push(builderObject.RawTransaction(i)?.c_str())
       }
     }
     return raw;
@@ -1179,17 +1230,16 @@ class Api {
           "author_fee": {"amount": 0}
         }
       };
+      // TODO: You need to do it wherever the version comes from the server!!!
       const versions = await this.getSupportedVersions();
       const protocol_version = Number(contract?.params?.protocol_version);
       if(versions.indexOf(protocol_version) === -1) {
-        myself.sendExceptionMessage(
-          'CREATE_INSCRIPTION',
-          `The plugin version is outdated and no longer compatible with the server, please update to new version.`
-        );
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        myself.sendWarningMessage('CREATE_INSCRIPTION', 'Please update the plugin to new version.')
+        outData.errorMessage = 'Please update the plugin to new version.';
         outData.raw = [];
         return outData;
      }
+
       newOrd.Deserialize(JSON.stringify(contract));
 
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
@@ -1206,7 +1256,7 @@ class Api {
       if(payload?.collection?.genesis_txid) {
         // collection is empty no output has been found, see code above
         if(!collection) {
-          myself.sendExceptionMessage(
+          myself.sendWarningMessage(
             'CREATE_INSCRIPTION',
             `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
           );
@@ -1234,7 +1284,7 @@ class Api {
 
       const min_fund_amount = myself.btcToSat(Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
-      ).c_str()));
+      )?.c_str()));
       outData.amount = min_fund_amount;
       if(!myself.fundings.length ) {
           // TODO: REWORK FUNDS EXCEPTION
@@ -1243,8 +1293,9 @@ class Api {
           //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
           // );
           // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-          outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
-              "wait for several conformations or wait update on the server.";
+          // outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
+          //     "wait for several conformations or wait update on the server.";
+          outData.errorMessage = "Insufficient funds. Please add.";
           // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
           // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
@@ -1264,8 +1315,7 @@ class Api {
           //   `${min_fund_amount} sat`
           // );
           // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-          outData.errorMessage = "There are no funds to create of the Inscription, please replenish the amount: "+
-            `${min_fund_amount} sat`
+          outData.errorMessage = "Insufficient funds. Please add.";
           // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
           // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
@@ -1290,17 +1340,11 @@ class Api {
         );
       }
 
-      try {
         await newOrd.SignCommit(
           myself.wallet.root.key,
           'fund',
           myself.wallet.uns.key.PubKey()
         );
-      } catch (e) {
-        console.log('SignCommit:',myself.getErrorMessage(e));
-      }
-
-      try {
         // get front root ord and select to addres or pubkey
         // collection_utxo_key (root! image key) (current utxo key)
         if(payload?.collection?.genesis_txid) {
@@ -1309,22 +1353,15 @@ class Api {
             'ord'
           );
         }
-      } catch (e) {
-        console.log('SignCollection:',myself.getErrorMessage(e));
-      }
 
-      try {
         await newOrd.SignInscription(
           myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
           'uns'
         );
-      } catch (e) {
-        console.log('SignInscription:',myself.getErrorMessage(e));
-      }
 
       const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
-      ).c_str());
+      )?.c_str());
 
       console.log('min_fund_amount_final_btc:',min_fund_amount_final_btc);
       const min_fund_amount_final = await myself.btcToSat(min_fund_amount_final_btc);
@@ -1335,29 +1372,29 @@ class Api {
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
       outData.utxo_list = utxo_list_final;
 
-      const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee().c_str()));
+      const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee()?.c_str()));
       outData.output_mining_fee = output_mining_fee;
       console.log('output_mining_fee:', output_mining_fee);
 
-      outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE).c_str();
+      outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
-      const sk = newOrd.getIntermediateTaprootSK().c_str();
+      const sk = newOrd.getIntermediateTaprootSK()?.c_str();
       myself.wallet.root.key.AddKeyToCache(sk);
-      // outData.sk = newOrd.getIntermediateTaprootSK().c_str();  // TODO: use/create ticket for excluded sk (UT-???)
+      // outData.sk = newOrd.getIntermediateTaprootSK()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
 
       outData.outputs = {
         collection: {
-          ...JSON.parse(newOrd.GetCollectionLocation().c_str() || "{}"),
+          ...JSON.parse(newOrd.GetCollectionLocation()?.c_str() || "{}"),
           address: collection_addr
         },
         inscription: {
-          ...JSON.parse(newOrd.GetInscriptionLocation().c_str() || "{}"),
+          ...JSON.parse(newOrd.GetInscriptionLocation()?.c_str() || "{}"),
           address: myself.wallet.ord.address
         },
         change: {
-          ...JSON.parse(newOrd.GetChangeLocation().c_str() || "{}"),
+          ...JSON.parse(newOrd.GetChangeLocation()?.c_str() || "{}"),
           address: myself.wallet.fund.address},
       };
 
@@ -1365,8 +1402,6 @@ class Api {
     } catch (e) {
       const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
       if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return null;
-
-      return null;
 
       // console.info('createInscriptionContract: call:theIndex:',theIndex);
       // theIndex++;
@@ -1502,7 +1537,7 @@ class Api {
       const raw = await myself.getRawTransactions(sellOrd, myself.utxord.ORD_SWAP_SIG);
       return {
         raw: raw,
-        contract_data: sellOrd.Serialize(protocol_version, myself.utxord.ORD_SWAP_SIG).c_str()
+        contract_data: sellOrd.Serialize(protocol_version, myself.utxord.ORD_SWAP_SIG)?.c_str()
       };
     } catch (exception) {
       await this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
@@ -1668,7 +1703,7 @@ class Api {
       swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
 
-      const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("").c_str()))
+      const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("")?.c_str()))
 
 
       if(!myself.fundings.length ) {
@@ -1678,8 +1713,9 @@ class Api {
         //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
         // );
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
-            "wait for several conformations or wait update on the server";
+        // outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
+        //     "wait for several conformations or wait update on the server";
+        outData.errorMessage = "Insufficient funds. Please add.";
         outData.min_fund_amount = min_fund_amount;
         outData.mining_fee = Number(min_fund_amount) - Number(payload.market_fee) - Number(payload.ord_price);
         // outData.raw = await myself.getRawTransactions(swapSim, myself.utxord.FUNDS_TERMS);
@@ -1717,7 +1753,7 @@ class Api {
 
       buyOrd.OrdPayoffAddress(myself.wallet.ord.key.GetP2TRAddress(myself.network));
 
-      const min_fund_amount_final = await myself.btcToSat(Number(buyOrd.GetMinFundingAmount("").c_str()))
+      const min_fund_amount_final = await myself.btcToSat(Number(buyOrd.GetMinFundingAmount("")?.c_str()))
       outData.min_fund_amount = min_fund_amount_final;
       outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
       outData.utxo_list = utxo_list;
@@ -1737,20 +1773,20 @@ class Api {
         return outData;
       }
       outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
-      outData.data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_COMMIT_SIG).c_str();
+      outData.data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_COMMIT_SIG)?.c_str();
       return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
       if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return;
-
-      console.info(COMMIT_BUY_INSCRIPTION,'call:theIndex:',theIndex);
-      theIndex++;
-      if(theIndex>1000) {
-        await this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
-        setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        return outData;
-      }
-      return await myself.commitBuyInscriptionContract(payload, theIndex);
+      //
+      // console.info(COMMIT_BUY_INSCRIPTION,'call:theIndex:',theIndex);
+      // theIndex++;
+      // if(theIndex>1000) {
+      //   await this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, 'error loading wasm libraries, try reloading the extension or this page');
+      //   setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+      //   return outData;
+      // }
+      // return await myself.commitBuyInscriptionContract(payload, theIndex);
     }
   }
 
@@ -1789,7 +1825,7 @@ class Api {
         'scrsk'
       );
       const raw = [];  // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
-      const data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_SWAP_SIG).c_str();
+      const data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_SWAP_SIG)?.c_str();
 
       await (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
@@ -1907,7 +1943,7 @@ class Api {
     const ps = await this.checkPassword(password);
     //console.log('ps',ps,'password:',password)
     if(!ps) {
-      await this.sendExceptionMessage(
+      await this.sendWarningMessage(
         DECRYPTED_WALLET,
         "The wallet is encrypted please enter the correct password to unlock the keys"
       );
