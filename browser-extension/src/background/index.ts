@@ -606,24 +606,27 @@ interface IChunkInscriptionResult {
           delete inscrData.description;
 
           inscrData.expect_amount = data.expect_amount;
-          inscrData.amount = data.total_amount;
+          // inscrData.amount = data.total_amount;
           inscrData.fee_rate = data.fee_rate;
-          inscrData.platform_fee = data.platform_fee;
+          // inscrData.platform_fee = data.platform_fee;
           inscrData.fee = data.fee;
         }
         return data;
       }
 
       function _prepareInscriptionForPopup(data: object) {
-          data.market_fee = 0;  // TODO: receive from frontend (expect_amount + mining_fee)
-          data.costs = {
-            expect_amount: data.expect_amount,
-            fee_rate: data.fee_rate,
-            fee: data.fee,
-            metadata: data.metadata,
-            amount: data.expect_amount,  // TODO: receive from frontend (expect_amount + mining_fee)
-            raw: []
-          };
+        console.debug('_prepareInscriptionForPopup data:', {...data || {}});
+        data.market_fee = data.platform_fee;
+        data.mining_fee = data.mining_fee || 0;
+        data.costs = {
+          expect_amount: data.total_expect_amount,
+          amount: data.total_amount,
+          fee_rate: data.fee_rate,
+          fee: data.fee,
+          metadata: data.metadata,
+          raw: []
+        };
+        console.debug('_prepareInscriptionForPopup result:', {...data || {}});
         return data;
       }
 
