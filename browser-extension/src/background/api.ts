@@ -231,7 +231,7 @@ class Api {
   exception_count: number = 0
   warning_count: number = 0
 
-  async exportProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
+  async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
     const out = {name, props, list, args, proto, lvl};
     const myself = this;
     if(obj == null) return out;
@@ -240,7 +240,7 @@ class Api {
       out.args = obj.length;
       out.lvl += 1;
       out.proto = true;
-      return await this.exportProps(
+      return await this.upgradeProps(
         obj.prototype,
         out.name,
         out.props,
@@ -256,7 +256,7 @@ class Api {
         m.indexOf('constructor') === -1 &&
         out.lvl < 8){
         out.list.push(m);
-        let prps = await this.exportProps(obj[m],m,{},[],0,false, out.lvl+1);
+        let prps = await this.upgradeProps(obj[m],m,{},[],0,false, out.lvl+1);
         out.props[m] = prps;
         obj[`$_${m}`] = obj[m];
         obj[`$_${m}`].prototype = obj[m].prototype;
@@ -338,7 +338,7 @@ class Api {
       }
       await myself.rememberIndexes();
       console.log('init...');
-      await myself.exportProps(myself.utxord, 'utxord'); // add wrapper
+      await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
       myself.genRootKey();
       if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
         myself.genKeys();
