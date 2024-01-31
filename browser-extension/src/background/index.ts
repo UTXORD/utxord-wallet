@@ -671,6 +671,11 @@ interface IChunkInscriptionResult {
         console.log('payload?.data?.type:', payload?.data?.type)
         console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug('CREATE_INSCRIPTION balances:', {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
         costs = await Api.createInscriptionContract(payload.data);
         console.log('costs:', costs)
         payload.data.costs = costs;

@@ -1161,7 +1161,7 @@ class Api {
            payload.collection.owner_nout
        );
         console.log("payload.collection:",payload.collection)
-        console.log('AddToCollectionSim:', collection);  // to use simulation contract to calculate fees
+        // console.debug('selectByOrdOutput collection:', collection);  // to use simulation contract to calculate fees
         flagsFundingOptions += "collection";
       }
 
