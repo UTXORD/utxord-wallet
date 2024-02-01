@@ -610,24 +610,22 @@ interface IChunkInscriptionResult {
           delete inscrData.name;
           delete inscrData.description;
 
-          inscrData.expect_amount = data.expect_amount;
-          // inscrData.amount = data.total_amount;
-          inscrData.fee_rate = data.fee_rate;
-          // inscrData.platform_fee = data.platform_fee;
-          inscrData.fee = data.fee;
+          inscrData.expect_amount = data.expect_amount;  // per item amount
+          inscrData.fee_rate = data.fee_rate;  // per item mining fee rate
+          inscrData.fee = data.fee;   // per item platform/market fee (if any)
         }
         return data;
       }
 
       function _prepareInscriptionForPopup(data: object) {
         console.debug('_prepareInscriptionForPopup data:', {...data || {}});
-        data.market_fee = data.platform_fee;
-        data.mining_fee = data.mining_fee || 0;
+        data.market_fee = data.platform_fee;  // total platform/mining fee
+        data.mining_fee = data.total_mining_fee || 0;  // total mining fee
         data.costs = {
-          expect_amount: data.total_expect_amount,
-          amount: data.total_amount,
-          fee_rate: data.fee_rate,
-          fee: data.fee,
+          expect_amount: data.total_expect_amount,  // total expect_amount
+          amount: data.total_amount,  // total amount (including all total fees)
+          fee_rate: data.fee_rate,  // per item mining fee rate
+          fee: data.fee, // per item platform/market fee (if any)
           metadata: data.metadata,
           raw: []
         };
