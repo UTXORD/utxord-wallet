@@ -364,8 +364,8 @@ interface IChunkInscriptionResult {
             parentInscription = {
               btc_owner_address: chunkData.parent?.btc_owner_address,
               genesis_txid: chunkData.parent?.genesis_txid,
-              owner_txid: contract.outputs?.inscription?.txid,
-              owner_nout: contract.outputs?.inscription?.nout,
+              owner_txid: contract.outputs?.collection?.txid,
+              owner_nout: contract.outputs?.collection?.nout,
             };
           }
           console.debug('createChunkInscription: parentInscription:', parentInscription);
@@ -382,6 +382,11 @@ interface IChunkInscriptionResult {
           const ordinal = contract.outputs?.inscription;
           if (ordinal?.txid) {
             Api.pushOrdToInscriptions(ordinal);
+          }
+          // add collection new utxo (if any) to inscriptions
+          const collection = contract.outputs?.collection;
+          if (collection?.txid) {
+            Api.pushOrdToInscriptions(collection);
           }
           // console.debug("createChunkInscription: Api.fundings:", [...Api.fundings]);
 
