@@ -683,7 +683,7 @@ interface IChunkInscriptionResult {
         payload.data.content_store_key = store.put(payload.data.content);
         payload.data.content = null;
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
-        delete payload.data.costs['errorMessage'];
+        if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
         console.log(CREATE_INSCRIPTION+' (stored):', {...payload.data});
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
@@ -710,7 +710,7 @@ interface IChunkInscriptionResult {
       if (payload.type === COMMIT_BUY_INSCRIPTION) {
         payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
-        delete payload.data.costs['errorMessage'];
+        if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
         console.log(COMMIT_BUY_INSCRIPTION+':',payload);
         //update balances before openWindow
         winManager.openWindow('sign-commit-buy', async (id) => {

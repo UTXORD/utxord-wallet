@@ -100,10 +100,15 @@ const isInsufficientBalance = computed(() => {
   return false
 })
 
+const message = computed(() => {
+ return dataForSign.value?.data?.costs?.errorMessage || dataForSign.value?.data?.errorMessage
+})
+
 const isDisabled = computed(() => {
   if (dataForSign.value?.type === SELL_INSCRIPTION) return false
   if (Number(balance.value?.confirmed) === 0) return true
   if (isInsufficientBalance.value) return true
+  if (message?.value?.length) return true
   if (!isASCII(password.value)) return true
   return false
 })
