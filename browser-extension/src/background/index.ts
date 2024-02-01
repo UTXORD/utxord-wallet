@@ -317,6 +317,7 @@ interface IChunkInscriptionResult {
       let error = null;
       let usedAddressesMap = {};
 
+      let errorMessage = null;
       try {
         /*
         const debugContractResult = {}
@@ -352,6 +353,11 @@ interface IChunkInscriptionResult {
           console.debug('createChunkInscription: chunk contractData: ', contractData);
           const contract = await Api.createInscriptionContract(contractData, 0, true);
           console.debug('createChunkInscription: contract: ', contract);
+
+          if (contract.errorMessage) {
+            errorMessage = contract.errorMessage;
+            break;
+          }
 
           // debug log output for rawTx
           const contractOrd = new Api.utxord.CreateInscriptionBuilder(Api.network, Api.utxord.INSCRIPTION);
@@ -412,7 +418,7 @@ interface IChunkInscriptionResult {
       const chunkResults = {
         inscription_results: results,
         last_inscription_out: parentInscription,
-        // error: error
+        error: errorMessage
       };
 
       // Add new current addresses
