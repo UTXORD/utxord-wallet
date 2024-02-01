@@ -50,7 +50,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="miningFee"
+          :price="dataForSign?.data?.costs?.mining_fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -107,10 +107,10 @@ const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 const isSynchronized = computed(() => balance?.value?.sync)
 const connected = computed(() => balance?.value?.connect)
 
-const miningFee = computed(
-  () => Math.abs(dataForSign.value?.data?.costs?.amount -
-    dataForSign.value?.data?.costs?.expect_amount) || 0
-)
+// const miningFee = computed(
+//   () => Math.abs(dataForSign.value?.data?.costs?.amount -
+//     dataForSign.value?.data?.costs?.expect_amount) || 0
+// )
 
 const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
 
