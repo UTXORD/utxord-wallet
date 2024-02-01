@@ -706,6 +706,11 @@ interface IChunkInscriptionResult {
         });
       }
       if (payload.type === SELL_INSCRIPTION) {
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug('SELL_INSCRIPTION balances:', {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
         const costs = await Api.sellInscriptionContract(payload.data);
         payload.data.costs = costs;
         console.log(SELL_INSCRIPTION+':',payload.data);
