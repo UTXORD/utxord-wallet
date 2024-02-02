@@ -624,18 +624,18 @@ interface IChunkInscriptionResult {
       }
 
       function _prepareInscriptionForPopup(data: object) {
-        console.debug('_prepareInscriptionForPopup data:', {...data || {}});
-        data.market_fee = data.platform_fee;  // total platform/mining fee
-        data.mining_fee = data.total_mining_fee || 0;  // total mining fee
+        // console.debug('_prepareInscriptionForPopup data:', {...data || {}});
+        data.market_fee = data.platform_fee || 0;  // total platform/market fee
         data.costs = {
           expect_amount: data.total_expect_amount,  // total expect_amount
           amount: data.total_amount,  // total amount (including all total fees)
           fee_rate: data.fee_rate,  // per item mining fee rate
+          mining_fee: data.total_mining_fee || 0,  // total mining fee
           fee: data.fee, // per item platform/market fee (if any)
           metadata: data.metadata,
           raw: []
         };
-        console.debug('_prepareInscriptionForPopup result:', {...data || {}});
+        // console.debug('_prepareInscriptionForPopup result:', {...data || {}});
         return data;
       }
 
