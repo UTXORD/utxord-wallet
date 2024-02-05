@@ -32,6 +32,12 @@ const limitQuery = 1000;
 let bgSiteQueryIndex = 0;
 const closeWindowAfter = 6000;
 
+class UtxordExtensionApiError extends Error {
+  constructor(readonly message?: string) {
+    super(message);
+  }
+}
+
 
 const WALLET_TYPES = [
   'oth',
@@ -730,11 +736,13 @@ class Api {
       for (const item of list) {
         for (const i of item?.utxo_set || []) {
           if (!i?.is_inscription) {
-            funds.push({
-              ...i,
-              address: item.address,
-              path: item.index,
-            });
+            if (!i?.is_locked) {
+              funds.push({
+                ...i,
+                address: item.address,
+                path: item.index,
+              });
+            }
           } else {
             inscriptions.push({
               ...i,
@@ -1212,7 +1220,7 @@ class Api {
            payload.collection.owner_nout
        );
         console.log("payload.collection:",payload.collection)
-        // console.debug('selectByOrdOutput collection:', collection);  // to use simulation contract to calculate fees
+        console.debug('selectByOrdOutput collection:', collection);
         flagsFundingOptions += "collection";
       }
 
@@ -1264,6 +1272,7 @@ class Api {
           // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
           // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
+          outData.errorMessage = "Collection is not found in balances.";
           outData.raw = [];
           return outData;
         }
@@ -1400,8 +1409,11 @@ class Api {
 
       return outData;
     } catch (e) {
-      const eout = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
-      if (! myself.KNOWN_CORE_ERRORS.some(errId => eout.indexOf(errId) !== -1)) return null;
+      outData.errorMessage = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
+      setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+      return outData;
+
+      // if (! myself.KNOWN_CORE_ERRORS.some(errId => outData.errorMessage.indexOf(errId) !== -1)) return outData;
 
       // console.info('createInscriptionContract: call:theIndex:',theIndex);
       // theIndex++;
