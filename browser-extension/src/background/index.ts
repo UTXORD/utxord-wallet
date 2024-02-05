@@ -561,6 +561,7 @@ interface IChunkInscriptionResult {
           // console.log('Api.inscriptions:', Api.inscriptions);
 
           const balance = await Api.fetchBalance("UNUSED_VALUE");  // FIXME: currently address is still unused
+          console.debug('SEND_BALANCES: Api.fetchBalance:', balance);
           setTimeout(async () => {
             postMessageToPopupIfOpen({ id: BALANCE_REFRESH_DONE, data: { balance: balance?.data }});
           }, 1000);
