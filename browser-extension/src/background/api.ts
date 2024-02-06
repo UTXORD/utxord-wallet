@@ -1175,7 +1175,7 @@ class Api {
   async estimateInscription(payload) {
     return await this.createInscriptionContract({
       ...payload,
-      content: new ArrayBuffer(payload.content_length),
+      content: "00".repeat(payload.content_length),
       content_length: undefined
     });
   }
@@ -1675,9 +1675,9 @@ class Api {
 
     // Collect funds for target amount
     let sum_addr = 0;
-    console.log('selectKeysByFunds2->selected_funds:', selected_funds, 'target: ',target);
+    console.log('selectKeysByFunds2->selected_funds:', selected_funds, 'target: ', target);
     for (const utxo of selected_funds) {
-      console.log('utxo?.amount:',utxo?.amount,'|sum_addr:',sum_addr);
+      console.log('utxo?.amount:', utxo?.amount, '|sum_addr:', sum_addr);
       sum_addr += utxo?.amount;
       addr_list.push({
         amount: utxo?.amount,
@@ -1690,8 +1690,8 @@ class Api {
         return addr_list;
       }
     }
-      // It shouldn't happen due to sum_funds check above. However, let it be for a sake of style.
-      return [];
+    // It shouldn't happen due to sum_funds check above. However, let it be for a sake of style.
+    return [];
   }
 
   async  commitBuyInscriptionContract(payload, theIndex=0) {
