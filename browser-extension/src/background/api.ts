@@ -240,10 +240,10 @@ class Api {
   async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
     const out = {name, props, list, args, proto, lvl};
     const myself = this;
-    if(obj == null) return out;
+    if(!obj) return out;
     let methods = Object.getOwnPropertyNames(obj).filter((n) => n[0]!== '_');
     if(methods.length === 3 && methods.indexOf('length') !== -1 && methods.indexOf('prototype') !== -1){
-      out.args = obj.length;
+      out.args = obj?.length || 0;
       out.lvl += 1;
       out.proto = true;
       return await this.upgradeProps(
@@ -1242,8 +1242,7 @@ class Api {
       const versions = await this.getSupportedVersions();
       const protocol_version = Number(contract?.params?.protocol_version);
       if(versions.indexOf(protocol_version) === -1) {
-        myself.sendWarningMessage('CREATE_INSCRIPTION', 'Please update the plugin to new version.')
-        outData.errorMessage = 'Please update the plugin to new version.';
+        outData.errorMessage = 'Please update the plugin to latest version.';
         outData.raw = [];
         return outData;
      }
