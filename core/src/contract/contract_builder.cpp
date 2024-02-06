@@ -321,17 +321,36 @@ void ContractBuilder::VerifyTxSignature(const std::string& addr, const std::vect
 
     std::tie(witver, keyid) = bech32().Decode(addr);
     if (witver == 1) {
-        if (witness.size() != 1) throw SignatureError("witness stack size");
+        if (witness.size() != 1) throw SignatureError("witness stack size: " + std::to_string(witness.size()));
         if (witness[0].size() != 64 && witness[0].size() != 65) throw SignatureError("sig size");
 
         xonly_pubkey pk = move(keyid);
-        signature sig = move(witness[0]);
+        signature sig = witness[0];
 
         VerifyTxSignature(pk, sig, tx, nin, move(spent_outputs), {});
 
     }
     else if (witver == 0) {
-        throw std::runtime_error("not implemented");
+        if (witness.size() != 2) throw SignatureError("witness stack size: " + std::to_string(witness.size()));
+        if (witness[1].size() != 33) throw SignatureError("pubkey size: " + std::to_string(witness[0].size()));
+
+        PrecomputedTransactionData txdata;
+        txdata.Init(tx, std::move(spent_outputs), true);
+
+        CScript witnessscript;
+        witnessscript << OP_DUP << OP_HASH160 << keyid << OP_EQUALVERIFY << OP_CHECKSIG;
+
+        uint256 sighash = SignatureHash(witnessscript, tx, nin, witness[0].back(), txdata.m_spent_outputs[nin].nValue, SigVersion::WITNESS_V0, &txdata);
+
+        secp256k1_pubkey pubkey;
+        secp256k1_ecdsa_signature signature;
+
+        if (!secp256k1_ec_pubkey_parse(ChannelKeys::GetStaticSecp256k1Context(), &pubkey, witness[1].data(), 33)) throw SignatureError("pubkey");
+        if (!secp256k1_ecdsa_signature_parse_der(ChannelKeys::GetStaticSecp256k1Context(), &signature, witness[0].data(), witness[0].size()-1)) throw SignatureError("signature format");
+        if (!secp256k1_ecdsa_verify(ChannelKeys::GetStaticSecp256k1Context(), &signature, sighash.data(), &pubkey)) throw SignatureError("sig");
+    }
+    else {
+        throw std::runtime_error("not implemented witver: " + std::to_string(witver));
     }
 }
 

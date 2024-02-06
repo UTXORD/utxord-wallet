@@ -51,7 +51,7 @@ class SwapInscriptionBuilder : public ContractBuilder
 
     std::optional<signature> m_ord_payoff_sig;
 
-    mutable std::optional<CMutableTransaction> mFundsCommitTpl;
+    //mutable std::optional<CMutableTransaction> mFundsCommitTpl;
     mutable std::optional<CMutableTransaction> mFundsPaybackTpl;
 
     mutable std::optional<CMutableTransaction> mSwapTpl;
@@ -67,6 +67,8 @@ class SwapInscriptionBuilder : public ContractBuilder
 
     CMutableTransaction MakeSwapTx(bool with_funds_in) const;
 
+    void CheckFundsCommitSig() const;
+
     void CheckOrdSwapSig() const;
     void CheckFundsSwapSig() const;
 
@@ -75,12 +77,13 @@ class SwapInscriptionBuilder : public ContractBuilder
     std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> FundsCommitTemplateTapRoot() const;
 protected:
     std::vector<std::pair<CAmount,CMutableTransaction>> GetTransactions() const override;
+    CAmount CalculateWholeFee(const std::string& params) const override;
 
 public:
     CMutableTransaction CreatePayoffTxTemplate() const;
     CMutableTransaction GetSwapTxTemplate() const;
 
-    CMutableTransaction& GetFundsCommitTxTemplate() const;
+    CMutableTransaction GetFundsCommitTxTemplate(bool segwit_in = true) const;
     CMutableTransaction MakeFundsCommitTx() const;
     const CMutableTransaction& GetFundsCommitTx() const;
 

@@ -79,6 +79,28 @@ const std::string SwapInscriptionBuilder::name_funds_swap_sig_M = "funds_swap_si
 const std::string SwapInscriptionBuilder::name_ordpayoff_unspendable_key_factor = "ordpayoff_unspendable_key_factor";
 const std::string SwapInscriptionBuilder::name_ord_payoff_sig = "ordpayoff_sig";
 
+CAmount SwapInscriptionBuilder::CalculateWholeFee(const std::string& params) const {
+    if (!m_ord_mining_fee_rate) throw ContractStateError(name_ord_mining_fee_rate + " not defined");
+    if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
+
+    bool change = false, p2wpkh_utxo = false;
+
+    std::istringstream ss(params);
+    std::string param;
+    while(std::getline(ss, param, ',')) {
+        if (param == "change") { change = true; continue; }
+        else if (param == "p2wpkh_utxo") { p2wpkh_utxo = true; continue; }
+        else throw l15::IllegalArgumentError(move(param));
+    }
+
+    CAmount fee =  l15::CalculateTxFee(*m_mining_fee_rate, GetFundsCommitTxTemplate(p2wpkh_utxo))
+         + l15::CalculateTxFee(*m_mining_fee_rate, GetSwapTxTemplate())
+         + l15::CalculateTxFee(*m_ord_mining_fee_rate, GetFundsCommitTxTemplate());
+
+    if (change) fee += CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE);
+
+    return fee;
+}
 
 std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> SwapInscriptionBuilder::FundsCommitTapRoot() const
 {
@@ -197,43 +219,47 @@ void SwapInscriptionBuilder::SignOrdSwap(const KeyRegistry &master_key, const st
         m_ord_input->witness.Set(i, stack[i]);
 }
 
-CMutableTransaction& SwapInscriptionBuilder::GetFundsCommitTxTemplate() const
+CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit_in) const
 {
-    if (!mFundsCommitTpl) {
-        auto commit_pubkeyscript = CScript() << 1 << get<0>(FundsCommitTemplateTapRoot());
-        auto change_pubkeyscript = CScript() << 1 << xonly_pubkey();
+    CMutableTransaction commitTpl;
 
-        CMutableTransaction commit_tx;
+    auto commit_pubkeyscript = CScript() << 1 << get<0>(FundsCommitTemplateTapRoot());
+    auto change_pubkeyscript = CScript() << 1 << xonly_pubkey();
 
-        commit_tx.vout = {CTxOut(0, commit_pubkeyscript), CTxOut(0, change_pubkeyscript)};
+    commitTpl.vout = {CTxOut(0, commit_pubkeyscript), CTxOut(0, change_pubkeyscript)};
 
-        mFundsCommitTpl = move(commit_tx);
-    }
-    mFundsCommitTpl->vin.reserve(m_fund_inputs.size());
+    commitTpl.vin.reserve(m_fund_inputs.size());
 
     if (m_fund_inputs.empty()) {
-        mFundsCommitTpl->vin.emplace_back(uint256(), 0);
-        mFundsCommitTpl->vin.back().scriptWitness.stack.emplace_back(64);
-    }
-    else {
-        uint32_t n = 0;
-        for (const auto &utxo: m_fund_inputs) {
-            if (mFundsCommitTpl->vin.size() > n) {
-                mFundsCommitTpl->vin[n].prevout = COutPoint(uint256S(utxo.output->TxID()), utxo.output->NOut());
-                if (utxo.witness)
-                    mFundsCommitTpl->vin[n].scriptWitness.stack = utxo.witness;
-            }
-            else {
-                mFundsCommitTpl->vin.emplace_back(uint256S(utxo.output->TxID()), utxo.output->NOut());
-                if (utxo.witness)
-                    mFundsCommitTpl->vin[n].scriptWitness.stack = utxo.witness;
-                else
-                    mFundsCommitTpl->vin[n].scriptWitness.stack = utxo.output->Destination()->DummyWitness();
-            }
-            ++n;
+        commitTpl.vin.emplace_back(uint256(), 0);
+        if (segwit_in) {
+            commitTpl.vin.back().scriptWitness.stack.emplace_back(71);
+            commitTpl.vin.back().scriptWitness.stack.emplace_back(33);
+        }
+        else {
+            commitTpl.vin.back().scriptWitness.stack.emplace_back(64);
         }
     }
-    return *mFundsCommitTpl;
+    else {
+        for (const auto &utxo: m_fund_inputs) {
+            if (commitTpl.vin.size() > utxo.nin) {
+                commitTpl.vin[utxo.nin].prevout = COutPoint(uint256S(utxo.output->TxID()), utxo.output->NOut());
+                if (utxo.witness)
+                    commitTpl.vin[utxo.nin].scriptWitness.stack = utxo.witness;
+            }
+            else {
+                if (utxo.nin > commitTpl.vin.size()) throw ContractError(name_funds + " are inconsistent");
+
+                commitTpl.vin.emplace_back(uint256S(utxo.output->TxID()), utxo.output->NOut());
+
+                if (utxo.witness)
+                    commitTpl.vin[utxo.nin].scriptWitness.stack = utxo.witness;
+                else
+                    commitTpl.vin[utxo.nin].scriptWitness.stack = utxo.output->Destination()->DummyWitness();
+            }
+        }
+    }
+    return commitTpl;
 }
 
 CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
@@ -286,8 +312,6 @@ void SwapInscriptionBuilder::SignFundsCommitment(const KeyRegistry &master_key, 
     CheckContractTerms(FUNDS_TERMS);
 
     m_funds_unspendable_key_factor = ChannelKeys::GetStrongRandomKey(master_key.Secp256k1Context());
-
-    std::clog << "Signing fund inputs" << std::endl;
 
     CMutableTransaction commit_tx = MakeFundsCommitTx();
 
@@ -565,6 +589,7 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
     case ORD_TERMS:
         break;
     case FUNDS_COMMIT_SIG:
+        CheckFundsCommitSig();
     case FUNDS_TERMS:
         break;
     }
@@ -900,6 +925,25 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
 std::string SwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
 {
     return FormatAmount(*m_ord_price + m_market_fee->Amount() + CalculateWholeFee(params));
+}
+
+void SwapInscriptionBuilder::CheckFundsCommitSig() const
+{
+    std::vector<CTxOut> spent_outs;//
+    std::transform(m_fund_inputs.begin(), m_fund_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()),
+                   [](const ContractInput& in){ return CTxOut{in.output->Destination()->Amount(), in.output->Destination()->PubKeyScript() }; });
+
+    if (mFundsCommitTx) {
+        for (const auto& in: m_fund_inputs) {
+            VerifyTxSignature(in.output->Destination()->Address(), in.witness, *mFundsCommitTx, in.nin, std::vector<CTxOut>(spent_outs));
+        }
+    }
+    else {
+        CMutableTransaction swap_tx(MakeFundsCommitTx());
+        for (const auto& in: m_fund_inputs) {
+            VerifyTxSignature(in.output->Destination()->Address(), in.witness, swap_tx, in.nin, std::vector<CTxOut>(spent_outs));
+        }
+    }
 }
 
 void SwapInscriptionBuilder::CheckFundsSwapSig() const
