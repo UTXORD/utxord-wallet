@@ -1825,11 +1825,15 @@ class Api {
     const myself = this;
     try {
       console.log('//////////// signSwapInscription ARGS', payload);
-      console.log("!!!!contract:",JSON.stringify(payload.swap_ord_terms.contract));
+      console.log("!!!!contract:",JSON.stringify(payload?.swap_ord_terms?.contract));
 
+      if (!payload?.swap_ord_terms){
+        await this.sendExceptionMessage(BUY_INSCRIPTION, 'Undefined payload.swap_ord_terms');
+        return;
+      }
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       // console.log("aaaa");
-      const protocol_version = Number(payload.swap_ord_terms.contract?.params?.protocol_version);
+      const protocol_version = Number(payload?.swap_ord_terms?.contract?.params?.protocol_version);
       buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
       buyOrd.SignFundsSwap(
@@ -1843,7 +1847,7 @@ class Api {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
         await myself.sendMessageToWebPage(
           SIGN_BUY_INSCRIBE_RESULT,
-          { contract_uuid: payload.swap_ord_terms.contract_uuid, contract: JSON.parse(data) },
+          { contract_uuid: payload?.swap_ord_terms?.contract_uuid, contract: JSON.parse(data) },
           tabId
         );
         await myself.generateNewIndex('scrsk');
