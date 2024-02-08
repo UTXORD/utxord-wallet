@@ -1537,7 +1537,7 @@ class Api {
         txid,
         nout,
         (myself.satToBtc(utxoData.amount)).toFixed(8),
-        utxoData.address
+        myself.wallet.ord.key.GetP2TRAddress(this.network)
       );
 
       sellOrd.FundsPayoffAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
