@@ -16,7 +16,8 @@ public:
     static const std::string name_outputs;
     static const char* const type;
 private:
-    static const uint32_t m_protocol_version;
+    static const uint32_t s_protocol_version;
+    static const char* s_versions;
 
     std::vector<ContractInput> m_inputs;
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
@@ -36,8 +37,11 @@ public:
     SimpleTransaction& operator=(const SimpleTransaction&) = default;
     SimpleTransaction& operator=(SimpleTransaction&&) = default;
 
-    uint32_t GetProtocolVersion() const
-    { return m_protocol_version; }
+    static uint32_t GetProtocolVersion()
+    { return s_protocol_version; }
+
+    static const char* SupportedVersions()
+    { return s_versions; }
 
     std::string GetMinFundingAmount(const std::string& params) const override;
 

@@ -308,7 +308,6 @@ public:
     static const std::string name_version;
     static const std::string name_mining_fee_rate;
     static const std::string name_market_fee;
-    static const std::string name_market_fee_addr;
 
     static const char* name_utxo;
     static const std::string name_txid;
@@ -323,6 +322,7 @@ protected:
     static const CAmount TX_BASE_VSIZE = 10;
     static const CAmount TAPROOT_VOUT_VSIZE = 43;
     static const CAmount TAPROOT_KEYSPEND_VIN_VSIZE = 58;
+    static const CAmount TAPROOT_MULTISIG_VIN_VSIZE = 100;
     static const CAmount P2WPKH_VIN_VSIZE = 69;
     static const CAmount MIN_TAPROOT_TX_VSIZE = TX_BASE_VSIZE + TAPROOT_VOUT_VSIZE + TAPROOT_KEYSPEND_VIN_VSIZE;
 
@@ -338,6 +338,8 @@ protected:
     virtual std::vector<std::pair<CAmount,CMutableTransaction>> GetTransactions() const { return {}; };
 
 public:
+    static CScript MakeMultiSigScript(const xonly_pubkey& pk1, const xonly_pubkey& pk2);
+
     //ContractBuilder() = default;
     ContractBuilder(const ContractBuilder&) = default;
     ContractBuilder(ContractBuilder&& ) noexcept = default;

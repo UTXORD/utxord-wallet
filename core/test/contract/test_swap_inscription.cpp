@@ -607,7 +607,7 @@ TEST_CASE("FundsNotEnough")
 
     builderOrdBuyer.SwapScriptPubKeyB(hex(swap_script_key_B.PubKey()));
     builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr);
-    REQUIRE_THROWS_AS(builderOrdBuyer.SignFundsCommitment(master_key, "funds"), l15::TransactionError);
+    REQUIRE_THROWS_AS(builderOrdBuyer.SignFundsCommitment(master_key, "fund"), l15::TransactionError);
 
     //Create funds utxo
 //    funds_amount = builderOrdBuyer.GetMinFundingAmount();

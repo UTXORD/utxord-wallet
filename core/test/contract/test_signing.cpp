@@ -1,5 +1,6 @@
 
 #include <string>
+#include <array>
 
 #define CATCH_CONFIG_MAIN
 #include "catch/catch.hpp"
@@ -8,6 +9,7 @@
 
 #include "channel_keys.hpp"
 #include "key.h"
+#include "base58.h"
 #include "util/spanparsing.h"
 #include "utils.hpp"
 #include "keypair.hpp"
@@ -17,11 +19,13 @@ const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 using namespace l15;
 using namespace utxord;
 
-static const std::vector<std::byte> seed = unhex<std::vector<std::byte>>(
-"b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+//static const std::vector<std::byte> seed = unhex<std::vector<std::byte>>(
+static const bytevector seed = unhex<bytevector>(
+"d1dfff73303d878129dbe8e7a830135a85a0142498d669f234b40dabafc1fb4469377a968640418453a09cf84f715c408070a17f9c1b823fdce168dcd0866fa3");
 
 static const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
-static const std::string derive_path = "m/86'/2'/0'/0/0";
+static const std::string derive_path = "m/86'/1'/1'/0/0";
+static const std::string derive_path1 = "m/84'/1'/1'/0/0";
 
 
 TEST_CASE("KeyFilter")
@@ -65,19 +69,21 @@ TEST_CASE("Derive")
 {
     ECC_Start();
 
-    auto bech = Bech32Coder<IBech32Coder::BTC, IBech32Coder::TESTNET>();
+    auto bech = Bech32(TESTNET);
 
     std::clog << "Seed: " << hex(seed) << std::endl;
 
     CExtKey key;
-    key.SetSeed(seed);
+    key.SetSeed(unhex<std::vector<std::byte>>(hex(seed)));
 
-    auto branches = spanparsing::Split(derive_path, '/');
+    std::array<uint8_t, 74> extkeydata;
 
-//    std::clog << "Derivation branches: " << std::endl;
-//    for (const auto& branch: branches) {
-//        std::clog << std::string_view(branch.data(), branch.size()) << std::endl;
-//    }
+    key.Encode(extkeydata.data());
+    std::clog << "Key data: " << hex(extkeydata) << std::endl;
+
+    auto keypath = GENERATE(derive_path, derive_path1);
+
+    auto branches = spanparsing::Split(keypath, '/');
 
     if (branches.front()[0] == 'm') {
         branches.erase(branches.begin());
@@ -90,7 +96,7 @@ TEST_CASE("Derive")
             //hardened
             auto conv_res = std::from_chars(branch.begin(), branch.end() - 1, index);
             if (conv_res.ec == std::errc::invalid_argument) {
-                throw std::invalid_argument("Wrong hex string");
+                throw std::invalid_argument("Wrong num string");
             }
             index += BIP32_HARDENED_KEY_LIMIT;
         }
@@ -98,27 +104,55 @@ TEST_CASE("Derive")
             // non hardened
             auto conv_res = std::from_chars(branch.begin(), branch.end(), index);
             if (conv_res.ec == std::errc::invalid_argument) {
-                throw std::invalid_argument("Wrong hex string");
+                throw std::invalid_argument("Wrong num string");
             }
         }
         if (!key.Derive(key, index)) {
             throw std::runtime_error("Derivation error");
         }
 
+        key.Encode(extkeydata.data());
+        std::clog << "Key data: " << hex(extkeydata) << std::endl;
+
         sk.assign(key.key.begin(), key.key.end());
 
-        core::ChannelKeys derived_key(sk);
-        std::clog << "Addr: " << bech.Encode(derived_key.GetLocalPubKey()) << std::endl;
+        //core::ChannelKeys derived_key(sk);
+        //std::clog << "Addr: " << bech.Encode(derived_key.GetLocalPubKey()) << std::endl;
     }
 
-    core::ChannelKeys derived_key(sk);
-    derived_key.AddTapTweak();
-
-    std::clog << "Addr: " << bech.Encode(derived_key.GetLocalPubKey()) << std::endl;
-
-    CHECK(bech.Encode(derived_key.GetLocalPubKey()) == "tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
+    std::string btc_addr;
+    if (keypath.starts_with("m/86")) {
+        core::ChannelKeys derived_key(sk);
+        std::clog << "+++seckey: " << hex(derived_key.GetLocalPrivKey()) << std::endl;
+        derived_key.AddTapTweak();
+        std::clog << "tweaked seckey: " << hex(derived_key.GetLocalPrivKey()) << std::endl;
+        KeyPair keypair(derived_key.GetLocalPrivKey());
+        btc_addr = keypair.GetP2TRAddress(bech);
+        std::clog << "P2TR: " << btc_addr << std::endl;
+        CHECK(btc_addr == "tb1plj0pw0aq70cal6j4p9z4qdrcts8ky6jhqk4lmlzmrqa9js88ha9sv4lclv");
+    }
+    else {
+        KeyPair keypair(sk);
+        btc_addr = keypair.GetP2WPKHAddress(bech);
+        std::clog << "P2WPKH: " << btc_addr << std::endl;
+        CHECK(btc_addr == "tb1qeqvy2au533z2q3tlw8v0xrckfwrsqak3dlw66g");
+    }
 
     ECC_Stop();
+
+    KeyRegistry keyRegistry(TESTNET, hex(seed));
+    KeyPair k = keyRegistry.Derive(keypath.c_str(), false);
+
+    if (keypath.starts_with("m/86")) {
+        std::string addr = k.GetP2TRAddress(bech);
+        std::clog << "KeyRegistry derived P2TR address: " << addr << std::endl;
+        CHECK(btc_addr == addr);
+    }
+    else {
+        std::string addr = k.GetP2WPKHAddress(bech);
+        std::clog << "KeyRegistry derived P2WPKH address: " << addr << std::endl;
+        CHECK(btc_addr == addr);
+    }
 }
 
 TEST_CASE("VerifySignature")
@@ -147,4 +181,112 @@ TEST_CASE("MakeSignature")
     xonly_pubkey pk = keypair.GetLocalPubKey();
 
     CHECK(pk.verify(l15::core::ChannelKeys::GetStaticSecp256k1Context(), sig, uint256S(challenge_hex)));
+}
+
+TEST_CASE("PubKeyDerive")
+{
+    ECC_Start();
+    CExtKey btcRoot;
+    btcRoot.SetSeed(unhex<std::vector<std::byte>>(hex(seed)));
+
+    std::array<uint8_t, 74> extkeydata;
+
+    std::clog << "Seed: " << hex(seed) << std::endl;
+
+    btcRoot.Encode(extkeydata.data());
+    std::clog << "Key data: " << hex(extkeydata) << std::endl;
+
+
+    REQUIRE(btcRoot.Derive(btcRoot, 86 + BIP32_HARDENED_KEY_LIMIT));
+    btcRoot.Encode(extkeydata.data());
+    std::clog << "Key data: " << hex(extkeydata) << std::endl;
+    REQUIRE(btcRoot.Derive(btcRoot, 1 + BIP32_HARDENED_KEY_LIMIT));
+    btcRoot.Encode(extkeydata.data());
+    std::clog << "Key data: " << hex(extkeydata) << std::endl;
+    REQUIRE(btcRoot.Derive(btcRoot, 1 + BIP32_HARDENED_KEY_LIMIT));
+    btcRoot.Encode(extkeydata.data());
+    std::clog << "Key data: " << hex(extkeydata) << std::endl;
+
+    CExtPubKey btcExtPK = btcRoot.Neuter();
+    std::clog << "btc pubkey: " << hex(btcExtPK.pubkey) << std::endl;
+
+    REQUIRE(btcRoot.Derive(btcRoot, 0));
+    btcRoot.Encode(extkeydata.data());
+    std::clog << "Key data: " << hex(extkeydata) << std::endl;
+    REQUIRE(btcRoot.Derive(btcRoot, 0));
+    btcRoot.Encode(extkeydata.data());
+    std::clog << "Key data: " << hex(extkeydata) << std::endl;
+
+    seckey sk0(btcRoot.key.begin(), btcRoot.key.end());
+
+    l15::core::ChannelKeys keypair0(sk0);
+    std::clog << "^^^seckey: " << hex(keypair0.GetLocalPrivKey()) << std::endl;
+    keypair0.AddTapTweak();
+    std::clog << "tweaked seckey: " << hex(keypair0.GetLocalPrivKey()) << std::endl;
+    KeyPair trkeypair0(keypair0.GetLocalPrivKey());
+    std::clog << "btc addr 0: " << trkeypair0.GetP2TRAddress(Bech32(TESTNET)) << std::endl;
+
+
+    std::vector<unsigned char> data = {0x04, 0x35, 0x87, 0xcf};
+    size_t size = data.size();
+    data.resize(size + BIP32_EXTKEY_SIZE);
+    btcExtPK.Encode(data.data() + size);
+    std::string ret = EncodeBase58Check(data);
+
+    CHECK(ret == "tpubDCKwXGY6buZjvJFHitFttGMbM6WNwUfqvw26xsbkdUJ2wh6hQ64CLagJYjWYkzSyRVAYKaTDRWyNtDXUcpCqMT57LWVUvBbp1xZ85NzPovD");
+
+    std::clog << "btc ext PK: " << ret << std::endl;
+
+    CExtPubKey btcExtPK0;
+    std::vector<unsigned char> data0;
+    if (DecodeBase58Check(ret, data0, 78)) {
+        const std::vector<unsigned char>& prefix = {0x04, 0x35, 0x87, 0xcf};
+        if (data0.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data0.begin())) {
+            btcExtPK0.Decode(data0.data() + prefix.size());
+        }
+    }
+
+    std::clog << "BTC chain code 0: " << btcExtPK.chaincode.GetHex() << std::endl;
+    std::clog << "BTC pubkey 0: " << hex(btcExtPK.pubkey) << std::endl;
+
+
+    CExtPubKey btcExtPK1;
+    REQUIRE(btcExtPK.Derive(btcExtPK1, 0));
+    REQUIRE(btcExtPK1.Derive(btcExtPK1, 0));
+
+    REQUIRE(btcExtPK1.pubkey.size() == 33);
+
+    xonly_pubkey pk(btcExtPK1.pubkey.begin() + 1, btcExtPK1.pubkey.end());
+    auto twpk1 = l15::core::ChannelKeys::AddTapTweak(pk);
+
+    std::string btcpkaddr = Bech32(TESTNET).Encode(std::get<0>(twpk1));
+
+    std::clog << "btc pk addr: " << btcpkaddr << std::endl;
+
+    CHECK(btcpkaddr == "tb1plj0pw0aq70cal6j4p9z4qdrcts8ky6jhqk4lmlzmrqa9js88ha9sv4lclv");
+
+    std::clog << "BTC chain code 1: " << btcExtPK.chaincode.GetHex() << std::endl;
+    std::clog << "BTC pubkey 1: " << hex(btcExtPK.pubkey) << std::endl;
+
+    // mnemonic:
+    // motor chef under enroll hub skate magic tide forum figure alien slight
+    KeyRegistry keyRegistry(TESTNET, hex(seed));
+    REQUIRE_NOTHROW(keyRegistry.AddKeyType("key", R"({"look_cache":true,"key_type":"DEFAULT","accounts":["1'"],"change":["0"],"index_range":"0-256"})"));
+
+    ExtPubKey extPubKey(TESTNET, "tpubDCKwXGY6buZjvJFHitFttGMbM6WNwUfqvw26xsbkdUJ2wh6hQ64CLagJYjWYkzSyRVAYKaTDRWyNtDXUcpCqMT57LWVUvBbp1xZ85NzPovD");
+    std::clog << "Chain code: " << extPubKey.GetChainCode().GetHex() << std::endl;
+    std::clog << "Pubkey: " << hex(extPubKey.GetPubKey()) << std::endl;
+
+    std::string addr0, addr11;
+
+    CHECK_NOTHROW(addr0 = extPubKey.DeriveAddress("0/0"));
+    CHECK(addr0 == "tb1plj0pw0aq70cal6j4p9z4qdrcts8ky6jhqk4lmlzmrqa9js88ha9sv4lclv");
+    CHECK_NOTHROW(addr11 = extPubKey.DeriveAddress("0/11"));
+
+    std::clog << "Addr 0/0: " << addr0 << std::endl;
+
+    CHECK_NOTHROW(keyRegistry.Lookup(addr0, "key"));
+    CHECK_NOTHROW(keyRegistry.Lookup(addr11, "key"));
+
+    ECC_Stop();
 }

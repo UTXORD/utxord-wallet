@@ -22,6 +22,7 @@
 #include "swap_inscription.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
+#include "simple_transaction.hpp"
 
 using namespace utxord;
 using namespace l15;
@@ -41,6 +42,21 @@ using namespace l15;
             SWIG_fail;
         }
 }
+
+%typemap(in) const bytevector& (bytevector param, const char *begin) {
+    if (!PyBytes_Check($input)) {
+        SWIG_exception_fail(SWIG_TypeError, "in method '" "GetAddress" "', argument " "1"" of type '" "bytes""'");
+    }
+    begin = PyBytes_AsString($input);
+    param.assign(begin, begin+PyBytes_Size($input));
+    $1 = &param;
+}
+
+%typemap(out) const l15::bytevector& { $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size()); }
+%typemap(out) l15::bytevector { $result = PyBytes_FromStringAndSize((const char*)($1.data()), $1.size()); }
+
+%apply l15::bytevector { l15::xonly_pubkey };
+%apply l15::bytevector { l15::signature };
 
 %typemap(out) CMutableTransaction (PyObject* obj)
 %{
@@ -116,18 +132,6 @@ using namespace l15;
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
 
-%typemap(in) const bytevector& (bytevector param, const char *begin) {
-    if (!PyBytes_Check($input)) {
-        SWIG_exception_fail(SWIG_TypeError, "in method '" "GetAddress" "', argument " "1"" of type '" "bytes""'");
-    }
-    begin = PyBytes_AsString($input);
-    param.assign(begin, begin+PyBytes_Size($input));
-    $1 = &param;
-}
-
-%typemap(out) const l15::bytevector& {
-    $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size());
-}
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
@@ -136,6 +140,7 @@ using namespace l15;
 %include "contract_builder.hpp"
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
+%include "simple_transaction.hpp"
 %include "transaction.hpp"
 %include "transaction.h"
 %include "inscription.hpp"

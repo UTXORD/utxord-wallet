@@ -14,6 +14,7 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/bitcoin/src \
  -I$(top_srcdir)/bitcoin/src/univalue/include \
  -I$(top_srcdir)/bitcoin/src/consensus \
+ -I$(top_srcdir)/bitcoin/src/policy \
  -I$(top_srcdir)/bitcoin/src/script \
  -I$(top_srcdir)/bitcoin/src/support \
  -I$(top_srcdir)/l15/src/common \
