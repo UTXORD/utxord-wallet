@@ -137,10 +137,11 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    // seem we don't need intsk filter
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
-      accounts: ["4'"],
+      accounts: ["5'", "4'"],
       change: ["0"],
       index_range: "0-16384"
     }
@@ -158,7 +159,7 @@ const WALLET = {
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
-      accounts: ["5'"],
+      accounts: ["4'", "5'"],
       change: ["0"],
       index_range: "0-16384"
     }
@@ -1287,6 +1288,9 @@ class Api {
 
       await newOrd.Data(payload.content_type, payload.content);
 
+      await newOrd.InscribeScriptPubKey(myself.wallet.scrsk.key.PubKey());
+      await newOrd.InscribeInternalPubKey(myself.wallet.intsk.key.PubKey());
+
       await newOrd.InscribeAddress(myself.wallet.ord.address);
       await newOrd.ChangeAddress(myself.wallet.fund.address);
 
@@ -1348,24 +1352,24 @@ class Api {
         );
       }
 
-        await newOrd.SignCommit(
-          myself.wallet.root.key,
-          'fund',
-          myself.wallet.uns.key.PubKey()
-        );
-        // get front root ord and select to addres or pubkey
-        // collection_utxo_key (root! image key) (current utxo key)
-        if(payload?.collection?.genesis_txid) {
-          await newOrd.SignCollection(
-            myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
-            'ord'
-          );
-        }
+      await newOrd.SignCommit(
+        myself.wallet.root.key,
+        'fund'
+      );
 
-        await newOrd.SignInscription(
+      // get front root ord and select to addres or pubkey
+      // collection_utxo_key (root! image key) (current utxo key)
+      if(payload?.collection?.genesis_txid) {
+        await newOrd.SignCollection(
           myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
-          'uns'
+          'ord'
         );
+      }
+
+      await newOrd.SignInscription(
+        myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
+        'scrsk'
+      );
 
       const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
@@ -1386,9 +1390,9 @@ class Api {
 
       outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
-      const sk = newOrd.getIntermediateTaprootSK()?.c_str();
+      const sk = newOrd.GetIntermediateSecKey()?.c_str();
       myself.wallet.root.key.AddKeyToCache(sk);
-      // outData.sk = newOrd.getIntermediateTaprootSK()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
+      // outData.sk = newOrd.GetIntermediateSecKey()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
       // TODOO: remove sk before > 2 conformations
       // or wait and check utxo this translation on balances
 
