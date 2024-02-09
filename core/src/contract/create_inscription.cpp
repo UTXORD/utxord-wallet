@@ -10,6 +10,7 @@
 #include "interpreter.h"
 #include "core_io.h"
 #include "feerate.h"
+#include "policy.h"
 
 #include "create_inscription.hpp"
 
