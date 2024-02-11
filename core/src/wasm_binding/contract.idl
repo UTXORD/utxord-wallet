@@ -157,8 +157,6 @@ interface CreateInscriptionBuilder
     [Value] string MakeInscriptionId();
 
     [Value] string GetMinFundingAmount([Const] DOMString params);
-    //[Value] string GetGenesisTxMiningFee(); // Why we need it at all??
-
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
 
@@ -228,7 +226,10 @@ interface SimpleTransaction
     IContractDestination Destination();
 
     void MiningFeeRate([Const] DOMString rate);
-    [Value] string GetMinFundingAmount();
+
+    [Const] DOMString GetMinFundingAmount([Const] DOMString params);
+    [Const] DOMString GetNewInputMiningFee();
+    [Const] DOMString GetNewOutputMiningFee();
 
     void AddInput(IContractOutput prevout);
     void AddOutput(IContractDestination out);
