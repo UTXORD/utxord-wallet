@@ -366,7 +366,10 @@ class Api {
     if(type==='xord' || type==='ext') return;
     const Obj = {};
     Obj[`${type}Index`] = Number(value);
-    return await chrome.storage.sync.set(Obj);
+    return setTimeout(() => {
+      chrome.storage.sync.set(Obj);
+    }, 1000);
+
   }
 
   async getIndexFromStorage(type) {
@@ -604,7 +607,10 @@ class Api {
       for (const item of this.wallet.xord) {
         xord_keys.push(item.pubKeyStr);
       }
-      chrome.storage.sync.set({xord_keys: xord_keys});
+      setTimeout(() => {
+        chrome.storage.sync.set({xord_keys: xord_keys});
+      }, 1000);
+
     }
     return true;
   }
@@ -634,7 +640,10 @@ class Api {
       for (const item of this.wallet.ext.keys) {
         ext_keys.push(item.privKeyStr);
       }
-      chrome.storage.sync.set({ext_keys: ext_keys});
+      setTimeout(() => {
+        chrome.storage.sync.set({ext_keys: ext_keys});
+      }, 1000);
+
     }
     return true;
   }
@@ -1922,16 +1931,14 @@ class Api {
     this.wallet.root.seed = seed;
 */
     this.wallet.encrypted = true;
-    chrome.storage.sync.set({ encryptedWallet: true });
-    chrome.storage.sync.set({ secret: this.wallet.secret });
+    chrome.storage.sync.set({encryptedWallet: true, secret: this.wallet.secret });
     return true;
   }
 
   async setUpPassword(password) {
     this.wallet.secret = await this.encrypt('secret', password);
     this.wallet.encrypted = true;
-    await chrome.storage.sync.set({ encryptedWallet: true });
-    await chrome.storage.sync.set({ secret: this.wallet.secret });
+    await chrome.storage.sync.set({encryptedWallet: true, secret: this.wallet.secret });
     return true;
   }
 
