@@ -369,7 +369,6 @@ class Api {
     const check_index = await this.getIndexFromStorage(type);
     if(check_index) return;
     return setTimeout(() => {
-      console.log('set to storage');
       chrome.storage.local.set(Obj);
     }, 3000);
 
