@@ -327,17 +327,17 @@ class Api {
   async init() {
     const myself = this
     try {
-      const { seed } = await chrome.storage.sync.get(['seed']);
+      const { seed } = await chrome.storage.local.get(['seed']);
       if (seed) {
         myself.wallet.root.seed = seed;
       }
-      const { ext_keys } = await chrome.storage.sync.get(['ext_keys']);
+      const { ext_keys } = await chrome.storage.local.get(['ext_keys']);
       if(ext_keys) {
         if(ext_keys.length > 0) {
            myself.resExtKeys(ext_keys);
         }
       }
-      const { xord_keys } = await chrome.storage.sync.get(['xord_keys']);
+      const { xord_keys } = await chrome.storage.local.get(['xord_keys']);
       if(xord_keys) {
         if(xord_keys.length > 0) {
            myself.resXordKeys(xord_keys);
@@ -366,15 +366,17 @@ class Api {
     if(type==='xord' || type==='ext') return;
     const Obj = {};
     Obj[`${type}Index`] = Number(value);
+    const check_index = await this.getIndexFromStorage(type);
+    if(check_index) return;
     return setTimeout(() => {
-      chrome.storage.sync.set(Obj);
-    }, 1000);
+      chrome.storage.local.set(Obj);
+    }, 3000);
 
   }
 
   async getIndexFromStorage(type) {
     if(type==='xord' || type==='ext') return;
-    return (await chrome.storage.sync.get([`${type}Index`]))[`${type}Index`] || 0
+    return (await chrome.storage.local.get([`${type}Index`]))[`${type}Index`] || 0
   }
 
   async rememberIndexes() {
@@ -521,7 +523,7 @@ class Api {
     const myself = this;
     // the password will not be used to generate seed phrases, only for encryption
     const seed = myself.bip39.mnemonicToSeedSync(mnemonic);
-    chrome.storage.sync.set({ seed: seed.toString('hex') });
+    chrome.storage.local.set({ seed: seed.toString('hex') });
     myself.wallet.root.seed = seed.toString('hex');
     return seed;
   }
@@ -529,7 +531,7 @@ class Api {
   setNick(nick) {
     const myself = this;
     myself.wallet.root.nick = nick;
-    chrome.storage.sync.set({ nick: nick });
+    chrome.storage.local.set({ nick: nick });
     return true;
   }
 
@@ -556,7 +558,7 @@ class Api {
     this.connect = false;
     this.sync = false;
 
-    await chrome.storage.sync.clear();
+    await chrome.storage.local.clear();
     chrome.runtime.reload()
     const err = chrome.runtime.lastError;
     if (err) {
@@ -608,8 +610,8 @@ class Api {
         xord_keys.push(item.pubKeyStr);
       }
       setTimeout(() => {
-        chrome.storage.sync.set({xord_keys: xord_keys});
-      }, 1000);
+        chrome.storage.local.set({xord_keys: xord_keys});
+      }, 3000);
 
     }
     return true;
@@ -641,8 +643,8 @@ class Api {
         ext_keys.push(item.privKeyStr);
       }
       setTimeout(() => {
-        chrome.storage.sync.set({ext_keys: ext_keys});
-      }, 1000);
+        chrome.storage.local.set({ext_keys: ext_keys});
+      }, 3000);
 
     }
     return true;
@@ -1927,23 +1929,23 @@ class Api {
     this.wallet.secret = this.encrypt('secret', password);
 /*
     const seed = this.encrypt(this.wallet.root.seed.toString('hex'));
-    chrome.storage.sync.set({ seed: seed });
+    chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
 */
     this.wallet.encrypted = true;
-    chrome.storage.sync.set({encryptedWallet: true, secret: this.wallet.secret });
+    chrome.storage.local.set({encryptedWallet: true, secret: this.wallet.secret });
     return true;
   }
 
   async setUpPassword(password) {
     this.wallet.secret = await this.encrypt('secret', password);
     this.wallet.encrypted = true;
-    await chrome.storage.sync.set({encryptedWallet: true, secret: this.wallet.secret });
+    await chrome.storage.local.set({encryptedWallet: true, secret: this.wallet.secret });
     return true;
   }
 
   async initPassword() {
-    const {secret} = await chrome.storage.sync.get(['secret'])
+    const {secret} = await chrome.storage.local.get(['secret'])
     if(secret) {
       this.wallet.secret = secret;
       this.wallet.encrypted = true;
@@ -1978,19 +1980,19 @@ class Api {
     }
     /*
     const seed = this.decrypt(this.wallet.root.seed.toString('hex'));
-    chrome.storage.sync.set({ seed: seed });
+    chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = this.hexToString(seed);
     */
     this.wallet.encrypted = false;
-    chrome.storage.sync.set({ encryptedWallet: false });
+    chrome.storage.local.set({ encryptedWallet: false });
     return true
   }
 
   async isEncryptedWallet() {
-    const {encryptedWallet} = await chrome.storage.sync.get(['encryptedWallet']);
+    const {encryptedWallet} = await chrome.storage.local.get(['encryptedWallet']);
     console.log("encryptedWallet: ",encryptedWallet);
     if(encryptedWallet===undefined) {
-      chrome.storage.sync.set({ encryptedWallet: this.wallet.encrypted });
+      chrome.storage.local.set({ encryptedWallet: this.wallet.encrypted });
     }
     return this.wallet.encrypted;
   }
