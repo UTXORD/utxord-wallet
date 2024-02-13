@@ -13,6 +13,8 @@ const opcodetype CONTENT_OP_TAG {OP_0};
 const bytevector CONTENT_TAG {'\0'};
 const opcodetype CONTENT_TYPE_OP_TAG {OP_1};
 const bytevector CONTENT_TYPE_TAG {'\1'};
+const opcodetype ORD_SHIFT_OP_TAG {OP_2};
+const bytevector ORD_SHIFT_TAG {'\2'};
 const opcodetype COLLECTION_ID_OP_TAG {OP_3};
 const bytevector COLLECTION_ID_TAG {'\3'};
 const opcodetype METADATA_OP_TAG {OP_5};

@@ -41,29 +41,26 @@ Inscription::Inscription(std::string inscription_id, std::list<std::pair<bytevec
 
     while(!inscr_data.empty()) {
         if (inscr_data.front().first == CONTENT_TYPE_TAG) {
-            if (!m_content_type.empty()) throw InscriptionFormatError("second CONTENT_TYPE tag");
+            //if (!m_content_type.empty()) throw InscriptionFormatError("second CONTENT_TYPE tag");
             m_content_type.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
-            inscr_data.pop_front();
         }
         else if (inscr_data.front().first == CONTENT_TAG) {
-            if (!m_content.empty()) throw InscriptionFormatError("second CONTENT tag");
+            //if (!m_content.empty()) throw InscriptionFormatError("second CONTENT tag");
             m_content = move(inscr_data.front().second);
-            inscr_data.pop_front();
         }
         else if (inscr_data.front().first == COLLECTION_ID_TAG) {
-            if (!m_collection_id.empty()) throw InscriptionFormatError("second COLLECTION_ID tag");
-
+            //if (!m_collection_id.empty()) throw InscriptionFormatError("second COLLECTION_ID tag");
             m_collection_id = DeserializeInscriptionId(inscr_data.front().second);
-            inscr_data.pop_front();
+        }
+        else if (inscr_data.front().first == ORD_SHIFT_TAG) {
+            m_ord_shift = CScriptNum(inscr_data.front().second, false, sizeof(CAmount)).GetInt64();
+            //if (!MoneyRange(ord_shift)) throw InscriptionFormatError("Ord shift is greater than whole Bitcoin supply")
         }
         else if (inscr_data.front().first == METADATA_TAG) {
             metadata.insert(metadata.end(), inscr_data.front().second.begin(), inscr_data.front().second.end());
-            inscr_data.pop_front();
         }
-        else {
-            // just skip unknown tag
-            inscr_data.pop_front();
-        }
+
+        inscr_data.pop_front();
     }
 
     m_metadata = move(metadata);
@@ -108,6 +105,11 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
         else if (opcode == CONTENT_TYPE_OP_TAG || (opcode == CONTENT_TYPE_TAG.size() && data == CONTENT_TYPE_TAG)) {
             GetNextScriptData(script, it, data, "content type");
             res.emplace_back(CONTENT_TYPE_TAG, move(data));
+            fetching_content = false;
+        }
+        else if (opcode == ORD_SHIFT_OP_TAG || (opcode == ORD_SHIFT_TAG.size() && data == ORD_SHIFT_TAG)) {
+            GetNextScriptData(script, it, data, "ord shift");
+            res.emplace_back(ORD_SHIFT_TAG, move(data));
             fetching_content = false;
         }
         else if (opcode == COLLECTION_ID_OP_TAG || (opcode == COLLECTION_ID_TAG.size() && data == COLLECTION_ID_TAG)) {

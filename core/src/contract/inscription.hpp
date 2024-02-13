@@ -33,6 +33,7 @@ class Inscription
     std::string m_inscription_id;
     std::string m_content_type;
     l15::bytevector m_content;
+    CAmount m_ord_shift = 0;
     std::string m_collection_id;
     l15::bytevector m_metadata;
 
@@ -54,6 +55,8 @@ public:
     { return m_content_type; }
     const l15::bytevector& GetContent() const
     { return m_content; }
+    CAmount GetOrdShift() const
+    { return m_ord_shift; }
 
     bool HasParent() const
     { return !m_collection_id.empty(); }
