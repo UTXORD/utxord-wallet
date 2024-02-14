@@ -61,11 +61,11 @@
             }"
           />
         </div>
-        <div class="flex items-center hidden">
+        <div class="flex items-center" v-if="balance?.unconfirmed > 0">
           <span class="mr-2 text-[var(--text-grey-color)]">Unconfirmed:</span>
           <PriceComp
             class="ml-auto"
-            :price="(balance.unconfirmed < 0 ? 0 : balance.unconfirmed) || 0"
+            :price="balance?.unconfirmed || 0"
             :loading="!isSynchronized"
             :font-size-breakpoints="{
               1000000: '15px'

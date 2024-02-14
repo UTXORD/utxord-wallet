@@ -1058,16 +1058,27 @@ class Api {
 
     const my = this.inscriptions;
     const all_funds = this.fundings;
+    console.log('all_funds:',all_funds);
 
-    const total = await this.sumAllFunds(all_funds);
+    const funds_in_queue = await this.selectFundsByFlags(all_funds, false, true);
+    console.log('funds_in_queue:',funds_in_queue);
+    const available_funds = await this.selectFundsByFlags(all_funds, false, false);
+    console.log('available_funds:', available_funds);
+
+    const total_sum = await this.sumAllFunds(all_funds);
+    const available_sum = await this.sumAllFunds(available_funds);
+    const in_queue_sum = await this.sumAllFunds(funds_in_queue);
+    console.log('available_sum:', available_sum);
+    console.log('in_queue_sum:', in_queue_sum);
+
     const sum_my_inscr = await this.sumMyInscribtions(my);
     return {
       data: {
         sync: this.sync,
         connect: this.connect,
-        confirmed: total || 0,
+        confirmed: available_sum || 0,
+        unconfirmed: in_queue_sum || 0,
         to_address: response?.data?.confirmed || 0,
-        unconfirmed: response?.data?.unconfirmed || 0,
         used_for_inscribtions: sum_my_inscr || 0,
         inscriptions: my || []
       }
@@ -1194,7 +1205,7 @@ class Api {
 
   //------------------------------------------------------------------------------
 
-  async createInscriptionContract(payload, theIndex = 0, use_funds_in_queue = false) {
+  async createInscriptionContract(payload, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
       xord: null,
@@ -1392,7 +1403,7 @@ class Api {
       console.log('min_fund_amount_final:',min_fund_amount_final);
       outData.amount = min_fund_amount_final;
 
-      const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final);
+      const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list_final;
 
       const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee()?.c_str()));
@@ -1639,6 +1650,14 @@ class Api {
   }
 
   //----------------------------------------------------------------------------
+  async selectFundsByFlags(fundings = [], select_is_locked = false, select_in_queue = false){
+    let list = this.fundings;
+    if (fundings.length > 0) {
+      list = fundings;
+    }
+    return list.filter((item) =>item.is_locked === select_is_locked && item.in_queue === select_in_queue);
+  }
+  //----------------------------------------------------------------------------
 
   async selectKeysByFunds(target: number, fundings = [], except_items = [], use_funds_in_queue = false) {
     const addr_list = [];
@@ -1709,7 +1728,7 @@ class Api {
     return [];
   }
 
-  async  commitBuyInscriptionContract(payload, theIndex=0) {
+  async  commitBuyInscriptionContract(payload) {
     const myself = this;
     const outData = {
       data: null,
