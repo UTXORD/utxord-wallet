@@ -50,7 +50,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="miningFee"
+          :price="dataForSign?.data?.costs?.mining_fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -85,12 +85,22 @@
       />
     </div>
 
-    <div v-show="isInsufficientBalance"
+    <div
       class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+      v-if="balance?.unconfirmed > 0"
     >
-      <span class="mr-2 text-[var(--text-color)]" style="font-size: 20px;">Insufficient funds. Please add.</span>
-
+      <span class="mr-2 text-[var(--text-color)]">Unconfirmed:</span>
+      <PriceComp
+        class="ml-auto"
+        :price="balance?.unconfirmed || 0"
+        :loading="!isSynchronized"
+        :font-size-breakpoints="{
+          1000000: '15px'
+        }"
+      />
     </div>
+
+    <NotifyInBody/>
     <GetRawTransactions/>
     <!-- Inputs -->
   </SignWrapper>
@@ -103,6 +113,7 @@ import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
+import NotifyInBody from '~/components/NotifyInBody.vue'
 
 
 const store = useStore()
@@ -111,10 +122,10 @@ const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 const isSynchronized = computed(() => balance?.value?.sync)
 const connected = computed(() => balance?.value?.connect)
 
-const miningFee = computed(
-  () => Math.abs(dataForSign.value?.data?.costs?.amount -
-    dataForSign.value?.data?.costs?.expect_amount) || 0
-)
+// const miningFee = computed(
+//   () => Math.abs(dataForSign.value?.data?.costs?.amount -
+//     dataForSign.value?.data?.costs?.expect_amount) || 0
+// )
 
 const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
 

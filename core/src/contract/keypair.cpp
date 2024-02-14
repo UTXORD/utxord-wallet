@@ -165,10 +165,18 @@ KeyPair KeyRegistry::Lookup(const l15::bytevector &keyid, const KeyLookupFilter&
         std::iota(indexes, indexes + step, key_index);
         std::for_each(std::execution::par_unseq, indexes, indexes + step, [&](const auto &k) {
             for (const l15::core::MasterKey &account: accountKeys) {
-                l15::core::ChannelKeys keypair = account.Derive(std::vector<uint32_t>{k},
-                                                                (hint.type != KeyLookupFilter::TAPROOT) ? l15::core::SUPPRESS : l15::core::FORCE);
+
+                // For TAPROOT case lets look for both tweaked and untweaked keys just to provide more robustness
+
+                l15::core::ChannelKeys keypair = account.Derive(std::vector<uint32_t>{k}, l15::core::SUPPRESS);
                 if (compare(keypair, keyid)) {
                     res = std::make_shared<l15::core::ChannelKeys>(std::move(keypair));
+                }
+                else if (hint.type == KeyLookupFilter::TAPROOT) {
+                    keypair.AddTapTweak();
+                    if (compare(keypair, keyid)) {
+                        res = std::make_shared<l15::core::ChannelKeys>(std::move(keypair));
+                    }
                 }
             }
         });
@@ -180,9 +188,18 @@ KeyPair KeyRegistry::Lookup(const l15::bytevector &keyid, const KeyLookupFilter&
 #else
     for (uint32_t key_index: hint.index_range) {
         for (const l15::core::MasterKey& account: accountKeys) {
-            l15::core::ChannelKeys keypair = account.Derive(std::vector<uint32_t>{key_index}, (hint.type != KeyLookupFilter::TAPROOT) ? l15::core::SUPPRESS : l15::core::FORCE);
+
+            // For TAPROOT case lets look for both tweaked and untweaked keys just to provide more robustness
+
+            l15::core::ChannelKeys keypair = account.Derive(std::vector<uint32_t>{key_index}, l15::core::SUPPRESS);
             if (compare(keypair, keyid)) {
                 return KeyPair(m_ctx, keypair.GetLocalPrivKey());
+            }
+            else if (hint.type == KeyLookupFilter::TAPROOT){
+                keypair.AddTapTweak();
+                if (compare(keypair, keyid)) {
+                    return KeyPair(m_ctx, keypair.GetLocalPrivKey());
+                }
             }
         }
     }

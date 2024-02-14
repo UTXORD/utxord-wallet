@@ -12,13 +12,15 @@ class Rest {
           method: 'GET',
           headers,
         });
-        if(response){
+        if(response?.ok){
           const json = await response?.json();
           return json;
         }
+        console.log('error connect:', response.status);
+        return;
       }
     }catch(e){
-      console.log('Rest::get->error:',e);
+      console.log(`Rest::get->error: ${e.message}`, e.stack);
     }
   }
 }

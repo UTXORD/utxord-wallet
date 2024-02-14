@@ -67,7 +67,8 @@ import {
   SELL_INSCRIPTION,
   CREATE_INSCRIPTION,
   SUBMIT_SIGN,
-  BALANCE_CHANGE_PRESUMED
+  BALANCE_CHANGE_PRESUMED,
+  CREATE_CHUNK_INSCRIPTION
 } from '~/config/events'
 import LoadingScreen from '~/components/LoadingScreen.vue'
 import CustomInput from '~/components/CustomInput.vue'
@@ -83,7 +84,7 @@ const winHelpers = new WinHelpers()
 
 const total = computed(() => {
   let out = 0
-  if (dataForSign.value?.type === CREATE_INSCRIPTION) {
+  if (dataForSign.value?.type === CREATE_INSCRIPTION || dataForSign.value?.type === CREATE_CHUNK_INSCRIPTION) {
     out += dataForSign.value?.data?.costs?.amount || 0
   } else {
     out += dataForSign.value?.data?.ord_price || 0
@@ -99,10 +100,15 @@ const isInsufficientBalance = computed(() => {
   return false
 })
 
+const message = computed(() => {
+ return dataForSign.value?.data?.costs?.errorMessage || dataForSign.value?.data?.errorMessage
+})
+
 const isDisabled = computed(() => {
   if (dataForSign.value?.type === SELL_INSCRIPTION) return false
   if (Number(balance.value?.confirmed) === 0) return true
   if (isInsufficientBalance.value) return true
+  if (message?.value?.length) return true
   if (!isASCII(password.value)) return true
   return false
 })

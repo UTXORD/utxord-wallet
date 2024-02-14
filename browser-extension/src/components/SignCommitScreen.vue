@@ -83,12 +83,21 @@
         }"
       />
     </div>
-    <div v-show="isInsufficientBalance"
+    <div
       class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+      v-if="balance?.unconfirmed > 0"
     >
-      <span class="mr-2 text-[var(--text-color)]" style="font-size: 20px;">Insufficient funds. Please add.</span>
-
+      <span class="mr-2 text-[var(--text-color)]">Unconfirmed:</span>
+      <PriceComp
+        class="ml-auto"
+        :price="balance?.unconfirmed || 0"
+        :loading="!isSynchronized"
+        :font-size-breakpoints="{
+          1000000: '15px'
+        }"
+      />
     </div>
+    <NotifyInBody/>
     <GetRawTransactions/>
   </SignWrapper>
 </template>
@@ -100,6 +109,7 @@ import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
+import NotifyInBody from '~/components/NotifyInBody.vue'
 
 const store = useStore()
 const { balance, dataForSign, ordAddress } = toRefs(store)

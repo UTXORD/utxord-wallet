@@ -35,6 +35,7 @@ class CreateInscriptionBuilder: public ContractBuilder
 
     std::optional<std::string> m_parent_collection_id;
     std::optional<TxInput> m_collection_input;
+    std::optional<std::string> m_collection_address_override;
 
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
@@ -63,7 +64,7 @@ private:
     void CheckBuildArgs() const;
     void CheckContractTerms(InscribePhase phase) const;
 
-    void RestoreTransactions();
+    void RestoreTransactions() const;
 
     const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>& GetInscriptionTapRoot() const;
     std::vector<CTxOut> GetGenesisTxSpends() const;
@@ -163,6 +164,9 @@ public:
     void Collection(const std::string& collection_id, const std::string& amount, const std::string& collection_addr)
     { AddToCollection(collection_id, uint256(0).GetHex(), 1, amount, collection_addr); }
 
+    void OverrideCollectionAddress(const std::string& addr)
+    { m_collection_address_override = addr; }
+
     std::string MakeInscriptionId() const;
 
     std::string GetInscribeScriptPubKey() const
@@ -184,12 +188,16 @@ public:
     CAmount CalculateWholeFee(const std::string& params) const override;
     std::string GetMinFundingAmount(const std::string& params) const override;
 
-    std::vector<std::string> RawTransactions();
+    std::vector<std::string> RawTransactions() const;
 
     uint32_t TransactionCount() const
     { return 2; }
 
     std::string RawTransaction(uint32_t n) const;
+
+    std::string GetInscriptionLocation() const;
+    std::string GetCollectionLocation() const;
+    std::string GetChangeLocation() const;
 
     std::string Serialize(uint32_t version, InscribePhase phase) const;
     void Deserialize(const std::string& data, InscribePhase phase);

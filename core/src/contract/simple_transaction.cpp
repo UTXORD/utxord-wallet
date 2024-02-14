@@ -12,7 +12,8 @@ namespace utxord {
 const  std::string SimpleTransaction::name_outputs = "outputs";
 
 const char* const SimpleTransaction::type = "transaction";
-const uint32_t SimpleTransaction::m_protocol_version = 1;
+const uint32_t SimpleTransaction::s_protocol_version = 1;
+const char* SimpleTransaction::s_versions = "[1]";
 
 CMutableTransaction SimpleTransaction::MakeTxTemplate() const
 {
@@ -116,7 +117,7 @@ UniValue SimpleTransaction::MakeJson() const
 {
     UniValue contract(UniValue::VOBJ);
     contract.pushKV(name_type, type);
-    contract.pushKV(name_version, (int)m_protocol_version);
+    contract.pushKV(name_version, (int)s_protocol_version);
     contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
 
     UniValue utxo_arr(UniValue::VARR);
@@ -143,7 +144,7 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
     if (contract[name_type].get_str() != type) {
         throw ContractProtocolError("transaction contract does not match " + contract[name_type].getValStr());
     }
-    if (contract[name_version].getInt<int>() != m_protocol_version) {
+    if (contract[name_version].getInt<int>() != s_protocol_version) {
         throw ContractProtocolError(std::string("Wrong ") + type + " version: " + contract[name_version].getValStr());
     }
 

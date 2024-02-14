@@ -10,12 +10,12 @@
 #include "interpreter.h"
 #include "core_io.h"
 #include "feerate.h"
+#include "policy.h"
 
 #include "create_inscription.hpp"
 
 #include "inscription_common.hpp"
 #include "contract_builder.hpp"
-#include "policy.h"
 
 namespace utxord {
 
@@ -259,12 +259,12 @@ void CreateInscriptionBuilder::SignInscription(const KeyRegistry &master_key, co
 
     m_inscribe_sig = script_keypair.SignTaprootTx(genesis_tx, 0, GetGenesisTxSpends(),
                                                   get<2>(GetInscriptionTapRoot()).GetScripts().front(),
-                                                  m_type == LASY_INSCRIPTION ? (SIGHASH_ANYONECANPAY | SIGHASH_ALL) : SIGHASH_DEFAULT);
+                                                  m_type == LASY_INSCRIPTION ? (SIGHASH_ANYONECANPAY | SIGHASH_SINGLE) : SIGHASH_DEFAULT);
 
     if (m_parent_collection_id) {
         if (m_type == LASY_INSCRIPTION)
             m_fund_mining_fee_sig = script_keypair.SignTaprootTx(genesis_tx, 2, GetGenesisTxSpends(),
-                MakeMultiSigScript(*m_inscribe_script_pk, *m_inscribe_script_market_pk), SIGHASH_ANYONECANPAY | SIGHASH_ALL);
+                MakeMultiSigScript(*m_inscribe_script_pk, *m_inscribe_script_market_pk), SIGHASH_ANYONECANPAY | SIGHASH_NONE);
         else
             m_fund_mining_fee_sig = script_keypair.SignTaprootTx(genesis_tx, 2, GetGenesisTxSpends(), {});
     }
@@ -286,11 +286,11 @@ void CreateInscriptionBuilder::MarketSignInscription(const KeyRegistry &master_k
     m_inscribe_market_sig = script_keypair.SignTaprootTx(genesis_tx, 0, GetGenesisTxSpends(), get<2>(GetInscriptionTapRoot()).GetScripts().front());
     if (m_parent_collection_id) {
         m_fund_mining_fee_market_sig = script_keypair.SignTaprootTx(genesis_tx, 2, GetGenesisTxSpends(),
-                MakeMultiSigScript(*m_inscribe_script_pk, *m_inscribe_script_market_pk), SIGHASH_ANYONECANPAY | SIGHASH_ALL);
+                MakeMultiSigScript(*m_inscribe_script_pk, *m_inscribe_script_market_pk));
     }
 }
 
-std::vector<std::string> CreateInscriptionBuilder::RawTransactions()
+std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
 {
     if (!mCommitTx || !mGenesisTx) {
         RestoreTransactions();
@@ -416,6 +416,9 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     UniValue root;
     root.read(data);
 
+    if (!root.isObject() || !root[name_contract_type].isStr() || !root[name_params].isObject())
+        throw ContractProtocolError("JSON is not CreateInscription contract");
+
     if (root[name_contract_type].get_str() == val_create_inscription) {
         if (m_type != INSCRIPTION && m_type != LASY_INSCRIPTION) throw ContractTermMismatch (std::string(name_contract_type));
     } else
@@ -492,7 +495,7 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     CheckContractTerms(phase);
 }
 
-void CreateInscriptionBuilder::RestoreTransactions()
+void CreateInscriptionBuilder::RestoreTransactions() const
 {
     if (!m_inscribe_script_pk) throw ContractTermMissing(std::string(name_inscribe_script_pk));
     if (!m_inscribe_int_pk) throw ContractTermMissing(std::string(name_inscribe_int_pk));
@@ -634,7 +637,10 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
         }
         tx.vin.emplace_back(tx.vin.front().prevout.hash, 1);
 
-        tx.vout.emplace_back(m_collection_input->output->Destination()->Amount(), m_collection_input->output->Destination()->PubKeyScript());
+        tx.vout.emplace_back(m_collection_input->output->Destination()->Amount(),
+                             (m_type == LASY_INSCRIPTION && m_collection_address_override) ?
+                                        mBech.PubKeyScript(*m_collection_address_override) :
+                                        m_collection_input->output->Destination()->PubKeyScript());
 
         if (m_type == LASY_INSCRIPTION) {
             auto tr = FundMiningFeeTapRoot();
@@ -784,6 +790,53 @@ CAmount CreateInscriptionBuilder::CalculateWholeFee(const std::string& params) c
     }
 
     return genesis_fee + CFeeRate(*m_mining_fee_rate).GetFee(genesis_vsize_add + commit_vsize);
+}
+
+std::string CreateInscriptionBuilder::GetInscriptionLocation() const
+{
+    UniValue res(UniValue::VOBJ);
+
+    res.pushKV("txid", GenesisTx().GetHash().GetHex());
+    res.pushKV("nout", 0);
+    res.pushKV("amount", FormatAmount(GenesisTx().vout[0].nValue));
+
+    return res.write();
+}
+
+std::string CreateInscriptionBuilder::GetCollectionLocation() const
+{
+    UniValue res(UniValue::VOBJ);
+
+    res.pushKV("txid", GenesisTx().GetHash().GetHex());
+    res.pushKV("nout", 1);
+    res.pushKV("amount", FormatAmount(GenesisTx().vout[1].nValue));
+
+    return res.write();
+}
+
+std::string CreateInscriptionBuilder::GetChangeLocation() const
+{
+    UniValue res(UniValue::VOBJ);
+
+    if (m_change_addr) {
+        CMutableTransaction commitTx = CommitTx();
+        if (m_parent_collection_id) {
+            if (commitTx.vout.size() == 3) {
+                res.pushKV("txid", commitTx.GetHash().GetHex());
+                res.pushKV("nout", 2);
+                res.pushKV("amount", FormatAmount(commitTx.vout[2].nValue));
+            }
+        }
+        else {
+            if (commitTx.vout.size() == 2) {
+                res.pushKV("txid", commitTx.GetHash().GetHex());
+                res.pushKV("nout", 1);
+                res.pushKV("amount", FormatAmount(commitTx.vout[1].nValue));
+            }
+        }
+    }
+
+    return res.write();
 }
 
 std::string CreateInscriptionBuilder::RawTransaction(uint32_t n) const

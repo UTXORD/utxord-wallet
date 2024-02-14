@@ -310,8 +310,26 @@ public:
     void MiningFeeRate(const std::string &rate)
     { m_ptr->MiningFeeRate(rate); }
 
-    std::string GetMinFundingAmount() const
-    { return m_ptr->GetMinFundingAmount(""); }
+    const char* GetMinFundingAmount(const std::string& params) const
+    {
+        static std::string cache;
+        cache = m_ptr->GetMinFundingAmount(params);
+        return cache.c_str();
+    }
+
+    const char* GetNewInputMiningFee()
+    {
+        static std::string cache;
+        cache = m_ptr->GetNewInputMiningFee();
+        return cache.c_str();
+    }
+
+    const char* GetNewOutputMiningFee()
+    {
+        static std::string cache;
+        cache = m_ptr->GetNewInputMiningFee();
+        return cache.c_str();
+    }
 
     void AddInput(IContractOutput *prevout)
     { m_ptr->AddInput(prevout->Share()); }
