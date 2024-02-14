@@ -71,6 +71,7 @@ class SwapInscriptionBuilder : public ContractBuilder
 
     void CheckOrdSwapSig() const;
     void CheckFundsSwapSig() const;
+    void CheckMarketSwapSig() const;
 
     void CheckOrdPayoffSig() const;
 

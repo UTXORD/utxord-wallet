@@ -579,6 +579,7 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
 
     switch (phase) {
     case MARKET_SWAP_SIG:
+        CheckMarketSwapSig();
     case FUNDS_SWAP_SIG:
         CheckFundsSwapSig();
     case MARKET_PAYOFF_SIG:
@@ -956,6 +957,19 @@ void SwapInscriptionBuilder::CheckFundsSwapSig() const
     else {
         CMutableTransaction swap_tx(MakeSwapTx(true));
         VerifyTxSignature(*m_swap_script_pk_B, *m_funds_swap_sig_B, swap_tx, 1, move(spent_outs), MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
+    }
+}
+
+void SwapInscriptionBuilder::CheckMarketSwapSig() const
+{
+    std::vector<CTxOut> spent_outs = {CTxOut(m_ord_input->output->Destination()->Amount(), m_ord_input->output->Destination()->PubKeyScript()), GetFundsCommitTx().vout.front()};
+
+    if (mSwapTx) {
+        VerifyTxSignature(*m_swap_script_pk_M, *m_funds_swap_sig_M, *mSwapTx, 1, move(spent_outs), MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
+    }
+    else {
+        CMutableTransaction swap_tx(MakeSwapTx(true));
+        VerifyTxSignature(*m_swap_script_pk_M, *m_funds_swap_sig_M, swap_tx, 1, move(spent_outs), MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
     }
 }
 
