@@ -48,7 +48,10 @@ import {
   GET_INSCRIPTION_CONTRACT_RESULT,
   CREATE_CHUNK_INSCRIPTION,
   GET_BULK_INSCRIPTION_ESTIMATION,
-  GET_BULK_INSCRIPTION_ESTIMATION_RESULT, CREATE_INSCRIBE_RESULT, CREATE_CHUNK_INSCRIPTION_RESULT
+  GET_BULK_INSCRIPTION_ESTIMATION_RESULT,
+  CREATE_INSCRIBE_RESULT,
+  CREATE_CHUNK_INSCRIPTION_RESULT,
+  TRANSFER_LAZY_COLLECTION
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -148,6 +151,29 @@ interface IChunkInscriptionResult {
   },
   error: null | string
 }
+
+interface ICollectionTransfer {
+    collection: {
+        owner_txid: string,
+        owner_nout: number,
+        metadata: {
+            title: string | null,
+            description: string | null
+        }
+    },
+    transfer_address: string,  // where to transfer collection
+    mining_fee: number,
+    market_fee: {
+        address: string,  // where to send market fee for lazy inscribing
+        amount: number
+    }
+}
+
+interface ICollectionTransferResult {
+    contract: object,
+    errorMessage: string | null  // null or empty string means no error happened
+}
+
 
 (async () => {
   try {
@@ -678,6 +704,38 @@ interface IChunkInscriptionResult {
         }
       }
 
+      if (payload.type === TRANSFER_LAZY_COLLECTION) {
+        let costs;
+        console.log('payload:', {...payload})
+        console.log('payload?.data?.type:', payload?.data?.type)
+        console.log('payload?.data?.collection?.owner_txid:', payload?.data?.collection?.genesis_txid);
+
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug('TRANSFER_LAZY_COLLECTION balances:', {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
+        costs = await Api.transferForLazyInscriptionContract(payload.data);
+        console.log('costs:', costs)
+        payload.data.costs = costs;
+        console.log(TRANSFER_LAZY_COLLECTION+':', {...payload.data});
+
+        payload.data.errorMessage = payload.data?.costs?.errorMessage;
+        if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
+
+        winManager.openWindow('sign-transfer-collection', async (id) => {
+          setTimeout(async  () => {
+            if (payload.data.costs.output_mining_fee < 546) {
+              Api.sendNotificationMessage(
+                'TRANSFER_LAZY_COLLECTION',
+                'There are too few coins left after creation and they will become part of the inscription balance'
+              );
+            }
+            await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+          }, 1000);
+        });
+      }
+
       if (payload.type === CREATE_INSCRIPTION) {
         let costs;
         console.log('payload:', {...payload})
@@ -710,6 +768,7 @@ interface IChunkInscriptionResult {
           }, 1000);
         });
       }
+
       if (payload.type === SELL_INSCRIPTION) {
         const balances = await Api.prepareBalances(payload?.data?.addresses);
         console.debug('SELL_INSCRIPTION balances:', {...balances || {}});

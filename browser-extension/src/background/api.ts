@@ -1206,6 +1206,136 @@ class Api {
 
   //------------------------------------------------------------------------------
 
+  async transferForLazyInscriptionContract(payload, estimation: boolean = false) {
+    const myself = this;
+
+    const outData = {
+      xord: null,
+      nxord: null,
+      xord_address: null,
+      data: null,
+      // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
+      amount: 0,
+      output_mining_fee: 0,
+      inputs_sum: 0,
+      utxo_list: [],
+      expect_amount: Number(payload.expect_amount),
+      fee_rate: payload.fee_rate,
+      fee: payload.fee,
+      size: (payload.content.length + payload.content_type.length),
+      raw: [],
+      outputs: {
+        collection: {} as object | null,
+        inscription: {} as object | null,
+        change: {} as object | null,
+      },
+      errorMessage: null as string | null
+    };
+    try {
+      console.log('transferForLazyInscriptionContract payload: ', {...payload || {}});
+
+      let tx = new myself.utxord.SimpleTransaction(myself.network);
+      tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
+
+      let collection = null;
+      if (payload?.collection?.owner_txid) {
+        // if collection is present.. than finding an output with collection
+        collection = myself.selectByOrdOutput(
+            payload.collection.owner_txid,
+            payload.collection.owner_nout
+        );
+        console.log("payload.collection:", payload.collection)
+        console.debug('selectByOrdOutput collection:', collection);
+      }
+
+      if (!collection) {
+        myself.sendWarningMessage(
+            'TRANSFER_LAZY_COLLECTION',
+            `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
+        );
+        setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+        outData.errorMessage = "Collection is not found in balances.";
+        outData.raw = [];
+        return outData;
+      }
+
+      const collectionUtxo = new myself.utxord.UTXO(
+          myself.network,
+          payload.collection.owner_txid,
+          payload.collection.owner_nout,
+          collection.amount,
+          collection.address
+      );
+
+      const transferOutput = new myself.utxord.P2TR(this.network, collectionAmount, payload.transfer_address);
+      const marketOutput = new myself.utxord.P2TR(
+          myself.network,
+          myself.satToBtc(payload.market_fee).toFixed(8),
+          payload.market_address
+      );
+
+      tx.AddInput(collectionUtxo);
+      myself.utxord.destroy(collectionUtxo);
+
+      tx.AddOutput(transferOutput);
+      myself.utxord.destroy(transferOutput);
+
+      tx.AddOutput(marketOutput);
+      myself.utxord.destroy(marketOutput);
+
+      let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
+      min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
+      outData.amount = min_fund_amount;
+
+      if (!myself.fundings.length) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.raw = [];
+        return outData;
+      }
+
+      const input_mining_fee = myself.btcToSat(tx.GetNewInputMiningFee());
+      const utxo_list = await myself.smartSelectFundsByAmount(min_fund_amount, [], input_mining_fee);
+      outData.utxo_list = utxo_list;
+
+      console.log("min_fund_amount:", min_fund_amount);
+      console.log("utxo_list:", utxo_list);
+
+      if (utxo_list?.length < 1) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.raw = [];
+        return outData;
+      }
+
+      outData.inputs_sum = await myself.sumAllFunds(utxo_list);
+
+      for(const fund of utxo_list) {
+        const utxo = new myself.utxord.UTXO(myself.network,
+            fund.txid,
+            fund.nout,
+            myself.satToBtc(fund.amount).toFixed(8),
+            fund.address
+        );
+        tx.AddInput(utxo);
+        myself.utxord.destroy(utxo);
+      }
+
+      tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
+
+      tx.Sign(myself.wallet.root.key, "fund");
+      outData.data = tx.Serialize();
+      outData.raw = await myself.getRawTransactions(tx);
+      myself.utxord.destroy(tx);
+
+      return outData;
+    } catch (e) {
+      outData.errorMessage = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
+      setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+      return outData;
+    }
+  }
+
+  //------------------------------------------------------------------------------
+
   async createInscriptionContract(payload, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
@@ -1317,9 +1447,9 @@ class Api {
       await newOrd.InscribeAddress(myself.wallet.ord.address);
       await newOrd.ChangeAddress(myself.wallet.fund.address);
 
-      const min_fund_amount = myself.btcToSat(Number(newOrd.GetMinFundingAmount(
+      const min_fund_amount = myself.btcToSat(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
-      )?.c_str()));
+      )?.c_str());
       outData.amount = min_fund_amount;
       if(!myself.fundings.length ) {
           // TODO: REWORK FUNDS EXCEPTION
@@ -1407,7 +1537,7 @@ class Api {
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list_final;
 
-      const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee()?.c_str()));
+      const output_mining_fee = myself.btcToSat(newOrd.GetNewOutputMiningFee()?.c_str());
       outData.output_mining_fee = output_mining_fee;
       console.log('output_mining_fee:', output_mining_fee);
 
@@ -1660,6 +1790,26 @@ class Api {
   }
   //----------------------------------------------------------------------------
 
+  async smartSelectFundsByAmount(target: number, fundings = [], new_input_fee: number, iterations_limit =  10) {
+    let utxo_list = await this.selectKeysByFunds(target, fundings);
+    if (0 < utxo_list.length) {
+      let utxo_summ = utxo_list.reduce((summ, utxo) => summ + utxo.amount, 0);
+      let new_target = target + new_input_fee * utxo_list.length;
+
+      while (utxo_summ < new_target && 0 < iterations_limit--) {
+        const more_utxo_list = await this.selectKeysByFunds(target, fundings, utxo_list);
+        if (0 == more_utxo_list.length) break;
+
+        utxo_list = [...utxo_list, ...more_utxo_list];
+        utxo_summ += more_utxo_list.reduce((summ, utxo) => summ + utxo.amount, 0);
+        new_target += new_input_fee * more_utxo_list.length
+      }
+    }
+    return utxo_list;
+  }
+
+  //----------------------------------------------------------------------------
+
   async selectKeysByFunds(target: number, fundings = [], except_items = [], use_funds_in_queue = false) {
     const addr_list = [];
 
@@ -1750,8 +1900,7 @@ class Api {
       swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
       swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
 
-      const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("")?.c_str()))
-
+      const min_fund_amount = await myself.btcToSat(swapSim.GetMinFundingAmount("")?.c_str());
 
       if(!myself.fundings.length ) {
         // TODO: REWORK FUNDS EXCEPTION
@@ -1800,7 +1949,7 @@ class Api {
 
       buyOrd.OrdPayoffAddress(myself.wallet.ord.key.GetP2TRAddress(myself.network));
 
-      const min_fund_amount_final = await myself.btcToSat(Number(buyOrd.GetMinFundingAmount("")?.c_str()))
+      const min_fund_amount_final = myself.btcToSat(buyOrd.GetMinFundingAmount("")?.c_str());
       outData.min_fund_amount = min_fund_amount_final;
       outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
       outData.utxo_list = utxo_list;
