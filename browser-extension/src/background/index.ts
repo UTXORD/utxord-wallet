@@ -351,7 +351,7 @@ interface IChunkInscriptionResult {
 
           contractData.collection = parentInscription;
           console.debug('createChunkInscription: chunk contractData: ', contractData);
-          const contract = await Api.createInscriptionContract(contractData, 0, true);
+          const contract = await Api.createInscriptionContract(contractData, true);
           console.debug('createChunkInscription: contract: ', contract);
 
           if (contract.errorMessage) {
