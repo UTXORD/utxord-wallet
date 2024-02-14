@@ -1061,15 +1061,11 @@ class Api {
     console.log('all_funds:',all_funds);
 
     const funds_in_queue = await this.selectFundsByFlags(all_funds, false, true);
-    console.log('funds_in_queue:',funds_in_queue);
     const available_funds = await this.selectFundsByFlags(all_funds, false, false);
-    console.log('available_funds:', available_funds);
 
     const total_sum = await this.sumAllFunds(all_funds);
     const available_sum = await this.sumAllFunds(available_funds);
     const in_queue_sum = await this.sumAllFunds(funds_in_queue);
-    console.log('available_sum:', available_sum);
-    console.log('in_queue_sum:', in_queue_sum);
 
     const sum_my_inscr = await this.sumMyInscribtions(my);
     return {
