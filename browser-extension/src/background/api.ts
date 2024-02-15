@@ -1255,7 +1255,7 @@ class Api {
         );
         setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
         outData.errorMessage = "Collection is not found in balances.";
-        outData.raw = [];
+        // outData.raw = [];
         return outData;
       }
 
@@ -1289,7 +1289,7 @@ class Api {
 
       if (!myself.fundings.length) {
         outData.errorMessage = "Insufficient funds. Please add.";
-        outData.raw = [];
+        // outData.raw = [];
         return outData;
       }
 
@@ -1302,7 +1302,7 @@ class Api {
 
       if (utxo_list?.length < 1) {
         outData.errorMessage = "Insufficient funds. Please add.";
-        outData.raw = [];
+        // outData.raw = [];
         return outData;
       }
 
@@ -1319,13 +1319,14 @@ class Api {
         myself.utxord.destroy(utxo);
       }
 
-      tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
+      if (!estimation) {
+        tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
 
-      tx.Sign(myself.wallet.root.key, "fund");
-      outData.data = tx.Serialize();
-      outData.raw = await myself.getRawTransactions(tx);
+        tx.Sign(myself.wallet.root.key, "fund");
+        outData.data = tx.Serialize();
+        outData.raw = await myself.getRawTransactions(tx);
+      }
       myself.utxord.destroy(tx);
-
       return outData;
     } catch (e) {
       outData.errorMessage = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);

@@ -49,9 +49,10 @@ import {
   CREATE_CHUNK_INSCRIPTION,
   GET_BULK_INSCRIPTION_ESTIMATION,
   GET_BULK_INSCRIPTION_ESTIMATION_RESULT,
-  CREATE_INSCRIBE_RESULT,
   CREATE_CHUNK_INSCRIPTION_RESULT,
-  TRANSFER_LAZY_COLLECTION
+  TRANSFER_LAZY_COLLECTION,
+  ESTIMATE_TRANSFER_LAZY_COLLECTION,
+  ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -153,25 +154,26 @@ interface IChunkInscriptionResult {
 }
 
 interface ICollectionTransfer {
-    collection: {
-        owner_txid: string,
-        owner_nout: number,
-        metadata: {
-            title: string | null,
-            description: string | null
-        }
-    },
-    transfer_address: string,  // where to transfer collection
-    mining_fee: number,
-    market_fee: {
-        address: string,  // where to send market fee for lazy inscribing
-        amount: number
+  addresses: [],
+  collection: {
+    owner_txid: string,
+    owner_nout: number,
+    metadata: {
+      title: string | null,
+      description: string | null
     }
+  },
+  transfer_address: string,  // where to transfer collection
+  mining_fee: number,
+  market_fee: {
+    address: string,  // where to send market fee for lazy inscribing
+    amount: number
+  }
 }
 
 interface ICollectionTransferResult {
-    contract: object,
-    errorMessage: string | null  // null or empty string means no error happened
+  contract: object,
+  errorMessage: string | null  // null or empty string means no error happened
 }
 
 
@@ -702,6 +704,11 @@ interface ICollectionTransferResult {
           }
           return false;
         }
+      }
+
+      if (payload.type === ESTIMATE_TRANSFER_LAZY_COLLECTION) {
+        const contract = await Api.transferForLazyInscriptionContract(payload.data, true);
+        await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, contract);
       }
 
       if (payload.type === TRANSFER_LAZY_COLLECTION) {
