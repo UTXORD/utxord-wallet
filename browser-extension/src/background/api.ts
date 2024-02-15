@@ -20,7 +20,7 @@ import {
   CONNECT_RESULT,
   ADDRESSES_TO_SAVE,
   CREATE_INSCRIBE_RESULT,
-  DECRYPTED_WALLET
+  DECRYPTED_WALLET, TRANSFER_LAZY_COLLECTION
 } from '~/config/events';
 import { BASE_URL_PATTERN } from '~/config/index';
 import Tab = chrome.tabs.Tab;
@@ -1222,13 +1222,8 @@ class Api {
       expect_amount: Number(payload.expect_amount),
       fee_rate: payload.fee_rate,
       fee: payload.fee,
-      size: (payload.content.length + payload.content_type.length),
+      // size: (payload.content.length + payload.content_type.length),
       raw: [],
-      outputs: {
-        collection: {} as object | null,
-        inscription: {} as object | null,
-        change: {} as object | null,
-      },
       errorMessage: null as string | null
     };
     try {
@@ -1263,15 +1258,19 @@ class Api {
           myself.network,
           payload.collection.owner_txid,
           payload.collection.owner_nout,
-          collection.amount,
+          myself.satToBtc(collection.amount).toFixed(8),
           collection.address
       );
 
-      const transferOutput = new myself.utxord.P2TR(this.network, collectionAmount, payload.transfer_address);
+      const transferOutput = new myself.utxord.P2TR(
+          this.network,
+          myself.satToBtc(collection.amount).toFixed(8),
+          payload.transfer_address
+      );
       const marketOutput = new myself.utxord.P2TR(
           myself.network,
-          myself.satToBtc(payload.market_fee).toFixed(8),
-          payload.market_address
+          myself.satToBtc(payload.market_fee?.amount).toFixed(8),
+          payload.market_fee?.address
       );
 
       tx.AddInput(collectionUtxo);
@@ -1294,7 +1293,7 @@ class Api {
       }
 
       const input_mining_fee = myself.btcToSat(tx.GetNewInputMiningFee());
-      const utxo_list = await myself.smartSelectFundsByAmount(min_fund_amount, [], input_mining_fee);
+      const utxo_list = await myself.smartSelectFundsByAmount(min_fund_amount, input_mining_fee);
       outData.utxo_list = utxo_list;
 
       console.log("min_fund_amount:", min_fund_amount);
@@ -1321,15 +1320,15 @@ class Api {
 
       if (!estimation) {
         tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
-
         tx.Sign(myself.wallet.root.key, "fund");
-        outData.data = tx.Serialize();
         outData.raw = await myself.getRawTransactions(tx);
       }
+      outData.data = tx.Serialize();
       myself.utxord.destroy(tx);
+
       return outData;
     } catch (e) {
-      outData.errorMessage = await myself.sendExceptionMessage(CREATE_INSCRIPTION, e);
+      outData.errorMessage = await myself.sendExceptionMessage(TRANSFER_LAZY_COLLECTION, e);
       setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
       return outData;
     }
@@ -1782,16 +1781,23 @@ class Api {
   }
 
   //----------------------------------------------------------------------------
-  async selectFundsByFlags(fundings = [], select_is_locked = false, select_in_queue = false){
+
+  async selectFundsByFlags(fundings = [], select_is_locked = false, select_in_queue = false) {
     let list = this.fundings;
     if (fundings.length > 0) {
       list = fundings;
     }
-    return list.filter((item) =>item.is_locked === select_is_locked && item.in_queue === select_in_queue);
+    return list.filter((item) => item.is_locked === select_is_locked && item.in_queue === select_in_queue);
   }
   //----------------------------------------------------------------------------
 
-  async smartSelectFundsByAmount(target: number, fundings = [], new_input_fee: number, iterations_limit =  10) {
+  async smartSelectFundsByAmount(
+      target: number,
+      new_input_fee: number,
+      fundings = [],
+      except_items = [],
+      iterations_limit = 10
+  ) {
     let utxo_list = await this.selectKeysByFunds(target, fundings);
     if (0 < utxo_list.length) {
       let utxo_summ = utxo_list.reduce((summ, utxo) => summ + utxo.amount, 0);

@@ -549,7 +549,7 @@ interface ICollectionTransferResult {
     })
 
     chrome.runtime.onMessageExternal.addListener(async (payload, sender) => {
-      // console.debug(`----- message from frontend: ${payload?.type}, data: `, {...payload?.data || {}});
+      console.debug(`----- message from frontend: ${payload?.type}, data: `, {...payload?.data || {}});
 
       let tabId = sender?.tab?.id;
       if (typeof payload?.data === 'object' && payload?.data !== null) {
@@ -707,15 +707,23 @@ interface ICollectionTransferResult {
       }
 
       if (payload.type === ESTIMATE_TRANSFER_LAZY_COLLECTION) {
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug('ESTIMATE_TRANSFER_LAZY_COLLECTION balances:', {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
         const contract = await Api.transferForLazyInscriptionContract(payload.data, true);
-        await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, contract);
+        await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, {
+          contract,
+          errorMessage: contract.errorMessage
+        });
       }
 
       if (payload.type === TRANSFER_LAZY_COLLECTION) {
         let costs;
         console.log('payload:', {...payload})
-        console.log('payload?.data?.type:', payload?.data?.type)
-        console.log('payload?.data?.collection?.owner_txid:', payload?.data?.collection?.genesis_txid);
+        // console.log('payload?.data?.type:', payload?.data?.type)
+        // console.log('payload?.data?.collection?.owner_txid:', payload?.data?.collection?.genesis_txid);
 
         const balances = await Api.prepareBalances(payload?.data?.addresses);
         console.debug('TRANSFER_LAZY_COLLECTION balances:', {...balances || {}});
