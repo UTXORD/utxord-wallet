@@ -96,6 +96,7 @@ const total = computed(() => {
 })
 
 const isInsufficientBalance = computed(() => {
+  if (dataForSign.value?.type === SELL_INSCRIPTION) return false
   if (Number(total.value) > Number(balance.value?.confirmed)) return true
   return false
 })
