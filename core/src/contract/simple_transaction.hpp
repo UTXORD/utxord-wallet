@@ -10,11 +10,12 @@
 
 namespace utxord {
 
-class SimpleTransaction: public ContractBuilder, public IContractOutput
+enum TxPhase {TX_TERMS, TX_SIGNATURE};
+
+class SimpleTransaction: public utxord::ContractBuilder<utxord::TxPhase>, public IContractOutput
 {
 public:
     static const std::string name_outputs;
-    static const char* const type;
 private:
     static const uint32_t s_protocol_version;
     static const char* s_versions;
@@ -24,13 +25,12 @@ private:
 
     CMutableTransaction MakeTx() const;
 public:
-    explicit SimpleTransaction(Bech32 bech) : ContractBuilder(bech) {}
-    //explicit SimpleTransaction(ChainMode m) : SimpleTransaction(Bech32(m)) {}
+    explicit SimpleTransaction(ChainMode chain) : ContractBuilder(chain) {}
     SimpleTransaction(const SimpleTransaction&) = default;
     SimpleTransaction(SimpleTransaction&&) noexcept = default;
 
-    explicit SimpleTransaction(Bech32 bech, const UniValue& json) : ContractBuilder(bech)
-    { SimpleTransaction::ReadJson(json); }
+//    explicit SimpleTransaction(ChainMode chain, const UniValue& json) : ContractBuilder(chain)
+//    { SimpleTransaction::ReadJson(json); }
 
     ~SimpleTransaction() override = default;
 
@@ -59,12 +59,14 @@ public:
 
     void AddChangeOutput(const std::string& addr);
 
-    void Sign(const KeyRegistry& master_key, const std::string key_filter_tag);
+    void Sign(const KeyRegistry& master_key, const std::string& key_filter_tag);
 
     std::vector<std::string> RawTransactions() const;
 
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
+    const std::string& GetContractName() const override;
+    void CheckContractTerms(TxPhase phase) const override;
+    UniValue MakeJson(uint32_t version, TxPhase phase) const override;
+    void ReadJson(const UniValue& json, TxPhase phase) override;
 
     std::string TxID() const override
     { return MakeTx().GetHash().GetHex(); }

@@ -18,7 +18,7 @@ namespace utxord {
 enum InscribeType { INSCRIPTION, LASY_INSCRIPTION };
 enum InscribePhase { MARKET_TERMS, LASY_INSCRIPTION_MARKET_TERMS, LASY_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 
-class CreateInscriptionBuilder: public ContractBuilder
+class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribePhase>
 {
     static const std::string FEE_OPT_HAS_CHANGE;
     static const std::string FEE_OPT_HAS_COLLECTION;
@@ -67,7 +67,7 @@ class CreateInscriptionBuilder: public ContractBuilder
 
 private:
     void CheckBuildArgs() const;
-    void CheckContractTerms(InscribePhase phase) const;
+    void CheckContractTerms(InscribePhase phase) const override;
 
     void RestoreTransactions() const;
 
@@ -113,11 +113,14 @@ public:
     CreateInscriptionBuilder(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder(CreateInscriptionBuilder&&) noexcept = default;
 
-    explicit CreateInscriptionBuilder(Bech32 bech, InscribeType type) : ContractBuilder(bech), m_type(type) {}
-//    explicit CreateInscriptionBuilder(ChainMode mode, InscribeType type) : CreateInscriptionBuilder(Bech32(mode), type) {}
+    explicit CreateInscriptionBuilder(ChainMode mode, InscribeType type) : ContractBuilder(mode), m_type(type) {}
 
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
+
+    const std::string& GetContractName() const override;
+    UniValue MakeJson(uint32_t version, InscribePhase phase) const override;
+    void ReadJson(const UniValue& json, InscribePhase phase) override;
 
     static const char* SupportedVersions() { return s_versions; }
 
@@ -203,9 +206,6 @@ public:
     std::string GetInscriptionLocation() const;
     std::string GetCollectionLocation() const;
     std::string GetChangeLocation() const;
-
-    std::string Serialize(uint32_t version, InscribePhase phase) const;
-    void Deserialize(const std::string& data, InscribePhase phase);
 
 };
 

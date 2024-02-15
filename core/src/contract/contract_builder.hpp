@@ -53,22 +53,6 @@ struct IJsonSerializable
     virtual UniValue MakeJson() const = 0;
     virtual void ReadJson(const UniValue& json) = 0;
 
-    const char* Serialize() const
-    {
-        buf = MakeJson().write();
-        return buf.c_str();
-    }
-
-    virtual void Deserialize(const std::string& jsonStr)
-    {
-        UniValue json;
-        if (json.read(jsonStr)) {
-            ReadJson(json);
-        }
-        else {
-            throw ContractError("parse json");
-        }
-    }
 };
 
 class ISigner
@@ -203,7 +187,7 @@ public:
 };
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-class IContractOutput: public IJsonSerializable{
+class IContractOutput{
 public:
     virtual std::string TxID() const = 0;
     virtual uint32_t NOut() const = 0;
@@ -252,8 +236,8 @@ public:
     std::shared_ptr<IContractDestination>& Destination() final
     { return m_destination; }
 
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
+    UniValue MakeJson() const;
+    void ReadJson(const UniValue& json);
 };
 
 
@@ -300,7 +284,7 @@ struct ContractInput : public IJsonSerializable
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-class ContractBuilder
+class IContractBuilder
 {
 public:
     static const std::string name_contract_type;
@@ -309,7 +293,7 @@ public:
     static const std::string name_mining_fee_rate;
     static const std::string name_market_fee;
 
-    static const char* name_utxo;
+    static const char *name_utxo;
     static const std::string name_txid;
     static const std::string name_nout;
     static const std::string name_amount;
@@ -332,29 +316,31 @@ protected:
     std::shared_ptr<IContractDestination> m_market_fee;
     std::optional<std::string> m_change_addr;
 
-    virtual CAmount CalculateWholeFee(const std::string& params) const;
+    virtual CAmount CalculateWholeFee(const std::string &params) const;
 
     ///deprecated
-    virtual std::vector<std::pair<CAmount,CMutableTransaction>> GetTransactions() const { return {}; };
+    virtual std::vector<std::pair<CAmount, CMutableTransaction>> GetTransactions() const
+    { return {}; };
 
 public:
-    static CScript MakeMultiSigScript(const xonly_pubkey& pk1, const xonly_pubkey& pk2);
+    static CScript MakeMultiSigScript(const xonly_pubkey &pk1, const xonly_pubkey &pk2);
 
     //ContractBuilder() = default;
-    ContractBuilder(const ContractBuilder&) = default;
-    ContractBuilder(ContractBuilder&& ) noexcept = default;
+    IContractBuilder(const IContractBuilder &) = default;
+    IContractBuilder(IContractBuilder && ) noexcept = default;
 
-    explicit ContractBuilder(Bech32 bech) : mBech(bech) {}
+    explicit IContractBuilder(ChainMode chain) : mBech(chain) {}
 
-    virtual ~ContractBuilder() = default;
+    virtual ~IContractBuilder() = default;
 
-    ContractBuilder& operator=(const ContractBuilder& ) = default;
-    ContractBuilder& operator=(ContractBuilder&& ) noexcept = default;
+    IContractBuilder &operator=(const IContractBuilder &) = default;
 
-    const Bech32& bech32() const
+    IContractBuilder &operator=(IContractBuilder &&) noexcept = default;
+
+    const Bech32 &bech32() const
     { return mBech; }
 
-    void MarketFee(const std::string& amount, const std::string& addr)
+    void MarketFee(const std::string &amount, const std::string &addr)
     {
         if (l15::ParseAmount(amount) > 0) {
             m_market_fee = P2Witness::Construct(bech32(), l15::ParseAmount(amount), addr);
@@ -364,38 +350,49 @@ public:
         }
     }
 
-    void MiningFeeRate(const std::string& rate)
+    void MiningFeeRate(const std::string &rate)
     { m_mining_fee_rate = l15::ParseAmount(rate); }
 
-    void ChangeAddress(const std::string& addr)
+    void ChangeAddress(const std::string &addr)
     {
         bech32().Decode(addr);
         m_change_addr = addr;
     }
 
-    virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
+    virtual std::string GetMinFundingAmount(const std::string &params) const = 0;
 
     std::string GetNewInputMiningFee();
+
     std::string GetNewOutputMiningFee();
 
-    std::string GetMiningFeeRate() const { return l15::FormatAmount(m_mining_fee_rate.value()); }
-    void SetMiningFeeRate(const std::string& v) { m_mining_fee_rate = l15::ParseAmount(v); }
+    std::string GetMiningFeeRate() const
+    { return l15::FormatAmount(m_mining_fee_rate.value()); }
 
-    static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script);
-    void VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs) const;
+    void SetMiningFeeRate(const std::string &v)
+    { m_mining_fee_rate = l15::ParseAmount(v); }
 
-    static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
-    static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
-    void DeserializeContractTaprootPubkey(const UniValue& val, std::optional<std::string> &addr, std::function<std::string()> lazy_name);
+    static void
+    VerifyTxSignature(const xonly_pubkey &pk, const signature &sig, const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> &&spent_outputs,
+                      const CScript &spend_script);
 
-    template <typename HEX>
-    static void DeserializeContractHexData(const UniValue& val, std::optional<HEX> &target, std::function<std::string()> lazy_name)
+    void VerifyTxSignature(const std::string &addr, const std::vector<bytevector> &witness, const CMutableTransaction &tx, uint32_t nin,
+                           std::vector<CTxOut> &&spent_outputs) const;
+
+    static void DeserializeContractAmount(const UniValue &val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
+
+    static void DeserializeContractString(const UniValue &val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
+
+    void DeserializeContractTaprootPubkey(const UniValue &val, std::optional<std::string> &addr, std::function<std::string()> lazy_name);
+
+    template<typename HEX>
+    static void DeserializeContractHexData(const UniValue &val, std::optional<HEX> &target, std::function<std::string()> lazy_name)
     {
         if (!val.isNull()) {
             HEX hexdata;
             try {
                 hexdata = unhex<HEX>(val.get_str());
-            } catch (...) {
+            }
+            catch (...) {
                 std::throw_with_nested(ContractTermWrongValue(lazy_name() + ": " + val.getValStr()));
             }
 
@@ -405,6 +402,50 @@ public:
             else target = hexdata;
         }
     }
+};
+
+template <typename PHASE>
+class ContractBuilder : public IContractBuilder {
+public:
+    ContractBuilder(const ContractBuilder &) = default;
+    ContractBuilder(ContractBuilder && ) noexcept = default;
+
+    explicit ContractBuilder(ChainMode chain) : IContractBuilder(chain) {}
+
+    ContractBuilder& operator=(const ContractBuilder&) = default;
+    ContractBuilder& operator=(ContractBuilder&&) = default;
+
+    std::string Serialize(uint32_t version, PHASE phase)
+    {
+        CheckContractTerms(phase);
+
+        UniValue dataRoot(UniValue::VOBJ);
+        dataRoot.pushKV(name_contract_type, GetContractName());
+        dataRoot.pushKV(name_params, MakeJson(version, phase));
+
+        return dataRoot.write();
+    }
+
+    void Deserialize(const std::string& data, PHASE phase)
+    {
+        UniValue root;
+        root.read(data);
+
+        if (!root.isObject() || !root[name_contract_type].isStr() || !root[name_params].isObject())
+            throw ContractProtocolError("JSON is not " + GetContractName() + " contract");
+
+        if (root[name_contract_type].get_str() != GetContractName())
+            throw ContractProtocolError(GetContractName() + " contract does not match " + root[name_contract_type].getValStr());
+
+        ReadJson(root[name_params], phase);
+
+        CheckContractTerms(phase);
+    }
+
+    virtual const std::string& GetContractName() const = 0;
+    virtual void CheckContractTerms(PHASE phase) const = 0;
+    virtual UniValue MakeJson(uint32_t version, PHASE phase) const = 0;
+    virtual void ReadJson(const UniValue& json, PHASE phase) = 0;
 
 };
 

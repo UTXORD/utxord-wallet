@@ -79,6 +79,10 @@ const std::string SwapInscriptionBuilder::name_funds_swap_sig_M = "funds_swap_si
 const std::string SwapInscriptionBuilder::name_ordpayoff_unspendable_key_factor = "ordpayoff_unspendable_key_factor";
 const std::string SwapInscriptionBuilder::name_ord_payoff_sig = "ordpayoff_sig";
 
+
+const std::string& SwapInscriptionBuilder::GetContractName() const
+{ return val_swap_inscription; }
+
 CAmount SwapInscriptionBuilder::CalculateWholeFee(const std::string& params) const {
     if (!m_ord_mining_fee_rate) throw ContractStateError(name_ord_mining_fee_rate + " not defined");
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
@@ -466,11 +470,9 @@ string SwapInscriptionBuilder::OrdPayoffRawTransaction() const
     return res;
 }
 
-string SwapInscriptionBuilder::Serialize(uint32_t version, SwapPhase phase)
+UniValue SwapInscriptionBuilder::MakeJson(uint32_t version, SwapPhase phase) const
 {
     if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
-
-    CheckContractTerms(phase);
 
     UniValue contract(UniValue::VOBJ);
 
@@ -517,11 +519,7 @@ string SwapInscriptionBuilder::Serialize(uint32_t version, SwapPhase phase)
         contract.pushKV(name_funds_swap_sig_M, hex(*m_funds_swap_sig_M));
     }
 
-    UniValue dataRoot(UniValue::VOBJ);
-    dataRoot.pushKV(name_contract_type, val_swap_inscription);
-    dataRoot.pushKV(name_params, move(contract));
-
-    return dataRoot.write();
+    return contract;
 }
 
 void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
@@ -596,19 +594,10 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
     }
 }
 
-void SwapInscriptionBuilder::Deserialize_v4(const string &data)
+void SwapInscriptionBuilder::ReadJson_v4(const UniValue& contract, SwapPhase phase)
 {
-    UniValue root;
-    root.read(data);
-
-    if (root[name_contract_type].get_str() != val_swap_inscription) {
-        throw ContractProtocolError("SwapInscription contract does not match " + root[name_contract_type].getValStr());
-    }
-
-    const UniValue& contract = root[name_params];
-
     if (!(contract[name_version].getInt<uint32_t>() == s_protocol_version_pubkey_v4 || contract[name_version].getInt<uint32_t>() == s_protocol_version_old_v3)) {
-        throw ContractProtocolError("Wrong SwapInscription contract version: " + contract[name_version].getValStr());
+        throw ContractProtocolError("Wrong " + val_swap_inscription + " contract version: " + contract[name_version].getValStr());
     }
 
     DeserializeContractAmount(contract[name_ord_price], m_ord_price, [&](){ return name_ord_price; });
@@ -755,22 +744,11 @@ void SwapInscriptionBuilder::Deserialize_v4(const string &data)
     DeserializeContractHexData(contract[name_funds_swap_sig_M], m_funds_swap_sig_M, [](){ return name_funds_swap_sig_M; });
     DeserializeContractHexData(contract[name_ord_payoff_sig], m_ord_payoff_sig, [](){ return name_ord_payoff_sig; });
 }
-void SwapInscriptionBuilder::Deserialize(const string &data)
+
+void SwapInscriptionBuilder::ReadJson(const UniValue& contract, SwapPhase phase)
 {
-    UniValue root;
-    root.read(data);
-
-    if (!root.isObject() || !root[name_contract_type].isStr() || !root[name_params].isObject())
-        throw ContractProtocolError("JSON is not SwapInscription contract");
-
-    if (root[name_contract_type].get_str() != val_swap_inscription) {
-        throw ContractProtocolError("SwapInscription contract does not match " + root[name_contract_type].getValStr());
-    }
-
-    const UniValue& contract = root[name_params];
-
     if (contract[name_version].getInt<uint32_t>() == s_protocol_version_pubkey_v4 || contract[name_version].getInt<uint32_t>() == s_protocol_version_old_v3) {
-        Deserialize_v4(data);
+        ReadJson_v4(contract, phase);
         return;
     }
     else if (contract[name_version].getInt<uint32_t>() != s_protocol_version) {
