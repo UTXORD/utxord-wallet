@@ -726,6 +726,11 @@ interface IChunkInscriptionResult {
         });
       }
       if (payload.type === COMMIT_BUY_INSCRIPTION) {
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug('COMMIT_BUY_INSCRIPTION balances:', {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
         payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
         if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
