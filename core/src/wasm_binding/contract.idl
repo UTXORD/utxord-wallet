@@ -215,13 +215,18 @@ interface SwapInscriptionBuilder
     [Value] string GetNewOutputMiningFee();
 };
 
+enum TxPhase
+{
+    "TX_TERMS",
+    "TX_SIGNATURE"
+};
 
 [Prefix="utxord::wasm::"]
 interface SimpleTransaction
 {
     void SimpleTransaction(ChainMode mode);
 
-    [Value] string TxID();
+    [Const] DOMString TxID();
     unsigned long NOut();
     IContractDestination Destination();
 
@@ -239,4 +244,9 @@ interface SimpleTransaction
 
     [Const] DOMString Serialize();
     void Deserialize([Const] DOMString data);
+
+    long TransactionCount(TxPhase phase);
+    [Value] string RawTransaction(TxPhase phase, long n);
+
+    [Const] static DOMString SupportedVersions();
 };

@@ -257,20 +257,24 @@ public:
     {}
 };
 
-class SimpleTransaction : public IContractOutput
+class SimpleTransaction
 {
     std::shared_ptr<utxord::SimpleTransaction> m_ptr;
 public:
     SimpleTransaction(ChainMode mode) : m_ptr(std::make_shared<utxord::SimpleTransaction>(utxord::Bech32(mode)))
     {}
 
-    std::string TxID() const final
-    { return m_ptr->TxID(); }
+    const char* TxID() const
+    {
+        static std::string cache;
+        cache = m_ptr->TxID();
+        return cache.c_str();
+    }
 
-    uint32_t NOut() const final
+    uint32_t NOut() const
     { return m_ptr->NOut(); }
 
-    IContractDestination *Destination() final
+    IContractDestination *Destination()
     { return new ContractDestinationWrapper(m_ptr->Destination()); }
 
     void MiningFeeRate(const std::string &rate)
@@ -315,8 +319,23 @@ public:
     void Deserialize(const std::string &data)
     { m_ptr->Deserialize(data); }
 
-    std::shared_ptr<utxord::IContractOutput> Share() final
+    std::shared_ptr<utxord::IContractOutput> Share()
     { return m_ptr; }
+
+    uint32_t TransactionCount(TxPhase phase) const
+    { return 1; }
+
+    std::string RawTransaction(TxPhase phase, uint32_t n) const
+    {
+        if (n == 0) {
+            return m_ptr->RawTransactions()[0];
+        }
+        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+    }
+
+    const char* SupportedVersions() const
+    { return m_ptr->SupportedVersions(); }
+
 };
 
 class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder

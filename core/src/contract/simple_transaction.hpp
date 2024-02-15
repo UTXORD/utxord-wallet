@@ -10,6 +10,8 @@
 
 namespace utxord {
 
+enum TxPhase {TX_TERMS, TX_SIGNATURE};
+
 class SimpleTransaction: public ContractBuilder, public IContractOutput
 {
 public:
