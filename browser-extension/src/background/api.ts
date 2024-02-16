@@ -70,7 +70,7 @@ const WALLET = {
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
-      accounts: ["0'"],
+      accounts: ["0'", "1'", "2'"],
       change: ["0"],
       index_range: "0-16384"
     }
@@ -87,7 +87,7 @@ const WALLET = {
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
-      accounts: ["1'"],
+      accounts: ["0'", "1'", "2'"],
       change: ["0"],
       index_range: "0-16384"
     }
@@ -1177,7 +1177,12 @@ class Api {
   //------------------------------------------------------------------------------
 
   async getRawTransactions(builderObject, phase = undefined) {
-    const raw_size = builderObject.TransactionCount(phase);
+    let raw_size;
+    if(!phase){
+      raw_size = builderObject.TransactionCount();
+    }else{
+      raw_size = builderObject.TransactionCount(phase);
+    }
     const raw = [];
     for(let i = 0; i < raw_size; i += 1) {
       if(phase!==undefined) {
