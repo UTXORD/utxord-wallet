@@ -32,6 +32,8 @@ const limitQuery = 1000;
 let bgSiteQueryIndex = 0;
 const closeWindowAfter = 6000;
 
+const SIMPLE_TX_PROTOCOL_VERSION = 2;
+
 class UtxordExtensionApiError extends Error {
   constructor(readonly message?: string) {
     super(message);
@@ -1323,7 +1325,7 @@ class Api {
         tx.Sign(myself.wallet.root.key, "fund");
         outData.raw = await myself.getRawTransactions(tx);
       }
-      outData.data = tx.Serialize();
+      outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
       myself.utxord.destroy(tx);
 
       return outData;
@@ -1399,10 +1401,8 @@ class Api {
         outData.errorMessage = 'Please update the plugin to latest version.';
         outData.raw = [];
         return outData;
-     }
-
-      newOrd.Deserialize(JSON.stringify(contract));
-
+      }
+      newOrd.Deserialize(JSON.stringify(contract), myself.utxord.MARKET_TERMS);
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
 
       // For now it's just a support for title and description
@@ -1687,8 +1687,7 @@ class Api {
     try {
       const sellOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       const protocol_version = Number(contract?.params?.protocol_version);
-      sellOrd.Deserialize(JSON.stringify(contract));
-      sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
+      sellOrd.Deserialize(JSON.stringify(contract), myself.utxord.ORD_TERMS);
 
       sellOrd.OrdUTXO(
         txid,
@@ -1904,8 +1903,7 @@ class Api {
     //console.log("commitBuyInscription->payload",payload)
     try {
       const swapSim = new myself.utxord.SwapInscriptionBuilder(myself.network);
-      swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+      swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.FUNDS_TERMS);
 
       const min_fund_amount = await myself.btcToSat(swapSim.GetMinFundingAmount("")?.c_str());
 
@@ -1932,8 +1930,7 @@ class Api {
 
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       const protocol_version = Number(payload.swap_ord_terms.contract?.params?.protocol_version);
-      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      buyOrd.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.FUNDS_TERMS);
       // outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
       outData.raw = [];
 
@@ -2025,8 +2022,7 @@ class Api {
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       // console.log("aaaa");
       const protocol_version = Number(payload?.swap_ord_terms?.contract?.params?.protocol_version);
-      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
+      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.MARKET_PAYOFF_SIG);
       buyOrd.SignFundsSwap(
         myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
         'scrsk'
