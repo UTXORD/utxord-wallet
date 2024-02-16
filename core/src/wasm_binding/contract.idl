@@ -203,7 +203,7 @@ interface SwapInscriptionBuilder
 
     void CheckContractTerms(SwapPhase phase);
     [Value] string Serialize(long ver, SwapPhase phase);
-    void Deserialize([Const] DOMString data);
+    void Deserialize([Const] DOMString data, SwapPhase phase);
 
     long TransactionCount(SwapPhase phase);
     [Value] string RawTransaction(SwapPhase phase, long n);
@@ -242,8 +242,8 @@ interface SimpleTransaction
 
     void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);
 
-    [Const] DOMString Serialize();
-    void Deserialize([Const] DOMString data);
+    [Const] DOMString Serialize(long ver, TxPhase phase);
+    void Deserialize([Const] DOMString data, TxPhase phase);
 
     long TransactionCount(TxPhase phase);
     [Value] string RawTransaction(TxPhase phase, long n);

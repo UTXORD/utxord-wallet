@@ -8,11 +8,20 @@
 
 namespace utxord {
 
+namespace {
+
+const std::string val_simple_transaction = "transaction";
+
+}
+
 const  std::string SimpleTransaction::name_outputs = "outputs";
 
-const char* const SimpleTransaction::type = "transaction";
-const uint32_t SimpleTransaction::s_protocol_version = 1;
-const char* SimpleTransaction::s_versions = "[1]";
+const uint32_t SimpleTransaction::s_protocol_version = 2;
+const char* SimpleTransaction::s_versions = "[2]";
+
+
+const std::string& SimpleTransaction::GetContractName() const
+{ return val_simple_transaction; }
 
 CMutableTransaction SimpleTransaction::MakeTx() const
 {
@@ -65,7 +74,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     }
 }
 
-void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string key_filter_tag)
+void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
     CMutableTransaction tx = MakeTx();
 
@@ -93,10 +102,11 @@ std::vector<std::string> SimpleTransaction::RawTransactions() const
     return { EncodeHexTx(CTransaction(MakeTx())) };
 }
 
-UniValue SimpleTransaction::MakeJson() const
+UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 {
+    if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
+
     UniValue contract(UniValue::VOBJ);
-    contract.pushKV(name_type, type);
     contract.pushKV(name_version, (int)s_protocol_version);
     contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
 
@@ -116,17 +126,10 @@ UniValue SimpleTransaction::MakeJson() const
     return contract;
 }
 
-void SimpleTransaction::ReadJson(const UniValue &contract)
+void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 {
-    if (!contract.isObject()) {
-        throw ContractTermWrongFormat("not an object");
-    }
-    if (contract[name_type].get_str() != type) {
-        throw ContractProtocolError("transaction contract does not match " + contract[name_type].getValStr());
-    }
-    if (contract[name_version].getInt<int>() != s_protocol_version) {
-        throw ContractProtocolError(std::string("Wrong ") + type + " version: " + contract[name_version].getValStr());
-    }
+    if (contract[name_version].getInt<int>() != s_protocol_version)
+        throw ContractProtocolError("Wrong " + val_simple_transaction + " contract version: " + contract[name_version].getValStr());
 
     {   const auto &val = contract[name_mining_fee_rate];
         if (val.isNull()) throw ContractTermMissing(std::string(name_mining_fee_rate));
@@ -157,6 +160,11 @@ std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) co
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
     return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx()) + total_out);
+}
+
+void SimpleTransaction::CheckContractTerms(TxPhase phase) const
+{
+
 }
 
 } // l15::utxord

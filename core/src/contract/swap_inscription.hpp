@@ -21,7 +21,7 @@ enum SwapPhase {
     MARKET_SWAP_SIG,
 };
 
-class SwapInscriptionBuilder : public ContractBuilder
+class SwapInscriptionBuilder : public ContractBuilder<SwapPhase>
 {
     CAmount m_whole_fee = 0;
     CAmount m_last_fee_rate = 0;
@@ -124,14 +124,25 @@ public:
     static const std::string name_ordpayoff_unspendable_key_factor;
     static const std::string name_ord_payoff_sig;
 
-    explicit SwapInscriptionBuilder(Bech32 bech) : ContractBuilder(bech) {}
-    explicit SwapInscriptionBuilder(ChainMode mode) : SwapInscriptionBuilder(Bech32(mode)) {}
+    //explicit SwapInscriptionBuilder(Bech32 bech) : ContractBuilder(bech) {}
+    explicit SwapInscriptionBuilder(ChainMode mode) : ContractBuilder(mode) {}
 
-    //SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
+    SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
     SwapInscriptionBuilder(SwapInscriptionBuilder&&) noexcept = default;
 
-    //SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
+    SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
+
+    const std::string& GetContractName() const override;
+    void CheckContractTerms(SwapPhase phase) const override;
+    UniValue MakeJson(uint32_t version, SwapPhase phase) const override;
+    void ReadJson_v4(const UniValue& json, SwapPhase phase);
+    void ReadJson(const UniValue& json, SwapPhase phase) override;
+
+    std::string Serialize(uint32_t version, SwapPhase phase)
+    { return ContractBuilder<SwapPhase>::Serialize(version, phase); }
+    void Deserialize(const std::string& data, SwapPhase phase)
+    { ContractBuilder<SwapPhase>::Deserialize(data, phase); }
 
     static const char* SupportedVersions() { return s_versions; }
 
@@ -170,11 +181,6 @@ public:
 
     void MarketSignOrdPayoffTx(const KeyRegistry &master_key, const std::string& key_filter);
     void MarketSignSwap(const KeyRegistry &master_key, const std::string& key_filter);
-
-    void CheckContractTerms(SwapPhase phase) const;
-    std::string Serialize(uint32_t version, SwapPhase phase);
-    void Deserialize_v4(const std::string& data);
-    void Deserialize(const std::string& data);
 
     std::string FundsCommitRawTransaction() const;
     std::string FundsPayBackRawTransaction() const;

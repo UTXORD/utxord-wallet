@@ -139,36 +139,42 @@ TEST_CASE("inscribe")
     std::string return_addr = w->btc().GetNewAddress();
 
     std::string fee_rate;
-    try {
-        fee_rate = w->btc().EstimateSmartFee("1");
-    }
-    catch(...) {
-        fee_rate = "0.00001";
-    }
+//    try {
+//        fee_rate = w->btc().EstimateSmartFee("1");
+//    }
+//    catch(...) {
+        fee_rate = "0.00003";
+//    }
+
+    auto pixel_avif = std::tie("image/avif", "0000001c667479706d696631000000006d696631617669666d696166000000f16d657461000000000000002168646c72000000000000000070696374000000000000000000000000000000000e7069746d0000000000010000001e696c6f630000000004400001000100000000011500010000001e0000002869696e660000000000010000001a696e6665020000000001000061763031496d616765000000007069707270000000516970636f0000001469737065000000000000000100000001000000107061737000000001000000010000001561763143812000000a073800069010d002000000107069786900000000030808080000001769706d61000000000000000100010401028384000000266d6461740a073800069010d0023213164000004800000c066e6b60fb175753a17aa0");
+    auto pixel_png = std::tie("image/png", "89504e470d0a1a0a0000000d494844520000000100000001010300000025db56ca00000003504c5445ffa500ca92419b0000000a49444154789c636000000002000148afa4710000000049454e44ae426082");
+    auto pixel_webp = std::tie("image/webp", "524946463c000000574542505650382030000000d001009d012a0100010002003425a00274ba01f80003b000feef6497feef37ede6fdbcdff0d1ffcf4cd7983fa6800000");
+    auto simple_html = std::tie("text/html", "3c21444f43545950452068746d6c3e3c68746d6c3e3c686561643e3c7469746c653e546573743c2f7469746c653e3c2f686561643e3c626f64793e3c68313e41737365743c2f68313e3c2f626f64793e3c2f68746d6c3e");
+
+    std::string svg_hex = hex(std::string("<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">sample collection</text></g></g></svg>"));
+    auto svg = std::tie("image/svg+xml", svg_hex);
+
+    auto content = GENERATE_COPY(pixel_avif/*, pixel_png, pixel_webp, simple_html, svg*/);
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
 
-    std::string content_type = "image/svg+xml";
-    const std::string svg = "<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">sample collection</text></g></g></svg>";
-    auto content = hex(svg);
-
-    CreateInscriptionBuilder test_inscription(*bech, INSCRIPTION);
+    CreateInscriptionBuilder test_inscription(bech->GetChainMode(), INSCRIPTION);
 
     REQUIRE_NOTHROW(test_inscription.OrdAmount("0.00000546"));
     REQUIRE_NOTHROW(test_inscription.MarketFee("0", market_fee_addr));
     REQUIRE_NOTHROW(test_inscription.AuthorFee("0", author_fee_addr));
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
-    REQUIRE_NOTHROW(test_inscription.Data(content_type, content));
+    REQUIRE_NOTHROW(test_inscription.Data(get<0>(content), get<1>(content)));
     std::string inscription_amount = test_inscription.GetMinFundingAmount("");
     std::string child_amount = test_inscription.GetMinFundingAmount("collection");
     std::string segwit_child_amount = test_inscription.GetMinFundingAmount("collection,p2wpkh_utxo");
 
-    CreateInscriptionBuilder test_lazy_inscription(*bech, LASY_INSCRIPTION);
+    CreateInscriptionBuilder test_lazy_inscription(bech->GetChainMode(), LASY_INSCRIPTION);
 
     REQUIRE_NOTHROW(test_lazy_inscription.OrdAmount("0.00000546"));
     REQUIRE_NOTHROW(test_lazy_inscription.MarketFee("0", market_fee_addr));
     REQUIRE_NOTHROW(test_lazy_inscription.MiningFeeRate(fee_rate));
-    REQUIRE_NOTHROW(test_lazy_inscription.Data(content_type, content));
+    REQUIRE_NOTHROW(test_lazy_inscription.Data(get<0>(content), get<1>(content)));
     REQUIRE_NOTHROW(test_lazy_inscription.AuthorFee("0.00001", author_fee_addr));
     CAmount lazy_add_amount = ParseAmount(test_lazy_inscription.GetMinFundingAmount("collection")) - ParseAmount(child_amount);
 
@@ -217,7 +223,7 @@ TEST_CASE("inscribe")
 
         check_result = true;
 
-        CreateInscriptionBuilder builder_terms(*bech, INSCRIPTION);
+        CreateInscriptionBuilder builder_terms(bech->GetChainMode(), INSCRIPTION);
         CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
 
         std::string market_terms;
@@ -225,13 +231,13 @@ TEST_CASE("inscribe")
 
         std::clog << "MARKET_TERMS:\n" << market_terms << std::endl;
 
-        CreateInscriptionBuilder builder(*bech, INSCRIPTION);
+        CreateInscriptionBuilder builder(bech->GetChainMode(), INSCRIPTION);
         REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
         CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
         CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
         CHECK_NOTHROW(builder.AuthorFee("0", author_fee_addr));
-        CHECK_NOTHROW(builder.Data(content_type, content));
+        CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
         CHECK_NOTHROW(builder.InscribeScriptPubKey(hex(script_key.PubKey())));
         CHECK_NOTHROW(builder.InscribeInternalPubKey(hex(int_key.PubKey())));
         CHECK_NOTHROW(builder.InscribeAddress(condition.is_parent ? collection_key.GetP2TRAddress(*bech) : destination_addr));
@@ -258,7 +264,7 @@ TEST_CASE("inscribe")
         REQUIRE_NOTHROW(contract = builder.Serialize(8, INSCRIPTION_SIGNATURE));
         std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
 
-        CreateInscriptionBuilder fin_contract(*bech, INSCRIPTION);
+        CreateInscriptionBuilder fin_contract(bech->GetChainMode(), INSCRIPTION);
         REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
 
         REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
@@ -291,7 +297,7 @@ TEST_CASE("inscribe")
             check_result = true;
             lazy = true;
 
-            CreateInscriptionBuilder builder_terms(*bech, LASY_INSCRIPTION);
+            CreateInscriptionBuilder builder_terms(bech->GetChainMode(), LASY_INSCRIPTION);
             CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
             CHECK_NOTHROW(builder_terms.AuthorFee("0.00001", author_fee_addr));
             CHECK_NOTHROW(builder_terms.MarketInscribeScriptPubKey(hex(market_script_key.PubKey())));
@@ -301,10 +307,10 @@ TEST_CASE("inscribe")
 
             std::clog << "Market terms:\n" << market_terms << std::endl;
 
-            CreateInscriptionBuilder builder(*bech, LASY_INSCRIPTION);
+            CreateInscriptionBuilder builder(bech->GetChainMode(), LASY_INSCRIPTION);
             REQUIRE_NOTHROW(builder.Deserialize(market_terms, LASY_INSCRIPTION_MARKET_TERMS));
 
-            CHECK_NOTHROW(builder.Data(content_type, content));
+            CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
             CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
             CHECK_NOTHROW(builder.InscribeInternalPubKey(hex(int_key.PubKey())));
@@ -338,7 +344,7 @@ TEST_CASE("inscribe")
             REQUIRE_NOTHROW(contract = builder.Serialize(8, LASY_INSCRIPTION_SIGNATURE));
             std::clog << contract << std::endl;
 
-            CreateInscriptionBuilder fin_builder(*bech, LASY_INSCRIPTION);
+            CreateInscriptionBuilder fin_builder(bech->GetChainMode(), LASY_INSCRIPTION);
             REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LASY_INSCRIPTION_SIGNATURE));
 
             CHECK_NOTHROW(fin_builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, FormatAmount(collection_utxo.m_amount), collection_utxo.m_addr));
@@ -487,13 +493,13 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     std::string destination_addr = condition.save_as_parent ? w->bech32().Encode(inscribe_key.PubKey()) : w->btc().GetNewAddress();
 
-    CreateInscriptionBuilder builder_terms(*bech, INSCRIPTION);
+    CreateInscriptionBuilder builder_terms(bech->GetChainMode(), INSCRIPTION);
     CHECK_NOTHROW(builder_terms.MarketFee("0", destination_addr));
 
     std::string market_terms;
     REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(8, MARKET_TERMS));
 
-    CreateInscriptionBuilder builder(*bech, INSCRIPTION);
+    CreateInscriptionBuilder builder(bech->GetChainMode(), INSCRIPTION);
     REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
     CHECK_NOTHROW(builder.OrdAmount("0.00000546"));
@@ -538,7 +544,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     std::string contract = builder.Serialize(8, INSCRIPTION_SIGNATURE);
     std::clog << "Contract JSON: " << contract << std::endl;
 
-    CreateInscriptionBuilder builder2(*bech, INSCRIPTION);
+    CreateInscriptionBuilder builder2(bech->GetChainMode(), INSCRIPTION);
     builder2.Deserialize(contract, INSCRIPTION_SIGNATURE);
 
     stringvector rawtxs;
