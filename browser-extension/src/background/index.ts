@@ -188,8 +188,8 @@ interface IChunkInscriptionResult {
     }
     const winManager = new WinManager();
 
-    onMessage(GENERATE_MNEMONIC, async () => {
-      return await Api.bip39.generateMnemonic();
+    onMessage(GENERATE_MNEMONIC, async (payload) => {
+      return await Api.generateMnemonic(payload.data?.length);
     });
 
     onMessage(CONNECT_TO_SITE, async (payload) => {
@@ -206,8 +206,7 @@ interface IChunkInscriptionResult {
 
     onMessage(SAVE_GENERATED_SEED, async (payload) => {
       const sup = await Api.setUpPassword(payload.data.password);
-      // console.log('Api.setUpPassword:',sup);
-      await Api.setSeed(payload.data.seed, payload.data?.passphrase);
+      await Api.setUpSeed(payload.data.seed, payload.data?.passphrase);
       Api.genKeys();
       if(Api.wallet.auth.key) {
         await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());

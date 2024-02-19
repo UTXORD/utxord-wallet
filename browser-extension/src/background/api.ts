@@ -1,5 +1,4 @@
 import '~/libs/utxord.js';
-import * as bip39 from '~/libs/bip39.browser.js';
 import '~/libs/safe-buffer.js';
 import '~/libs/crypto-js.js';
 import winHelpers from '~/helpers/winHelpers';
@@ -25,6 +24,9 @@ import {
 import { BASE_URL_PATTERN } from '~/config/index';
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
+
+import * as WebBip39 from 'web-bip39';
+import wordlist from 'web-bip39/wordlists/english';
 
 // import tabId = chrome.devtools.inspectedWindow.tabId;
 
@@ -299,7 +301,6 @@ class Api {
         this.WinHelpers = new winHelpers();
         this.Rest = new rest();
         this.utxord = await utxord();
-        this.bip39 = await bip39;
         this.network = this.setUpNetWork(network);
         this.bech = new this.utxord.Bech32(this.network);
 
@@ -519,13 +520,23 @@ class Api {
     return await this.genKeys();
   }
 
-  setSeed(mnemonic, password) {
-    const myself = this;
-    // the password will not be used to generate seed phrases, only for encryption
-    const seed = myself.bip39.mnemonicToSeedSync(mnemonic);
-    chrome.storage.local.set({ seed: seed.toString('hex') });
-    myself.wallet.root.seed = seed.toString('hex');
-    return seed;
+  bytesToHexString(byteArray: Uint8Array) {
+    return Array.from(byteArray, byte => {
+      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+    }).join('');
+  }
+
+  async generateMnemonic(length: number = 12){
+    const strength = length / 3 * 32;
+    const mnemonic = await WebBip39.generateMnemonic(wordlist, strength);
+    return mnemonic;
+  }
+
+  async setUpSeed(mnemonic, passphrase = ''){
+    const buffer_seed = await WebBip39.mnemonicToSeed(mnemonic, passphrase);
+    const seed = this.bytesToHexString(buffer_seed);
+    chrome.storage.local.set({ seed: seed });
+    this.wallet.root.seed = seed;
   }
 
   setNick(nick) {
