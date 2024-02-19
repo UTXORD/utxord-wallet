@@ -10,7 +10,7 @@
         class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
         <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >Paste your secret 12 words here:</span
+          >Paste your secret words here:</span
         >
         <CustomInput
           type="textarea"
@@ -19,6 +19,27 @@
           rows="3"
           v-model="textarea"
         />
+        <!-- Passphrase -->
+
+        <div class="generate-screen_form-input flex flex-col p-3">
+          <span class="mb-2 w-full text-[var(--text-grey-color)]"
+            >Use Passphrase:
+            <input
+              name="usePassphrase"
+              type="checkbox"
+              v-model="usePassphrase"
+              />
+            </span>
+        </div>
+        <div class="generate-screen_form-input flex flex-col" v-show="usePassphrase">
+          <span class="mb-2 w-full text-[var(--text-grey-color)]"
+            >Passphrase(optional): </span
+          >
+          <CustomInput
+            type="text"
+            v-model="passphrase"
+            />
+        </div>
       </div>
 
       <!-- Inputs -->
@@ -89,10 +110,16 @@ const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const usePassphrase = ref(false)
+const passphrase = ref('')
 
 const isDisabled = computed(() => {
   const seedArr = textarea.value.trim().split(' ')
-  if (seedArr.length !== 12) return true
+  if (seedArr.length !== 12 ||
+      seedArr.length !== 15 ||
+      seedArr.length !== 18 ||
+      seedArr.length !== 21 ||
+      seedArr.length !== 24) return true
   if (!textarea.value) return true
   if (!password.value.length || !confirmPassword.value.length) return true
   if (password.value !== confirmPassword.value) return true
@@ -105,7 +132,8 @@ async function onStore() {
     SAVE_GENERATED_SEED,
     {
       seed: textarea.value.replace(/\s\s+/g, ' ').trim(),
-      password: password.value
+      password: password.value,
+      passphrase: passphrase.value
     },
     'background'
   )
