@@ -23,7 +23,8 @@ private:
     std::vector<ContractInput> m_inputs;
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
 
-    CMutableTransaction MakeTx() const;
+    CAmount CalculateWholeFee(const std::string& params) const override;
+    CMutableTransaction MakeTx(const std::string& params) const;
 public:
     explicit SimpleTransaction(ChainMode chain) : ContractBuilder(chain) {}
     SimpleTransaction(const SimpleTransaction&) = default;
@@ -74,7 +75,7 @@ public:
     { ContractBuilder<TxPhase>::Deserialize(data, phase); }
 
     std::string TxID() const override
-    { return MakeTx().GetHash().GetHex(); }
+    { return MakeTx("").GetHash().GetHex(); }
     uint32_t NOut() const override
     { return 0; }
 
