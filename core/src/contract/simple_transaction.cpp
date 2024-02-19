@@ -23,15 +23,24 @@ const char* SimpleTransaction::s_versions = "[2]";
 const std::string& SimpleTransaction::GetContractName() const
 { return val_simple_transaction; }
 
-CMutableTransaction SimpleTransaction::MakeTx() const
+CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
 {
     CMutableTransaction tx;
 
-    for(const auto& input: m_inputs) {
-        tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
-        tx.vin.back().scriptWitness.stack = input.witness;
-        if (tx.vin.back().scriptWitness.stack.empty()) {
-            tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
+    if (m_inputs.empty()) {
+        tx.vin.emplace_back(uint256(), 0);
+        if (params.find("p2wpkh_utxo"))
+            tx.vin.back().scriptWitness.stack = P2WPKH(Bech32().GetChainMode(), 0, "").DummyWitness();
+        else
+            tx.vin.back().scriptWitness.stack = P2TR(Bech32().GetChainMode(), 0, "").DummyWitness();
+    }
+    else {
+        for (const auto &input: m_inputs) {
+            tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
+            tx.vin.back().scriptWitness.stack = input.witness;
+            if (tx.vin.back().scriptWitness.stack.empty()) {
+                tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
+            }
         }
     }
 
@@ -76,7 +85,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
 
 void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
-    CMutableTransaction tx = MakeTx();
+    CMutableTransaction tx = MakeTx("");
 
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
@@ -99,7 +108,7 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& k
 
 std::vector<std::string> SimpleTransaction::RawTransactions() const
 {
-    return { EncodeHexTx(CTransaction(MakeTx())) };
+    return { EncodeHexTx(CTransaction(MakeTx(""))) };
 }
 
 UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
@@ -159,12 +168,17 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
-    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx()) + total_out);
+    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out);
 }
 
 void SimpleTransaction::CheckContractTerms(TxPhase phase) const
 {
 
+}
+
+CAmount SimpleTransaction::CalculateWholeFee(const string &params) const
+{
+    return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params));
 }
 
 } // l15::utxord

@@ -276,6 +276,13 @@ public:
     void MiningFeeRate(const std::string &rate)
     { m_ptr->MiningFeeRate(rate); }
 
+    const char* GetTotalMiningFee(const std::string& params) const
+    {
+        static std::string cache;
+        cache = m_ptr->GetTotalMiningFee(params);
+        return cache.c_str();
+    }
+
     const char* GetMinFundingAmount(const std::string& params) const
     {
         static std::string cache;

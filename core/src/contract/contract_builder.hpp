@@ -359,6 +359,9 @@ public:
         m_change_addr = addr;
     }
 
+    std::string GetTotalMiningFee(const std::string& params) const
+    { return l15::FormatAmount(CalculateWholeFee(params)); }
+
     virtual std::string GetMinFundingAmount(const std::string &params) const = 0;
 
     std::string GetNewInputMiningFee();
