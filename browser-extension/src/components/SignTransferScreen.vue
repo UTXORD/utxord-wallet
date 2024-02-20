@@ -27,30 +27,30 @@
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
     >
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Inscribing on:</span>
-        <PriceComp
+        <span class="mr-2 text-[var(--text-grey-color)]">Transfer collection:</span>
+        <TextComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.expect_amount || 0"
+          :text="dataForSign?.data?.collection?.metadata?.title"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
         />
       </div>
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Platform Fee:</span>
+        <span class="mr-2 text-[var(--text-grey-color)]">Lazy setup fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.market_fee || 0"
+          :price="dataForSign?.data?.market_fee?.amount || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
         />
       </div>
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
+        <span class="mr-2 text-[var(--text-grey-color)]">Transaction Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.mining_fee || 0"
+          :price="dataForSign?.data?.costs?.total_mining_fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -92,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs, computed } from 'vue'
+import {toRefs, computed, onMounted} from 'vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
@@ -114,13 +114,8 @@ const connected = computed(() => balance?.value?.connect)
 
 const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
 
-const isInsufficientBalance = computed(() => {
-  if (Number(totalNeed.value) > Number(balance.value?.confirmed)) return true
-  return false
-})
-
-const toAddress = computed(() => {
-  return ordAddress.value || fundAddress.value
+onMounted(() => {
+  console.debug('dataForSign.value', dataForSign.value);
 })
 
 </script>

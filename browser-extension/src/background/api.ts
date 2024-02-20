@@ -20,7 +20,8 @@ import {
   CONNECT_RESULT,
   ADDRESSES_TO_SAVE,
   CREATE_INSCRIBE_RESULT,
-  DECRYPTED_WALLET, TRANSFER_LAZY_COLLECTION
+  DECRYPTED_WALLET,
+  TRANSFER_LAZY_COLLECTION
 } from '~/config/events';
 import { BASE_URL_PATTERN } from '~/config/index';
 import Tab = chrome.tabs.Tab;
@@ -407,6 +408,15 @@ class Api {
     if (type === 'xord' || type === 'ext') return false;
     this.wallet[type].typeAddress = Number(value);
     return true;
+  }
+
+  async generateNewIndexes(types: string | string[]) {
+    if (typeof(types) === 'string') {
+      types = types.split(/\s+|\s*,\s*/);
+    }
+    for (const type of types) {
+      await this.generateNewIndex(type);
+    }
   }
 
   async generateNewIndex(type) {
@@ -1208,13 +1218,13 @@ class Api {
 
   //------------------------------------------------------------------------------
 
-  async transferForLazyInscriptionContract(payload, estimation: boolean = false) {
+  async transferForLazyInscriptionContract(payload) {
     const myself = this;
 
-    // temporary safeguard
-    if (! Number(payload.fee_rate)) {
-      payload.fee_rate = 1000;
-    }
+    // // temporary safeguard
+    // if (! Number(payload.fee_rate)) {
+    //   payload.fee_rate = 1000;
+    // }
 
     const outData = {
       xord: null,
@@ -1290,12 +1300,11 @@ class Api {
       tx.AddOutput(marketOutput);
       myself.utxord.destroy(marketOutput);
 
-      const outputMiningFee = myself.btcToSat(tx.GetNewOutputMiningFee());
-      outData.output_mining_fee = outputMiningFee;
-      console.log('outputMiningFee:', outputMiningFee);
+      // outData.output_mining_fee = myself.btcToSat(tx.GetNewOutputMiningFee());  // FIXME: to return a change
+      // console.log('outputMiningFee:', outData.output_mining_fee);
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
-      min_fund_amount += outputMiningFee;  // to take in account a change output
+      min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
       outData.amount = min_fund_amount;
 
       if (!myself.fundings.length) {
@@ -1330,11 +1339,9 @@ class Api {
         myself.utxord.destroy(utxo);
       }
 
-      if (!estimation) {
-        tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
-        tx.Sign(myself.wallet.root.key, "fund");
-        outData.raw = await myself.getRawTransactions(tx);
-      }
+      tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
+      tx.Sign(myself.wallet.root.key, "fund");
+      outData.raw = await myself.getRawTransactions(tx);
 
       outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
       outData.total_mining_fee = myself.btcToSat(tx.GetTotalMiningFee(""));
@@ -1551,9 +1558,8 @@ class Api {
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list_final;
 
-      const output_mining_fee = myself.btcToSat(newOrd.GetNewOutputMiningFee()?.c_str());
-      outData.output_mining_fee = output_mining_fee;
-      console.log('output_mining_fee:', output_mining_fee);
+      // outData.output_mining_fee = myself.btcToSat(newOrd.GetNewOutputMiningFee()?.c_str());  // FIXME: to return a change
+      // console.log('output_mining_fee:', outData.output_mining_fee);
 
       outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
@@ -1628,11 +1634,9 @@ class Api {
     };
 
     // TODO: to debug this part when backend will ready for addresses support
-    await myself.generateNewIndex('ord');
-    await myself.generateNewIndex('uns');
+    await myself.generateNewIndexes('ord, uns');
     if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
-      await myself.generateNewIndex('intsk');
-      await myself.generateNewIndex('scrsk');
+      await myself.generateNewIndexes('intsk, scrsk');
     }
     myself.genKeys();
 
@@ -1679,11 +1683,9 @@ class Api {
         myself.WinHelpers.closeCurrentWindow();
         await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, result, payload_data._tabId);
 
-        await myself.generateNewIndex('ord');
-        await myself.generateNewIndex('uns');
+        await myself.generateNewIndexes('ord, uns');
         if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
-          await myself.generateNewIndex('intsk');
-          await myself.generateNewIndex('scrsk');
+          await myself.generateNewIndexes('intsk, scrsk');
         }
         myself.genKeys();
         // ======================================================================
@@ -2051,8 +2053,7 @@ class Api {
           { contract_uuid: payload?.swap_ord_terms?.contract_uuid, contract: JSON.parse(data) },
           tabId
         );
-        await myself.generateNewIndex('scrsk');
-        await myself.generateNewIndex('ord');
+        await myself.generateNewIndexes('scrsk, ord');
         myself.genKeys();
       })(data, payload);
 

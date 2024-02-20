@@ -52,7 +52,8 @@ import {
   CREATE_CHUNK_INSCRIPTION_RESULT,
   TRANSFER_LAZY_COLLECTION,
   ESTIMATE_TRANSFER_LAZY_COLLECTION,
-  ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT
+  ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT,
+  TRANSFER_LAZY_COLLECTION_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -466,11 +467,33 @@ interface ICollectionTransferResult {
 
     onMessage(SUBMIT_SIGN, async (payload) => {
       console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
-
       const signData = payload?.data;
-      const chunkData = payload?.data?.data;
+
+      if (signData?.type === TRANSFER_LAZY_COLLECTION) {
+        const transferData = payload?.data?.data;
+
+        const res = await Api.decryptedWallet(payload.data.password);
+        if(res){
+          await Api.generateNewIndexes('ord, uns, intsk, scrsk');
+          Api.genKeys();
+
+          await Api.sendMessageToWebPage(TRANSFER_LAZY_COLLECTION_RESULT, {
+            contract: transferData?.costs?.data,
+            errorMessage: transferData?.errorMessage
+          }, payload?.data?.data?._tabId);
+          setTimeout(async () => {
+            await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
+          }, 1000);
+          await Api.encryptedWallet(payload.data.password);
+
+          return true;
+        }
+        return false;
+      }
 
       if (signData?.type === CREATE_CHUNK_INSCRIPTION) {
+        const chunkData = payload?.data?.data;
+
         const res = await Api.decryptedWallet(signData.password);
         if (res) {
           const passwordId = `job:password:${chunkData.job_uuid}`;
@@ -493,8 +516,8 @@ interface ICollectionTransferResult {
         return false;
       }
 
-      if (payload.data.type === CREATE_INSCRIPTION) {
-        const res = await Api.decryptedWallet(payload.data.password);
+      if (signData?.type === CREATE_INSCRIPTION) {
+        const res = await Api.decryptedWallet(payload.data.password);  // just to check password value
         if(res){
           payload.data.data.content = store.pop(payload.data.data?.content_store_key);
           const success = await Api.createInscription(payload.data.data);
@@ -506,7 +529,7 @@ interface ICollectionTransferResult {
         return false;
       }
 
-      if (payload.data.type === SELL_INSCRIPTION) {
+      if (signData?.type === SELL_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
           const success = await Api.sellInscription(payload.data.data);
@@ -516,7 +539,7 @@ interface ICollectionTransferResult {
         return false;
       }
 
-      if (payload.data.type === COMMIT_BUY_INSCRIPTION) {
+      if (signData?.type === COMMIT_BUY_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         Api.wallet.tmp = payload.data.password;
         if(res){
@@ -713,7 +736,7 @@ interface ICollectionTransferResult {
         Api.fundings = balances.funds;
         Api.inscriptions = balances.inscriptions;
 
-        const contract = await Api.transferForLazyInscriptionContract(payload.data, true);
+        const contract = await Api.transferForLazyInscriptionContract(payload.data);
         await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, {
           contract,
           errorMessage: contract.errorMessage
@@ -734,19 +757,18 @@ interface ICollectionTransferResult {
         costs = await Api.transferForLazyInscriptionContract(payload.data);
         console.log('costs:', costs)
         payload.data.costs = costs;
-        console.log(TRANSFER_LAZY_COLLECTION+':', {...payload.data});
 
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
         if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
 
         winManager.openWindow('sign-transfer-collection', async (id) => {
           setTimeout(async  () => {
-            if (payload.data.costs.output_mining_fee < 546) {
-              Api.sendNotificationMessage(
-                'TRANSFER_LAZY_COLLECTION',
-                'There are too few coins left after creation and they will become part of the inscription balance'
-              );
-            }
+            // if (payload.data.costs.output_mining_fee < 546) {
+            //   Api.sendNotificationMessage(
+            //     'TRANSFER_LAZY_COLLECTION',
+            //     'There are too few coins left after creation and they will become part of the inscription balance'
+            //   );
+            // }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -774,12 +796,12 @@ interface ICollectionTransferResult {
         console.log(CREATE_INSCRIPTION+' (stored):', {...payload.data});
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
-            if (payload.data.costs.output_mining_fee < 546) {
-              Api.sendNotificationMessage(
-                'CREATE_INSCRIPTION',
-                'There are too few coins left after creation and they will become part of the inscription balance'
-              );
-            }
+            // if (payload.data.costs.output_mining_fee < 546) {
+            //   Api.sendNotificationMessage(
+            //     'CREATE_INSCRIPTION',
+            //     'There are too few coins left after creation and they will become part of the inscription balance'
+            //   );
+            // }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
