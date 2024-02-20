@@ -1211,6 +1211,11 @@ class Api {
   async transferForLazyInscriptionContract(payload, estimation: boolean = false) {
     const myself = this;
 
+    // temporary safeguard
+    if (! Number(payload.fee_rate)) {
+      payload.fee_rate = 1000;
+    }
+
     const outData = {
       xord: null,
       nxord: null,
@@ -1226,6 +1231,7 @@ class Api {
       fee: payload.fee,
       // size: (payload.content.length + payload.content_type.length),
       raw: [],
+      total_mining_fee: 0,
       errorMessage: null as string | null
     };
     try {
@@ -1284,8 +1290,12 @@ class Api {
       tx.AddOutput(marketOutput);
       myself.utxord.destroy(marketOutput);
 
+      const outputMiningFee = myself.btcToSat(tx.GetNewOutputMiningFee());
+      outData.output_mining_fee = outputMiningFee;
+      console.log('outputMiningFee:', outputMiningFee);
+
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
-      min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
+      min_fund_amount += outputMiningFee;  // to take in account a change output
       outData.amount = min_fund_amount;
 
       if (!myself.fundings.length) {
@@ -1325,7 +1335,11 @@ class Api {
         tx.Sign(myself.wallet.root.key, "fund");
         outData.raw = await myself.getRawTransactions(tx);
       }
+
       outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
+      outData.total_mining_fee = myself.btcToSat(tx.GetTotalMiningFee(""));
+      const contractData = JSON.parse(outData.data);
+      console.debug('transferForLazyInscriptionContract: contractData:', contractData);
       myself.utxord.destroy(tx);
 
       return outData;
