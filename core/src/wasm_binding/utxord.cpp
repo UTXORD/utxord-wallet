@@ -347,6 +347,11 @@ public:
     const char* SupportedVersions() const
     { return m_ptr->SupportedVersions(); }
 
+    IContractOutput* ChangeOutput() const
+    {
+        auto out = m_ptr->ChangeOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
 };
 
 class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder
