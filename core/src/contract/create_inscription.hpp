@@ -18,7 +18,7 @@ namespace utxord {
 enum InscribeType { INSCRIPTION, LASY_INSCRIPTION };
 enum InscribePhase { MARKET_TERMS, LASY_INSCRIPTION_MARKET_TERMS, LASY_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 
-class CreateInscriptionBuilder: public ContractBuilder<InscribePhase>
+class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribePhase>
 {
     static const std::string FEE_OPT_HAS_CHANGE;
     static const std::string FEE_OPT_HAS_COLLECTION;
@@ -121,11 +121,6 @@ public:
     const std::string& GetContractName() const override;
     UniValue MakeJson(uint32_t version, InscribePhase phase) const override;
     void ReadJson(const UniValue& json, InscribePhase phase) override;
-
-    std::string Serialize(uint32_t version, InscribePhase phase)
-    { return ContractBuilder<InscribePhase>::Serialize(version, phase); }
-    void Deserialize(const std::string& data, InscribePhase phase)
-    { ContractBuilder<InscribePhase>::Deserialize(data, phase); }
 
     static const char* SupportedVersions() { return s_versions; }
 

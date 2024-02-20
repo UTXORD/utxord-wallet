@@ -12,7 +12,7 @@ namespace utxord {
 
 enum TxPhase {TX_TERMS, TX_SIGNATURE};
 
-class SimpleTransaction: public ContractBuilder<TxPhase>, public IContractOutput
+class SimpleTransaction: public utxord::ContractBuilder<utxord::TxPhase>, public IContractOutput
 {
 public:
     static const std::string name_outputs;
@@ -69,11 +69,6 @@ public:
     void CheckContractTerms(TxPhase phase) const override;
     UniValue MakeJson(uint32_t version, TxPhase phase) const override;
     void ReadJson(const UniValue& json, TxPhase phase) override;
-
-    std::string Serialize(uint32_t version, TxPhase phase)
-    { return ContractBuilder<TxPhase>::Serialize(version, phase); }
-    void Deserialize(const std::string& data, TxPhase phase)
-    { ContractBuilder<TxPhase>::Deserialize(data, phase); }
 
     std::string TxID() const override
     { return MakeTx("").GetHash().GetHex(); }

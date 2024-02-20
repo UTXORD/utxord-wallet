@@ -21,7 +21,7 @@ enum SwapPhase {
     MARKET_SWAP_SIG,
 };
 
-class SwapInscriptionBuilder : public ContractBuilder<SwapPhase>
+class SwapInscriptionBuilder : public utxord::ContractBuilder<utxord::SwapPhase>
 {
     CAmount m_whole_fee = 0;
     CAmount m_last_fee_rate = 0;
@@ -138,11 +138,6 @@ public:
     UniValue MakeJson(uint32_t version, SwapPhase phase) const override;
     void ReadJson_v4(const UniValue& json, SwapPhase phase);
     void ReadJson(const UniValue& json, SwapPhase phase) override;
-
-    std::string Serialize(uint32_t version, SwapPhase phase)
-    { return ContractBuilder<SwapPhase>::Serialize(version, phase); }
-    void Deserialize(const std::string& data, SwapPhase phase)
-    { ContractBuilder<SwapPhase>::Deserialize(data, phase); }
 
     static const char* SupportedVersions() { return s_versions; }
 

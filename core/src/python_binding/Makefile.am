@@ -12,6 +12,19 @@ COMMON_INCLUDES = \
  -I$(top_srcdir)/l15/contrib/cex \
  -I$(top_srcdir)/src/contract
 
+SWIG_SRC_INCLUDES = \
+ $(top_srcdir)/l15/src/common/common_error.hpp \
+ $(top_srcdir)/l15/src/core/transaction.hpp \
+ $(top_srcdir)/src/contract/contract_error.hpp \
+ $(top_srcdir)/src/contract/contract_builder.hpp \
+ $(top_srcdir)/src/contract/create_inscription.hpp \
+ $(top_srcdir)/src/contract/swap_inscription.hpp \
+ $(top_srcdir)/src/contract/simple_transaction.hpp \
+ $(top_srcdir)/src/contract/ecdsa.hpp \
+ $(top_srcdir)/src/contract/keypair.hpp \
+ $(top_srcdir)/src/contract/address.hpp
+
+
 
 AM_CPPFLAGS = $(COMMON_INCLUDES) $(PYTHON_CPPFLAGS) $(PYTHON_INCLUDES)
 
@@ -23,7 +36,7 @@ CLEANFILES = $(SWIG_PYTHON_MODULE) libutxord_pybind.py
 BUILT_SOURCES = $(SWIG_PYTHON_MODULE)
 EXTRA_DIST = $(SWIG_SRC_FILES)
 
-$(SWIG_PYTHON_MODULE): $(SWIG_SRC_FILES) $(top_srcdir)/src/contract/contract_error.hpp $(top_srcdir)/l15/src/common/common_error.hpp $(top_srcdir)/l15/src/core/transaction.hpp
+$(SWIG_PYTHON_MODULE): $(SWIG_SRC_FILES) $(SWIG_SRC_INCLUDES)
 	$(SWIG) $(COMMON_INCLUDES) -c++ -python -o $@ $<
 
 
