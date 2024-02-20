@@ -56,6 +56,11 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
 {
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
 
+    if (m_change_nout) {
+        m_outputs.erase(m_outputs.begin() + *m_change_nout);
+        m_change_nout.reset();
+    }
+
     unsigned v;
     bytevector arg;
     std::tie(v, arg) = bech32().Decode(addr);
@@ -78,6 +83,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
 
     if (change >= l15::Dust(DUST_RELAY_TX_FEE)) {
         m_outputs.back()->Amount(change);
+        m_change_nout = m_outputs.size() - 1;
     }
     else {
        m_outputs.pop_back();
@@ -174,7 +180,8 @@ std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) co
 
 void SimpleTransaction::CheckContractTerms(TxPhase phase) const
 {
-
+    if (phase == TX_SIGNATURE)
+        CheckSig();
 }
 
 CAmount SimpleTransaction::CalculateWholeFee(const string &params) const

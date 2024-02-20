@@ -362,6 +362,26 @@ public:
 
     std::shared_ptr<utxord::IContractMultiOutput> Share() final
     { return m_ptr; }
+
+    uint32_t TransactionCount(TxPhase phase) const
+    { return 1; }
+
+    std::string RawTransaction(TxPhase phase, uint32_t n) const
+    {
+        if (n == 0) {
+            return m_ptr->RawTransactions()[0];
+        }
+        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+    }
+
+    const char* SupportedVersions() const
+    { return m_ptr->SupportedVersions(); }
+
+    IContractOutput* ChangeOutput() const
+    {
+        auto out = m_ptr->ChangeOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
 };
 
 class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder

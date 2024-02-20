@@ -22,6 +22,7 @@ private:
 
     std::vector<TxInput> m_inputs;
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
+    std::optional<uint32_t> m_change_nout;
 
 public:
     explicit SimpleTransaction(ChainMode chain) : ContractBuilder(chain) {}
@@ -81,6 +82,12 @@ public:
     std::vector<std::shared_ptr<IContractDestination>> Destinations() const override
     { return std::vector<std::shared_ptr<IContractDestination>>(m_outputs.begin(), m_outputs.end()); }
 
+    std::shared_ptr<IContractOutput> ChangeOutput() const
+    {
+        return m_change_nout
+            ? std::make_shared<UTXO>(bech32(), TxID(), *m_change_nout, m_outputs[*m_change_nout])
+            : std::shared_ptr<IContractOutput>();
+    }
 };
 
 } // l15::utxord

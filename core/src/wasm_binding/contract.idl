@@ -255,4 +255,10 @@ interface SimpleTransaction
 
     [Const] DOMString Serialize(long ver, TxPhase phase);
     void Deserialize([Const] DOMString data, TxPhase phase);
+
+    long TransactionCount(TxPhase phase);
+    [Value] string RawTransaction(TxPhase phase, long n);
+
+    [Const] static DOMString SupportedVersions();
+    IContractOutput ChangeOutput();
 };
