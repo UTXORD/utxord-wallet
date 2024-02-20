@@ -482,6 +482,7 @@ interface ICollectionTransferResult {
             errorMessage: transferData?.errorMessage
           }, payload?.data?.data?._tabId);
           setTimeout(async () => {
+            Api.WinHelpers.closeCurrentWindow();
             await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
           }, 1000);
           await Api.encryptedWallet(payload.data.password);
@@ -763,12 +764,13 @@ interface ICollectionTransferResult {
 
         winManager.openWindow('sign-transfer-collection', async (id) => {
           setTimeout(async  () => {
-            // if (payload.data.costs.output_mining_fee < 546) {
-            //   Api.sendNotificationMessage(
-            //     'TRANSFER_LAZY_COLLECTION',
-            //     'There are too few coins left after creation and they will become part of the inscription balance'
-            //   );
-            // }
+            const changeAmount = payload.data.costs.change_amount
+            if (changeAmount !== null  && changeAmount < 546) {
+              Api.sendNotificationMessage(
+                'TRANSFER_LAZY_COLLECTION',
+                'There are too few coins left after creation and they will become part of the inscription balance'
+              );
+            }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
@@ -796,7 +798,9 @@ interface ICollectionTransferResult {
         console.log(CREATE_INSCRIPTION+' (stored):', {...payload.data});
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
-            // if (payload.data.costs.output_mining_fee < 546) {
+            // TODO: core API InscriptionBuilder needs to have change-related stuff implemented
+            // const changeAmount = payload.data.costs.change_amount
+            // if (changeAmount !== null && changeAmount < 546) {
             //   Api.sendNotificationMessage(
             //     'CREATE_INSCRIPTION',
             //     'There are too few coins left after creation and they will become part of the inscription balance'

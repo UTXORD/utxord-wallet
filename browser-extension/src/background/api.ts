@@ -1233,7 +1233,7 @@ class Api {
       data: null,
       // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
       amount: 0,
-      output_mining_fee: 0,
+      change_amount: null,
       inputs_sum: 0,
       utxo_list: [],
       expect_amount: Number(payload.expect_amount),
@@ -1300,9 +1300,6 @@ class Api {
       tx.AddOutput(marketOutput);
       myself.utxord.destroy(marketOutput);
 
-      // outData.output_mining_fee = myself.btcToSat(tx.GetNewOutputMiningFee());  // FIXME: to return a change
-      // console.log('outputMiningFee:', outData.output_mining_fee);
-
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
       min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
       outData.amount = min_fund_amount;
@@ -1343,6 +1340,18 @@ class Api {
       tx.Sign(myself.wallet.root.key, "fund");
       outData.raw = await myself.getRawTransactions(tx);
 
+      // TODO: core API needs to be refactored to make change-related stuff more usable
+      const changeOutput = tx.ChangeOutput();
+      if (changeOutput.ptr != 0) {
+        const changeDestination = changeOutput.Destination();
+        if (changeDestination.ptr != 0) {
+          outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
+          myself.destroy(changeDestination);
+        }
+        myself.destroy(changeOutput);
+      }
+      console.debug('change_amount: ', outData.change_amount);
+
       outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
       outData.total_mining_fee = myself.btcToSat(tx.GetTotalMiningFee(""));
       const contractData = JSON.parse(outData.data);
@@ -1368,7 +1377,7 @@ class Api {
       data: null,
       // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
       amount: 0,
-      output_mining_fee: 0,
+      change_amount: null,
       inputs_sum: 0,
       utxo_list: [],
       expect_amount: Number(payload.expect_amount),
@@ -1558,8 +1567,18 @@ class Api {
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list_final;
 
-      // outData.output_mining_fee = myself.btcToSat(newOrd.GetNewOutputMiningFee()?.c_str());  // FIXME: to return a change
-      // console.log('output_mining_fee:', outData.output_mining_fee);
+      // TODO: core API InscriptionBuilder needs to have change-related stuff implemented
+      // TODO: core API needs to be refactored to make change-related stuff more usable
+      // const changeOutput = newOrd.ChangeOutput();
+      // if (changeOutput.ptr != 0) {
+      //   const changeDestination = changeOutput.Destination();
+      //   if (changeDestination.ptr != 0) {
+      //     outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
+      //     myself.destroy(changeDestination);
+      //   }
+      //   myself.destroy(changeOutput);
+      // }
+      // console.debug('change_amount: ', outData.change_amount);
 
       outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
