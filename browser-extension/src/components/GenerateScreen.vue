@@ -53,169 +53,44 @@
         />
         <table style="width: 100%;" v-if="picked == 'list'">
         <!-- for 12 words -->
-        <tbody v-if="length == 12">
+        <tbody v-if="length == 12" v-for="n in 4">
         <tr>
-          <td>1.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[0]"/></td>
-          <td>5.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[4]"/></td>
-          <td>9.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[8]"/></td>
-        </tr>
-        <tr>
-          <td>2.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[1]"/></td>
-          <td>6.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[5]"/></td>
-          <td>10.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[9]"/></td>
-        </tr>
-        <tr>
-          <td>3.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[2]"/></td>
-          <td>7.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[6]"/></td>
-          <td>11.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[10]"/></td>
-        </tr>
-        <tr>
-          <td>4.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[4]"/></td>
-          <td>8.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[7]"/></td>
-          <td>12.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[11]"/></td>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+4}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+3]"/></td>
+          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
         </tr>
         </tbody>
         <!-- for 15 words -->
-        <tbody v-if="length == 15">
+        <tbody v-if="length == 15" v-for="n in 5">
         <tr>
-          <td>1.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[0]"/></td>
-          <td>6.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[5]"/></td>
-          <td>11.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[10]"/></td>
-        </tr>
-        <tr>
-          <td>2.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[1]"/></td>
-          <td>7.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[6]"/></td>
-          <td>12.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[11]"/></td>
-        </tr>
-        <tr>
-          <td>3.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[2]"/></td>
-          <td>8.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[7]"/></td>
-          <td>13.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[12]"/></td>
-        </tr>
-        <tr>
-          <td>4.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[3]"/></td>
-          <td>9.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[8]"/></td>
-          <td>14.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[13]"/></td>
-        </tr>
-        <tr>
-          <td>5.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[5]"/></td>
-          <td>10.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[9]"/></td>
-          <td>15.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[14]"/></td>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+5}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+4]"/></td>
+          <td>{{n+10}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+9]"/></td>
         </tr>
         </tbody>
 
         <!-- for 18 words -->
-        <tbody v-if="length == 18">
+        <tbody v-if="length == 18" v-for="n in 6">
         <tr>
-          <td>1.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[0]"/></td>
-          <td>7.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[6]"/></td>
-          <td>13.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[12]"/></td>
-        </tr>
-        <tr>
-          <td>2.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[2]"/></td>
-          <td>8.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[7]"/></td>
-          <td>14.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[13]"/></td>
-        </tr>
-        <tr>
-          <td>3.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[2]"/></td>
-          <td>9.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[8]"/></td>
-          <td>15.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[14]"/></td>
-        </tr>
-        <tr>
-          <td>4.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[3]"/></td>
-          <td>10.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[9]"/></td>
-          <td>16.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[15]"/></td>
-        </tr>
-        <tr>
-          <td>5.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[4]"/></td>
-          <td>11.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[10]"/></td>
-          <td>17.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[16]"/></td>
-        </tr>
-        <tr>
-          <td>6.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[5]"/></td>
-          <td>12.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[11]"/></td>
-          <td>18.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[17]"/></td>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+6}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+5]"/></td>
+          <td>{{n+12}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+11]"/></td>
         </tr>
         </tbody>
         <!-- for 21 words -->
-        <tbody v-if="length == 21">
+        <tbody v-if="length == 21" v-for="n in 7">
         <tr>
-          <td>1.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[0]"/></td>
-          <td>8.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[7]"/></td>
-          <td>15.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[14]"/></td>
-        </tr>
-        <tr>
-          <td>2.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[1]"/></td>
-          <td>9.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[8]"/></td>
-          <td>16.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[15]"/></td>
-        </tr>
-        <tr>
-          <td>3.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[2]"/></td>
-          <td>10.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[9]"/></td>
-          <td>17.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[16]"/></td>
-        </tr>
-        <tr>
-          <td>4.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[3]"/></td>
-          <td>11.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[10]"/></td>
-          <td>18.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[17]"/></td>
-        </tr>
-        <tr>
-          <td>5.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[4]"/></td>
-          <td>12.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[11]"/></td>
-          <td>19.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[18]"/></td>
-        </tr>
-        <tr>
-          <td>6.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[5]"/></td>
-          <td>13.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[12]"/></td>
-          <td>20.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[19]"/></td>
-        </tr>
-        <tr>
-          <td>7.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[6]"/></td>
-          <td>14.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[13]"/></td>
-          <td>21.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[20]"/></td>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+7}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+6]"/></td>
+          <td>{{n+14}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+13]"/></td>
         </tr>
         </tbody>
         <!-- for 24 words -->
-        <tbody v-if="length == 24">
+        <tbody v-if="length == 24" v-for="n in 8">
         <tr>
-          <td>1.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[0]"/></td>
-          <td>9.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[8]"/></td>
-          <td>17.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[16]"/></td>
-        </tr>
-        <tr>
-          <td>2.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[1]"/></td>
-          <td>10.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[9]"/></td>
-          <td>18.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[17]"/></td>
-        </tr>
-        <tr>
-          <td>3.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[2]"/></td>
-          <td>11.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[10]"/></td>
-          <td>19.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[18]"/></td>
-        </tr>
-        <tr>
-          <td>4.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[3]"/></td>
-          <td>12.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[11]"/></td>
-          <td>20.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[19]"/></td>
-        </tr>
-        <tr>
-          <td>5.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[4]"/></td>
-          <td>13.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[12]"/></td>
-          <td>21.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[20]"/></td>
-        </tr>
-        <tr>
-          <td>6.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[5]"/></td>
-          <td>14.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[13]"/></td>
-          <td>22.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[21]"/></td>
-        </tr>
-        <tr>
-          <td>7.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[6]"/></td>
-          <td>15.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[14]"/></td>
-          <td>23.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[22]"/></td>
-        </tr>
-        <tr>
-          <td>8.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[7]"/></td>
-          <td>16.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[15]"/></td>
-          <td>24.<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[23]"/></td>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
+          <td>{{n+16}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+15]"/></td>
         </tr>
         </tbody>
         </table>
@@ -358,8 +233,6 @@ function refreshMnemonic() {
   localStorage.removeItem('temp-length')
   getMnemonic()
 }
-
-
 
 async function getMnemonic() {
   const tempMnemonic = localStorage?.getItem('temp-mnemonic')
