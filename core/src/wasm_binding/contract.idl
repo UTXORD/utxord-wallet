@@ -156,6 +156,7 @@ interface CreateInscriptionBuilder
     [Value] string GetIntermediateSecKey();
     [Value] string MakeInscriptionId();
 
+    [Value] string GetTotalMiningFee([Const] DOMString params);
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
@@ -203,13 +204,14 @@ interface SwapInscriptionBuilder
 
     void CheckContractTerms(SwapPhase phase);
     [Value] string Serialize(long ver, SwapPhase phase);
-    void Deserialize([Const] DOMString data);
+    void Deserialize([Const] DOMString data, SwapPhase phase);
 
     long TransactionCount(SwapPhase phase);
     [Value] string RawTransaction(SwapPhase phase, long n);
 
     [Const] static DOMString SupportedVersions();
 
+    [Value] string GetTotalMiningFee([Const] DOMString params);
     [Value] string GetMinFundingAmount([Const] DOMString params);
     [Value] string GetNewInputMiningFee();
     [Value] string GetNewOutputMiningFee();
@@ -232,6 +234,7 @@ interface SimpleTransaction
 
     void MiningFeeRate([Const] DOMString rate);
 
+    [Const] DOMString GetTotalMiningFee([Const] DOMString params);
     [Const] DOMString GetMinFundingAmount([Const] DOMString params);
     [Const] DOMString GetNewInputMiningFee();
     [Const] DOMString GetNewOutputMiningFee();
@@ -242,11 +245,12 @@ interface SimpleTransaction
 
     void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);
 
-    [Const] DOMString Serialize();
-    void Deserialize([Const] DOMString data);
+    [Const] DOMString Serialize(long ver, TxPhase phase);
+    void Deserialize([Const] DOMString data, TxPhase phase);
 
     long TransactionCount(TxPhase phase);
     [Value] string RawTransaction(TxPhase phase, long n);
 
     [Const] static DOMString SupportedVersions();
+    IContractOutput ChangeOutput();
 };

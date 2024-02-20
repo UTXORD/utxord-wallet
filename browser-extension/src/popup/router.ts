@@ -32,6 +32,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('~/components/LoadingScreen.vue')
   },
   {
+    path: '/sign-transfer-collection',
+    name: 'SignTransferScreen',
+    component: () => import('~/components/SignTransferScreen.vue')
+  },
+  {
     path: '/sign-create-inscription',
     name: 'SignCreateScreen',
     component: () => import('~/components/SignCreateScreen.vue')

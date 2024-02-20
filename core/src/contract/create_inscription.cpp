@@ -52,6 +52,10 @@ const std::string CreateInscriptionBuilder::FEE_OPT_HAS_COLLECTION = "collection
 const std::string CreateInscriptionBuilder::FEE_OPT_HAS_XTRA_UTXO = "extra_utxo";
 const std::string CreateInscriptionBuilder::FEE_OPT_HAS_P2WPKH_INPUT = "p2wpkh_utxo";
 
+
+const std::string& CreateInscriptionBuilder::GetContractName() const
+{ return val_create_inscription; }
+
 CScript CreateInscriptionBuilder::MakeInscriptionScript() const
 {
     CScript script;
@@ -356,11 +360,9 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
     }
 }
 
-std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase phase) const
+UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePhase phase) const
 {
     if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
-
-    CheckContractTerms(phase);
 
     UniValue contract(UniValue::VOBJ);
     contract.pushKV(name_version, (int)s_protocol_version);
@@ -408,30 +410,15 @@ std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase 
         contract.pushKV(name_market_fee, m_market_fee->MakeJson());
     }
 
-    UniValue dataRoot(UniValue::VOBJ);
-    dataRoot.pushKV(name_contract_type,  val_create_inscription);
-    dataRoot.pushKV(name_params, move(contract));
-
-    return dataRoot.write();
+    return contract;
 }
 
-void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhase phase)
+void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase phase)
 {
-    UniValue root;
-    root.read(data);
-
-    if (!root.isObject() || !root[name_contract_type].isStr() || !root[name_params].isObject())
-        throw ContractProtocolError("JSON is not CreateInscription contract");
-
-    if (root[name_contract_type].get_str() == val_create_inscription) {
-        if (m_type != INSCRIPTION && m_type != LASY_INSCRIPTION) throw ContractTermMismatch (std::string(name_contract_type));
-    } else
-        throw ContractProtocolError("CreateInscription contract does not match " + root[name_contract_type].getValStr());
-
-    const UniValue& contract = root[name_params];
+    if (m_type != INSCRIPTION && m_type != LASY_INSCRIPTION) throw ContractTermMismatch (std::string(name_contract_type));
 
     if (contract[name_version].getInt<uint32_t>() != s_protocol_version)
-        throw ContractProtocolError("Wrong " + root[name_contract_type].get_str() + " version: " + contract[name_version].getValStr());
+        throw ContractProtocolError("Wrong " + val_create_inscription + " version: " + contract[name_version].getValStr());
 
     {   const auto& val = contract[name_market_fee];
         if (!val.isNull()) {
@@ -495,8 +482,6 @@ void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhas
     DeserializeContractHexData(contract[name_fund_mining_fee_int_pk], m_fund_mining_fee_int_pk, [&](){ return name_fund_mining_fee_int_pk; });
     DeserializeContractString(contract[name_destination_addr], m_destination_addr, [&](){ return name_destination_addr; });
     DeserializeContractString(contract[name_change_addr], m_change_addr, [&](){ return name_change_addr; });
-
-    CheckContractTerms(phase);
 }
 
 void CreateInscriptionBuilder::RestoreTransactions() const

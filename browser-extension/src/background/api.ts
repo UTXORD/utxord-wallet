@@ -20,7 +20,8 @@ import {
   CONNECT_RESULT,
   ADDRESSES_TO_SAVE,
   CREATE_INSCRIBE_RESULT,
-  DECRYPTED_WALLET
+  DECRYPTED_WALLET,
+  TRANSFER_LAZY_COLLECTION
 } from '~/config/events';
 import { BASE_URL_PATTERN } from '~/config/index';
 import Tab = chrome.tabs.Tab;
@@ -31,6 +32,8 @@ import {Exception} from "sass";
 const limitQuery = 1000;
 let bgSiteQueryIndex = 0;
 const closeWindowAfter = 6000;
+
+const SIMPLE_TX_PROTOCOL_VERSION = 2;
 
 class UtxordExtensionApiError extends Error {
   constructor(readonly message?: string) {
@@ -405,6 +408,15 @@ class Api {
     if (type === 'xord' || type === 'ext') return false;
     this.wallet[type].typeAddress = Number(value);
     return true;
+  }
+
+  async generateNewIndexes(types: string | string[]) {
+    if (typeof(types) === 'string') {
+      types = types.split(/\s+|\s*,\s*/);
+    }
+    for (const type of types) {
+      await this.generateNewIndex(type);
+    }
   }
 
   async generateNewIndex(type) {
@@ -1206,6 +1218,156 @@ class Api {
 
   //------------------------------------------------------------------------------
 
+  async transferForLazyInscriptionContract(payload) {
+    const myself = this;
+
+    // // temporary safeguard
+    // if (! Number(payload.fee_rate)) {
+    //   payload.fee_rate = 1000;
+    // }
+
+    const outData = {
+      xord: null,
+      nxord: null,
+      xord_address: null,
+      data: null,
+      // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
+      amount: 0,
+      change_amount: null,
+      inputs_sum: 0,
+      utxo_list: [],
+      expect_amount: Number(payload.expect_amount),
+      fee_rate: payload.fee_rate,
+      fee: payload.fee,
+      // size: (payload.content.length + payload.content_type.length),
+      raw: [],
+      total_mining_fee: 0,
+      errorMessage: null as string | null
+    };
+    try {
+      console.log('transferForLazyInscriptionContract payload: ', {...payload || {}});
+
+      let tx = new myself.utxord.SimpleTransaction(myself.network);
+      tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
+
+      let collection = null;
+      if (payload?.collection?.owner_txid) {
+        // if collection is present.. than finding an output with collection
+        collection = myself.selectByOrdOutput(
+            payload.collection.owner_txid,
+            payload.collection.owner_nout
+        );
+        console.log("payload.collection:", payload.collection)
+        console.debug('selectByOrdOutput collection:', collection);
+      }
+
+      if (!collection) {
+        myself.sendWarningMessage(
+            'TRANSFER_LAZY_COLLECTION',
+            `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
+        );
+        setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+        outData.errorMessage = "Collection is not found in balances.";
+        // outData.raw = [];
+        return outData;
+      }
+
+      const collectionUtxo = new myself.utxord.UTXO(
+          myself.network,
+          payload.collection.owner_txid,
+          payload.collection.owner_nout,
+          myself.satToBtc(collection.amount).toFixed(8),
+          collection.address
+      );
+
+      const transferOutput = new myself.utxord.P2TR(
+          this.network,
+          myself.satToBtc(collection.amount).toFixed(8),
+          payload.transfer_address
+      );
+      const marketOutput = new myself.utxord.P2TR(
+          myself.network,
+          myself.satToBtc(payload.market_fee?.amount).toFixed(8),
+          payload.market_fee?.address
+      );
+
+      tx.AddInput(collectionUtxo);
+      myself.utxord.destroy(collectionUtxo);
+
+      tx.AddOutput(transferOutput);
+      myself.utxord.destroy(transferOutput);
+
+      tx.AddOutput(marketOutput);
+      myself.utxord.destroy(marketOutput);
+
+      let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
+      min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
+      outData.amount = min_fund_amount;
+
+      if (!myself.fundings.length) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // outData.raw = [];
+        return outData;
+      }
+
+      const input_mining_fee = myself.btcToSat(tx.GetNewInputMiningFee());
+      const utxo_list = await myself.smartSelectFundsByAmount(min_fund_amount, input_mining_fee);
+      outData.utxo_list = utxo_list;
+
+      console.log("min_fund_amount:", min_fund_amount);
+      console.log("utxo_list:", utxo_list);
+
+      if (utxo_list?.length < 1) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // outData.raw = [];
+        return outData;
+      }
+
+      outData.inputs_sum = await myself.sumAllFunds(utxo_list);
+
+      for(const fund of utxo_list) {
+        const utxo = new myself.utxord.UTXO(myself.network,
+            fund.txid,
+            fund.nout,
+            myself.satToBtc(fund.amount).toFixed(8),
+            fund.address
+        );
+        tx.AddInput(utxo);
+        myself.utxord.destroy(utxo);
+      }
+
+      tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
+      tx.Sign(myself.wallet.root.key, "fund");
+      outData.raw = await myself.getRawTransactions(tx);
+
+      // TODO: core API needs to be refactored to make change-related stuff more usable
+      const changeOutput = tx.ChangeOutput();
+      if (changeOutput.ptr != 0) {
+        const changeDestination = changeOutput.Destination();
+        if (changeDestination.ptr != 0) {
+          outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
+          myself.destroy(changeDestination);
+        }
+        myself.destroy(changeOutput);
+      }
+      console.debug('change_amount: ', outData.change_amount);
+
+      outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
+      outData.total_mining_fee = myself.btcToSat(tx.GetTotalMiningFee(""));
+      const contractData = JSON.parse(outData.data);
+      console.debug('transferForLazyInscriptionContract: contractData:', contractData);
+      myself.utxord.destroy(tx);
+
+      return outData;
+    } catch (e) {
+      outData.errorMessage = await myself.sendExceptionMessage(TRANSFER_LAZY_COLLECTION, e);
+      setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+      return outData;
+    }
+  }
+
+  //------------------------------------------------------------------------------
+
   async createInscriptionContract(payload, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
@@ -1215,7 +1377,7 @@ class Api {
       data: null,
       // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
       amount: 0,
-      output_mining_fee: 0,
+      change_amount: null,
       inputs_sum: 0,
       utxo_list: [],
       expect_amount: Number(payload.expect_amount),
@@ -1269,10 +1431,8 @@ class Api {
         outData.errorMessage = 'Please update the plugin to latest version.';
         outData.raw = [];
         return outData;
-     }
-
-      newOrd.Deserialize(JSON.stringify(contract));
-
+      }
+      newOrd.Deserialize(JSON.stringify(contract), myself.utxord.MARKET_TERMS);
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
 
       // For now it's just a support for title and description
@@ -1317,9 +1477,9 @@ class Api {
       await newOrd.InscribeAddress(myself.wallet.ord.address);
       await newOrd.ChangeAddress(myself.wallet.fund.address);
 
-      const min_fund_amount = myself.btcToSat(Number(newOrd.GetMinFundingAmount(
+      const min_fund_amount = myself.btcToSat(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
-      )?.c_str()));
+      )?.c_str());
       outData.amount = min_fund_amount;
       if(!myself.fundings.length ) {
           // TODO: REWORK FUNDS EXCEPTION
@@ -1407,9 +1567,18 @@ class Api {
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list_final;
 
-      const output_mining_fee = myself.btcToSat(Number(newOrd.GetNewOutputMiningFee()?.c_str()));
-      outData.output_mining_fee = output_mining_fee;
-      console.log('output_mining_fee:', output_mining_fee);
+      // TODO: core API InscriptionBuilder needs to have change-related stuff implemented
+      // TODO: core API needs to be refactored to make change-related stuff more usable
+      // const changeOutput = newOrd.ChangeOutput();
+      // if (changeOutput.ptr != 0) {
+      //   const changeDestination = changeOutput.Destination();
+      //   if (changeDestination.ptr != 0) {
+      //     outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
+      //     myself.destroy(changeDestination);
+      //   }
+      //   myself.destroy(changeOutput);
+      // }
+      // console.debug('change_amount: ', outData.change_amount);
 
       outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
@@ -1484,11 +1653,9 @@ class Api {
     };
 
     // TODO: to debug this part when backend will ready for addresses support
-    await myself.generateNewIndex('ord');
-    await myself.generateNewIndex('uns');
+    await myself.generateNewIndexes('ord, uns');
     if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
-      await myself.generateNewIndex('intsk');
-      await myself.generateNewIndex('scrsk');
+      await myself.generateNewIndexes('intsk, scrsk');
     }
     myself.genKeys();
 
@@ -1535,11 +1702,9 @@ class Api {
         myself.WinHelpers.closeCurrentWindow();
         await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, result, payload_data._tabId);
 
-        await myself.generateNewIndex('ord');
-        await myself.generateNewIndex('uns');
+        await myself.generateNewIndexes('ord, uns');
         if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
-          await myself.generateNewIndex('intsk');
-          await myself.generateNewIndex('scrsk');
+          await myself.generateNewIndexes('intsk, scrsk');
         }
         myself.genKeys();
         // ======================================================================
@@ -1557,8 +1722,7 @@ class Api {
     try {
       const sellOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       const protocol_version = Number(contract?.params?.protocol_version);
-      sellOrd.Deserialize(JSON.stringify(contract));
-      sellOrd.CheckContractTerms(myself.utxord.ORD_TERMS);
+      sellOrd.Deserialize(JSON.stringify(contract), myself.utxord.ORD_TERMS);
 
       sellOrd.OrdUTXO(
         txid,
@@ -1651,13 +1815,40 @@ class Api {
   }
 
   //----------------------------------------------------------------------------
-  async selectFundsByFlags(fundings = [], select_is_locked = false, select_in_queue = false){
+
+  async selectFundsByFlags(fundings = [], select_is_locked = false, select_in_queue = false) {
     let list = this.fundings;
     if (fundings.length > 0) {
       list = fundings;
     }
-    return list.filter((item) =>item.is_locked === select_is_locked && item.in_queue === select_in_queue);
+    return list.filter((item) => item.is_locked === select_is_locked && item.in_queue === select_in_queue);
   }
+  //----------------------------------------------------------------------------
+
+  async smartSelectFundsByAmount(
+      target: number,
+      new_input_fee: number,
+      fundings = [],
+      except_items = [],
+      iterations_limit = 10
+  ) {
+    let utxo_list = await this.selectKeysByFunds(target, fundings);
+    if (0 < utxo_list.length) {
+      let utxo_summ = utxo_list.reduce((summ, utxo) => summ + utxo.amount, 0);
+      let new_target = target + new_input_fee * utxo_list.length;
+
+      while (utxo_summ < new_target && 0 < iterations_limit--) {
+        const more_utxo_list = await this.selectKeysByFunds(target, fundings, utxo_list);
+        if (0 == more_utxo_list.length) break;
+
+        utxo_list = [...utxo_list, ...more_utxo_list];
+        utxo_summ += more_utxo_list.reduce((summ, utxo) => summ + utxo.amount, 0);
+        new_target += new_input_fee * more_utxo_list.length
+      }
+    }
+    return utxo_list;
+  }
+
   //----------------------------------------------------------------------------
 
   async selectKeysByFunds(target: number, fundings = [], except_items = [], use_funds_in_queue = false) {
@@ -1747,11 +1938,9 @@ class Api {
     //console.log("commitBuyInscription->payload",payload)
     try {
       const swapSim = new myself.utxord.SwapInscriptionBuilder(myself.network);
-      swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      swapSim.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+      swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.FUNDS_TERMS);
 
-      const min_fund_amount = await myself.btcToSat(Number(swapSim.GetMinFundingAmount("")?.c_str()))
-
+      const min_fund_amount = await myself.btcToSat(swapSim.GetMinFundingAmount("")?.c_str());
 
       if(!myself.fundings.length ) {
         // TODO: REWORK FUNDS EXCEPTION
@@ -1776,8 +1965,7 @@ class Api {
 
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       const protocol_version = Number(payload.swap_ord_terms.contract?.params?.protocol_version);
-      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      buyOrd.CheckContractTerms(myself.utxord.FUNDS_TERMS);
+      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.FUNDS_TERMS);
       // outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
       outData.raw = [];
 
@@ -1800,7 +1988,7 @@ class Api {
 
       buyOrd.OrdPayoffAddress(myself.wallet.ord.key.GetP2TRAddress(myself.network));
 
-      const min_fund_amount_final = await myself.btcToSat(Number(buyOrd.GetMinFundingAmount("")?.c_str()))
+      const min_fund_amount_final = myself.btcToSat(buyOrd.GetMinFundingAmount("")?.c_str());
       outData.min_fund_amount = min_fund_amount_final;
       outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
       outData.utxo_list = utxo_list;
@@ -1869,8 +2057,7 @@ class Api {
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       // console.log("aaaa");
       const protocol_version = Number(payload?.swap_ord_terms?.contract?.params?.protocol_version);
-      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract));
-      buyOrd.CheckContractTerms(myself.utxord.MARKET_PAYOFF_SIG);
+      buyOrd.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.MARKET_PAYOFF_SIG);
       buyOrd.SignFundsSwap(
         myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
         'scrsk'
@@ -1885,8 +2072,7 @@ class Api {
           { contract_uuid: payload?.swap_ord_terms?.contract_uuid, contract: JSON.parse(data) },
           tabId
         );
-        await myself.generateNewIndex('scrsk');
-        await myself.generateNewIndex('ord');
+        await myself.generateNewIndexes('scrsk, ord');
         myself.genKeys();
       })(data, payload);
 

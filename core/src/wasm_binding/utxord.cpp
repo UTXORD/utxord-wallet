@@ -261,7 +261,7 @@ class SimpleTransaction
 {
     std::shared_ptr<utxord::SimpleTransaction> m_ptr;
 public:
-    SimpleTransaction(ChainMode mode) : m_ptr(std::make_shared<utxord::SimpleTransaction>(utxord::Bech32(mode)))
+    SimpleTransaction(ChainMode mode) : m_ptr(std::make_shared<utxord::SimpleTransaction>(mode))
     {}
 
     const char* TxID() const
@@ -279,6 +279,13 @@ public:
 
     void MiningFeeRate(const std::string &rate)
     { m_ptr->MiningFeeRate(rate); }
+
+    const char* GetTotalMiningFee(const std::string& params) const
+    {
+        static std::string cache;
+        cache = m_ptr->GetTotalMiningFee(params);
+        return cache.c_str();
+    }
 
     const char* GetMinFundingAmount(const std::string& params) const
     {
@@ -313,11 +320,15 @@ public:
     void Sign(const KeyRegistry *master, const std::string key_filter_tag)
     { m_ptr->Sign(*reinterpret_cast<const utxord::KeyRegistry *>(master), key_filter_tag); }
 
-    const char *Serialize()
-    { return m_ptr->Serialize(); }
+    const char *Serialize(uint32_t version, TxPhase phase)
+    {
+        static std::string cache;
+        cache = m_ptr->Serialize(version, phase);
+        return cache.c_str();
+    }
 
-    void Deserialize(const std::string &data)
-    { m_ptr->Deserialize(data); }
+    void Deserialize(const std::string &data, TxPhase phase)
+    { m_ptr->Deserialize(data, phase); }
 
     std::shared_ptr<utxord::IContractOutput> Share()
     { return m_ptr; }
@@ -336,12 +347,17 @@ public:
     const char* SupportedVersions() const
     { return m_ptr->SupportedVersions(); }
 
+    IContractOutput* ChangeOutput() const
+    {
+        auto out = m_ptr->ChangeOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
 };
 
 class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder
 {
 public:
-    CreateInscriptionBuilder(ChainMode mode, InscribeType type) : utxord::CreateInscriptionBuilder(Bech32(mode), type) {}
+    CreateInscriptionBuilder(ChainMode mode, InscribeType type) : utxord::CreateInscriptionBuilder(mode, type) {}
 
     void SignCommit(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::CreateInscriptionBuilder::SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
@@ -356,7 +372,7 @@ public:
 class SwapInscriptionBuilder : public utxord::SwapInscriptionBuilder
 {
 public:
-    SwapInscriptionBuilder(ChainMode mode) : utxord::SwapInscriptionBuilder(Bech32(mode)) {}
+    SwapInscriptionBuilder(ChainMode mode) : utxord::SwapInscriptionBuilder(mode) {}
 
     void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::SwapInscriptionBuilder::SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }

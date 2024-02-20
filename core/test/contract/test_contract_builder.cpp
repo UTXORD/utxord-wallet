@@ -11,7 +11,6 @@
 #include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
-#include "wallet_api.hpp"
 #include "exechelper.hpp"
 #include "inscription.hpp"
 
@@ -125,7 +124,7 @@ TEST_CASE("Fee")
     std::clog << "Taproot vout vsize: " << (double_vout_fee - double_vin_fee) << std::endl;
 
     ChannelKeys key;
-    l15::ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { ContractBuilder::MakeMultiSigScript(xonly_pubkey(), xonly_pubkey()) });
+    l15::ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { IContractBuilder::MakeMultiSigScript(xonly_pubkey(), xonly_pubkey()) });
     auto tr = core::ChannelKeys::AddTapTweak(key.GetLocalPubKey(), tap_tree.CalculateRoot());
 
     std::vector<uint256> scriptpath = tap_tree.CalculateScriptPath(tap_tree.GetScripts().front());
@@ -158,17 +157,6 @@ TEST_CASE("Fee")
 
 }
 
-class TestContractBuilder : public ContractBuilder
-{
-public:
-    explicit TestContractBuilder(utxord::ChainMode chain_mode) : ContractBuilder((chain_mode == REGTEST) ?
-                                                                                   Bech32(utxord::Hrp<REGTEST>()) :
-                                                                                        ((chain_mode == TESTNET) ?
-                                                                                         Bech32(utxord::Hrp<TESTNET>()) :
-                                                                                         Bech32(utxord::Hrp<MAINNET>()))) {}
-    std::string GetMinFundingAmount(const std::string& params) const override
-    { return "0"; }
-};
 
 TEST_CASE("DeserializeContractAmount")
 {
@@ -180,24 +168,24 @@ TEST_CASE("DeserializeContractAmount")
     std::optional<CAmount> from_str;
     std::optional<CAmount> another_amount = -1;
 
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["not_exist"], from_num, [](){ return "not_exist"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractAmount(val["not_exist"], from_num, [](){ return "not_exist"; }));
     CHECK(!from_num.has_value());
 
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
     CHECK(*from_num == 1000);
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractAmount(val["num_amount"], from_num, [](){ return "num_amount"; }));
     CHECK(*from_num == 1000);
-    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["num_amount"], another_amount, [](){ return "num_amount"; }), ContractTermMismatch);
+    CHECK_THROWS_AS(IContractBuilder::DeserializeContractAmount(val["num_amount"], another_amount, [](){ return "num_amount"; }), ContractTermMismatch);
     CHECK(*another_amount == -1);
 
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
     CHECK(*from_str == 1000);
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractAmount(val["str_amount"], from_str, [](){ return "str_amount"; }));
     CHECK(*from_str == 1000);
-    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["str_amount"], another_amount, [](){ return "str_amount"; }), ContractTermMismatch);
+    CHECK_THROWS_AS(IContractBuilder::DeserializeContractAmount(val["str_amount"], another_amount, [](){ return "str_amount"; }), ContractTermMismatch);
     CHECK(*another_amount == -1);
 
-    CHECK_THROWS_AS(ContractBuilder::DeserializeContractAmount(val["wrong_amount"], another_amount, [](){ return "wrong_amount"; }), ContractTermWrongValue);
+    CHECK_THROWS_AS(IContractBuilder::DeserializeContractAmount(val["wrong_amount"], another_amount, [](){ return "wrong_amount"; }), ContractTermWrongValue);
     CHECK(*another_amount == -1);
 }
 
@@ -211,19 +199,19 @@ TEST_CASE("DeserializeContractString")
     std::optional<std::string> raw_json;
     std::optional<std::string> another_str = "bla";
 
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["not_exist"], raw_str, [](){ return "not_exist"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractString(val["not_exist"], raw_str, [](){ return "not_exist"; }));
     CHECK(!raw_str.has_value());
 
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
     CHECK(*raw_str == "test");
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractString(val["str"], raw_str, [](){ return "str"; }));
     CHECK(*raw_str == "test");
-    CHECK_THROWS_AS(ContractBuilder::DeserializeContractString(val["json"], raw_str, [](){ return "json"; }), ContractTermMismatch);
+    CHECK_THROWS_AS(IContractBuilder::DeserializeContractString(val["json"], raw_str, [](){ return "json"; }), ContractTermMismatch);
     CHECK(*raw_str == "test");
 
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
     CHECK(*raw_json == "{\"key\":\"value\"}");
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractString(val["json"], raw_json, [](){ return "json"; }));
     CHECK(*raw_json == "{\"key\":\"value\"}");
 
     UniValue json_val;
@@ -239,18 +227,18 @@ TEST_CASE("DeserializeContractHexData")
     CHECK(val.read(json));
 
     std::optional<xonly_pubkey> pk;
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
     CHECK(pk.has_value());
     CHECK(hex(*pk) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractHexData(val["pubkey"], pk, [](){ return "pubkey"; }));
     CHECK(hex(*pk) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
 
     std::optional<xonly_pubkey> long_pk;
-    CHECK_THROWS_AS(ContractBuilder::DeserializeContractHexData(val["longpubkey"], long_pk, [](){ return "longpubkey"; }), ContractTermWrongValue);
+    CHECK_THROWS_AS(IContractBuilder::DeserializeContractHexData(val["longpubkey"], long_pk, [](){ return "longpubkey"; }), ContractTermWrongValue);
     CHECK(!long_pk.has_value());
 
     std::optional<signature> sig;
-    CHECK_NOTHROW(ContractBuilder::DeserializeContractHexData(val["sig"], sig, [](){ return "sig"; }));
+    CHECK_NOTHROW(IContractBuilder::DeserializeContractHexData(val["sig"], sig, [](){ return "sig"; }));
     CHECK(sig.has_value());
     CHECK(hex(*sig) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
 }

@@ -48,7 +48,12 @@ import {
   GET_INSCRIPTION_CONTRACT_RESULT,
   CREATE_CHUNK_INSCRIPTION,
   GET_BULK_INSCRIPTION_ESTIMATION,
-  GET_BULK_INSCRIPTION_ESTIMATION_RESULT, CREATE_INSCRIBE_RESULT, CREATE_CHUNK_INSCRIPTION_RESULT
+  GET_BULK_INSCRIPTION_ESTIMATION_RESULT,
+  CREATE_CHUNK_INSCRIPTION_RESULT,
+  TRANSFER_LAZY_COLLECTION,
+  ESTIMATE_TRANSFER_LAZY_COLLECTION,
+  ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT,
+  TRANSFER_LAZY_COLLECTION_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -57,6 +62,7 @@ import {bookmarks} from "webextension-polyfill";
 
 if (NETWORK === MAINNET){
   if(self){
+    self['console']['debug'] =
     self['console']['log'] =
     self['console']['error'] =
     self['console']['warn'] =
@@ -148,6 +154,30 @@ interface IChunkInscriptionResult {
   },
   error: null | string
 }
+
+interface ICollectionTransfer {
+  addresses: [],
+  collection: {
+    owner_txid: string,
+    owner_nout: number,
+    metadata: {
+      title: string | null,
+      description: string | null
+    }
+  },
+  transfer_address: string,  // where to transfer collection
+  mining_fee: number,
+  market_fee: {
+    address: string,  // where to send market fee for lazy inscribing
+    amount: number
+  }
+}
+
+interface ICollectionTransferResult {
+  contract: object,
+  errorMessage: string | null  // null or empty string means no error happened
+}
+
 
 (async () => {
   try {
@@ -437,11 +467,34 @@ interface IChunkInscriptionResult {
 
     onMessage(SUBMIT_SIGN, async (payload) => {
       console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
-
       const signData = payload?.data;
-      const chunkData = payload?.data?.data;
+
+      if (signData?.type === TRANSFER_LAZY_COLLECTION) {
+        const transferData = payload?.data?.data;
+
+        const res = await Api.decryptedWallet(payload.data.password);
+        if(res){
+          await Api.generateNewIndexes('ord, uns, intsk, scrsk');
+          Api.genKeys();
+
+          await Api.sendMessageToWebPage(TRANSFER_LAZY_COLLECTION_RESULT, {
+            contract: transferData?.costs?.data,
+            errorMessage: transferData?.errorMessage
+          }, payload?.data?.data?._tabId);
+          setTimeout(async () => {
+            Api.WinHelpers.closeCurrentWindow();
+            await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
+          }, 1000);
+          await Api.encryptedWallet(payload.data.password);
+
+          return true;
+        }
+        return false;
+      }
 
       if (signData?.type === CREATE_CHUNK_INSCRIPTION) {
+        const chunkData = payload?.data?.data;
+
         const res = await Api.decryptedWallet(signData.password);
         if (res) {
           const passwordId = `job:password:${chunkData.job_uuid}`;
@@ -464,8 +517,8 @@ interface IChunkInscriptionResult {
         return false;
       }
 
-      if (payload.data.type === CREATE_INSCRIPTION) {
-        const res = await Api.decryptedWallet(payload.data.password);
+      if (signData?.type === CREATE_INSCRIPTION) {
+        const res = await Api.decryptedWallet(payload.data.password);  // just to check password value
         if(res){
           payload.data.data.content = store.pop(payload.data.data?.content_store_key);
           const success = await Api.createInscription(payload.data.data);
@@ -477,7 +530,7 @@ interface IChunkInscriptionResult {
         return false;
       }
 
-      if (payload.data.type === SELL_INSCRIPTION) {
+      if (signData?.type === SELL_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
           const success = await Api.sellInscription(payload.data.data);
@@ -487,7 +540,7 @@ interface IChunkInscriptionResult {
         return false;
       }
 
-      if (payload.data.type === COMMIT_BUY_INSCRIPTION) {
+      if (signData?.type === COMMIT_BUY_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         Api.wallet.tmp = payload.data.password;
         if(res){
@@ -521,7 +574,7 @@ interface IChunkInscriptionResult {
     })
 
     chrome.runtime.onMessageExternal.addListener(async (payload, sender) => {
-      // console.debug(`----- message from frontend: ${payload?.type}, data: `, {...payload?.data || {}});
+      console.debug(`----- message from frontend: ${payload?.type}, data: `, {...payload?.data || {}});
 
       let tabId = sender?.tab?.id;
       if (typeof payload?.data === 'object' && payload?.data !== null) {
@@ -678,6 +731,51 @@ interface IChunkInscriptionResult {
         }
       }
 
+      if (payload.type === ESTIMATE_TRANSFER_LAZY_COLLECTION) {
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug('ESTIMATE_TRANSFER_LAZY_COLLECTION balances:', {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
+        const contract = await Api.transferForLazyInscriptionContract(payload.data);
+        await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, {
+          contract,
+          errorMessage: contract.errorMessage
+        });
+      }
+
+      if (payload.type === TRANSFER_LAZY_COLLECTION) {
+        let costs;
+        console.log('payload:', {...payload})
+        // console.log('payload?.data?.type:', payload?.data?.type)
+        // console.log('payload?.data?.collection?.owner_txid:', payload?.data?.collection?.genesis_txid);
+
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug('TRANSFER_LAZY_COLLECTION balances:', {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
+        costs = await Api.transferForLazyInscriptionContract(payload.data);
+        console.log('costs:', costs)
+        payload.data.costs = costs;
+
+        payload.data.errorMessage = payload.data?.costs?.errorMessage;
+        if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
+
+        winManager.openWindow('sign-transfer-collection', async (id) => {
+          setTimeout(async  () => {
+            const changeAmount = payload.data.costs.change_amount
+            if (changeAmount !== null  && changeAmount < 546) {
+              Api.sendNotificationMessage(
+                'TRANSFER_LAZY_COLLECTION',
+                'There are too few coins left after creation and they will become part of the inscription balance'
+              );
+            }
+            await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+          }, 1000);
+        });
+      }
+
       if (payload.type === CREATE_INSCRIPTION) {
         let costs;
         console.log('payload:', {...payload})
@@ -700,16 +798,19 @@ interface IChunkInscriptionResult {
         console.log(CREATE_INSCRIPTION+' (stored):', {...payload.data});
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
-            if (payload.data.costs.output_mining_fee < 546) {
-              Api.sendNotificationMessage(
-                'CREATE_INSCRIPTION',
-                'There are too few coins left after creation and they will become part of the inscription balance'
-              );
-            }
+            // TODO: core API InscriptionBuilder needs to have change-related stuff implemented
+            // const changeAmount = payload.data.costs.change_amount
+            // if (changeAmount !== null && changeAmount < 546) {
+            //   Api.sendNotificationMessage(
+            //     'CREATE_INSCRIPTION',
+            //     'There are too few coins left after creation and they will become part of the inscription balance'
+            //   );
+            // }
             await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
           }, 1000);
         });
       }
+
       if (payload.type === SELL_INSCRIPTION) {
         const balances = await Api.prepareBalances(payload?.data?.addresses);
         console.debug('SELL_INSCRIPTION balances:', {...balances || {}});
