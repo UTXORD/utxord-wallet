@@ -55,6 +55,11 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
 {
     if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
 
+    if (m_change_nout) {
+        m_outputs.erase(m_outputs.begin() + *m_change_nout);
+        m_change_nout.reset();
+    }
+
     unsigned v;
     bytevector arg;
     std::tie(v, arg) = bech32().Decode(addr);
@@ -75,8 +80,9 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     if (required > total) throw ContractStateError("inputs too small");
     CAmount change = total - required;
 
-    if (change > l15::Dust(*m_mining_fee_rate)) {
+    if (change > l15::Dust(DUST_RELAY_TX_FEE)) {
         m_outputs.back()->Amount(change);
+        m_change_nout = m_outputs.size() - 1;
     }
     else {
        m_outputs.pop_back();

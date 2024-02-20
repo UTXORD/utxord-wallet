@@ -252,4 +252,5 @@ interface SimpleTransaction
     [Value] string RawTransaction(TxPhase phase, long n);
 
     [Const] static DOMString SupportedVersions();
+    IContractOutput ChangeOutput();
 };

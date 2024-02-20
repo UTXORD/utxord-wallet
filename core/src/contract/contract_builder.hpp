@@ -213,6 +213,9 @@ public:
     UTXO(Bech32 bech, std::string txid, uint32_t nout, CAmount amount, std::string addr)
         : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(bech, amount, move(addr))) {}
 
+    UTXO(Bech32 bech, std::string txid, uint32_t nout, std::shared_ptr<IContractDestination> dest)
+        : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(move(dest)) {}
+
     UTXO(Bech32 bech, const IContractOutput& out)
         : mBech(bech), m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
 

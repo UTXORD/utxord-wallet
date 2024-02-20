@@ -22,6 +22,7 @@ private:
 
     std::vector<ContractInput> m_inputs;
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
+    std::optional<uint32_t> m_change_nout;
 
     CAmount CalculateWholeFee(const std::string& params) const override;
     CMutableTransaction MakeTx(const std::string& params) const;
@@ -84,6 +85,13 @@ public:
 
     std::shared_ptr<IContractDestination>& Destination() override
     { return m_outputs[NOut()]; }
+
+    std::shared_ptr<IContractOutput> ChangeOutput() const
+    {
+        return m_change_nout
+            ? std::make_shared<UTXO>(bech32(), TxID(), *m_change_nout, m_outputs[*m_change_nout])
+            : std::shared_ptr<IContractOutput>();
+    }
 };
 
 } // l15::utxord
