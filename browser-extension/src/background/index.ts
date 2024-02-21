@@ -156,6 +156,7 @@ interface IChunkInscriptionResult {
 }
 
 interface ICollectionTransfer {
+  protocol_version: number,
   addresses: [],
   collection: {
     owner_txid: string,
