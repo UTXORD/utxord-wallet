@@ -62,8 +62,7 @@ async function checkAuth(): Promise<boolean> {
       return true
     }
   } catch (error) {
-    showError(EXCEPTION, error.message)
-    console.log(error)
+    console.log('checkAuth()->message:',error.message)
   }
   return false;
 }
