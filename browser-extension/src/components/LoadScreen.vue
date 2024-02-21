@@ -12,13 +12,82 @@
         <span class="mb-2 w-full text-[var(--text-grey-color)]"
           >Paste your secret words here:</span
         >
-        <CustomInput
+        <div class="flex items-center mb-2">
+          <span class="w-full text-[var(--text-grey-color)]"
+            >Show as: &nbsp;
+          <input type="radio" v-model="picked" name="picked" value="line" checked/>
+          &nbsp;<label for="line">Line</label> or
+          <input type="radio" v-model="picked" name="picked" value="list" />
+          &nbsp;<label for="list">List</label>
+          </span>
+          </div>
+          <div class="flex items-center mb-2" v-if="picked == 'list'">
+            <span class="w-full text-[var(--text-grey-color)]"
+              >Words length:</span
+              >
+                <select
+                v-model="length"
+                @change="clearTextarea"
+                style="font-size: 14px; font-family: Arial;"
+                class="generate-screen_form w-full flex flex-col mr-2 bg-[var(--bg-color)] text-[var(--text-color)]">
+                  <option value="12" :selected="length === 12" class="w-full text-[var(--text-grey-color)]">12</option>
+                  <option value="15" :selected="length === 15" class="w-full text-[var(--text-grey-color)]">15</option>
+                  <option value="18" :selected="length === 18" class="w-full text-[var(--text-grey-color)]">18</option>
+                  <option value="21" :selected="length === 21" class="w-full text-[var(--text-grey-color)]">21</option>
+                  <option value="24" :selected="length === 24" class="w-full text-[var(--text-grey-color)]">24</option>
+                </select>
+              </div>
+        <CustomInput v-if="picked == 'line'"
+          @change="changeLength"
           type="textarea"
           class="w-full"
           autofocus
           rows="3"
           v-model="textarea"
         />
+        <table style="width: 100%;" v-if="picked == 'list'">
+        <!-- for 12 words -->
+        <tbody v-if="length == 12" v-for="n in 4">
+        <tr>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+4}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+3]"/></td>
+          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
+        </tr>
+        </tbody>
+        <!-- for 15 words -->
+        <tbody v-if="length == 15" v-for="n in 5">
+        <tr>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+5}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+4]"/></td>
+          <td>{{n+10}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+9]"/></td>
+        </tr>
+        </tbody>
+
+        <!-- for 18 words -->
+        <tbody v-if="length == 18" v-for="n in 6">
+        <tr>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+6}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+5]"/></td>
+          <td>{{n+12}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+11]"/></td>
+        </tr>
+        </tbody>
+        <!-- for 21 words -->
+        <tbody v-if="length == 21" v-for="n in 7">
+        <tr>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+7}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+6]"/></td>
+          <td>{{n+14}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+13]"/></td>
+        </tr>
+        </tbody>
+        <!-- for 24 words -->
+        <tbody v-if="length == 24" v-for="n in 8">
+        <tr>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
+          <td>{{n+16}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+15]"/></td>
+        </tr>
+        </tbody>
+        </table>
         <!-- Passphrase -->
 
         <div class="generate-screen_form-input flex flex-col p-3">
@@ -112,13 +181,17 @@ const password = ref('')
 const confirmPassword = ref('')
 const usePassphrase = ref(false)
 const passphrase = ref('')
+const picked = ref('line')
+const list = computed(() =>textarea.value?.trim()?.split(' ') || new Array(12))
+const length = ref(12)
+
 
 const isDisabled = computed(() => {
-  const seedArr = textarea.value.trim().split(' ')
-  if (seedArr.length !== 12 ||
-      seedArr.length !== 15 ||
-      seedArr.length !== 18 ||
-      seedArr.length !== 21 ||
+  const seedArr = textarea.value?.trim()?.split(' ')
+  if (seedArr.length !== 12 &&
+      seedArr.length !== 15 &&
+      seedArr.length !== 18 &&
+      seedArr.length !== 21 &&
       seedArr.length !== 24) return true
   if (!textarea.value) return true
   if (!password.value.length || !confirmPassword.value.length) return true
@@ -126,6 +199,16 @@ const isDisabled = computed(() => {
   if (!isASCII(password.value) || !isASCII(confirmPassword.value)) return true
   return false
 })
+
+function changeLength(){
+  length.value = list.value?.length || 12
+  return true
+}
+
+function clearTextarea(){
+  textarea.value = ''
+  return true
+}
 
 async function onStore() {
   const generated = await sendMessage(

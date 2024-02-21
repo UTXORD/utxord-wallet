@@ -121,7 +121,6 @@
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl px-3 pt-3 mb-5"
       >
-
         <div class="generate-screen_form-input flex flex-col">
           <span class="mb-2 w-full text-[var(--text-grey-color)]"
             >Enter your Password:</span
