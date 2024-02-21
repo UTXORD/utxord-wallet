@@ -914,8 +914,8 @@ class Api {
     }
   }
 
-  async getSupportedVersions() {
-    const builderObject = new this.utxord.CreateInscriptionBuilder(
+  async getSupportedVersions(builderObject: object | undefined = undefined) {
+    builderObject = builderObject || new this.utxord.CreateInscriptionBuilder(
       this.network,
       this.utxord.INSCRIPTION
     );
@@ -1248,6 +1248,17 @@ class Api {
       console.log('transferForLazyInscriptionContract payload: ', {...payload || {}});
 
       let tx = new myself.utxord.SimpleTransaction(myself.network);
+
+      const protocol_version = Number(payload?.protocol_version);
+      if (protocol_version) {
+        const versions = await myself.getSupportedVersions(tx);
+        if(versions.indexOf(protocol_version) === -1) {
+          outData.errorMessage = 'Please update the plugin to latest version.';
+          outData.raw = [];
+          return outData;
+        }
+      }
+
       tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
 
       let collection = null;
@@ -1279,26 +1290,26 @@ class Api {
           myself.satToBtc(collection.amount).toFixed(8),
           collection.address
       );
+      tx.AddInput(collectionUtxo);
+      myself.utxord.destroy(collectionUtxo);
 
       const transferOutput = new myself.utxord.P2TR(
           this.network,
           myself.satToBtc(collection.amount).toFixed(8),
           payload.transfer_address
       );
-      const marketOutput = new myself.utxord.P2TR(
-          myself.network,
-          myself.satToBtc(payload.market_fee?.amount).toFixed(8),
-          payload.market_fee?.address
-      );
-
-      tx.AddInput(collectionUtxo);
-      myself.utxord.destroy(collectionUtxo);
-
       tx.AddOutput(transferOutput);
       myself.utxord.destroy(transferOutput);
 
-      tx.AddOutput(marketOutput);
-      myself.utxord.destroy(marketOutput);
+      if (payload.market_fee?.amount) {
+        const marketOutput = new myself.utxord.P2TR(
+            myself.network,
+            myself.satToBtc(payload.market_fee?.amount).toFixed(8),
+            payload.market_fee?.address
+        );
+        tx.AddOutput(marketOutput);
+        myself.utxord.destroy(marketOutput);
+      }
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
       min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
@@ -1424,13 +1435,14 @@ class Api {
           "author_fee": {"amount": 0}
         }
       };
-      // TODO: You need to do it wherever the version comes from the server!!!
-      const versions = await this.getSupportedVersions();
       const protocol_version = Number(contract?.params?.protocol_version);
-      if(versions.indexOf(protocol_version) === -1) {
-        outData.errorMessage = 'Please update the plugin to latest version.';
-        outData.raw = [];
-        return outData;
+      if (protocol_version) {
+        const versions = await myself.getSupportedVersions(newOrd);
+        if(versions.indexOf(protocol_version) === -1) {
+          outData.errorMessage = 'Please update the plugin to latest version.';
+          outData.raw = [];
+          return outData;
+        }
       }
       newOrd.Deserialize(JSON.stringify(contract), myself.utxord.MARKET_TERMS);
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
