@@ -107,11 +107,11 @@ let port = chrome.runtime.connect({
 });
 port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});
 port.onMessage.addListener(async function(payload) {
-  switch (payload.id) {
+  switch (payload?.id) {
     case DO_REFRESH_BALANCE: {
       store.setBalance({
         ...balance.value,
-        connect: payload.connect
+        connect: payload?.connect
       });
       refreshBalance();
       break;
@@ -126,11 +126,11 @@ port.onMessage.addListener(async function(payload) {
       break;
     }
     case UPDATE_PLUGIN_CONNECT: {
-      const justConnected = !balance?.value?.connect && payload.connect;
+      const justConnected = !balance?.value?.connect && payload?.connect;
       store.setBalance({
         ...balance.value,
         sync: justConnected ? false : balance?.value?.sync,
-        connect: payload.connect
+        connect: payload?.connect
       });
       break;
     }

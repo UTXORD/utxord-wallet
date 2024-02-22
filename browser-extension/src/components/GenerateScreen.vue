@@ -104,6 +104,36 @@
               type="checkbox"
               v-model="usePassphrase"
               />
+              <svg xmlns="http://www.w3.org/2000/svg" @click="viewShowInfo" x="0px" y="0px" width="16" height="16" viewBox="0 0 16 16"
+              style="float: inline-end; margin-right: 45%; cursor: pointer;">
+                <g id="help_passphrase">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15ZM8.99915 8.98492C8.99863 8.97941 8.99825 8.97532 8.99929 8.97163C9.00229 8.96094 9.01723 8.95361 9.07542 8.92504C9.11276 8.90671 9.1679 8.87965 9.24911 8.83735C9.35159 8.78437 9.41371 8.75211 9.47222 8.72077C10.4683 8.18717 11 7.45921 11 6.14286C11 4.42193 9.67286 3 8 3C6.38377 3 5 4.0241 5 5.5C5 6.05228 5.44772 6.5 6 6.5C6.55228 6.5 7 6.05228 7 5.5C7 5.28145 7.38029 5 8 5C8.53628 5 9 5.49685 9 6.14286C9 6.64198 8.92458 6.74523 8.52778 6.95781C8.48255 6.98204 8.43413 7.00718 8.32524 7.06352C7.44966 7.51956 7 8.0135 7 9C7 9.55228 7.44772 10 8 10C8.55228 10 9 9.55228 9 9C9 8.99391 8.99954 8.98902 8.99915 8.98492ZM9 12C9 12.5523 8.55228 13 8 13C7.44772 13 7 12.5523 7 12C7 11.4477 7.44772 11 8 11C8.55228 11 9 11.4477 9 12Z"></path>
+                </g>
+              </svg>
+              <div v-if="showInfo" class="generate-screen_help p-3">
+              <!-- Close btn -->
+              <button
+                @click="viewShowInfo"
+                class="top-[-2px] right-[-5px] px-4 py-3"
+                style="margin-top: -1rem;margin-left: 13rem;padding-left: 0rem;">
+                <svg
+                  class="w-4 h-4 text-[var(--text-color)] fill-current"
+                  role="button"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                >
+                  <title>Close</title>
+                  <path
+                    d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"
+                  />
+                </svg>
+              </button>
+              <span class="w-full text-[var(--text-grey-color)]" style="position: relative;top: -1rem;">
+                A passphrase is not a password! <br />
+                Any variation entered in future loads a valid wallet, but with different addresses.<br />
+                This feature provides optional added security for advanced users only.
+              </span>
+              </div>
             </span>
         </div>
         <div class="generate-screen_form-input flex flex-col" v-show="usePassphrase">
@@ -191,6 +221,7 @@ const usePassphrase = ref(false)
 const passphrase = ref('')
 const length = ref(12)
 const picked = ref('line')
+const showInfo = ref(false)
 
 const list = computed(() =>textarea.value.split(' '))
 
@@ -201,6 +232,11 @@ const isDisabled = computed(() => {
   if (!isASCII(password.value) || !isASCII(confirmPassword.value)) return true
   return false
 })
+
+function viewShowInfo(){
+  showInfo.value = !showInfo.value
+  return true
+}
 
 async function onStore() {
   const success = await sendMessage(
@@ -277,6 +313,14 @@ onBeforeMount(() => {
     align-items: center;
     text-align: center;
     letter-spacing: -0.32px;
+  }
+  &_help {
+    box-sizing: border-box;
+    border-width: thin;
+    border-style: solid;
+    border-color: white;
+    border-radius: 0.75rem;
+    height: 10em;
   }
 }
 </style>
