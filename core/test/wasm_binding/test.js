@@ -19,7 +19,7 @@
         let addr = key.GetP2TRAddress(api.TESTNET);
 
         console.log("adr:", addr);
-        console.assert(addr === "tb1ptnn4tufj4yr8ql0e8w8tye7juxzsndnxgnlehfk2p0skftzks20sncm2dz");
+        console.assert(addr === "tb1pe8ml9zuyx6zrngmk7fudevrz7ka7d5mlcfgtrcl2epuf30k4me9s900plz");
 
         api.destroy(randomKey);
         api.destroy(key);
@@ -66,7 +66,7 @@
         tx.Sign(masterKey, "funds");
         api.destroy(masterKey);
 
-        let contract = tx.Serialize();
+        let contract = tx.Serialize(2, api.TX_SIGNATURE);
         api.destroy(tx);
 
         console.log(contract);
@@ -110,7 +110,7 @@
         tx.MiningFeeRate("0.00001");
         tx1.MiningFeeRate("0.00001");
 
-        tx1.AddInput(tx);
+        tx1.AddInput(tx.Output(0));
         tx1.AddOutput(output);
         api.destroy(output);
 
@@ -119,7 +119,7 @@
         tx.AddInput(utxo);
         tx.AddOutput(intout);
 
-        intout.SetAmount(tx1.GetMinFundingAmount().c_str());
+        intout.SetAmount(tx1.GetMinFundingAmount());
 
         tx.AddChangeOutput(changeaddr);
 
@@ -130,8 +130,8 @@
         tx1.Sign(masterKey, funds_filter);
         api.destroy(masterKey);
 
-        let contract = tx.Serialize();
-        let contract1 = tx1.Serialize();
+        let contract = tx.Serialize(2, api.TX_SIGNATURE);
+        let contract1 = tx1.Serialize(2, api.TX_SIGNATURE);
 
         api.destroy(tx);
         api.destroy(tx1);

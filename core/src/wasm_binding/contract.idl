@@ -70,8 +70,8 @@ interface Exception
 interface IContractDestination
 {
     void SetAmount([Const] DOMString amount);
-    [Value] string Amount();
-    [Value] string Address();
+    [Const] DOMString Amount();
+    [Const] DOMString Address();
 };
 
 [Prefix="utxord::wasm::"]
@@ -79,8 +79,8 @@ interface P2WPKH
 {
     void P2WPKH(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
     void SetAmount([Const] DOMString amount);
-    [Value] string Amount();
-    [Value] string Address();
+    [Const] DOMString Amount();
+    [Const] DOMString Address();
 };
 
 [Prefix="utxord::wasm::"]
@@ -88,16 +88,18 @@ interface P2TR
 {
     void P2TR(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
     void SetAmount([Const] DOMString amount);
-    [Value] string Amount();
-    [Value] string Address();
+    [Const] DOMString Amount();
+    [Const] DOMString Address();
 };
 
 [Prefix="utxord::wasm::"]
 interface IContractOutput
 {
-    [Value] string TxID();
+    [Const] DOMString TxID();
     unsigned long NOut();
-    IContractDestination Destination();
+    [Const] DOMString Amount();
+    [Const] DOMString Address();
+    [Const] IContractDestination Destination();
 };
 
 [Prefix="utxord::wasm::"]
@@ -237,8 +239,8 @@ interface SimpleTransaction
     void SimpleTransaction(ChainMode mode);
 
     [Value] string TxID();
-    long CountDestinations();
-    IContractDestination Destination(long n);
+    long CountOutputs();
+    [Const] IContractOutput Output(long n);
 
     void MiningFeeRate([Const] DOMString rate);
 
@@ -257,8 +259,8 @@ interface SimpleTransaction
     void Deserialize([Const] DOMString data, TxPhase phase);
 
     long TransactionCount(TxPhase phase);
-    [Value] string RawTransaction(TxPhase phase, long n);
+    [Const] DOMString RawTransaction(TxPhase phase, long n);
 
     [Const] static DOMString SupportedVersions();
-    IContractOutput ChangeOutput();
+    [Const] IContractOutput ChangeOutput();
 };

@@ -173,11 +173,11 @@ struct IContractDestination
 
     virtual void SetAmount(const std::string& amount) = 0;
 
-    virtual std::string Amount() const = 0;
+    virtual const char* Amount() const = 0;
 
-    virtual std::string Address() const = 0;
+    virtual const char* Address() const = 0;
 
-    virtual std::shared_ptr<utxord::IContractDestination> &Share() = 0;
+    virtual const std::shared_ptr<utxord::IContractDestination> &Share() const = 0;
 };
 
 class ContractDestinationWrapper : public IContractDestination
@@ -187,16 +187,24 @@ public:
     ContractDestinationWrapper(std::shared_ptr<utxord::IContractDestination> ptr) : m_ptr(move(ptr))
     {}
 
-    void SetAmount(const std::string& amount) override
+    void SetAmount(const std::string& amount) final
     { m_ptr->Amount(ParseAmount(amount)); }
 
-    std::string Amount() const override
-    { return FormatAmount(m_ptr->Amount()); }
+    const char* Amount() const final
+    {
+        static std::string cache;
+        cache = FormatAmount(m_ptr->Amount());
+        return cache.c_str();
+    }
 
-    std::string Address() const override
-    { return m_ptr->Address(); }
+    const char* Address() const final
+    {
+        static std::string cache;
+        cache =  m_ptr->Address();
+        return cache.c_str();
+    }
 
-    std::shared_ptr<utxord::IContractDestination> &Share() final
+    const std::shared_ptr<utxord::IContractDestination> &Share() const final
     { return m_ptr; }
 };
 
@@ -219,27 +227,28 @@ struct IContractOutput
 {
     virtual ~IContractOutput() = default;
 
-    virtual std::string TxID() const = 0;
-
+    virtual const char* TxID() const = 0;
     virtual uint32_t NOut() const = 0;
+    virtual const char* Amount() const = 0;
+    virtual const char* Address() const = 0;
 
-    virtual IContractDestination *Destination() = 0;
+    virtual const IContractDestination* Destination() const = 0;
 
-    virtual std::shared_ptr<utxord::IContractOutput> Share() = 0;
+    virtual const std::shared_ptr<utxord::IContractOutput> Share() const = 0;
 };
 
-struct IContractMultiOutput
-{
-    virtual ~IContractMultiOutput() = default;
-
-    virtual std::string TxID() const = 0;
-
-    virtual uint32_t CountDestinations() const = 0;
-
-    virtual IContractDestination *Destination(uint32_t n) = 0;
-
-    virtual std::shared_ptr<utxord::IContractMultiOutput> Share() = 0;
-};
+//struct IContractMultiOutput
+//{
+//    virtual ~IContractMultiOutput() = default;
+//
+//    virtual const char* TxID() const = 0;
+//
+//    virtual uint32_t CountDestinations() const = 0;
+//
+//    virtual const IContractDestination* Destination(uint32_t n) const = 0;
+//
+//    virtual const std::shared_ptr<utxord::IContractMultiOutput> Share() const = 0;
+//};
 
 class ContractOutputWrapper : public IContractOutput
 {
@@ -248,40 +257,63 @@ public:
     explicit ContractOutputWrapper(std::shared_ptr<utxord::IContractOutput> ptr) : m_ptr(move(ptr))
     {}
 
-    std::string TxID() const final
-    { return m_ptr->TxID(); }
+    const char* TxID() const final
+    {
+        static std::string cache;
+        cache = m_ptr->TxID();
+        return cache.c_str();
+    }
 
     uint32_t NOut() const final
     { return m_ptr->NOut(); }
 
-    IContractDestination *Destination() final
+    virtual const char* Amount() const final
+    {
+        static std::string cache;
+        cache = l15::FormatAmount(m_ptr->Amount());
+        return cache.c_str();
+
+    }
+
+    virtual const char* Address() const final
+    {
+        static std::string cache;
+        cache = m_ptr->Address();
+        return cache.c_str();
+    }
+
+    const IContractDestination* Destination() const final
     { return new ContractDestinationWrapper(m_ptr->Destination()); }
 
-    std::shared_ptr<utxord::IContractOutput> Share() final
+    const std::shared_ptr<utxord::IContractOutput> Share() const final
     { return m_ptr; }
 
 };
 
-class ContractMultiOutputWrapper : public IContractMultiOutput
-{
-    std::shared_ptr<utxord::IContractMultiOutput> m_ptr;
-public:
-    explicit ContractMultiOutputWrapper(std::shared_ptr<utxord::IContractMultiOutput> ptr) : m_ptr(move(ptr))
-    {}
-
-    std::string TxID() const final
-    { return m_ptr->TxID(); }
-
-    uint32_t CountDestinations() const final
-    { return m_ptr->CountDestinations(); }
-
-    IContractDestination *Destination(uint32_t n) final
-    { return new ContractDestinationWrapper(m_ptr->Destinations()[n]); }
-
-    std::shared_ptr<utxord::IContractMultiOutput> Share() final
-    { return m_ptr; }
-
-};
+//class ContractMultiOutputWrapper : public IContractMultiOutput
+//{
+//    std::shared_ptr<utxord::IContractMultiOutput> m_ptr;
+//public:
+//    explicit ContractMultiOutputWrapper(std::shared_ptr<utxord::IContractMultiOutput> ptr) : m_ptr(move(ptr))
+//    {}
+//
+//    const char* TxID() const final
+//    {
+//        static std::string cache;
+//        cache = m_ptr->TxID();
+//        return cache.c_str();
+//    }
+//
+//    uint32_t CountDestinations() const final
+//    { return m_ptr->CountDestinations(); }
+//
+//    const IContractDestination *Destination(uint32_t n) const final
+//    { return new ContractDestinationWrapper(m_ptr->Destinations()[n]); }
+//
+//    const std::shared_ptr<utxord::IContractMultiOutput> Share() const final
+//    { return m_ptr; }
+//
+//};
 
 class UTXO : public ContractOutputWrapper
 {
@@ -291,21 +323,25 @@ public:
     {}
 };
 
-class SimpleTransaction : public IContractMultiOutput
+class SimpleTransaction
 {
     std::shared_ptr<utxord::SimpleTransaction> m_ptr;
 public:
     SimpleTransaction(ChainMode mode) : m_ptr(std::make_shared<utxord::SimpleTransaction>(mode))
     {}
 
-    std::string TxID() const final
-    { return m_ptr->TxID(); }
+    const char* TxID() const
+    {
+        static std::string cache;
+        cache = m_ptr->TxID();
+        return cache.c_str();
+    }
 
-    uint32_t CountDestinations() const final
+    uint32_t CountOutputs() const
     { return m_ptr->CountDestinations(); }
 
-    IContractDestination *Destination(uint32_t n) final
-    { return new ContractDestinationWrapper(m_ptr->Destinations()[n]); }
+    const IContractOutput* Output(uint32_t n) const
+    { return new ContractOutputWrapper(std::make_shared<utxord::ContractOutput>(m_ptr, n)); }
 
     void MiningFeeRate(const std::string &rate)
     { m_ptr->MiningFeeRate(rate); }
@@ -338,10 +374,10 @@ public:
         return cache.c_str();
     }
 
-    void AddInput(IContractOutput *prevout)
+    void AddInput(const IContractOutput *prevout)
     { m_ptr->AddInput(prevout->Share()); }
 
-    void AddOutput(IContractDestination *out)
+    void AddOutput(const IContractDestination *out)
     { m_ptr->AddOutput(out->Share()); }
 
     void AddChangeOutput(const std::string &pk)
@@ -360,26 +396,28 @@ public:
     void Deserialize(const std::string &data, TxPhase phase)
     { m_ptr->Deserialize(data, phase); }
 
-    std::shared_ptr<utxord::IContractMultiOutput> Share() final
-    { return m_ptr; }
+//    const std::shared_ptr<utxord::IContractMultiOutput> Share() const final
+//    { return m_ptr; }
 
     uint32_t TransactionCount(TxPhase phase) const
     { return 1; }
 
-    std::string RawTransaction(TxPhase phase, uint32_t n) const
+    const char* RawTransaction(TxPhase phase, uint32_t n) const
     {
+        static std::string cache;
         if (n == 0) {
-            return m_ptr->RawTransactions()[0];
+            cache = m_ptr->RawTransactions()[0];
+            return cache.c_str();
         }
         else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
     }
 
-    const char* SupportedVersions() const
-    { return m_ptr->SupportedVersions(); }
+    static const char* SupportedVersions()
+    { return utxord::SimpleTransaction::SupportedVersions(); }
 
-    IContractOutput* ChangeOutput() const
+    const IContractOutput* ChangeOutput() const
     {
-        auto out = m_ptr->ChangeOutput();
+        auto out = m_ptr->SimpleTransaction::ChangeOutput();
         return out ? new ContractOutputWrapper(out) : nullptr;
     }
 };

@@ -195,14 +195,18 @@ public:
     virtual std::vector<std::shared_ptr<IContractDestination>> Destinations() const = 0;
     virtual uint32_t CountDestinations() const = 0;
 };
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 class IContractOutput {
 public:
     virtual std::string TxID() const = 0;
     virtual uint32_t NOut() const = 0;
+    virtual CAmount Amount() const { return Destination()->Amount(); }
+    virtual std::string Address() const { return Destination()->Address(); }
     virtual const std::shared_ptr<IContractDestination> Destination() const = 0;
     virtual std::shared_ptr<IContractDestination> Destination() = 0;
 };
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 class ContractOutput : public IContractOutput {
     std::shared_ptr<IContractMultiOutput> m_contract;
@@ -217,6 +221,7 @@ public:
     const std::shared_ptr<IContractDestination> Destination() const override { return m_contract->Destinations()[m_nout]; }
     std::shared_ptr<IContractDestination> Destination() override { return m_contract->Destinations()[m_nout]; }
 };
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 class UTXO: public IContractOutput/*, public IJsonSerializable*/
 {
