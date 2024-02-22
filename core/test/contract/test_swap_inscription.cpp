@@ -10,7 +10,6 @@
 #include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
-#include "wallet_api.hpp"
 #include "channel_keys.hpp"
 #include "exechelper.hpp"
 #include "swap_inscription.hpp"
@@ -129,7 +128,7 @@ TEST_CASE("Swap")
     // ORD side terms
     //--------------------------------------------------------------------------
 
-    SwapInscriptionBuilder builderMarket(*bech);
+    SwapInscriptionBuilder builderMarket(bech->GetChainMode());
 
     CHECK_NOTHROW(builderMarket.MiningFeeRate(fee_rate));
     CHECK_NOTHROW(builderMarket.OrdPrice(ORD_PRICE));
@@ -156,9 +155,8 @@ TEST_CASE("Swap")
     std::clog << "ORD_TERMS: ===========================================\n"
               << marketOrdConditions << std::endl;
 
-    SwapInscriptionBuilder builderOrdSeller(*bech);
-    REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions));
-    CHECK_NOTHROW(builderOrdSeller.CheckContractTerms(ORD_TERMS));
+    SwapInscriptionBuilder builderOrdSeller(bech->GetChainMode());
+    REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions, ORD_TERMS));
 
     REQUIRE_NOTHROW(builderOrdSeller.OrdIntPubKey(hex(ord_int_key.PubKey())));
     REQUIRE_NOTHROW(builderOrdSeller.OrdScriptPubKey(hex(ord_script_key.PubKey())));
@@ -198,8 +196,7 @@ TEST_CASE("Swap")
     std::clog << "ORD_SWAP_SIG: ===========================================\n"
               << ordSellerTerms << std::endl;
 
-    builderMarket.Deserialize(ordSellerTerms);
-    REQUIRE_NOTHROW(builderMarket.CheckContractTerms(ORD_SWAP_SIG));
+    REQUIRE_NOTHROW(builderMarket.Deserialize(ordSellerTerms, ORD_SWAP_SIG));
 
 
     CMutableTransaction ordCommitTx1;
@@ -218,7 +215,7 @@ TEST_CASE("Swap")
     REQUIRE_NOTHROW(builderMarket.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(*bech)));
     REQUIRE_NOTHROW(builderMarket.ChangeAddress(change_key.GetP2TRAddress(*bech)));
 
-    SwapInscriptionBuilder builderMarket1(*bech);
+    SwapInscriptionBuilder builderMarket1(bech->GetChainMode());
 
     bool complete_swap = false;
     CAmount swapFundsIn = ordCommit.vout.front().nValue;
@@ -269,8 +266,8 @@ TEST_CASE("Swap")
         std::clog << "FUNDS_TERMS: ===========================================\n"
                   << marketFundsConditions << std::endl;
 
-        SwapInscriptionBuilder builderOrdBuyer(*bech);
-        REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions));
+        SwapInscriptionBuilder builderOrdBuyer(bech->GetChainMode());
+        REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions, FUNDS_TERMS));
 
         CHECK(builderOrdBuyer.TransactionCount(FUNDS_COMMIT_SIG) == 1);
 
@@ -295,8 +292,7 @@ TEST_CASE("Swap")
         std::clog << "FUNDS_COMMIT_SIG: ===========================================\n"
                   << ordBuyerTerms << std::endl;
 
-        REQUIRE_NOTHROW(builderMarket1.Deserialize(ordBuyerTerms));
-        REQUIRE_NOTHROW(builderMarket1.CheckContractTerms(FUNDS_COMMIT_SIG));
+        REQUIRE_NOTHROW(builderMarket1.Deserialize(ordBuyerTerms, FUNDS_COMMIT_SIG));
 
         CMutableTransaction fundCommitTx;
         REQUIRE(DecodeHexTx(fundCommitTx, builderMarket1.FundsCommitRawTransaction()));
@@ -307,8 +303,7 @@ TEST_CASE("Swap")
         w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
     }
 
-    REQUIRE_NOTHROW(builderMarket1.Deserialize(ordSellerTerms));
-    REQUIRE_NOTHROW(builderMarket1.CheckContractTerms(ORD_SWAP_SIG));
+    REQUIRE_NOTHROW(builderMarket1.Deserialize(ordSellerTerms, ORD_SWAP_SIG));
 
     SECTION("Ready Funds") {
         std::clog << "Ready Funds ================================================================" << std::endl;
@@ -385,16 +380,15 @@ TEST_CASE("Swap")
         std::clog << "FUNDS_SWAP_TERMS: ===========================================\n"
                   << ordSwapTerms << std::endl;
 
-        SwapInscriptionBuilder builderOrdBuyer(*bech);
-        REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(ordSwapTerms));
-        REQUIRE_NOTHROW(builderOrdBuyer.CheckContractTerms(FUNDS_SWAP_TERMS));
+        SwapInscriptionBuilder builderOrdBuyer(bech->GetChainMode());
+        REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(ordSwapTerms, FUNDS_SWAP_TERMS));
 
         REQUIRE_NOTHROW(builderOrdBuyer.SignFundsSwap(master_key, "fund"));
 
         string ordFundsSignature;
         REQUIRE_NOTHROW(ordFundsSignature = builderOrdBuyer.Serialize(6, FUNDS_SWAP_SIG));
 
-        REQUIRE_NOTHROW(builderMarket1.Deserialize(ordFundsSignature));
+        REQUIRE_NOTHROW(builderMarket1.Deserialize(ordFundsSignature, FUNDS_SWAP_SIG));
 
         string swap_raw_tx = builderMarket1.OrdSwapRawTransaction();
 

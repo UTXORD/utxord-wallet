@@ -138,6 +138,11 @@ using namespace l15;
 %include "address.hpp"
 %include "keypair.hpp"
 %include "contract_builder.hpp"
+
+%template (CreateInscriptionBase) utxord::ContractBuilder<utxord::InscribePhase>;
+%template (SwapInscriptionBase) utxord::ContractBuilder<utxord::SwapPhase>;
+%template (SimpleTransactionBase) utxord::ContractBuilder<utxord::TxPhase>;
+
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
 %include "simple_transaction.hpp"

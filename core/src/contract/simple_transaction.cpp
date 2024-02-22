@@ -9,40 +9,39 @@
 
 namespace utxord {
 
-const  std::string SimpleTransaction::name_outputs = "outputs";
+namespace {
 
-const char* const SimpleTransaction::type = "transaction";
-const uint32_t SimpleTransaction::s_protocol_version = 1;
-const char* SimpleTransaction::s_versions = "[1]";
+const std::string val_simple_transaction = "transaction";
 
-CMutableTransaction SimpleTransaction::MakeTxTemplate() const
-{
-    CMutableTransaction tx;
-
-    for(const auto& input: m_inputs) {
-        tx.vin.emplace_back(uint256(), 0);
-        tx.vin.back().scriptWitness.stack = input.witness;
-        if (tx.vin.back().scriptWitness.stack.empty()) {
-            tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
-        }
-    }
-
-    for(const auto& out: m_outputs) {
-        tx.vout.emplace_back(out->Amount(), out->PubKeyScript());
-    }
-
-    return tx;
 }
 
-CMutableTransaction SimpleTransaction::MakeTx() const
+const  std::string SimpleTransaction::name_outputs = "outputs";
+
+const uint32_t SimpleTransaction::s_protocol_version = 2;
+const char* SimpleTransaction::s_versions = "[2]";
+
+
+const std::string& SimpleTransaction::GetContractName() const
+{ return val_simple_transaction; }
+
+CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
 {
     CMutableTransaction tx;
 
-    for(const auto& input: m_inputs) {
-        tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
-        tx.vin.back().scriptWitness.stack = input.witness;
-        if (tx.vin.back().scriptWitness.stack.empty()) {
-            tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
+    if (m_inputs.empty()) {
+        tx.vin.emplace_back(uint256(), 0);
+        if (params.find("p2wpkh_utxo"))
+            tx.vin.back().scriptWitness.stack = P2WPKH(Bech32().GetChainMode(), 0, "").DummyWitness();
+        else
+            tx.vin.back().scriptWitness.stack = P2TR(Bech32().GetChainMode(), 0, "").DummyWitness();
+    }
+    else {
+        for (const auto &input: m_inputs) {
+            tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
+            tx.vin.back().scriptWitness.stack = input.witness;
+            if (tx.vin.back().scriptWitness.stack.empty()) {
+                tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
+            }
         }
     }
 
@@ -85,9 +84,9 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     }
 }
 
-void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string key_filter_tag)
+void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
-    CMutableTransaction tx = MakeTx();
+    CMutableTransaction tx = MakeTx("");
 
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
@@ -110,13 +109,14 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string ke
 
 std::vector<std::string> SimpleTransaction::RawTransactions() const
 {
-    return { EncodeHexTx(CTransaction(MakeTx())) };
+    return { EncodeHexTx(CTransaction(MakeTx(""))) };
 }
 
-UniValue SimpleTransaction::MakeJson() const
+UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 {
+    if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
+
     UniValue contract(UniValue::VOBJ);
-    contract.pushKV(name_type, type);
     contract.pushKV(name_version, (int)s_protocol_version);
     contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
 
@@ -136,17 +136,10 @@ UniValue SimpleTransaction::MakeJson() const
     return contract;
 }
 
-void SimpleTransaction::ReadJson(const UniValue &contract)
+void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 {
-    if (!contract.isObject()) {
-        throw ContractTermWrongFormat("not an object");
-    }
-    if (contract[name_type].get_str() != type) {
-        throw ContractProtocolError("transaction contract does not match " + contract[name_type].getValStr());
-    }
-    if (contract[name_version].getInt<int>() != s_protocol_version) {
-        throw ContractProtocolError(std::string("Wrong ") + type + " version: " + contract[name_version].getValStr());
-    }
+    if (contract[name_version].getInt<int>() != s_protocol_version)
+        throw ContractProtocolError("Wrong " + val_simple_transaction + " contract version: " + contract[name_version].getValStr());
 
     {   const auto &val = contract[name_mining_fee_rate];
         if (val.isNull()) throw ContractTermMissing(std::string(name_mining_fee_rate));
@@ -173,15 +166,20 @@ void SimpleTransaction::ReadJson(const UniValue &contract)
     }
 }
 
-CAmount SimpleTransaction::CalculateWholeFee(const string &params) const
-{
-    return l15::CalculateTxFee(*m_mining_fee_rate, MakeTxTemplate());
-}
-
 std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
-    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTxTemplate()) + total_out);
+    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out);
+}
+
+void SimpleTransaction::CheckContractTerms(TxPhase phase) const
+{
+
+}
+
+CAmount SimpleTransaction::CalculateWholeFee(const string &params) const
+{
+    return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params));
 }
 
 void SimpleTransaction::CheckSig() const
@@ -190,7 +188,7 @@ void SimpleTransaction::CheckSig() const
     spent_outs.reserve(m_inputs.size());
     std::transform(m_inputs.begin(), m_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()), [](const auto& txin){ return CTxOut(txin.output->Destination()->Amount(), txin.output->Destination()->PubKeyScript()); });
 
-    CMutableTransaction tx = MakeTx();
+    CMutableTransaction tx = MakeTx("");
     for (const auto &input: m_inputs) {
         VerifyTxSignature(input.output->Destination()->Address(), input.witness, tx, input.nin, spent_outs);
     }

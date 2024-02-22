@@ -10,11 +10,12 @@
 
 namespace utxord {
 
-class SimpleTransaction: public ContractBuilder, public IContractMultiOutput, public IJsonSerializable
+enum TxPhase {TX_TERMS, TX_SIGNATURE};
+
+class SimpleTransaction: public utxord::ContractBuilder<utxord::TxPhase>, public IContractMultiOutput
 {
 public:
     static const std::string name_outputs;
-    static const char* const type;
 private:
     static const uint32_t s_protocol_version;
     static const char* s_versions;
@@ -23,13 +24,13 @@ private:
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
 
 public:
+    explicit SimpleTransaction(ChainMode chain) : ContractBuilder(chain) {}
     explicit SimpleTransaction(Bech32 bech) : ContractBuilder(bech) {}
-    //explicit SimpleTransaction(ChainMode m) : SimpleTransaction(Bech32(m)) {}
     SimpleTransaction(const SimpleTransaction&) = default;
     SimpleTransaction(SimpleTransaction&&) noexcept = default;
 
     explicit SimpleTransaction(Bech32 bech, const UniValue& json) : ContractBuilder(bech)
-    { SimpleTransaction::ReadJson(json); }
+    { SimpleTransaction::ReadJson(json, TX_TERMS); }
 
     ~SimpleTransaction() override = default;
 
@@ -58,20 +59,21 @@ public:
 
     void AddChangeOutput(const std::string& addr);
 
-    void Sign(const KeyRegistry& master_key, const std::string key_filter_tag);
+    void Sign(const KeyRegistry& master_key, const std::string& key_filter_tag);
 
     void CheckSig() const;
 
+    CMutableTransaction MakeTx(const std::string& params) const;
+
     std::vector<std::string> RawTransactions() const;
 
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
-
-    CMutableTransaction MakeTxTemplate() const;
-    CMutableTransaction MakeTx() const;
+    const std::string& GetContractName() const override;
+    void CheckContractTerms(TxPhase phase) const override;
+    UniValue MakeJson(uint32_t version, TxPhase phase) const override;
+    void ReadJson(const UniValue& json, TxPhase phase) override;
 
     std::string TxID() const override
-    { return MakeTx().GetHash().GetHex(); }
+    { return MakeTx("").GetHash().GetHex(); }
 
     uint32_t CountDestinations() const override
     { return m_outputs.size(); }

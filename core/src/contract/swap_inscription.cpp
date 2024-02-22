@@ -120,23 +120,23 @@ const CMutableTransaction &SwapInscriptionBuilder::GetOrdCommitTx() const
     if (!mOrdCommitBuilder) throw ContractStateError(name_ord_commit + " not defined");
 
     if (!mOrdCommitTx) {
-        mOrdCommitTx = mOrdCommitBuilder->MakeTx();
+        mOrdCommitTx = mOrdCommitBuilder->MakeTx("");
     }
     return *mOrdCommitTx;
 }
 
-CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate() const
-{
-    if (!mCommitBuilder) throw ContractStateError("Swap commit tx defined outside of the swap contract builder");
-
-    CMutableTransaction res = mCommitBuilder->MakeTxTemplate();
-
-    while (res.vout.size() < 3) {
-        res.vout.emplace_back(0, bech32().PubKeyScript(bech32().Encode(xonly_pubkey())));
-    }
-
-    return res;
-}
+//CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate() const
+//{
+//    if (!mCommitBuilder) throw ContractStateError("Swap commit tx defined outside of the swap contract builder");
+//
+//    CMutableTransaction res = mCommitBuilder->MakeTx("");
+//
+//    while (res.vout.size() < 3) {
+//        res.vout.emplace_back(0, bech32().PubKeyScript(bech32().Encode(xonly_pubkey())));
+//    }
+//
+//    return res;
+//}
 
 const CMutableTransaction &SwapInscriptionBuilder::GetFundsCommitTx() const
 {
@@ -151,7 +151,7 @@ const CMutableTransaction &SwapInscriptionBuilder::GetFundsCommitTx() const
 
         if (funds_provided < funds_required) throw ContractFundsNotEnough(move((FormatAmount(funds_provided) += ", required: ") += FormatAmount(funds_required)));
 
-        mFundsCommitTx = mCommitBuilder->MakeTx();
+        mFundsCommitTx = mCommitBuilder->MakeTx("");
     }
     return *mFundsCommitTx;
 }
@@ -278,11 +278,9 @@ string SwapInscriptionBuilder::OrdSwapRawTransaction() const
     return res;
 }
 
-string SwapInscriptionBuilder::Serialize(uint32_t version, SwapPhase phase)
+UniValue SwapInscriptionBuilder::MakeJson(uint32_t version, SwapPhase phase) const
 {
     if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
-
-    CheckContractTerms(phase);
 
     UniValue contract(UniValue::VOBJ);
 
@@ -294,10 +292,12 @@ string SwapInscriptionBuilder::Serialize(uint32_t version, SwapPhase phase)
     }
     if (phase == ORD_SWAP_SIG || phase == ORD_TERMS) {
         contract.pushKV(name_market_script_pk, hex(*m_market_script_pk));
-        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson());
+    }
+    if (phase == ORD_TERMS) {
+        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson(mOrdCommitBuilder->GetProtocolVersion(), TX_TERMS));
     }
     if (phase == ORD_SWAP_SIG) {
-        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson());
+        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson(mOrdCommitBuilder->GetProtocolVersion(), TX_SIGNATURE));
     }
     if (phase == FUNDS_SWAP_TERMS || phase == FUNDS_SWAP_SIG) {
         contract.pushKV(name_market_script_pk, hex(*m_market_script_pk));
@@ -317,9 +317,13 @@ string SwapInscriptionBuilder::Serialize(uint32_t version, SwapPhase phase)
         contract.pushKV(name_swap_inputs, move(input_arr));
     }
 
-    if (phase == FUNDS_TERMS || phase == FUNDS_COMMIT_SIG) {
-        contract.pushKV(name_funds, mCommitBuilder->MakeJson());
+    if (phase == FUNDS_TERMS) {
+        contract.pushKV(name_funds, mCommitBuilder->MakeJson(mCommitBuilder->GetProtocolVersion(), TX_TERMS));
     }
+    else if (phase == FUNDS_COMMIT_SIG) {
+        contract.pushKV(name_funds, mCommitBuilder->MakeJson(mCommitBuilder->GetProtocolVersion(), TX_SIGNATURE));
+    }
+
     if (phase == FUNDS_TERMS || phase == FUNDS_COMMIT_SIG || phase == FUNDS_SWAP_TERMS || phase == FUNDS_SWAP_SIG) {
         contract.pushKV(name_market_fee, m_market_fee->MakeJson());
         contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
@@ -329,11 +333,7 @@ string SwapInscriptionBuilder::Serialize(uint32_t version, SwapPhase phase)
             contract.pushKV(name_change_addr, *m_change_addr);
     }
 
-    UniValue dataRoot(UniValue::VOBJ);
-    dataRoot.pushKV(name_contract_type, val_swap_inscription);
-    dataRoot.pushKV(name_params, move(contract));
-
-    return dataRoot.write();
+    return contract;
 }
 
 void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
@@ -423,24 +423,10 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
 }
 
 
-void SwapInscriptionBuilder::Deserialize(const string &data)
+void SwapInscriptionBuilder::ReadJson(const UniValue &contract, utxord::SwapPhase phase)
 {
-    UniValue root;
-    root.read(data);
-
-    if (root[name_contract_type].get_str() != val_swap_inscription) {
-        throw ContractProtocolError("SwapInscription contract does not match " + root[name_contract_type].getValStr());
-    }
-
-    const UniValue& contract = root[name_params];
-
-//    if (contract[name_version].getInt<uint32_t>() == s_protocol_version_pubkey_v4 || contract[name_version].getInt<uint32_t>() == s_protocol_version_old_v3) {
-//        Deserialize_v4(data);
-//        return;
-//    }
-//    else
     if (contract[name_version].getInt<uint32_t>() != s_protocol_version) {
-        throw ContractProtocolError("Wrong SwapInscription contract version: " + contract[name_version].getValStr());
+        throw ContractProtocolError("Wrong " + val_swap_inscription + " contract version: " + contract[name_version].getValStr());
     }
 
     DeserializeContractAmount(contract[name_ord_price], m_ord_price, [](){ return name_ord_price; });
@@ -837,4 +823,9 @@ std::string SwapInscriptionBuilder::RawTransaction(SwapPhase phase, uint32_t n)
         throw ContractStateError("Raw transaction data are not available");
     }
 }
+
+const std::string &SwapInscriptionBuilder::GetContractName() const
+{ return val_swap_inscription; }
+
+
 } // namespace l15::utxord

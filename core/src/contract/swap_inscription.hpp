@@ -20,7 +20,7 @@ enum SwapPhase {
     FUNDS_SWAP_SIG,
 };
 
-class SwapInscriptionBuilder : public ContractBuilder
+class SwapInscriptionBuilder : public ContractBuilder<SwapPhase>
 {
     static const CAmount TX_SWAP_BASE_VSIZE = 413;
 
@@ -63,7 +63,7 @@ class SwapInscriptionBuilder : public ContractBuilder
 public:
     const CMutableTransaction& GetOrdCommitTx() const;
 
-    CMutableTransaction GetFundsCommitTxTemplate() const;
+    //CMutableTransaction GetFundsCommitTxTemplate() const;
     const CMutableTransaction& GetFundsCommitTx() const;
 
     const CMutableTransaction& GetSwapTx() const;
@@ -81,14 +81,17 @@ public:
     static const std::string name_funds;
     static const std::string name_swap_inputs;
 
-    explicit SwapInscriptionBuilder(Bech32 bech) : ContractBuilder(bech) {}
-    explicit SwapInscriptionBuilder(ChainMode mode) : SwapInscriptionBuilder(Bech32(mode)) {}
+    explicit SwapInscriptionBuilder(ChainMode mode) : ContractBuilder(mode) {}
 
-    //SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
+    SwapInscriptionBuilder(const SwapInscriptionBuilder&) = default;
     SwapInscriptionBuilder(SwapInscriptionBuilder&&) noexcept = default;
 
-    //SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
+    SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
+
+    const std::string& GetContractName() const override;
+    UniValue MakeJson(uint32_t version, SwapPhase phase) const override;
+    void ReadJson(const UniValue& json, SwapPhase phase) override;
 
     static const char* SupportedVersions() { return s_versions; }
 
@@ -128,8 +131,6 @@ public:
     void SignFundsSwap(const KeyRegistry &master_key, const std::string& key_filter);
 
     void CheckContractTerms(SwapPhase phase) const;
-    std::string Serialize(uint32_t version, SwapPhase phase);
-    void Deserialize(const std::string& data);
 
     std::string OrdCommitRawTransaction() const;
     std::string FundsCommitRawTransaction() const;

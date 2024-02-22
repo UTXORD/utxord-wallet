@@ -1,5 +1,4 @@
 #include "inscription_common.hpp"
-#include "create_inscription.hpp"
 #include "core_io.h"
 #include "serialize.h"
 #include "univalue.h"
@@ -121,19 +120,19 @@ std::vector<bytevector> TaprootSigner::Sign(const CMutableTransaction &tx, uint3
 
 ZeroDestination::ZeroDestination(const UniValue &json)
 {
-    if (json[ContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(ContractBuilder::name_amount));
+    if (json[IContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
 }
 
 UniValue ZeroDestination::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
-    res.pushKV(ContractBuilder::name_amount, 0);
+    res.pushKV(IContractBuilder::name_amount, 0);
     return res;
 }
 
 void ZeroDestination::ReadJson(const UniValue &json)
 {
-    if (json[ContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(ContractBuilder::name_amount));
+    if (json[IContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -145,16 +144,16 @@ P2Witness::P2Witness(Bech32 bech, const UniValue &json): mBech(bech)
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
-    m_amount = json[ContractBuilder::name_amount].getInt<CAmount>();
-    m_addr = json[ContractBuilder::name_addr].get_str();
+    m_amount = json[IContractBuilder::name_amount].getInt<CAmount>();
+    m_addr = json[IContractBuilder::name_addr].get_str();
 }
 
 UniValue P2Witness::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
     res.pushKV(name_type, type);
-    res.pushKV(ContractBuilder::name_amount, m_amount);
-    res.pushKV(ContractBuilder::name_addr, m_addr);
+    res.pushKV(IContractBuilder::name_amount, m_amount);
+    res.pushKV(IContractBuilder::name_addr, m_addr);
 
     return res;
 }
@@ -164,8 +163,8 @@ void P2Witness::ReadJson(const UniValue &json)
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
-    if (m_amount != json[ContractBuilder::name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(ContractBuilder::name_amount));
-    if (m_addr != json[ContractBuilder::name_addr].get_str())  throw ContractTermMismatch(std::string(ContractBuilder::name_addr));
+    if (m_amount != json[IContractBuilder::name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
+    if (m_addr != json[IContractBuilder::name_addr].get_str())  throw ContractTermMismatch(std::string(IContractBuilder::name_addr));
 }
 
 std::shared_ptr<IContractDestination> IContractDestination::ReadJson(Bech32 bech, const UniValue& json, bool allow_zero_destination)
@@ -204,7 +203,7 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const s
     unsigned witver;
     bytevector pkhash;
     std::tie(witver, pkhash) = mBech.Decode(m_addr);
-    if (witver != 0) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
+    if (witver != 0) throw ContractTermWrongValue(std::string(IContractBuilder::name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
     EcdsaKeypair ecdsa(masterKey.Secp256k1Context(), keypair.PrivKey());
@@ -216,7 +215,7 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std
     unsigned witver;
     bytevector pk;
     std::tie(witver, pk) = mBech.Decode(m_addr);
-    if (witver != 1) throw ContractTermWrongValue(std::string(ContractBuilder::name_addr));
+    if (witver != 1) throw ContractTermWrongValue(std::string(IContractBuilder::name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
     ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
@@ -234,7 +233,7 @@ const char* UTXO::type = "utxo";
 UniValue UTXO::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
-    res.pushKV(name_type, type);
+    res.pushKV(IJsonSerializable::name_type, type);
     res.pushKV(name_txid, m_txid);
     res.pushKV(name_nout, m_nout);
     if (m_destination) res.pushKV(name_destination, m_destination->MakeJson());
@@ -244,36 +243,41 @@ UniValue UTXO::MakeJson() const
 
 void UTXO::ReadJson(const UniValue &json)
 {
-    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
-        throw ContractTermWrongValue(std::string(name_type));
+    if (!json[IJsonSerializable::name_type].isStr() || json[IJsonSerializable::name_type].get_str() != type) {
+        throw ContractTermWrongValue(std::string(IJsonSerializable::name_type));
     }
     m_txid = json[name_txid].get_str();
     m_nout = json[name_nout].getInt<uint32_t >();
 
     UniValue dest = json[name_destination];
     if (dest.isNull())
-        throw ContractTermWrongValue(std::string(name_type));
+        throw ContractTermWrongValue(std::string(IJsonSerializable::name_type));
 
     m_destination = IContractDestination::ReadJson(mBech, dest);
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-const std::string ContractBuilder::name_contract_type = "contract_type";
-const std::string ContractBuilder::name_params = "params";
-const std::string ContractBuilder::name_version = "protocol_version";
-const std::string ContractBuilder::name_mining_fee_rate = "mining_fee_rate";
-const std::string ContractBuilder::name_market_fee = "market_fee";
-const char* ContractBuilder::name_utxo = "utxo";
-const std::string ContractBuilder::name_txid = "txid";
-const std::string ContractBuilder::name_nout = "nout";
-const std::string ContractBuilder::name_amount = "amount";
-const std::string ContractBuilder::name_pk = "pubkey";
-const std::string ContractBuilder::name_addr = "addr";
-const std::string ContractBuilder::name_sig = "sig";
-const std::string ContractBuilder::name_change_addr = "change_addr";
+const std::string IContractBuilder::name_contract_type = "contract_type";
+const std::string IContractBuilder::name_params = "params";
+const std::string IContractBuilder::name_version = "protocol_version";
+const std::string IContractBuilder::name_mining_fee_rate = "mining_fee_rate";
+const std::string IContractBuilder::name_market_fee = "market_fee";
+const char* IContractBuilder::name_utxo = "utxo";
+const std::string IContractBuilder::name_txid = "txid";
+const std::string IContractBuilder::name_nout = "nout";
+const std::string IContractBuilder::name_amount = "amount";
+const std::string IContractBuilder::name_pk = "pubkey";
+const std::string IContractBuilder::name_addr = "addr";
+const std::string IContractBuilder::name_sig = "sig";
+const std::string IContractBuilder::name_change_addr = "change_addr";
 
-CScript ContractBuilder::MakeMultiSigScript(const xonly_pubkey& pk1, const xonly_pubkey& pk2)
+const std::string IContractBuilder::FEE_OPT_HAS_CHANGE = "change";
+const std::string IContractBuilder::FEE_OPT_HAS_COLLECTION = "collection";
+const std::string IContractBuilder::FEE_OPT_HAS_XTRA_UTXO = "extra_utxo";
+const std::string IContractBuilder::FEE_OPT_HAS_P2WPKH_INPUT = "p2wpkh_utxo";
+
+CScript IContractBuilder::MakeMultiSigScript(const xonly_pubkey& pk1, const xonly_pubkey& pk2)
 {
     CScript script;
     script << pk1 << OP_CHECKSIG;
@@ -281,12 +285,15 @@ CScript ContractBuilder::MakeMultiSigScript(const xonly_pubkey& pk1, const xonly
     script << 2 << OP_NUMEQUAL;
     return script;
 }
-const std::string ContractBuilder::FEE_OPT_HAS_CHANGE = "change";
-const std::string ContractBuilder::FEE_OPT_HAS_COLLECTION = "collection";
-const std::string ContractBuilder::FEE_OPT_HAS_XTRA_UTXO = "extra_utxo";
-const std::string ContractBuilder::FEE_OPT_HAS_P2WPKH_INPUT = "p2wpkh_utxo";
+CAmount IContractBuilder::CalculateWholeFee(const std::string& params) const
+{
+    auto txs = GetTransactions();
+    return std::accumulate(txs.begin(), txs.end(), CAmount(0), [](CAmount sum, const auto &tx) {
+        return sum + l15::CalculateTxFee(tx.first, tx.second);
+    });
+}
 
-void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script)
+void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script)
 {
     if (sig.size() != 64 && sig.size() != 65) throw SignatureError("sig size");
 
@@ -323,7 +330,7 @@ void ContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature&
     }
 }
 
-void ContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const
+void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const
 {
     uint32_t witver;
     bytevector keyid;
@@ -363,17 +370,17 @@ void ContractBuilder::VerifyTxSignature(const std::string& addr, const std::vect
     }
 }
 
-std::string ContractBuilder::GetNewInputMiningFee()
+std::string IContractBuilder::GetNewInputMiningFee()
 {
     return FormatAmount(CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_KEYSPEND_VIN_VSIZE));
 }
 
-std::string ContractBuilder::GetNewOutputMiningFee()
+std::string IContractBuilder::GetNewOutputMiningFee()
 {
     return FormatAmount(CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE));
 }
 
-void ContractBuilder::DeserializeContractAmount(const UniValue &val, std::optional<CAmount> &target, std::function<std::string()> lazy_name)
+void IContractBuilder::DeserializeContractAmount(const UniValue &val, std::optional<CAmount> &target, std::function<std::string()> lazy_name)
 {
     if (!val.isNull()) {
         CAmount amount;
@@ -400,7 +407,7 @@ void ContractBuilder::DeserializeContractAmount(const UniValue &val, std::option
     }
 }
 
-void ContractBuilder::DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name)
+void IContractBuilder::DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name)
 {
     if (!val.isNull()) {
         std::string str;
@@ -420,25 +427,7 @@ void ContractBuilder::DeserializeContractString(const UniValue& val, std::option
 }
 
 
-void ContractBuilder::DeserializeContractTaprootPubkey(const UniValue &val, std::optional<std::string> &addr, std::function<std::string()> lazy_name) {
-    if (!val.isNull()) {
-        std::string str;
-        try {
-            str = bech32().Encode(unhex<xonly_pubkey>(val.get_str()));
-        }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(lazy_name()));
-        }
-
-        if (addr) {
-            if (*addr != str) throw ContractTermMismatch(move((lazy_name() += " is already set: ") += *addr));
-        } else {
-            addr = move(str);
-        }
-    }
-}
-
-void ContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std::optional<xonly_pubkey> &pk, std::function<std::string()> lazy_name) {
+void IContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std::optional<xonly_pubkey> &pk, std::function<std::string()> lazy_name) {
     if (!val.isNull()) {
         xonly_pubkey new_pk;
         try {

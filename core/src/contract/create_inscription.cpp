@@ -1,5 +1,4 @@
 
-#include <ranges>
 #include <exception>
 
 #include "nlohmann/json.hpp"
@@ -26,8 +25,7 @@ const std::string val_create_inscription("CreateInscription");
 }
 
 const uint32_t CreateInscriptionBuilder::s_protocol_version = 9;
-const uint32_t CreateInscriptionBuilder::s_protocol_version_no_fixed_change = 8;
-const char* CreateInscriptionBuilder::s_versions = "[8,9]";
+const char* CreateInscriptionBuilder::s_versions = "[9]";
 
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
 const std::string CreateInscriptionBuilder::name_utxo = "utxo";
@@ -49,6 +47,10 @@ const std::string CreateInscriptionBuilder::name_fixed_change = "fixed_change";
 //const std::string CreateInscriptionBuilder::name_parent_collection_int_pk = "parent_collection_int_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_out_pk = "parent_collection_out_pk";
 
+
+
+const std::string& CreateInscriptionBuilder::GetContractName() const
+{ return val_create_inscription; }
 
 CScript CreateInscriptionBuilder::MakeInscriptionScript() const
 {
@@ -354,11 +356,9 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
     }
 }
 
-std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase phase) const
+UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePhase phase) const
 {
     if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
-
-    CheckContractTerms(phase);
 
     UniValue contract(UniValue::VOBJ);
     contract.pushKV(name_version, (int)s_protocol_version);
@@ -408,31 +408,15 @@ std::string CreateInscriptionBuilder::Serialize(uint32_t version, InscribePhase 
         contract.pushKV(name_market_fee, m_market_fee->MakeJson());
     }
 
-    UniValue dataRoot(UniValue::VOBJ);
-    dataRoot.pushKV(name_contract_type,  val_create_inscription);
-    dataRoot.pushKV(name_params, move(contract));
-
-    return dataRoot.write();
+    return contract;
 }
 
-void CreateInscriptionBuilder::Deserialize(const std::string &data, InscribePhase phase)
+void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase phase)
 {
-    UniValue root;
-    root.read(data);
+    if (m_type != INSCRIPTION && m_type != LASY_INSCRIPTION) throw ContractTermMismatch (std::string(name_contract_type));
 
-    if (!root.isObject() || !root[name_contract_type].isStr() || !root[name_params].isObject())
-        throw ContractProtocolError("JSON is not CreateInscription contract");
-
-    if (root[name_contract_type].get_str() == val_create_inscription) {
-        if (m_type != INSCRIPTION && m_type != LASY_INSCRIPTION) throw ContractTermMismatch (std::string(name_contract_type));
-    } else
-        throw ContractProtocolError("CreateInscription contract does not match " + root[name_contract_type].getValStr());
-
-    const UniValue& contract = root[name_params];
-
-    uint32_t contract_version = contract[name_version].getInt<uint32_t>();
-    if (contract_version != s_protocol_version && contract_version != s_protocol_version_no_fixed_change)
-        throw ContractProtocolError("Wrong " + root[name_contract_type].get_str() + " version: " + contract[name_version].getValStr() + " (supported: " + s_versions + ')');
+    if (contract[name_version].getInt<uint32_t>() != s_protocol_version)
+        throw ContractProtocolError("Wrong " + val_create_inscription + " contract version: " + contract[name_version].getValStr());
 
     {   const auto& val = contract[name_market_fee];
         if (!val.isNull()) {

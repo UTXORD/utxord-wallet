@@ -115,7 +115,7 @@ TEST_CASE("singleinout")
 
     std::string destination_addr = w->btc().GetNewAddress();
 
-    SimpleTransaction tx_contract(*bech);
+    SimpleTransaction tx_contract(bech->GetChainMode());
     tx_contract.MiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(*bech, funds_txid, get<0>(prevout).n, 10000, cond.address)));
@@ -124,13 +124,13 @@ TEST_CASE("singleinout")
     REQUIRE_NOTHROW(tx_contract.Sign(master_key, "funds"));
 
     std::string data;
-    REQUIRE_NOTHROW(data = tx_contract.Serialize());
+    REQUIRE_NOTHROW(data = tx_contract.Serialize(2, TX_SIGNATURE));
 
     std::clog << "singleinout:\n"
               << data << std::endl;
 
-    SimpleTransaction tx_contract1(*bech);
-    REQUIRE_NOTHROW(tx_contract1.Deserialize(data));
+    SimpleTransaction tx_contract1(bech->GetChainMode());
+    REQUIRE_NOTHROW(tx_contract1.Deserialize(data, TX_SIGNATURE));
 
     stringvector txs;
     REQUIRE_NOTHROW(txs = tx_contract1.RawTransactions());
@@ -201,7 +201,7 @@ TEST_CASE("2ins2outs")
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
 
-    SimpleTransaction tx_contract(*bech);
+    SimpleTransaction tx_contract(bech->GetChainMode());
     tx_contract.MiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(*bech, funds_txid, get<0>(prevout).n, 10000, utxo_key.GetP2TRAddress(*bech))));
@@ -212,12 +212,12 @@ TEST_CASE("2ins2outs")
     REQUIRE_NOTHROW(tx_contract.Sign(master_key, "funds"));
 
     std::string data;
-    REQUIRE_NOTHROW(data = tx_contract.Serialize());
+    REQUIRE_NOTHROW(data = tx_contract.Serialize(2, TX_SIGNATURE));
 
     std::clog << data << std::endl;
 
-    SimpleTransaction tx_contract1(*bech);
-    REQUIRE_NOTHROW(tx_contract1.Deserialize(data));
+    SimpleTransaction tx_contract1(bech->GetChainMode());
+    REQUIRE_NOTHROW(tx_contract1.Deserialize(data, TX_SIGNATURE));
 
     stringvector txs;
     REQUIRE_NOTHROW(txs = tx_contract1.RawTransactions());
@@ -257,8 +257,8 @@ TEST_CASE("txchain")
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
 
-    std::shared_ptr<SimpleTransaction> tx_contract = std::make_shared<SimpleTransaction>(*bech);
-    std::shared_ptr<SimpleTransaction> tx1_contract = std::make_shared<SimpleTransaction>(*bech);
+    std::shared_ptr<SimpleTransaction> tx_contract = std::make_shared<SimpleTransaction>(bech->GetChainMode());
+    std::shared_ptr<SimpleTransaction> tx1_contract = std::make_shared<SimpleTransaction>(bech->GetChainMode());
     tx_contract->MiningFeeRate(fee_rate);
     tx1_contract->MiningFeeRate(fee_rate);
 
@@ -275,17 +275,17 @@ TEST_CASE("txchain")
     REQUIRE_NOTHROW(tx1_contract->Sign(master_key, "funds"));
 
     std::string data, data1;
-    REQUIRE_NOTHROW(data = tx_contract->Serialize());
-    REQUIRE_NOTHROW(data1 = tx1_contract->Serialize());
+    REQUIRE_NOTHROW(data = tx_contract->Serialize(2, TX_SIGNATURE));
+    REQUIRE_NOTHROW(data1 = tx1_contract->Serialize(2, TX_SIGNATURE));
 
     std::clog << data << std::endl;
     std::clog << data1 << std::endl;
 
-    SimpleTransaction tx_contract1(*bech);
-    REQUIRE_NOTHROW(tx_contract1.Deserialize(data));
+    SimpleTransaction tx_contract1(bech->GetChainMode());
+    REQUIRE_NOTHROW(tx_contract1.Deserialize(data, TX_SIGNATURE));
 
-    SimpleTransaction tx1_contract1(*bech);
-    REQUIRE_NOTHROW(tx1_contract1.Deserialize(data1));
+    SimpleTransaction tx1_contract1(bech->GetChainMode());
+    REQUIRE_NOTHROW(tx1_contract1.Deserialize(data1, TX_SIGNATURE));
 
     stringvector txs, txs1;
     REQUIRE_NOTHROW(txs = tx_contract1.RawTransactions());
