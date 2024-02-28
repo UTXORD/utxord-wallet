@@ -50,6 +50,7 @@ const WALLET_TYPES = [
   'ord',
   'uns',
   'intsk',
+  'intsk2',
   'scrsk',
   'auth'
 ];
@@ -133,7 +134,7 @@ const WALLET = {
     }
 
   },
-  intsk:{ // internalSK
+  intsk: { // internalSK
     index: 0,
     change: 0,
     account: 4,
@@ -142,15 +143,14 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
-    // seem we don't need intsk filter
+    // seems we don't need intsk filter
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
-      accounts: ["5'", "4'"],
+      accounts: ["6'", "5'", "4'"],
       change: ["0"],
       index_range: "0-16384"
     }
-
   },
   scrsk: { //scriptSK
     index: 0,
@@ -164,13 +164,30 @@ const WALLET = {
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
-      accounts: ["4'", "5'"],
+      accounts: ["6'", "5'", "4'"],
       change: ["0"],
       index_range: "0-16384"
     }
 
   },
-  xord:[],
+  intsk2: { // internalSK #2
+    index: 0,
+    change: 0,
+    account: 6,
+    coin_type: 1,
+    key: null,
+    p2tr: null,
+    address: null,
+    typeAddress: 0,
+    // seems we don't need intsk filter
+    filter: {
+      look_cache: true,
+      key_type: "TAPSCRIPT",
+      accounts: ["6'", "5'", "4'"],
+      change: ["0"],
+      index_range: "0-16384"
+    }
+  },
   ext: {
     seeds: [{
       seed: null,
@@ -190,7 +207,7 @@ const WALLET = {
       rootPubKeyStr: null,
       rootPrivKeyStr: null,
       type: null,
-      }],
+    }],
     paths: [{
       path: null,
       key: null,
@@ -200,7 +217,7 @@ const WALLET = {
       pubKeyStr: null,
       privKeyStr: null,
       type: null,
-      }],
+    }],
     keys: []
   },
   auth: { //for auth keys
@@ -341,12 +358,6 @@ class Api {
            myself.resExtKeys(ext_keys);
         }
       }
-      const { xord_keys } = await chrome.storage.local.get(['xord_keys']);
-      if(xord_keys) {
-        if(xord_keys.length > 0) {
-           myself.resXordKeys(xord_keys);
-        }
-      }
       await myself.rememberIndexes();
       console.log('init...');
       await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
@@ -367,7 +378,7 @@ class Api {
   }
 
   async setIndexToStorage(type, value) {
-    if(type==='xord' || type==='ext') return;
+    if(type==='ext') return;
     const Obj = {};
     Obj[`${type}Index`] = Number(value);
     const check_index = await this.getIndexFromStorage(type);
@@ -379,7 +390,7 @@ class Api {
   }
 
   async getIndexFromStorage(type) {
-    if(type==='xord' || type==='ext') return;
+    if(type==='ext') return;
     return (await chrome.storage.local.get([`${type}Index`]))[`${type}Index`] || 0
   }
 
@@ -393,7 +404,7 @@ class Api {
   path(type) {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
-    if (type === 'xord' || type === 'ext') return false;
+    if (type === 'ext') return false;
     //m / purpose' / coin_type' / account' / change / index
     const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
     const a = this.wallet[type].account;
@@ -406,42 +417,43 @@ class Api {
   async setTypeAddress(type, value) {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
-    if (type === 'xord' || type === 'ext') return false;
+    if (type === 'ext') return false;
     this.wallet[type].typeAddress = Number(value);
     return true;
   }
 
   async generateNewIndexes(types: string | string[]) {
-    if (typeof(types) === 'string') {
+    if (types && typeof(types) === 'string') {
       types = types.split(/\s+|\s*,\s*/);
     }
     for (const type of types) {
       await this.generateNewIndex(type);
     }
+    return 0 < types.length;
   }
 
   async generateNewIndex(type) {
     if(!this.wallet_types.includes(type)) return false;
     if(!this.checkSeed()) return false;
-    if(type==='xord' || type==='ext') return false;
+    if(type==='ext') return false;
     this.wallet[type].index += 1;
     return await this.setIndexToStorage(type, this.wallet[type].index);
   }
 
   getIndex(type) {
-    if(type==='xord' || type==='ext') return 0;
+    if(type==='ext') return 0;
     if (this.wallet[type]) return this.wallet[type].index;
     return 0;
   }
 
   setIndex(type, index) {
-    if(type==='xord' || type==='ext') return false;
+    if(type==='ext') return false;
     this.wallet[type].index = index;
     return true;
   }
 
   getNexIndex(type) {
-    if(type==='xord' || type==='ext') return 0;
+    if(type==='ext') return 0;
     return this.wallet[type].index + 1;
   }
 
@@ -488,7 +500,7 @@ class Api {
   async restoreTypeIndexFromServer(type, addresses) {
     let store_index = 0;
     let wallet_index = 0;
-    if (type !== 'xord' && type !== 'ext') {
+    if (type !== 'ext') {
       store_index = Number(await this.getIndexFromStorage(type));
       wallet_index = Number(this.getIndex(type));
       if (store_index > wallet_index) {
@@ -500,7 +512,7 @@ class Api {
     }
     if (addresses) {
       for (const addr of addresses) {
-        if (addr.type === type && type !== 'xord' && type !== 'ext') {
+        if (addr.type === type && type !== 'ext') {
           const currind = Number(addr.index.split('/').pop())
           if (currind > wallet_index) {
             //  console.log(`currind for type - ${type}:`,currind)
@@ -508,11 +520,6 @@ class Api {
             await this.setIndexToStorage(type, currind);
           }
         } else {
-          if (type === 'xord') {
-            let p = addr?.index?.split('/')[0];
-            let xord = addr?.index?.split('/')[1];
-            this.addToXordPubKey(xord);
-          }
           if (type === 'ext') {
             let p = addr?.index?.split('/')[0];
             let ext = addr?.index?.split('/')[1];
@@ -607,37 +614,8 @@ class Api {
     return this.wallet.root.key;
   }
 
-  resXordKeys(xord_keys) {
-    this.wallet.xord = [];
-    for(const item of xord_keys) {
-      this.addToXordPubKey(item);
-    }
-    return this.wallet.xord;
-  }
-
   pubKeyStrToP2tr(publicKey) {
     return this.bech.Encode(publicKey)?.c_str();
-  }
-
-  addToXordPubKey(xordPubkey) {
-    const myself = this;
-    const tmpAddress = myself.pubKeyStrToP2tr(xordPubkey);
-    if (!myself.hasAddress(tmpAddress, myself.wallet.xord)) {
-      myself.wallet.xord.push({
-        p2tr: tmpAddress,
-        pubKeyStr: xordPubkey,
-        index: `0/${xordPubkey}`
-      });
-      const xord_keys = []
-      for (const item of this.wallet.xord) {
-        xord_keys.push(item.pubKeyStr);
-      }
-      setTimeout(() => {
-        chrome.storage.local.set({xord_keys: xord_keys});
-      }, 3000);
-
-    }
-    return true;
   }
 
   addToExternalKey(keyhex, pass) {
@@ -685,7 +663,7 @@ class Api {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
     this.genRootKey();
-    const for_script = (type === 'uns' || type === 'intsk' || type === 'scrsk' || type === 'auth');
+    const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
     if (this.wallet[type].typeAddress === 1) {
       this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
       this.wallet[type].address = this.wallet[type].key.GetP2WPKHAddress(this.network);
@@ -700,7 +678,7 @@ class Api {
     const publicKeys = [];
     for (const type of this.wallet_types) {
       if (this.genKey(type)) {
-        if (type !== 'auth' && type !== 'xord' && type !== 'ext') {
+        if (type !== 'auth' && type !== 'ext') {
           if (!this.hasAddress(this.wallet[type].address)) {
             if (!this.hasAddressType(type)) {
               const newAddress = {
@@ -736,19 +714,6 @@ class Api {
         }
       }
     }
-    //add ExternalKeyAddress
-    //add XordPubKey
-    for (const item of this.wallet.xord) {
-      if (!this.hasAddress(item.address)) {
-        this.addresses.push({
-          address: item.address,
-          type: 'xord',
-          index: item.index
-        });
-        publicKeys.push({pubKeyStr: item.pubKeyStr, type: 'xord'});
-      }
-    }
-
     return {addresses: this.addresses, publicKeys};
   }
 
@@ -930,7 +895,9 @@ class Api {
       this.network,
       this.utxord.INSCRIPTION
     );
-    const versions = JSON.parse(builderObject.SupportedVersions() || '[8]');
+    const supported_versions = builderObject.SupportedVersions();
+    // console.debug('getSupportedVersions: builderObject.SupportedVersions():', supported_versions);
+    const versions = JSON.parse(supported_versions || '[8]');
     return versions;
   }
 
@@ -1238,9 +1205,6 @@ class Api {
     // }
 
     const outData = {
-      xord: null,
-      nxord: null,
-      xord_address: null,
       data: null,
       // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
       amount: 0,
@@ -1393,9 +1357,6 @@ class Api {
   async createInscriptionContract(payload, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
-      xord: null,
-      nxord: null,
-      xord_address: null,
       data: null,
       // sk: null,  // TODO: use/create ticket for excluded sk (UT-???)
       amount: 0,
@@ -1406,22 +1367,36 @@ class Api {
       fee_rate: payload.fee_rate,
       fee: payload.fee,
       size: (payload.content.length + payload.content_type.length),
+      total_mining_fee: 0,
       raw: [],
       outputs: {
         collection: {} as object | null,
         inscription: {} as object | null,
         change: {} as object | null,
       },
+      used_wallets: new Set<string>(),
       errorMessage: null as string | null
     };
     try {
       console.log('createInscriptionContract payload: ', {...payload || {}});
+      // const contract_provided = payload?.contract ? true : false;
+      const is_lazy = payload?.is_lazy ? true : false;
 
-      let collection;
+      let collection = null;
       let flagsFundingOptions = "";
-      let collection_utxo_key;
+      // let collection_utxo_key;
 
-      if(payload?.collection?.genesis_txid) {
+      if (is_lazy) {
+        payload.collection = null;
+      }
+
+      // check if fund address is SegWit one
+      if (myself.wallet['fund'].typeAddress === 1) {
+        flagsFundingOptions += flagsFundingOptions ? "," : "";
+        flagsFundingOptions += "p2wpkh_utxo";
+      }
+
+      if (payload?.collection?.genesis_txid) {
         // if collection is present.. than finding an output with collection
         collection = myself.selectByOrdOutput(
            payload.collection.owner_txid,
@@ -1429,12 +1404,15 @@ class Api {
        );
         console.log("payload.collection:",payload.collection)
         console.debug('selectByOrdOutput collection:', collection);
+      }
+      if (payload?.collection?.genesis_txid || is_lazy) {
+        flagsFundingOptions += flagsFundingOptions ? "," : "";
         flagsFundingOptions += "collection";
       }
 
       const newOrd = new myself.utxord.CreateInscriptionBuilder(
         myself.network,
-        myself.utxord.INSCRIPTION
+        is_lazy ? myself.utxord.LASY_INSCRIPTION : myself.utxord.INSCRIPTION
       );
       console.log('newOrd:',newOrd);
       // TODO: we need to receive it from backend via frontend
@@ -1455,7 +1433,10 @@ class Api {
           return outData;
         }
       }
-      newOrd.Deserialize(JSON.stringify(contract), myself.utxord.MARKET_TERMS);
+      newOrd.Deserialize(
+          JSON.stringify(contract),
+          is_lazy ? myself.utxord.LASY_INSCRIPTION_MARKET_TERMS : myself.utxord.MARKET_TERMS
+      );
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
 
       // For now it's just a support for title and description
@@ -1467,7 +1448,7 @@ class Api {
       await newOrd.MiningFeeRate((myself.satToBtc(payload.fee_rate)).toFixed(8));  // payload.fee_rate as Sat/kB
 
       let collection_addr = null;
-      if(payload?.collection?.genesis_txid) {
+      if (payload?.collection?.genesis_txid) {
         // collection is empty no output has been found, see code above
         if(!collection) {
           myself.sendWarningMessage(
@@ -1497,8 +1478,14 @@ class Api {
       await newOrd.InscribeScriptPubKey(myself.wallet.scrsk.key.PubKey());
       await newOrd.InscribeInternalPubKey(myself.wallet.intsk.key.PubKey());
 
+      if (is_lazy) {
+        await newOrd.FundMiningFeeInternalPubKey(myself.wallet.intsk2.key.PubKey());
+        outData.used_wallets.add('intsk2');
+      }
+
       await newOrd.InscribeAddress(myself.wallet.ord.address);
       await newOrd.ChangeAddress(myself.wallet.fund.address);
+      outData.used_wallets.add('uns');
 
       const min_fund_amount = myself.btcToSat(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
@@ -1542,7 +1529,7 @@ class Api {
       }
 
       if(inputs_sum > Number(payload.expect_amount)) {
-        if(payload?.collection?.genesis_txid){flagsFundingOptions += ","}
+        flagsFundingOptions += flagsFundingOptions ? "," : "";
         flagsFundingOptions += "change";
       }
 
@@ -1565,17 +1552,20 @@ class Api {
 
       // get front root ord and select to addres or pubkey
       // collection_utxo_key (root! image key) (current utxo key)
-      if(payload?.collection?.genesis_txid) {
+      if (payload?.collection?.genesis_txid) {
         await newOrd.SignCollection(
           myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
           'ord'
         );
       }
+      outData.used_wallets.add('ord');
 
       await newOrd.SignInscription(
         myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
         'scrsk'
       );
+      // TODO: unsure we need it
+      // outData.used_wallets.add('scrsk');
 
       const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
@@ -1603,8 +1593,14 @@ class Api {
       // }
       // console.debug('change_amount: ', outData.change_amount);
 
-      outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
+      outData.data = newOrd.Serialize(
+          protocol_version,
+          is_lazy ? myself.utxord.LASY_INSCRIPTION_SIGNATURE : myself.utxord.INSCRIPTION_SIGNATURE
+      )?.c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
+
+      outData.total_mining_fee = myself.btcToSat(newOrd.GetTotalMiningFee("")?.c_str() || 0);
+
       const sk = newOrd.GetIntermediateSecKey()?.c_str();
       myself.wallet.root.key.AddKeyToCache(sk);
       // outData.sk = newOrd.GetIntermediateSecKey()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
@@ -1612,17 +1608,18 @@ class Api {
       // or wait and check utxo this translation on balances
 
       outData.outputs = {
-        collection: {
+        collection: is_lazy ? {} : {
           ...JSON.parse(newOrd.GetCollectionLocation()?.c_str() || "{}"),
           address: collection_addr
         },
-        inscription: {
+        inscription: is_lazy ? {} : {
           ...JSON.parse(newOrd.GetInscriptionLocation()?.c_str() || "{}"),
           address: myself.wallet.ord.address
         },
         change: {
           ...JSON.parse(newOrd.GetChangeLocation()?.c_str() || "{}"),
-          address: myself.wallet.fund.address},
+          address: myself.wallet.fund.address
+        },
       };
 
       return outData;
@@ -1655,19 +1652,6 @@ class Api {
 
     if(!payload_data?.costs?.data) return null;
 
-    if(payload_data.costs) {
-      if(payload_data.costs?.xord) {
-        myself.addToXordPubKey(payload_data.costs?.xord);
-      }
-      if(payload_data.costs?.nxord) {
-        myself.addToXordPubKey(payload_data.costs?.nxord);
-      }
-      // TODO: Check it against server/backend. Are we still need it?
-      // if(payload_data.costs?.sk){
-      //   myself.addToExternalKey(payload_data.costs?.sk);
-      //   console.log(" sk:", payload_data.costs?.sk);
-      // }
-    }
     const result = {
       contract: JSON.parse(payload_data.costs.data),
       name: payload_data.name,
@@ -1677,9 +1661,6 @@ class Api {
 
     // TODO: to debug this part when backend will ready for addresses support
     await myself.generateNewIndexes('ord, uns');
-    if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
-      await myself.generateNewIndexes('intsk, scrsk');
-    }
     myself.genKeys();
 
     return result;
@@ -1687,56 +1668,36 @@ class Api {
 
   //------------------------------------------------------------------------------
 
-  async createInscription(payload_data) {
-    const myself = this;
-    if(!payload_data?.costs?.data) return;
-    try{
-      console.log('createInscription payload: ', {...payload_data || {}});
-      // console.log("outData:", payload_data.costs.data);
-      if(payload_data.costs) {
-        if(payload_data.costs?.xord) {
-          myself.addToXordPubKey(payload_data.costs?.xord);
-        }
-        if(payload_data.costs?.nxord) {
-          myself.addToXordPubKey(payload_data.costs?.nxord);
-        }
-        // TODO: Check it against server/backend. Are we still need it?
-        // if(payload_data.costs?.sk){
-        //   myself.addToExternalKey(payload_data.costs?.sk);
-        //   console.log(" sk:", payload_data.costs?.sk);
-        // }
-
-        await myself.genKeys();
-        await myself.sendMessageToWebPage(ADDRESSES_TO_SAVE, myself.addresses, payload_data._tabId);
-      }
-
-      setTimeout(async () => {
-        const result = {
-          contract: JSON.parse(payload_data.costs.data),
-          name: payload_data.name,
-          description: payload_data?.description,
-          type: payload_data?.type
-        };
-        console.log(CREATE_INSCRIBE_RESULT,": ", result);
-
-        // ======================================================================
-        // TODO: to debug this part when backend will ready for addresses support
-        // ----------------------------------------------------------------------
-        myself.WinHelpers.closeCurrentWindow();
-        await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, result, payload_data._tabId);
-
-        await myself.generateNewIndexes('ord, uns');
-        if(payload_data?.type!=='INSCRIPTION' && !payload_data?.collection?.genesis_txid && payload_data.costs?.xord) {
-          await myself.generateNewIndexes('intsk, scrsk');
-        }
-        myself.genKeys();
-        // ======================================================================
-      },1000);
-
-    } catch (exception) {
-      await this.sendExceptionMessage(CREATE_INSCRIPTION, exception)
-    }
-  }
+  // async createInscription(payload_data) {
+  //   const myself = this;
+  //   if(!payload_data?.costs?.data) return;
+  //   try{
+  //     console.log('createInscription payload: ', {...payload_data || {}});
+  //
+  //     setTimeout(async () => {
+  //       const result = {
+  //         contract: JSON.parse(payload_data.costs.data),
+  //         name: payload_data.name,
+  //         description: payload_data?.description,
+  //         type: payload_data?.type
+  //       };
+  //       console.log(CREATE_INSCRIBE_RESULT,": ", result);
+  //
+  //       myself.WinHelpers.closeCurrentWindow();
+  //       await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, result, payload_data._tabId);
+  //
+  //       if (payload_data?.costs?.used_wallets) {
+  //         payload_data?.costs?.used_wallets.forEach((wType: string) => myself.generateNewIndex(wType));
+  //       }
+  //       myself.genKeys();
+  //       await myself.sendMessageToWebPage(ADDRESSES_TO_SAVE, myself.addresses, payload_data._tabId);
+  //       // ======================================================================
+  //     },1000);
+  //
+  //   } catch (exception) {
+  //     await this.sendExceptionMessage(CREATE_INSCRIPTION, exception)
+  //   }
+  // }
 
   //------------------------------------------------------------------------------
 
@@ -1807,25 +1768,25 @@ class Api {
     }
   }
 
-  async sellInscription(payload_data) {
-    const myself = this;
-    if(!payload_data?.costs) return;
-    console.log("outData:", payload_data?.costs);
-    const data = payload_data?.costs;
-    try {
-      await (async (data) => {
-        console.log("SELL_DATA_RESULT:", data);
-        myself.WinHelpers.closeCurrentWindow()
-        myself.sendMessageToWebPage(
-          SELL_INSCRIBE_RESULT,
-          data,
-          payload_data._tabId);
-      })(data);
-
-    } catch (exception) {
-      await this.sendExceptionMessage(SELL_INSCRIPTION, exception)
-    }
-  }
+  // async sellInscription(payload_data) {
+  //   const myself = this;
+  //   if(!payload_data?.costs) return;
+  //   console.log("outData:", payload_data?.costs);
+  //   const data = payload_data?.costs;
+  //   try {
+  //     await (async (data) => {
+  //       console.log("SELL_DATA_RESULT:", data);
+  //       myself.WinHelpers.closeCurrentWindow()
+  //       myself.sendMessageToWebPage(
+  //         SELL_INSCRIBE_RESULT,
+  //         data,
+  //         payload_data._tabId);
+  //     })(data);
+  //
+  //   } catch (exception) {
+  //     await this.sendExceptionMessage(SELL_INSCRIPTION, exception)
+  //   }
+  // }
 
   //----------------------------------------------------------------------------
 
@@ -2048,22 +2009,22 @@ class Api {
     }
   }
 
-  async commitBuyInscription(payload_data) {
-      const myself = this;
-      if(!payload_data.costs.data) return;
-      if(!payload_data?.swap_ord_terms) return;
-      try {
-        console.log("data:", payload_data?.costs?.data," payload:", payload_data);
-        myself.WinHelpers.closeCurrentWindow()
-        myself.sendMessageToWebPage(
-          COMMIT_BUY_INSCRIBE_RESULT, {
-          contract_uuid: payload_data?.swap_ord_terms?.contract_uuid,
-          contract: JSON.parse(payload_data.costs.data)
-        }, payload_data?._tabId);
-    } catch (exception) {
-      await this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
-    }
-  }
+  // async commitBuyInscription(payload_data) {
+  //     const myself = this;
+  //     if(!payload_data.costs.data) return;
+  //     if(!payload_data?.swap_ord_terms) return;
+  //     try {
+  //       console.log("data:", payload_data?.costs?.data," payload:", payload_data);
+  //       myself.WinHelpers.closeCurrentWindow()
+  //       myself.sendMessageToWebPage(
+  //         COMMIT_BUY_INSCRIBE_RESULT, {
+  //         contract_uuid: payload_data?.swap_ord_terms?.contract_uuid,
+  //         contract: JSON.parse(payload_data.costs.data)
+  //       }, payload_data?._tabId);
+  //   } catch (exception) {
+  //     await this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
+  //   }
+  // }
 
   //------------------------------------------------------------------------------
 
