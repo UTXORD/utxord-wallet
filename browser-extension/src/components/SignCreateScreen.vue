@@ -50,7 +50,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.mining_fee || 0"
+          :price="dataForSign?.data?.costs?.total_mining_fee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"

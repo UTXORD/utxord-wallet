@@ -895,7 +895,9 @@ class Api {
       this.network,
       this.utxord.INSCRIPTION
     );
-    const versions = JSON.parse(builderObject.SupportedVersions() || '[8]');
+    const supported_versions = builderObject.SupportedVersions();
+    // console.debug('getSupportedVersions: builderObject.SupportedVersions():', supported_versions);
+    const versions = JSON.parse(supported_versions || '[8]');
     return versions;
   }
 
@@ -1365,6 +1367,7 @@ class Api {
       fee_rate: payload.fee_rate,
       fee: payload.fee,
       size: (payload.content.length + payload.content_type.length),
+      total_mining_fee: 0,
       raw: [],
       outputs: {
         collection: {} as object | null,
@@ -1376,15 +1379,21 @@ class Api {
     };
     try {
       console.log('createInscriptionContract payload: ', {...payload || {}});
-      const contract_provided = payload?.contract ? true : false;
-      const is_lazy = payload?.lazy ? true : false;
+      // const contract_provided = payload?.contract ? true : false;
+      const is_lazy = payload?.is_lazy ? true : false;
 
       let collection = null;
       let flagsFundingOptions = "";
-      let collection_utxo_key;
+      // let collection_utxo_key;
 
-      if (contract_provided) {
+      if (is_lazy) {
         payload.collection = null;
+      }
+
+      // check if fund address is SegWit one
+      if (myself.wallet['fund'].typeAddress === 1) {
+        flagsFundingOptions += flagsFundingOptions ? "," : "";
+        flagsFundingOptions += "p2wpkh_utxo";
       }
 
       if (payload?.collection?.genesis_txid) {
@@ -1395,12 +1404,15 @@ class Api {
        );
         console.log("payload.collection:",payload.collection)
         console.debug('selectByOrdOutput collection:', collection);
+      }
+      if (payload?.collection?.genesis_txid || is_lazy) {
+        flagsFundingOptions += flagsFundingOptions ? "," : "";
         flagsFundingOptions += "collection";
       }
 
       const newOrd = new myself.utxord.CreateInscriptionBuilder(
         myself.network,
-        myself.utxord.INSCRIPTION
+        is_lazy ? myself.utxord.LASY_INSCRIPTION : myself.utxord.INSCRIPTION
       );
       console.log('newOrd:',newOrd);
       // TODO: we need to receive it from backend via frontend
@@ -1421,7 +1433,10 @@ class Api {
           return outData;
         }
       }
-      newOrd.Deserialize(JSON.stringify(contract), myself.utxord.MARKET_TERMS);
+      newOrd.Deserialize(
+          JSON.stringify(contract),
+          is_lazy ? myself.utxord.LASY_INSCRIPTION_MARKET_TERMS : myself.utxord.MARKET_TERMS
+      );
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
 
       // For now it's just a support for title and description
@@ -1514,9 +1529,7 @@ class Api {
       }
 
       if(inputs_sum > Number(payload.expect_amount)) {
-        if (payload?.collection?.genesis_txid) {
-          flagsFundingOptions += ","
-        }
+        flagsFundingOptions += flagsFundingOptions ? "," : "";
         flagsFundingOptions += "change";
       }
 
@@ -1580,8 +1593,14 @@ class Api {
       // }
       // console.debug('change_amount: ', outData.change_amount);
 
-      outData.data = newOrd.Serialize(protocol_version, myself.utxord.INSCRIPTION_SIGNATURE)?.c_str();
+      outData.data = newOrd.Serialize(
+          protocol_version,
+          is_lazy ? myself.utxord.LASY_INSCRIPTION_SIGNATURE : myself.utxord.INSCRIPTION_SIGNATURE
+      )?.c_str();
       outData.raw = await myself.getRawTransactions(newOrd);
+
+      outData.total_mining_fee = myself.btcToSat(newOrd.GetTotalMiningFee("")?.c_str() || 0);
+
       const sk = newOrd.GetIntermediateSecKey()?.c_str();
       myself.wallet.root.key.AddKeyToCache(sk);
       // outData.sk = newOrd.GetIntermediateSecKey()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
@@ -1589,17 +1608,18 @@ class Api {
       // or wait and check utxo this translation on balances
 
       outData.outputs = {
-        collection: {
+        collection: is_lazy ? {} : {
           ...JSON.parse(newOrd.GetCollectionLocation()?.c_str() || "{}"),
           address: collection_addr
         },
-        inscription: {
+        inscription: is_lazy ? {} : {
           ...JSON.parse(newOrd.GetInscriptionLocation()?.c_str() || "{}"),
           address: myself.wallet.ord.address
         },
         change: {
           ...JSON.parse(newOrd.GetChangeLocation()?.c_str() || "{}"),
-          address: myself.wallet.fund.address},
+          address: myself.wallet.fund.address
+        },
       };
 
       return outData;

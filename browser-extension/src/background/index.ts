@@ -54,7 +54,13 @@ import {
   ESTIMATE_TRANSFER_LAZY_COLLECTION,
   ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT,
   TRANSFER_LAZY_COLLECTION_RESULT,
-  PURCHASE_LAZY_INSCRIPTION, CREATE_INSCRIBE_RESULT, SELL_INSCRIBE_RESULT, COMMIT_BUY_INSCRIBE_RESULT
+  ESTIMATE_PURCHASE_LAZY_INSCRIPTION,
+  ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT,
+  PURCHASE_LAZY_INSCRIPTION,
+  PURCHASE_LAZY_INSCRIPTION_RESULT,
+  CREATE_INSCRIBE_RESULT,
+  SELL_INSCRIBE_RESULT,
+  COMMIT_BUY_INSCRIBE_RESULT,
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -550,6 +556,8 @@ interface ICollectionTransferResult {
       if (signData?.type === CREATE_INSCRIPTION || signData?.type === PURCHASE_LAZY_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);  // just to check password value
         if(res){
+          const is_lazy = signData?.type === PURCHASE_LAZY_INSCRIPTION;
+
           const payload_data = payload.data.data;
           payload_data.content = store.pop(payload_data?.content_store_key);
 
@@ -559,7 +567,7 @@ interface ICollectionTransferResult {
           if(payload_data?.costs?.data) {
             success = await sendResult(
                 signData?.type,
-                CREATE_INSCRIBE_RESULT,
+                is_lazy ? PURCHASE_LAZY_INSCRIPTION_RESULT : CREATE_INSCRIBE_RESULT,
                 {
                   contract: JSON.parse(payload_data?.costs?.data || "{}"),
                   name: payload_data?.name,
@@ -715,9 +723,10 @@ interface ICollectionTransferResult {
         console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.addresses]);
       }
 
-      if (payload.type === GET_INSCRIPTION_CONTRACT) {
-        const contract = await Api.createInscriptionContract(payload.data);
-        await Api.sendMessageToWebPage(GET_INSCRIPTION_CONTRACT_RESULT, contract);
+      if (payload.type === GET_INSCRIPTION_CONTRACT || payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION) {
+        const is_lazy = payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION;
+        const contract = await Api.createInscriptionContract({...payload.data, is_lazy});
+        await Api.sendMessageToWebPage(is_lazy ? ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT : GET_INSCRIPTION_CONTRACT_RESULT, contract);
       }
 
       if (payload.type === GET_BULK_INSCRIPTION_ESTIMATION) {
@@ -854,39 +863,6 @@ interface ICollectionTransferResult {
       }
 
       if (payload.type === CREATE_INSCRIPTION || payload.type === PURCHASE_LAZY_INSCRIPTION) {
-        // DEBUG ---------------------------------------------------
-        payload.type = PURCHASE_LAZY_INSCRIPTION
-        payload.data.contract = {
-          "contract_type": "CreateInscription",
-          "params": {
-            "protocol_version": 9,
-            "author_fee": {
-              "type": "p2witness",
-              "amount": 1000,
-              "addr": "bcrt1pwz950zn88cca63g0cdq9tlzchzpelwvy6qhsdh8vyyqzfh5sr6gqd028ey"
-            },
-            "collection": {
-              "type": "utxo",
-              "txid": "0000000000000000000000000000000000000000000000000000000000000000",
-              "nout": 1,
-              "destination": {
-                "type": "p2witness",
-                "amount": 546,
-                "addr": "bcrt1pwxpzyd5hclf0ldt9g4pewae2ywq75yyq549kfz02g8nem6xn7yqsmktd4m"
-              },
-              "collection_id": "ae05f16cd1de3a7635fa41efda253cf95b14404ee00ba4dfe9dd7f16810e37f2i0"
-            },
-            "inscribe_script_market_pk": "585a3a4f8280e6b1b274104d9f95b2d126b8ddb7fb7a53aa9050522c62383f04",
-            "market_fee": {
-              "type": "p2witness",
-              "amount": 1000,
-              "addr": "bcrt1p9udtxg77spsk6evj0d8xeu56tt5p54qa7ez33805fplumqrjxtxq7cjtnd"
-            }
-          }
-        };
-
-        // DEBUG ---------------------------------------------------
-
         let costs;
         console.log('payload:', {...payload})
         console.log('payload?.data?.type:', payload?.data?.type)
@@ -897,11 +873,10 @@ interface ICollectionTransferResult {
         Api.fundings = balances.funds;
         Api.inscriptions = balances.inscriptions;
 
-        if (payload.type === PURCHASE_LAZY_INSCRIPTION) {
-          payload.data.lazy = true;
-        }
-        costs = await Api.createInscriptionContract(payload.data);
+        const is_lazy = payload.type === PURCHASE_LAZY_INSCRIPTION;
+        costs = await Api.createInscriptionContract({...payload.data, is_lazy});
         console.log('costs:', costs)
+
         payload.data.costs = costs;
         console.log(`${payload.type}:`, {...payload.data});
         payload.data.content_store_key = store.put(payload.data.content);
