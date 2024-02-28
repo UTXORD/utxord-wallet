@@ -1798,7 +1798,7 @@ class Api {
 
       return {
         contract_uuid: payload.swap_ord_terms.contract_uuid,
-        raw: raws,
+        // raw: raws,
         contracts: contract_list,
       };
 
