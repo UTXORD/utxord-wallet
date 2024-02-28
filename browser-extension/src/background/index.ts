@@ -53,7 +53,8 @@ import {
   TRANSFER_LAZY_COLLECTION,
   ESTIMATE_TRANSFER_LAZY_COLLECTION,
   ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT,
-  TRANSFER_LAZY_COLLECTION_RESULT
+  TRANSFER_LAZY_COLLECTION_RESULT,
+  PURCHASE_LAZY_INSCRIPTION, CREATE_INSCRIBE_RESULT, SELL_INSCRIBE_RESULT, COMMIT_BUY_INSCRIBE_RESULT
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -465,6 +466,35 @@ interface ICollectionTransferResult {
       return chunkResults;
     }
 
+    async function sendResult(
+        action_message: string,
+        result_message: string,
+        result: object,
+        used_wallets: Set<string> | string | undefined = undefined,
+        tabId: number | undefined = undefined
+    ): Promise<boolean> {
+      try{
+        console.log(`${action_message}.sendResult: `, {...result || {}});
+        used_wallets = used_wallets || "";
+        if (typeof(used_wallets) != 'string') {
+          used_wallets = Array.from(used_wallets).join(' ');
+        }
+        // setTimeout(async () => {
+          Api.WinHelpers.closeCurrentWindow();
+          await Api.sendMessageToWebPage(result_message, result, tabId);
+          if (await Api.generateNewIndexes(used_wallets)) {
+            Api.genKeys();
+            await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
+          }
+          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, tabId);
+        // },1000);
+        return true;
+      } catch (exception) {
+        await Api.sendExceptionMessage(action_message, exception);
+        return false;
+      }
+    }
+
     onMessage(SUBMIT_SIGN, async (payload) => {
       console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
       const signData = payload?.data;
@@ -517,15 +547,32 @@ interface ICollectionTransferResult {
         return false;
       }
 
-      if (signData?.type === CREATE_INSCRIPTION) {
+      if (signData?.type === CREATE_INSCRIPTION || signData?.type === PURCHASE_LAZY_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);  // just to check password value
         if(res){
-          payload.data.data.content = store.pop(payload.data.data?.content_store_key);
-          const success = await Api.createInscription(payload.data.data);
-          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
+          const payload_data = payload.data.data;
+          payload_data.content = store.pop(payload_data?.content_store_key);
+
+          // await Api.createInscription(payload_data);
+
+          let success = true;
+          if(payload_data?.costs?.data) {
+            success = await sendResult(
+                signData?.type,
+                CREATE_INSCRIBE_RESULT,
+                {
+                  contract: JSON.parse(payload_data?.costs?.data || "{}"),
+                  name: payload_data?.name,
+                  description: payload_data?.description,
+                  type: payload_data?.type
+                },
+                payload_data?.costs?.used_wallets,
+                payload_data?._tabId
+            );
+          }
+
           await Api.encryptedWallet(payload.data.password);
-          // return success;
-          return true;
+          return success;
         }
         return false;
       }
@@ -533,7 +580,21 @@ interface ICollectionTransferResult {
       if (signData?.type === SELL_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
-          const success = await Api.sellInscription(payload.data.data);
+          const payload_data = payload.data.data;
+
+          // await Api.sellInscription(payload_data);
+
+          let success = true;
+          if(payload_data?.costs) {
+            success = await sendResult(
+                signData?.type,
+                SELL_INSCRIBE_RESULT,
+                payload_data?.costs,
+                "",
+                payload_data?._tabId
+            );
+          }
+
           await Api.encryptedWallet(payload.data.password);
           return success;
         }
@@ -544,8 +605,24 @@ interface ICollectionTransferResult {
         const res = await Api.decryptedWallet(payload.data.password);
         Api.wallet.tmp = payload.data.password;
         if(res){
-          const success = await Api.commitBuyInscription(payload.data.data);
-          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
+          const payload_data = payload.data.data;
+
+          // await Api.commitBuyInscription(payload_data);
+
+          let success = true;
+          if(payload_data.costs.data && payload_data?.swap_ord_terms) {
+            success = await sendResult(
+                signData?.type,
+                COMMIT_BUY_INSCRIBE_RESULT,
+                {
+                  contract_uuid: payload_data?.swap_ord_terms?.contract_uuid,
+                  contract: JSON.parse(payload_data.costs.data)
+                },
+                "",
+                payload_data?._tabId
+            );
+          }
+
           await Api.encryptedWallet(payload.data.password);
           return success;
         }
@@ -776,33 +853,69 @@ interface ICollectionTransferResult {
         });
       }
 
-      if (payload.type === CREATE_INSCRIPTION) {
+      if (payload.type === CREATE_INSCRIPTION || payload.type === PURCHASE_LAZY_INSCRIPTION) {
+        // DEBUG ---------------------------------------------------
+        payload.type = PURCHASE_LAZY_INSCRIPTION
+        payload.data.contract = {
+          "contract_type": "CreateInscription",
+          "params": {
+            "protocol_version": 9,
+            "author_fee": {
+              "type": "p2witness",
+              "amount": 1000,
+              "addr": "bcrt1pwz950zn88cca63g0cdq9tlzchzpelwvy6qhsdh8vyyqzfh5sr6gqd028ey"
+            },
+            "collection": {
+              "type": "utxo",
+              "txid": "0000000000000000000000000000000000000000000000000000000000000000",
+              "nout": 1,
+              "destination": {
+                "type": "p2witness",
+                "amount": 546,
+                "addr": "bcrt1pwxpzyd5hclf0ldt9g4pewae2ywq75yyq549kfz02g8nem6xn7yqsmktd4m"
+              },
+              "collection_id": "ae05f16cd1de3a7635fa41efda253cf95b14404ee00ba4dfe9dd7f16810e37f2i0"
+            },
+            "inscribe_script_market_pk": "585a3a4f8280e6b1b274104d9f95b2d126b8ddb7fb7a53aa9050522c62383f04",
+            "market_fee": {
+              "type": "p2witness",
+              "amount": 1000,
+              "addr": "bcrt1p9udtxg77spsk6evj0d8xeu56tt5p54qa7ez33805fplumqrjxtxq7cjtnd"
+            }
+          }
+        };
+
+        // DEBUG ---------------------------------------------------
+
         let costs;
         console.log('payload:', {...payload})
         console.log('payload?.data?.type:', payload?.data?.type)
         console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
         const balances = await Api.prepareBalances(payload?.data?.addresses);
-        console.debug('CREATE_INSCRIPTION balances:', {...balances || {}});
+        console.debug(`${payload.type} balances:`, {...balances || {}});
         Api.fundings = balances.funds;
         Api.inscriptions = balances.inscriptions;
 
+        if (payload.type === PURCHASE_LAZY_INSCRIPTION) {
+          payload.data.lazy = true;
+        }
         costs = await Api.createInscriptionContract(payload.data);
         console.log('costs:', costs)
         payload.data.costs = costs;
-        console.log(CREATE_INSCRIPTION+':', {...payload.data});
+        console.log(`${payload.type}:`, {...payload.data});
         payload.data.content_store_key = store.put(payload.data.content);
         payload.data.content = null;
         payload.data.errorMessage = payload.data?.costs?.errorMessage;
         if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
-        console.log(CREATE_INSCRIPTION+' (stored):', {...payload.data});
+        console.log(`${payload.type} (stored):`, {...payload.data});
         winManager.openWindow('sign-create-inscription', async (id) => {
           setTimeout(async  () => {
             // TODO: core API InscriptionBuilder needs to have change-related stuff implemented
             // const changeAmount = payload.data.costs.change_amount
             // if (changeAmount !== null && changeAmount < 546) {
             //   Api.sendNotificationMessage(
-            //     'CREATE_INSCRIPTION',
+            //     payload.type,
             //     'There are too few coins left after creation and they will become part of the inscription balance'
             //   );
             // }
