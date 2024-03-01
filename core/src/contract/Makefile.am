@@ -28,7 +28,8 @@ libutxord_contract_la_SOURCES = \
 	contract_builder.cpp \
 	create_inscription.cpp \
 	swap_inscription.cpp \
-	simple_transaction.cpp
+	simple_transaction.cpp \
+	runes.cpp
 
 if !BIND_WASM
 libutxord_contract_la_SOURCES += inscription.cpp
