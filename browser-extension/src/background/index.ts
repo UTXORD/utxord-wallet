@@ -306,7 +306,7 @@ interface ICollectionTransferResult {
 
     onMessage(GET_ADDRESSES, async () => {
       const {addresses} = Api.genKeys();
-      console.log('addresses:',addresses)
+      console.log('GET_ADDRESSES->addresses:',addresses)
       return addresses;
     });
 
