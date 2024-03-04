@@ -213,9 +213,9 @@ interface ICollectionTransferResult {
       port.onMessage.addListener(async (payload) => {
         if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) return;
 
-        postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api.connect});
+        postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
         Scheduler.getInstance().action = async () => {
-          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api.connect});
+          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
         }
       });
     });
@@ -306,7 +306,7 @@ interface ICollectionTransferResult {
 
     onMessage(GET_ADDRESSES, async () => {
       const {addresses} = Api.genKeys();
-      console.log('addresses:',addresses)
+      console.log('GET_ADDRESSES->addresses:',addresses)
       return addresses;
     });
 

@@ -362,6 +362,7 @@ class Api {
       console.log('init...');
       await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
       myself.genRootKey();
+
       if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
         myself.genKeys();
         myself.initPassword();
@@ -674,7 +675,59 @@ class Api {
     return true;
   }
 
+  addPopAddresses(){
+    this.wallet['oth'].typeAddress = 0;
+    if (this.genKey('oth')) {
+      if (!this.hasAddress(this.wallet['oth'].address)) {
+        this.addresses.push({ // add m86 fund address
+          address: this.wallet['oth'].address,
+          type: 'oth',
+          typeAddress: this.wallet['oth'].typeAddress,
+          index: this.path('oth')
+        });
+      }
+    }
+
+    this.wallet['oth'].typeAddress = 1; // //default oth: m84
+    if (this.genKey('oth')) { // add m84 fund address
+      if (!this.hasAddress(this.wallet['oth'].address)) {
+        this.addresses.push({
+          address: this.wallet['oth'].address,
+          type: 'oth',
+          typeAddress: this.wallet['oth'].typeAddress,
+          index: this.path('oth')
+        });
+      }
+    }
+
+    this.wallet['fund'].typeAddress = 1;
+    if (this.genKey('fund')) {
+      if (!this.hasAddress(this.wallet['fund'].address)) {
+        this.addresses.push({ // add m84 fund address
+          address: this.wallet['fund'].address,
+          type: 'fund',
+          typeAddress: this.wallet['fund'].typeAddress,
+          index: this.path('fund')
+        });
+      }
+    }
+
+    this.wallet['fund'].typeAddress = 0; //default fund: m86
+    if (this.genKey('fund')) { // add m86 fund address
+      if (!this.hasAddress(this.wallet['fund'].address)) {
+        this.addresses.push({
+          address: this.wallet['fund'].address,
+          type: 'fund',
+          typeAddress: this.wallet['fund'].typeAddress,
+          index: this.path('fund')
+        });
+      }
+    }
+
+  }
+
   genKeys() { //current keys
+    this.addPopAddresses(); // add popular addresses
     const publicKeys = [];
     for (const type of this.wallet_types) {
       if (this.genKey(type)) {
