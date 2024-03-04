@@ -152,7 +152,9 @@
             type="password"
             v-model="password"
             :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters'
+              (val) => isASCII(val) || 'Please enter only Latin characters',
+              (val) => isLength(val) || 'Password must be minimum 9 characters',
+              (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
           />
         </div>
@@ -167,7 +169,11 @@
               (val) => isASCII(val) || 'Please enter only Latin characters',
               (val) =>
                 val === password ||
-                'Confirm Password does not match the Password'
+                'Confirm Password does not match the Password',
+              (val) => isLength(val) || 'Password must be minimum 9 characters',
+              (val) => isContains(val) ||
+                'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
+
             ]"
           />
         </div>
@@ -201,7 +207,7 @@ import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-import { isASCII } from '~/helpers/index'
+import { isASCII, isLength, isContains } from '~/helpers/index'
 
 const { back, push } = useRouter()
 const { getFundAddress, getBalance } = useWallet()
@@ -227,6 +233,8 @@ const isDisabled = computed(() => {
   if (!password.value.length || !confirmPassword.value.length) return true
   if (password.value !== confirmPassword.value) return true
   if (!isASCII(password.value) || !isASCII(confirmPassword.value)) return true
+  if (!isLength(password.value) || !isLength(confirmPassword.value)) return true
+  if (!isContains(password.value) || !isContains(confirmPassword.value)) return true
   return false
 })
 

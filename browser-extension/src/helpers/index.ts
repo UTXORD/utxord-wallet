@@ -60,6 +60,19 @@ export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
 }
 
+export function isContains(str: string) {
+  const containsUppercase = /[A-Z]/.test(str)
+  const containsLowercase = /[a-z]/.test(str)
+  const containsNumber = /[0-9]/.test(str)
+  const containsSpecial = /[#?!@$%^&*-]/.test(str)
+return containsUppercase && containsLowercase && containsNumber && containsSpecial;
+
+}
+
+export function isLength(str: string) {
+  return (str.length > 8);
+}
+
 export function convertSatsToUSD(sats: number, usdRate: number): number {
   return (sats || 0) * (1 / 100000000) * (usdRate || 0);
 }
