@@ -213,9 +213,9 @@ interface ICollectionTransferResult {
       port.onMessage.addListener(async (payload) => {
         if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) return;
 
-        postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api.connect});
+        postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
         Scheduler.getInstance().action = async () => {
-          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api.connect});
+          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
         }
       });
     });
