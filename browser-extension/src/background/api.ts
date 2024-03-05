@@ -665,13 +665,10 @@ class Api {
     if (!this.checkSeed()) return false;
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
-    if (this.wallet[type].typeAddress === 1) {
-      this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-      this.wallet[type].address = this.wallet[type].key.GetP2WPKHAddress(this.network);
-      return true;
-    }
     this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-    this.wallet[type].address = this.wallet[type].key.GetP2TRAddress(this.network);
+    this.wallet[type].address = this.wallet[type].typeAddress === 1
+        ? this.wallet[type].key.GetP2WPKHAddress(this.network)
+        : this.wallet[type].key.GetP2TRAddress(this.network);
     return true;
   }
 
@@ -1375,7 +1372,7 @@ class Api {
         myself.utxord.destroy(utxo);
       }
 
-      tx.AddChangeOutput(myself.wallet.fund.key.GetP2TRAddress(myself.network));  // should be last in/out definition
+      tx.AddChangeOutput(myself.wallet.fund.address);  // should be last in/out definition
       tx.Sign(myself.wallet.root.key, "fund");
       outData.raw = await myself.getRawTransactions(tx);
 
@@ -1536,7 +1533,8 @@ class Api {
         outData.used_wallets.add('intsk2');
       }
 
-      await newOrd.InscribeAddress(myself.wallet.ord.address);
+      const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
+      await newOrd.InscribeAddress(dst_address);
       await newOrd.ChangeAddress(myself.wallet.fund.address);
       outData.used_wallets.add('uns');
 
@@ -1667,7 +1665,7 @@ class Api {
         },
         inscription: is_lazy ? {} : {
           ...JSON.parse(newOrd.GetInscriptionLocation()?.c_str() || "{}"),
-          address: myself.wallet.ord.address
+          address: dst_address
         },
         change: {
           ...JSON.parse(newOrd.GetChangeLocation()?.c_str() || "{}"),
@@ -1768,7 +1766,7 @@ class Api {
         utxoData.address
       );
 
-      sellOrd.FundsPayoffAddress(myself.wallet.fund.key.GetP2TRAddress(this.network));
+      sellOrd.FundsPayoffAddress(myself.wallet.fund.address);
       sellOrd.SignOrdSwap(
           myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
           'ord'
@@ -2015,7 +2013,7 @@ class Api {
         );
       }
 
-      buyOrd.ChangeAddress(myself.wallet.fund.key.GetP2TRAddress(myself.network));
+      buyOrd.ChangeAddress(myself.wallet.fund.address);
       buyOrd.SwapScriptPubKeyB(myself.wallet.scrsk.key.PubKey()); //!!!
 
       buyOrd.SignFundsCommitment(
@@ -2023,7 +2021,8 @@ class Api {
         'fund'
       );
 
-      buyOrd.OrdPayoffAddress(myself.wallet.ord.key.GetP2TRAddress(myself.network));
+      const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
+      buyOrd.OrdPayoffAddress(dst_address);
 
       const min_fund_amount_final = myself.btcToSat(buyOrd.GetMinFundingAmount("")?.c_str());
       outData.min_fund_amount = min_fund_amount_final;
