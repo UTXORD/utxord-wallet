@@ -185,8 +185,9 @@ async function toogleAddress(){
       },
       'background'
   )
+  const tl = Boolean(useDerivation.value)?'fund':'oth'
   const addr = response?.addresses?.reverse()?.find(
-    (item) => item.type === 'fund' && item.typeAddress === ta
+    (item) => item.type === tl && item.typeAddress === ta
     )?.address
   store.setFundAddress(addr)
   await refreshBalance();
@@ -196,8 +197,9 @@ async function newFundAddress() {
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   const response = await sendMessage(NEW_FUND_ADDRESS, {}, 'background')
   const ta = Number(!typeAddress.value);
+  const tl = Boolean(useDerivation.value)?'fund':'oth'
   const addr = response?.addresses?.reverse()?.find(
-    (item) => item.type === 'fund' && item.typeAddress === ta
+    (item) => item.type === tl && item.typeAddress === ta
   )?.address
   store.setFundAddress(addr)
 }
@@ -206,9 +208,15 @@ function refreshBalance() {
   store.setSyncToFalse()
   fetchUSDRate()
   setTimeout(async () => {
+    const res = await sendMessage(STATUS_DERIVATION, {}, 'background')
+    store.setUseDerivation(Boolean(res.derivate))
+    const ta = Number(!typeAddress.value);
+    const tl = Boolean(useDerivation.value)?'fund':'oth'
+    const addr = res.keys?.addresses?.reverse()?.find(
+      (item) => item.type === tl && item.typeAddress === ta
+    )?.address
+    store.setFundAddress(addr)
     await getBalance(fundAddress.value);
-    const derivate = await sendMessage(STATUS_DERIVATION, {}, 'background')
-    store.setUseDerivation(Boolean(derivate))
   }, 1000)
 }
 
@@ -216,7 +224,7 @@ const isSynchronized = computed(() => balance?.value?.sync)
 
 const connected = computed(() => balance?.value?.connect)
 
-const nameTypeAddress = computed(() => (typeAddress?.value===1)?'SegWit':'Taproot')
+const nameTypeAddress = computed(() => (typeAddress?.value===1)?'Taproot':'SegWit')
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)

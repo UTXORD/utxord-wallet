@@ -333,12 +333,14 @@ interface ICollectionTransferResult {
       await Api.setDerivate(payload.data?.value);
       const newKeys = Api.genKeys();
       console.log('newKeys', newKeys);
-      return Api.derivate;
+      return {derivate: Api.derivate, keys: newKeys};
     });
 
     onMessage(STATUS_DERIVATION, () => {
       console.log('STATUS_DERIVATION:', Api.derivate);
-      return Api.derivate;
+      const newKeys = Api.genKeys();
+      console.log('newKeys', newKeys);
+      return {derivate: Api.derivate, keys: newKeys};
     });
 
 
