@@ -110,7 +110,7 @@ const WALLET = {
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
-      accounts: ["2'"],
+      accounts: ["0'","2'"],
       change: ["0"],
       index_range: "0-16384"
     }
@@ -335,6 +335,7 @@ class Api {
         this.inscriptions = [];
         this.connect = false;
         this.sync = false;
+        this.derivate = false;
 
         await this.init(this);
         return this;
@@ -408,11 +409,18 @@ class Api {
     if (type === 'ext') return false;
     //m / purpose' / coin_type' / account' / change / index
     const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
-    const a = this.wallet[type].account;
+    const a = (this.derivate || type === 'auth') ? this.wallet[type].account : 0 ;
     const c = this.wallet[type].change;
-    const i = this.wallet[type].index;
+    const i = (this.derivate || type === 'auth') ? this.wallet[type].index : 0;
     const purpose = (this.wallet[type].typeAddress === 1) ? 84 : 86;
+    console.log(type, `m/${purpose}'/${t}'/${a}'/${c}/${i}`);
     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
+  }
+
+  async setDerivate(value) {
+    if (!this.checkSeed()) return false;
+    this.derivate = Boolean(value);
+    return true;
   }
 
   async setTypeAddress(type, value) {
@@ -434,6 +442,7 @@ class Api {
   }
 
   async generateNewIndex(type) {
+    if(!this.derivate) return false;
     if(!this.wallet_types.includes(type)) return false;
     if(!this.checkSeed()) return false;
     if(type==='ext') return false;
@@ -454,6 +463,7 @@ class Api {
   }
 
   getNexIndex(type) {
+    if(!this.derivate) return false;
     if(type==='ext') return 0;
     return this.wallet[type].index + 1;
   }
@@ -475,6 +485,7 @@ class Api {
   }
 
   hasAddress(address: string, addresses: object[] | undefined = undefined) {
+    if(!this.derivate) return false;
     if (!addresses) {
       addresses = this.addresses;
     }
@@ -492,6 +503,18 @@ class Api {
     }
     for (const item of addresses) {
       if (item.type === type) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  hasAddressFields(address: string, type: string, typeAddress: number, addresses: object[] | undefined = undefined) {
+    if (!addresses) {
+      addresses = this.addresses;
+    }
+    for (const item of addresses) {
+      if (item.address === address && item.type === type && item.typeAddress === typeAddress) {
         return true;
       }
     }
@@ -557,13 +580,6 @@ class Api {
     const seed = this.bytesToHexString(buffer_seed);
     chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
-  }
-
-  setNick(nick) {
-    const myself = this;
-    myself.wallet.root.nick = nick;
-    chrome.storage.local.set({ nick: nick });
-    return true;
   }
 
   getSeed() {
@@ -675,7 +691,7 @@ class Api {
   addPopAddresses(){
     this.wallet['oth'].typeAddress = 0;
     if (this.genKey('oth')) {
-      if (!this.hasAddress(this.wallet['oth'].address)) {
+      if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 0)) {
         this.addresses.push({ // add m86 fund address
           address: this.wallet['oth'].address,
           type: 'oth',
@@ -687,7 +703,7 @@ class Api {
 
     this.wallet['oth'].typeAddress = 1; // //default oth: m84
     if (this.genKey('oth')) { // add m84 fund address
-      if (!this.hasAddress(this.wallet['oth'].address)) {
+      if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 1)) {
         this.addresses.push({
           address: this.wallet['oth'].address,
           type: 'oth',
@@ -699,7 +715,7 @@ class Api {
 
     this.wallet['fund'].typeAddress = 1;
     if (this.genKey('fund')) {
-      if (!this.hasAddress(this.wallet['fund'].address)) {
+      if (!this.hasAddressFields(this.wallet['fund'].address,'fund',1)) {
         this.addresses.push({ // add m84 fund address
           address: this.wallet['fund'].address,
           type: 'fund',
@@ -711,7 +727,7 @@ class Api {
 
     this.wallet['fund'].typeAddress = 0; //default fund: m86
     if (this.genKey('fund')) { // add m86 fund address
-      if (!this.hasAddress(this.wallet['fund'].address)) {
+      if (!this.hasAddressFields(this.wallet['fund'].address,'fund', 0)) {
         this.addresses.push({
           address: this.wallet['fund'].address,
           type: 'fund',
@@ -730,36 +746,20 @@ class Api {
       if (this.genKey(type)) {
         if (type !== 'auth' && type !== 'ext') {
           if (!this.hasAddress(this.wallet[type].address)) {
-            if (!this.hasAddressType(type)) {
-              const newAddress = {
-                address: this.wallet[type].address,
-                type: type,
-                typeAddress: this.wallet[type].typeAddress,
-                index: this.path(type)
-              };
-              console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
-              this.addresses.push(newAddress);
-            } else {
-              for (const i in this.addresses) {
-                if (this.addresses[i].type === type) {
-                  console.debug(`genKeys(): update "${type}" addresses from:`, this.addresses[i]);
-                  const newAddress = {
-                    address: this.wallet[type].address,
-                    type: type,
-                    typeAddress: this.wallet[type].typeAddress,
-                    index: this.path(type)
-                  };
-                  console.debug(`genKeys(): update "${type}" addresses to:`, newAddress);
-                  this.addresses[i] = newAddress;
-                }
-              }
+              if (!this.hasAddressType(type)) {
+                const newAddress = {
+                  address: this.wallet[type].address,
+                  type: type,
+                  typeAddress: this.wallet[type].typeAddress,
+                  index: this.path(type)
+                };
+                console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
+                this.addresses.push(newAddress);
+                publicKeys.push({
+                  pubKeyStr: this.wallet[type].key.PubKey(),
+                  type: type,
+                });
             }
-            publicKeys.push({
-              pubKeyStr: this.wallet[type].key.PubKey(),
-              type: type,
-            });
-          } else {
-            console.debug(`genKeys(): already has "${type}" address "${this.wallet[type].address}"`);
           }
         }
       }
