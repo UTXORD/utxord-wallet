@@ -89,7 +89,7 @@ import { isASCII } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 
 const store = useStore()
-const { useDerivation } = toRefs(store)
+const { useDerivation, typeAddress } = toRefs(store)
 
 const { back, push } = useRouter()
 
@@ -115,14 +115,19 @@ const isDisabled = computed(() => {
 })
 
 async function setDerivate(){
-  const saved = await sendMessage(
+  const res = await sendMessage(
     'CHANGE_USE_DERIVATION',
     {
       value: Boolean(useDerivation.value)
     },
     'background')
     store.setUseDerivation(Boolean(useDerivation.value))
-
+    const ta = Number(!typeAddress.value);
+    const tl = Boolean(useDerivation.value)?'fund':'oth'
+    const addr = res.keys?.addresses?.reverse()?.find(
+      (item) => item.type === tl && item.typeAddress === ta
+    )?.address
+    store.setFundAddress(addr)
 }
 
 async function onStore() {
