@@ -408,12 +408,12 @@ class Api {
     if (!this.checkSeed()) return false;
     if (type === 'ext') return false;
     //m / purpose' / coin_type' / account' / change / index
+    const ignore = ['uns', 'intsk', 'intsk2', 'scrsk', 'auth'];
     const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
-    const a = (this.derivate || type === 'auth') ? this.wallet[type].account : 0 ;
+    const a = (this.derivate || ignore.includes(type)) ? this.wallet[type].account : 0 ;
     const c = this.wallet[type].change;
-    const i = (this.derivate || type === 'auth') ? this.wallet[type].index : 0;
+    const i = (this.derivate || ignore.includes(type)) ? this.wallet[type].index : 0;
     const purpose = (this.wallet[type].typeAddress === 1) ? 84 : 86;
-    console.log(type, `m/${purpose}'/${t}'/${a}'/${c}/${i}`);
     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
   }
 
