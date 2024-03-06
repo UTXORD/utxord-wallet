@@ -7,7 +7,7 @@
     >
     <div class="header-buttons flex ml-auto">
       <ThemeBtn class="mr-5" />
-      <router-link to="/password">
+      <router-link to="/manage">
         <img
           class="header-settings mr-5"
           src="/assets/settings.svg"
