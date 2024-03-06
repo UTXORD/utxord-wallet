@@ -14,6 +14,7 @@
             name="useDerivation"
             type="checkbox"
             v-model="useDerivation"
+            @change="setDerivate"
             />
         </span>
       </div>
@@ -73,7 +74,7 @@
           <img src="/assets/arrow-left.svg" alt="Go Back" />
         </Button>
         <Button :disabled="isDisabled" class="w-full" @click="onStore"
-          >Store</Button
+          >Save Password to Store</Button
         >
       </div>
     </div>
@@ -85,13 +86,16 @@ import { sendMessage } from 'webext-bridge'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { isASCII } from '~/helpers/index'
+import { useStore } from '~/popup/store/index'
+
+const store = useStore()
+const { useDerivation } = toRefs(store)
 
 const { back, push } = useRouter()
 
 const oldPassword = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const useDerivation = ref(false)
 
 const isDisabled = computed(() => {
   if (
@@ -109,6 +113,17 @@ const isDisabled = computed(() => {
     return true
   return false
 })
+
+async function setDerivate(){
+  const saved = await sendMessage(
+    'CHANGE_USE_DERIVATION',
+    {
+      value: Boolean(useDerivation.value)
+    },
+    'background')
+    store.setUseDerivation(Boolean(useDerivation.value))
+
+}
 
 async function onStore() {
   const saved = await sendMessage(

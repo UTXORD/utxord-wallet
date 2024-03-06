@@ -26,6 +26,8 @@ import {
   GET_NETWORK,
   NEW_FUND_ADDRESS,
   CHANGE_TYPE_FUND_ADDRESS,
+  CHANGE_USE_DERIVATION,
+  STATUS_DERIVATION,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
   OPEN_START_PAGE,
   PLUGIN_ID,
@@ -325,6 +327,20 @@ interface ICollectionTransferResult {
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
       return newKeys;
     });
+
+    onMessage(CHANGE_USE_DERIVATION, async (payload: any) => {
+      console.log('CHANGE_USE_DERIVATION:',payload.data?.value);
+      await Api.setDerivate(payload.data?.value);
+      const newKeys = Api.genKeys();
+      console.log('newKeys', newKeys);
+      return Api.derivate;
+    });
+
+    onMessage(STATUS_DERIVATION, () => {
+      console.log('STATUS_DERIVATION:', Api.derivate);
+      return Api.derivate;
+    });
+
 
     onMessage(EXPORT_INSCRIPTION_KEY_PAIR, async (payload) => {
       const res = await Api.decryptedWallet(payload.data.password);
