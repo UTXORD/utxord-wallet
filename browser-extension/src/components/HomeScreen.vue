@@ -123,6 +123,7 @@
           </label>
 
           <Button
+            v-if="useDerivation"
             outline
             @click="newFundAddress"
             class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
@@ -160,11 +161,11 @@ import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
-import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, CONNECT_TO_SITE} from '~/config/events'
+import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 
 const store = useStore()
-const { balance, fundAddress, typeAddress } = toRefs(store)
+const { balance, fundAddress, typeAddress, useDerivation } = toRefs(store)
 
 const { getBalance, fetchUSDRate } = useWallet()
 
@@ -174,29 +175,28 @@ async function connectToSite() {
 }
 
 async function toogleAddress(){
-
-await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
-let ta = Number(!typeAddress.value);
-store.setTypeAddress(ta);
-const response = await sendMessage(
-  CHANGE_TYPE_FUND_ADDRESS,
-  {
-    type: ta
-  },
-  'background'
+  await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
+  const ta = Number(!typeAddress.value);
+  store.setTypeAddress(ta);
+  const response = await sendMessage(
+    CHANGE_TYPE_FUND_ADDRESS,
+    {
+      type: ta
+      },
+      'background'
   )
-const addr = response?.addresses?.find(
-  (item) => item.type === 'fund'
-)?.address
-store.setFundAddress(addr)
-
+  const addr = response?.addresses?.reverse()?.find(
+    (item) => item.type === 'fund' && item.typeAddress === ta
+    )?.address
+  store.setFundAddress(addr)
 }
 
 async function newFundAddress() {
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   const response = await sendMessage(NEW_FUND_ADDRESS, {}, 'background')
-  const addr = response?.addresses?.find(
-    (item) => item.type === 'fund'
+  const ta = Number(!typeAddress.value);
+  const addr = response?.addresses?.reverse()?.find(
+    (item) => item.type === 'fund' && item.typeAddress === ta
   )?.address
   store.setFundAddress(addr)
 }
@@ -206,13 +206,16 @@ function refreshBalance() {
   fetchUSDRate()
   setTimeout(async () => {
     await getBalance(fundAddress.value);
+    const derivate = await sendMessage(STATUS_DERIVATION, {}, 'background')
+    store.setUseDerivation(Boolean(derivate))
   }, 1000)
 }
 
 const isSynchronized = computed(() => balance?.value?.sync)
+
 const connected = computed(() => balance?.value?.connect)
 
-const nameTypeAddress = computed(() => (typeAddress?.value===1)?'P2WPKH':'P2TR')
+const nameTypeAddress = computed(() => (typeAddress?.value===1)?'SegWit':'Taproot')
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)

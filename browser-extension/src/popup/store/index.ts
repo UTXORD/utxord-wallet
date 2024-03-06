@@ -19,6 +19,7 @@ interface IStore {
   dataForExportKeyPair: {} | null
   errorMessage: string | null
   usdRate: number
+  useDerivation: boolean
 }
 
 export const useStore = defineStore('store', {
@@ -33,6 +34,7 @@ export const useStore = defineStore('store', {
       used_for_inscribtions: 0,
     },
     refreshingBalance: false,
+    useDerivation: false,
     fundAddress: null,
     ordAddress: null,
     typeAddress: 0,
@@ -57,6 +59,9 @@ export const useStore = defineStore('store', {
     },
     setOrdAddress(addr: string) {
       this.ordAddress = addr
+    },
+    setUseDerivation(val: boolean){
+      this.useDerivation = val
     },
     setTypeAddress(type: number){
       this.typeAddress = type
@@ -97,6 +102,7 @@ export const useStore = defineStore('store', {
       this.dataForSign = null
       this.dataForExportKeyPair = null
       this.errorMessage = null
+      this.useDerivation = false
     }
   },
   persist: true,
