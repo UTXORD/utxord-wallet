@@ -189,6 +189,7 @@ async function toogleAddress(){
     (item) => item.type === 'fund' && item.typeAddress === ta
     )?.address
   store.setFundAddress(addr)
+  await refreshBalance();
 }
 
 async function newFundAddress() {
