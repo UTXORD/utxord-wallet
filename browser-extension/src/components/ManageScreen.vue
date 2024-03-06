@@ -4,8 +4,20 @@
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="password-screen_content h-full flex flex-col items-start px-5">
-      <p class="text-[var(--text-color)]">Manage Password</p>
+
+      <p class="text-[var(--text-color)]">Manage account</p>
       <!-- Inputs -->
+      <div class="password-screen_form-input flex flex-col p-3">
+        <span class="mb-2 w-full text-[var(--text-grey-color)]"
+          >Use Address Derivation:
+          <input
+            name="useDerivation"
+            type="checkbox"
+            v-model="useDerivation"
+            />
+        </span>
+      </div>
+      <p class="text-[var(--text-color)]">Manage password</p>
       <div
         class="password-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
       >
@@ -79,6 +91,7 @@ const { back, push } = useRouter()
 const oldPassword = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const useDerivation = ref(false)
 
 const isDisabled = computed(() => {
   if (
