@@ -57,9 +57,9 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('~/components/SignBuyScreen.vue')
   },
   {
-    path: '/password',
-    name: 'PasswordScreen',
-    component: () => import('~/components/PasswordScreen.vue')
+    path: '/manage',
+    name: 'ManageScreen',
+    component: () => import('~/components/ManageScreen.vue')
   },
 ]
 
