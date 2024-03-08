@@ -121,10 +121,7 @@ interface ISingleInscription {
   content: string,
   content_type: string,
   type: string,
-  metadata: {
-    title: string,
-    description: string,
-  }
+  metadata: null | {},
 }
 
 interface IChunkInscription {
@@ -170,7 +167,7 @@ interface ICollectionTransfer {
   collection: {
     owner_txid: string,
     owner_nout: number,
-    metadata: {
+    metadata: {  // unsure we need it
       title: string | null,
       description: string | null
     }
@@ -767,13 +764,6 @@ interface ICollectionTransferResult {
 
       function _fixChunkInscriptionPayload(data: IChunkInscription) {
         for (let inscrData of Array.from(data?.inscriptions || [])) {
-          inscrData.metadata = {
-            title: inscrData.name || "",
-            description: inscrData.description || "",
-          };
-          delete inscrData.name;
-          delete inscrData.description;
-
           inscrData.expect_amount = data.expect_amount;  // per item amount
           inscrData.fee_rate = data.fee_rate;  // per item mining fee rate
           inscrData.fee = data.fee;   // per item platform/market fee (if any)
