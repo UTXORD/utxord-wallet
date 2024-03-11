@@ -10,13 +10,19 @@ using namespace l15;
 const size_t MAX_PUSH = 520;
 const bytevector ORD_TAG {'o', 'r', 'd'};
 const opcodetype CONTENT_OP_TAG {OP_0};
-const bytevector CONTENT_TAG {'\0'};
+const bytevector CONTENT_TAG {'\x00'};
 const opcodetype CONTENT_TYPE_OP_TAG {OP_1};
-const bytevector CONTENT_TYPE_TAG {'\1'};
+const bytevector CONTENT_TYPE_TAG {'\x01'};
+const opcodetype ORD_SHIFT_OP_TAG {OP_2};
+const bytevector ORD_SHIFT_TAG {'\x02'};
 const opcodetype COLLECTION_ID_OP_TAG {OP_3};
-const bytevector COLLECTION_ID_TAG {'\3'};
+const bytevector COLLECTION_ID_TAG {'\x03'};
 const opcodetype METADATA_OP_TAG {OP_5};
-const bytevector METADATA_TAG {'\5'};
+const bytevector METADATA_TAG {'\x05'};
+const opcodetype CONTENT_ENCODING_OP_TAG {OP_9};
+const bytevector CONTENT_ENCODING_TAG {'\x09'};
+const opcodetype DELEGATE_ID_OP_TAG {OP_11};
+const bytevector DELEGATE_ID_TAG {'\x0a'};
 
 inline void CheckInscriptionId(const std::string& inscription_id)
 {

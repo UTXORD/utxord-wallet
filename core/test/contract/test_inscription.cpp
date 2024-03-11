@@ -66,14 +66,16 @@ TEST_CASE("parsehex")
     REQUIRE(inscriptions.size() == 1);
 }
 
-static const std::string txid_multi = "3909230ce028376a7da9bbe888dc91707690d9a3c6130380d19f6fad7f7380d7";
+//static const std::string txid_multi = "3909230ce028376a7da9bbe888dc91707690d9a3c6130380d19f6fad7f7380d7";
+static const std::string txid_multi = "04dcc82dc14cb7be8b193582487da6aedb8a443163aa8efd6a7a1068e1dbb026";
 
 TEST_CASE("parsemulti")
 {
     CTransaction tx = w->btc().GetTx(txid_multi); //mainnet
     std::list<Inscription> inscriptions;
     REQUIRE_NOTHROW(inscriptions = ParseInscriptions(EncodeHexTx(tx)));
-    REQUIRE(inscriptions.size() == 20);
+    REQUIRE(inscriptions.size() == 2);
+    REQUIRE(inscriptions.back().GetOrdShift() == 501);
 }
 
 static const std::string txid_text = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
