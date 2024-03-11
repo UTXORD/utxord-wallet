@@ -344,8 +344,8 @@ public:
         else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
     }
 
-    const char* SupportedVersions() const
-    { return m_ptr->SupportedVersions(); }
+    static const char* SupportedVersions()
+    { return utxord::SimpleTransaction::SupportedVersions(); }
 
     IContractOutput* ChangeOutput() const
     {

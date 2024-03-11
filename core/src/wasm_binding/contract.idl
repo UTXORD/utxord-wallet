@@ -133,6 +133,7 @@ interface CreateInscriptionBuilder
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
     void MetaData([Const] DOMString hexCborData);
     void InscribeAddress([Const] DOMString inscriptionAddr);
+    void FixedChange([Const] DOMString amount, [Const] DOMString addr);
     void ChangeAddress([Const] DOMString changeAddr);
     void InscribeScriptPubKey([Const] DOMString pk);
     void InscribeInternalPubKey([Const] DOMString pk);

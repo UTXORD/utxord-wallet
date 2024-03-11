@@ -29,6 +29,7 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_fixed_change;
     static const char* s_versions;
 
     InscribeType m_type;
@@ -37,6 +38,7 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     std::list<ContractInput> m_inputs;
 
     std::shared_ptr<IContractDestination> m_author_fee;
+    std::shared_ptr<IContractDestination> m_fixed_change;
 
     std::optional<std::string> m_parent_collection_id;
     std::optional<ContractInput> m_collection_input;
@@ -105,6 +107,7 @@ public:
     static const std::string name_fund_mining_fee_sig;
     static const std::string name_destination_addr;
     static const std::string name_author_fee;
+    static const std::string name_fixed_change;
 //    static const std::string name_parent_collection_script_pk;
 //    static const std::string name_parent_collection_int_pk;
 //    static const std::string name_parent_collection_out_pk;
@@ -159,6 +162,9 @@ public:
             m_author_fee = std::make_shared<ZeroDestination>();
         }
     }
+
+    void FixedChange(const std::string& amount, const std::string& addr)
+    { m_fixed_change = P2Witness::Construct(bech32(), l15::ParseAmount(amount), addr); }
 
     void InscribeAddress(const std::string& addr)
     {

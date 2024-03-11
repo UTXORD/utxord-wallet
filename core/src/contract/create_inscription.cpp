@@ -25,8 +25,9 @@ const std::string val_create_inscription("CreateInscription");
 
 }
 
-const uint32_t CreateInscriptionBuilder::s_protocol_version = 8;
-const char* CreateInscriptionBuilder::s_versions = "[8]";
+const uint32_t CreateInscriptionBuilder::s_protocol_version = 9;
+const uint32_t CreateInscriptionBuilder::s_protocol_version_no_fixed_change = 8;
+const char* CreateInscriptionBuilder::s_versions = "[8,9]";
 
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
 const std::string CreateInscriptionBuilder::name_utxo = "utxo";
@@ -43,6 +44,7 @@ const std::string CreateInscriptionBuilder::name_inscribe_sig = "inscribe_sig";
 const std::string CreateInscriptionBuilder::name_inscribe_script_market_pk = "inscribe_script_market_pk";
 const std::string CreateInscriptionBuilder::name_destination_addr = "destination_addr";
 const std::string CreateInscriptionBuilder::name_author_fee = "author_fee";
+const std::string CreateInscriptionBuilder::name_fixed_change = "fixed_change";
 //const std::string CreateInscriptionBuilder::name_parent_collection_script_pk = "parent_collection_script_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_int_pk = "parent_collection_int_pk";
 //const std::string CreateInscriptionBuilder::name_parent_collection_out_pk = "parent_collection_out_pk";
@@ -392,6 +394,8 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
         if (m_fund_mining_fee_sig)
             contract.pushKV(name_fund_mining_fee_sig, hex(*m_fund_mining_fee_sig));
         contract.pushKV(name_destination_addr, *m_destination_addr);
+        if (m_fixed_change)
+            contract.pushKV(name_fixed_change, m_fixed_change->MakeJson());
         if (m_change_addr)
             contract.pushKV(name_change_addr, *m_change_addr);
 
@@ -417,8 +421,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
 {
     if (m_type != INSCRIPTION && m_type != LASY_INSCRIPTION) throw ContractTermMismatch (std::string(name_contract_type));
 
-    if (contract[name_version].getInt<uint32_t>() != s_protocol_version)
-        throw ContractProtocolError("Wrong " + val_create_inscription + " version: " + contract[name_version].getValStr());
+    uint32_t contract_version = contract[name_version].getInt<uint32_t>();
+    if (contract_version != s_protocol_version && contract_version != s_protocol_version_no_fixed_change)
+        throw ContractProtocolError("Wrong " + val_create_inscription + " version: " + contract[name_version].getValStr() + " (supported: " + s_versions + ')');
 
     {   const auto& val = contract[name_market_fee];
         if (!val.isNull()) {
@@ -482,6 +487,19 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
     DeserializeContractHexData(contract[name_fund_mining_fee_int_pk], m_fund_mining_fee_int_pk, [&](){ return name_fund_mining_fee_int_pk; });
     DeserializeContractString(contract[name_destination_addr], m_destination_addr, [&](){ return name_destination_addr; });
     DeserializeContractString(contract[name_change_addr], m_change_addr, [&](){ return name_change_addr; });
+
+    {   const auto &val = contract[name_fixed_change];
+        if (!val.isNull()) {
+            if (!val.isObject()) throw ContractTermWrongFormat(name_fixed_change.c_str());
+
+            if (m_fixed_change)
+                m_fixed_change->ReadJson(bech32(), val, true);
+            else
+                m_fixed_change = IContractDestination::ReadJson(bech32(), val, true);
+        }
+    }
+
+    CheckContractTerms(phase);
 }
 
 void CreateInscriptionBuilder::RestoreTransactions() const
@@ -541,18 +559,23 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
         tx.vout.back().nValue += genesis_sum_fee;
     }
 
+    CAmount fixed_change_amount = 0;
+    if (m_fixed_change) {
+        fixed_change_amount = m_fixed_change->Amount();
+        tx.vout.emplace_back(m_fixed_change->Amount(), m_fixed_change->PubKeyScript());
+    }
+
     if (m_change_addr) {
         try {
             tx.vout.emplace_back(0, bech32().PubKeyScript(*m_change_addr));
-            CAmount change_amount = CalculateOutputAmount(total_funds - *m_ord_amount - genesis_sum_fee, *m_mining_fee_rate, tx);
+            CAmount change_amount = CalculateOutputAmount(total_funds - *m_ord_amount - fixed_change_amount - genesis_sum_fee, *m_mining_fee_rate, tx);
             tx.vout.back().nValue = change_amount;
         }
         catch (const TransactionError &) {
-            // Spend all the excessive funds to inscription or collection if less then dust
+            // If less than dust then spend all the excessive funds to inscription, or collection, or add to "fixed" change
             tx.vout.pop_back();
             CAmount mining_fee = CalculateTxFee(*m_mining_fee_rate, tx);
-            tx.vout.back().nValue += total_funds - *m_ord_amount - genesis_sum_fee - mining_fee;
-            //CalculateOutputAmount(total_funds - genesis_sum_fee, *m_mining_fee_rate, result);
+            tx.vout.back().nValue += total_funds - *m_ord_amount - fixed_change_amount - genesis_sum_fee - mining_fee;
         }
     }
 
