@@ -64,7 +64,7 @@ export function isContains(str: string) {
   const containsUppercase = /[A-Z]/.test(str)
   const containsLowercase = /[a-z]/.test(str)
   const containsNumber = /[0-9]/.test(str)
-  const containsSpecial = /[#?!@$%^&*-\.;\'\"\`,\\/\>\<\[\]{}()]/.test(str)
+  const containsSpecial = /[#?!@$%^&*-\|\.;\'\"\`,\\/\>\<\[\]{}()]/.test(str)
 return containsUppercase && containsLowercase && containsNumber && containsSpecial;
 
 }

@@ -9,7 +9,7 @@
       <!-- Inputs -->
       <div class="password-screen_form-input flex flex-col p-3">
         <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >Use Address Derivation:
+          >Use one-time addresses:
           <input
             name="useDerivation"
             type="checkbox"
