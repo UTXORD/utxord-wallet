@@ -2194,7 +2194,7 @@ class Api {
     return s;
   }
 
-  callenge(){
+  challenge(){
     const d = new Date();
     const rnd = self.CryptoJS.lib.WordArray.random(20).toString()
     // <year 2024><month 01><day 07><hour 24><minute 40> = 202401072440
