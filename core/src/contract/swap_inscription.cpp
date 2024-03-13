@@ -545,9 +545,7 @@ void SwapInscriptionBuilder::CommitFunds(const string &txid, uint32_t nout, cons
     }
     try {
         // Remove the output with main funding if already exists
-        if (mCommitBuilder->Outputs().size() > 2) {
-            mCommitBuilder->Outputs().pop_back();
-        }
+        mCommitBuilder->DropChangeOutput();
 
         mCommitBuilder->AddInput(std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
 

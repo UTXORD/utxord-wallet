@@ -59,6 +59,7 @@ public:
     std::vector<std::shared_ptr<IContractDestination>>& Outputs() { return m_outputs; }
 
     void AddChangeOutput(const std::string& addr);
+    void DropChangeOutput();
 
     void Sign(const KeyRegistry& master_key, const std::string& key_filter_tag);
 

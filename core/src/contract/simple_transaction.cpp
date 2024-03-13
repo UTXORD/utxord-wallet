@@ -90,6 +90,15 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     }
 }
 
+void SimpleTransaction::DropChangeOutput()
+{
+    if (m_change_nout) {
+        m_outputs.erase(m_outputs.begin() + *m_change_nout);
+        m_change_nout.reset();
+    }
+}
+
+
 void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
     CMutableTransaction tx = MakeTx("");
