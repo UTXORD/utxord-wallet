@@ -2198,11 +2198,11 @@ class Api {
     const d = new Date();
     const rnd = self.CryptoJS.lib.WordArray.random(20).toString()
     // <year 2024><month 01><day 07><hour 24><minute 40> = 202401072440
-    const year = d.getFullYear()
-    const month = this.zeroPad(d.getMonth(),2)
-    const day = this.zeroPad(d.getDate(),2)
-    const hour = this.zeroPad(d.getHours(),2)
-    const minute = this.zeroPad(d.getMinutes(),2)
+    const year = d.getUTCFullYear()
+    const month = this.zeroPad(d.getUTCMonth(),2)
+    const day = this.zeroPad(d.getUTCDate(),2)
+    const hour = this.zeroPad(d.getUTCHours(),2)
+    const minute = this.zeroPad(d.getUTCMinutes(),2)
     const timeformat = `${year}${month}${day}${hour}${minute}`
     return `${rnd}${timeformat}`
   }
