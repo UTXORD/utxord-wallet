@@ -73,6 +73,9 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
@@ -90,6 +93,9 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
@@ -107,6 +113,9 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     filter: {
       look_cache: true,
       key_type: "DEFAULT",
@@ -125,6 +134,9 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
@@ -143,6 +155,9 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     // seems we don't need intsk filter
     filter: {
       look_cache: true,
@@ -161,6 +176,9 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     filter: {
       look_cache: true,
       key_type: "TAPSCRIPT",
@@ -179,6 +197,9 @@ const WALLET = {
     p2tr: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     // seems we don't need intsk filter
     filter: {
       look_cache: true,
@@ -228,6 +249,9 @@ const WALLET = {
     key: null,
     address: null,
     typeAddress: 0,
+    public_key: null,
+    challenge: null,
+    signature: null,
     filter: {
       look_cache: true,
       key_type: "AUTH",
@@ -676,6 +700,12 @@ class Api {
     return this.wallet.ext.keys;
   }
 
+  updateChallenge(type){
+    this.wallet[type].challenge = this.challenge()
+    this.wallet[type].signature = this.wallet[type].key.SignSchnorr(this.wallet[type].challenge)
+    this.wallet[type].public_key = this.wallet[type].key.PubKey()
+  }
+
   genKey(type) {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
@@ -685,6 +715,7 @@ class Api {
     this.wallet[type].address = this.wallet[type].typeAddress === 1
         ? this.wallet[type].key.GetP2WPKHAddress(this.network)
         : this.wallet[type].key.GetP2TRAddress(this.network);
+    this.updateChallenge(type);
     return true;
   }
 
@@ -696,7 +727,10 @@ class Api {
           address: this.wallet['oth'].address,
           type: 'oth',
           typeAddress: this.wallet['oth'].typeAddress,
-          index: this.path('oth')
+          index: this.path('oth'),
+          public_key: this.wallet['oth'].public_key,
+          challenge: this.wallet['oth'].challenge,
+          signature: this.wallet['oth'].signature,
         });
       }
     }
@@ -708,7 +742,10 @@ class Api {
           address: this.wallet['oth'].address,
           type: 'oth',
           typeAddress: this.wallet['oth'].typeAddress,
-          index: this.path('oth')
+          index: this.path('oth'),
+          public_key: this.wallet['oth'].public_key,
+          challenge: this.wallet['oth'].challenge,
+          signature: this.wallet['oth'].signature,
         });
       }
     }
@@ -720,7 +757,10 @@ class Api {
           address: this.wallet['fund'].address,
           type: 'fund',
           typeAddress: this.wallet['fund'].typeAddress,
-          index: this.path('fund')
+          index: this.path('fund'),
+          public_key: this.wallet['fund'].public_key,
+          challenge: this.wallet['fund'].challenge,
+          signature: this.wallet['fund'].signature,
         });
       }
     }
@@ -732,7 +772,10 @@ class Api {
           address: this.wallet['fund'].address,
           type: 'fund',
           typeAddress: this.wallet['fund'].typeAddress,
-          index: this.path('fund')
+          index: this.path('fund'),
+          public_key: this.wallet['fund'].public_key,
+          challenge: this.wallet['fund'].challenge,
+          signature: this.wallet['fund'].signature,
         });
       }
     }
@@ -751,7 +794,10 @@ class Api {
                   address: this.wallet[type].address,
                   type: type,
                   typeAddress: this.wallet[type].typeAddress,
-                  index: this.path(type)
+                  index: this.path(type),
+                  public_key: this.wallet[type].public_key,
+                  challenge: this.wallet[type].challenge,
+                  signature: this.wallet[type].signature,
                 };
                 console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
                 this.addresses.push(newAddress);
@@ -2139,6 +2185,26 @@ class Api {
     });
 
     return salt.toString()+ iv.toString() + encrypted.toString();
+  }
+
+  zeroPad(n,length){
+  let s = `${n}`
+  const needed=length - s.length;
+    if (needed>0) s = `${Math.pow(10,needed)}`.slice(1) + s;
+    return s;
+  }
+
+  callenge(){
+    const d = new Date();
+    const rnd = self.CryptoJS.lib.WordArray.random(20).toString()
+    // <year 2024><month 01><day 07><hour 24><minute 40> = 202401072440
+    const year = d.getFullYear()
+    const month = this.zeroPad(d.getMonth(),2)
+    const day = this.zeroPad(d.getDate(),2)
+    const hour = this.zeroPad(d.getHours(),2)
+    const minute = this.zeroPad(d.getMinutes(),2)
+    const timeformat = `${year}${month}${day}${hour}${minute}`
+    return `${rnd}${timeformat}`
   }
 
   decrypt (transitmessage, password) {
