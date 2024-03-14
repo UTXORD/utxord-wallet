@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <algorithm>
 #include <random>
+#include <thread>
+
 
 #define CATCH_CONFIG_RUNNER
 #include <core_io.h>
@@ -19,7 +21,6 @@ using namespace utxord;
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 std::unique_ptr<TestcaseWrapper> w;
-utxord::ChainMode chain = TESTNET;
 
 int main(int argc, char* argv[])
 {
@@ -53,23 +54,21 @@ int main(int argc, char* argv[])
         configpath = (std::filesystem::current_path() / p).string();
     }
 
-    w = std::make_unique<TestcaseWrapper>(configpath, "bitcoin-cli");
-    if (w->mMode == "regtest") {
-        chain = REGTEST;
-    }
-    else if (w->mMode == "testnet") {
-        chain = TESTNET;
-    }
-    else if (w->mMode == "mainnet") {
-        chain = MAINNET;
-    }
-    else return -1;
+    w = std::make_unique<TestcaseWrapper>(configpath);
 
     return session.run();
 }
 
 static const bytevector seed = unhex<bytevector>(
         "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+
+struct EtchParams
+{
+    std::optional<uint128_t> limit;
+    uint128_t amount;
+    uint128_t supply;
+    uint128_t mint;
+};
 
 TEST_CASE("etch")
 {
@@ -81,40 +80,47 @@ TEST_CASE("etch")
         fee_rate = "0.00001";
     }
 
-    KeyRegistry master_key(chain, hex(seed));
+    KeyRegistry master_key(w->chain(), hex(seed));
     master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
 
     KeyPair utxo_key = master_key.Derive("m/86'/1'/0'/0/0", false);
-    std::string utxo_addr = utxo_key.GetP2TRAddress(Bech32(chain));
-
-    std::clog << "Fee rate: " << fee_rate << std::endl;
+    std::string utxo_addr = utxo_key.GetP2TRAddress(Bech32(w->chain()));
 
     string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(10000));
     auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
 
     std::string destination_addr = w->btc().GetNewAddress();
 
+    auto condition = GENERATE(
+        EtchParams{{}, 65535, 65535, 32767},
+        EtchParams{{}, 0, std::numeric_limits<uint128_t>::max()},
+        EtchParams{{}, std::numeric_limits<uint128_t>::max(), std::numeric_limits<uint128_t>::max()},
+        EtchParams{{65535}, 65535, 65535, 32767},
+        EtchParams{{65535}, 32767, 32767, 32767},
+        EtchParams{{65535}, 0, 65535, 32767}
+        );
+
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> dist(0, std::numeric_limits<uint32_t>::max());
+    std::uniform_int_distribution<std::mt19937::result_type> dist(0, std::numeric_limits<uint16_t>::max());
     uint128_t suffix_rune = dist(rng);
 
-    std::string test_name = "UTXORD TEST " + DecodeRune(suffix_rune);
+    std::string spaced_name = "UTXORD TEST " + DecodeRune(suffix_rune);
 
-    auto rune = std::make_shared<RuneStone>(chain, test_name);
-    CHECK_NOTHROW(rune->Symbol(0x2204));
-    CHECK_NOTHROW(rune->Action(RuneAction::ETCH));
-    CHECK_NOTHROW(rune->DefaultOutput(0));
-    CHECK_NOTHROW(rune->Divisibility(0));
-    CHECK_NOTHROW(rune->Limit(65535));
-    CHECK_NOTHROW(rune->Term(4096));
+    std::clog << "====" << spaced_name << "====" << std::endl;
 
-    SimpleTransaction contract(chain);
+    Rune rune(spaced_name, " ", 0x2204);
+    if (condition.limit)
+        rune.LimitPerMint(*condition.limit);
+
+    RuneStone runestone = rune.EtchAndMint(condition.amount, 1);
+
+    SimpleTransaction contract(w->chain());
     contract.MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(contract.AddInput(std::make_shared<UTXO>(chain, funds_txid, get<0>(prevout).n, 10000, utxo_addr)));
+    REQUIRE_NOTHROW(contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_addr)));
 
-    REQUIRE_NOTHROW(contract.AddOutput(rune));
+    REQUIRE_NOTHROW(contract.AddOutput(std::make_shared<RuneStoneDestination>(w->chain(), move(runestone))));
     REQUIRE_NOTHROW(contract.AddChangeOutput(destination_addr));
     REQUIRE_NOTHROW(contract.Sign(master_key, "funds"));
 
@@ -125,6 +131,59 @@ TEST_CASE("etch")
     REQUIRE(DecodeHexTx(tx, raw_tx[0]));
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
+
+    w->btc().GenerateToAddress(destination_addr, "1");
+
+    std::string runes_json = w->GetRunes();
+    std::clog << runes_json << std::endl;
+
+    UniValue resp;
+    resp.read(runes_json);
+
+    UniValue rune_obj = resp["runes"][rune.RuneText("")];
+
+    std::string supply_text = rune_obj["supply"].getValStr();
+
+    CHECK(condition.supply.str() == supply_text);
+
+    if (condition.mint) {
+
+        SECTION("mint")
+        {
+            string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(10000));
+            auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
+
+            std::string destination_addr = w->btc().GetNewAddress();
+
+            SimpleTransaction contract(w->chain());
+            contract.MiningFeeRate(fee_rate);
+
+            REQUIRE_NOTHROW(contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_addr)));
+
+            RuneStone runestone = rune.Mint(condition.mint, 1);
+
+            REQUIRE_NOTHROW(contract.AddOutput(std::make_shared<RuneStoneDestination>(w->chain(), move(runestone))));
+            REQUIRE_NOTHROW(contract.AddChangeOutput(destination_addr));
+            REQUIRE_NOTHROW(contract.Sign(master_key, "funds"));
+
+            w->btc().GenerateToAddress(destination_addr, "1");
+
+            std::string runes_json = w->GetRunes();
+            std::clog << runes_json << std::endl;
+
+            UniValue resp;
+            resp.read(runes_json);
+
+            UniValue rune_obj = resp["runes"][rune.RuneText("")];
+
+            std::string supply_text = rune_obj["supply"].getValStr();
+
+            uint128_t final_supply = condition.supply + condition.mint;
+
+            CHECK(final_supply.str() == supply_text);
+        }
+
+    }
 }
 
 
@@ -136,24 +195,24 @@ static const std::string rune_tx5_hex = "02000000000101be1c42afcf3992797b3c0731f
 
 TEST_CASE("parse")
 {
-    auto rune_tx_hex = GENERATE(/*rune_tx1_hex, rune_tx2_hex, rune_tx3_hex, rune_tx4_hex,*/ rune_tx5_hex);
+    auto rune_tx_hex = GENERATE(rune_tx1_hex, rune_tx2_hex, rune_tx3_hex, rune_tx4_hex, rune_tx5_hex);
 
-    std::optional<utxord::RuneStone> runeStone = ParseRuneStone(rune_tx_hex, chain);
+    std::optional<RuneStone> runeStone = ParseRuneStone(rune_tx_hex, w->chain());
 
     REQUIRE(runeStone.has_value());
 
     std::string spaced_rune_text;
-    REQUIRE_NOTHROW(spaced_rune_text = runeStone->RuneText());
+    REQUIRE_NOTHROW(spaced_rune_text = AddSpaces(DecodeRune(runeStone->rune.value_or(uint128_t())), runeStone->spacers.value_or(0), " "));
 
     std::clog << spaced_rune_text << std::endl;
 
     uint32_t spacers;
     std::string rune_text;
 
-    REQUIRE_NOTHROW(rune_text = ExtractSpaces(spaced_rune_text, spacers));
+    REQUIRE_NOTHROW(rune_text = ExtractSpaces(spaced_rune_text, spacers, " "));
 
-    CHECK(EncodeRune(rune_text) == runeStone->Rune());
-//    CHECK(spacers == *runeStone->m_spacers);
+    CHECK(EncodeRune(rune_text) == runeStone->rune.value_or(uint128_t()));
+    CHECK(spacers == *runeStone->spacers);
 }
 
 

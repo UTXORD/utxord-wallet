@@ -4,8 +4,25 @@
 #include "simple_transaction.hpp"
 
 #include <optional>
+#include <tuple>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
 #include <boost/multiprecision/debug_adaptor.hpp>
 
 namespace utxord {
@@ -32,6 +49,26 @@ std::string DecodeRune(uint128_t rune);
 std::string AddSpaces(const std::string& text_rune, uint32_t spacers, const std::string& space = "•");
 std::string ExtractSpaces(const std::string &spaced_text_rune, uint32_t& spacers, const std::string& space = "•");
 
+enum class RuneTag: uint8_t
+{
+    BODY = 0,
+    FLAGS = 2,
+    RUNE = 4,
+    LIMIT = 6,
+    TERM = 8,
+    DEADLINE = 10,
+    DEFAULT_OUTPUT = 12,
+    CLAIM = 14,
+    BURN = 126,
+
+    DIVISIBILITY = 1,
+    SPACERS = 3,
+    SYMBOL = 5,
+    NOP = 127,
+};
+
+typedef boost::container::flat_map<RuneTag, std::function<void(struct RuneStone&, bytevector::const_iterator&, bytevector::const_iterator)>> tag_map_t;
+
 enum class RuneAction: uint8_t
 {
     ETCH = 0,
@@ -39,65 +76,49 @@ enum class RuneAction: uint8_t
     BURN = 127
 };
 
-class RuneStone: public IContractDestination {
-    ChainMode m_chain;
-    CAmount m_amount = 0;
+struct RuneStone
+{
+    std::optional<uint32_t> spacers;
+    std::optional<uint128_t> rune;
+    std::optional<wchar_t> symbol; // unicode index
+    std::optional<uint8_t> divisibility;
+    std::optional<uint128_t> limit;
+    std::optional<uint32_t> term;
+    std::optional<uint32_t> deadline;
+    std::optional<uint32_t> default_output;
+    std::optional<uint64_t> claim_id;
 
-    std::optional<uint32_t> m_spacers;
-    uint128_t m_rune;
-    RuneAction m_action = RuneAction::BURN;
-    std::optional<uint8_t> m_divisibility;
-    std::optional<uint128_t> m_limit;
-    std::optional<uint32_t> m_term;
-    std::optional<uint32_t> m_deadline;
-    std::optional<uint32_t> m_default_output;
-    std::optional<wchar_t> m_symbol; // unicode index
+    uint128_t action_flags;
 
-    std::list<std::tuple<uint128_t, uint128_t, uint32_t>> m_dictionary;
+    std::list<std::tuple<uint128_t, uint128_t, uint32_t>> dictionary; // id, rune amount, nout
+
+
+    void AddAction(RuneAction action) { action_flags |= (uint128_t(1) << (uint8_t)action); }
 
     bytevector Pack() const;
     void Unpack(const bytevector& data);
+
+    static tag_map_t tag_map;
+};
+
+class RuneStoneDestination: public IContractDestination, public RuneStone
+{
+    ChainMode m_chain;
+    CAmount m_amount = 0;
+
 public:
-    explicit RuneStone(ChainMode chain, const std::string& rune_text) :
-            m_chain(chain), m_spacers(0),
-            m_rune(EncodeRune(ExtractSpaces(rune_text, *m_spacers, " "))) {}
+    RuneStoneDestination(ChainMode chain, RuneStone runeStone) : RuneStone(move(runeStone)), m_chain(chain) {}
+    RuneStoneDestination(const RuneStoneDestination& ) = default;
+    RuneStoneDestination(RuneStoneDestination&& ) noexcept = default;
 
-    explicit RuneStone(ChainMode chain, const bytevector& data) : m_chain(chain)
-    { RuneStone::Unpack(data); }
+    RuneStoneDestination& operator= (const RuneStoneDestination& ) = default;
+    RuneStoneDestination& operator= (RuneStoneDestination&& ) noexcept = default;
 
-    explicit RuneStone(ChainMode chain, const UniValue& json) : m_chain(chain)
-    { RuneStone::ReadJson(json); }
+    explicit RuneStoneDestination(ChainMode chain, const UniValue& json) : m_chain(chain)
+    { ReadJson(json); }
 
     void Amount(CAmount amount) override { m_amount = amount; }
     CAmount Amount() const final { return m_amount; }
-
-    void Action(RuneAction action) { m_action = action; }
-    RuneAction Action() const { return m_action; }
-
-    void Rune(uint128_t rune) {m_rune = move(rune); }
-    const uint128_t& Rune() const { return m_rune; }
-    std::string RuneText() const;
-
-    void Spacers(auto v) { if (v <= MAX_SPACERS) m_spacers.emplace((uint32_t)v); }
-
-    void Divisibility(auto v) { if (v <= MAX_DIVISIBILITY) m_divisibility = (uint8_t)v; }
-    uint8_t Divisibility() const { return m_divisibility.value_or(0); }
-
-    void Limit(auto v) { if (v <= MAX_LIMIT) m_limit.emplace(uint128_t(v)); }
-    void Limit(uint128_t v) { if (v <= MAX_LIMIT) m_limit.emplace(move(v)); }
-    const std::optional<uint128_t>& Limit() const { return m_limit; }
-
-    void Term(auto v) { if (v <= std::numeric_limits<uint32_t>::max()) m_term.emplace((uint32_t)v); }
-    const std::optional<uint32_t>& Term() const { return m_term; }
-
-    void Deadline(auto v) { if (v <= std::numeric_limits<uint32_t>::max()) m_deadline.emplace((uint32_t)v); }
-    const std::optional<uint32_t>& Deadline() const { return m_deadline; }
-
-    void DefaultOutput(auto v) { if (v <= std::numeric_limits<uint32_t>::max()) m_default_output.emplace((uint32_t)v); }
-    const std::optional<uint32_t>& DefaultOutput() const { return m_default_output; }
-
-    void Symbol(auto v) { if (v <= std::numeric_limits<wchar_t>::max()) m_symbol.emplace((wchar_t)v); }
-    const std::optional<wchar_t>& Symbol() const { return m_symbol; }
 
     std::string Address() const override { return {}; }
     CScript PubKeyScript() const override;
@@ -110,7 +131,47 @@ public:
 
 };
 
-enum RunePhase { RUNE_ETCH_SIGNATURE, RUNE_MINT_SIGNATURE };
+class Rune
+{
+    uint32_t m_spacers;
+    uint128_t m_rune;
+    std::optional<wchar_t> m_symbol; // unicode index
+    uint8_t m_divisibility;
+
+    std::optional<std::tuple<uint32_t, uint32_t>> m_rune_id; // block height of etching tx and rune stone index in the block
+
+    //Mint options
+    std::optional<uint32_t> m_deadline; // (??) timestamp of minting deadline
+    std::optional<uint32_t> m_term; // (??) count of blocks since etching block while minting is open
+    std::optional<uint128_t> m_limit_per_mint; // limit per mint
+public:
+    explicit Rune(const std::string &rune_text, const std::string &space, std::optional<wchar_t> symbol = {});
+
+    std::string RuneText(const std::string space = " ") const;
+
+    void Divisibility(auto v) { if (v <= MAX_DIVISIBILITY) m_divisibility = (uint8_t)v; }
+    uint8_t Divisibility() const { return m_divisibility; }
+
+    void LimitPerMint(auto v) { if (v <= MAX_LIMIT) m_limit_per_mint.emplace(uint128_t(v)); }
+    void LimitPerMint(uint128_t v) { if (v <= MAX_LIMIT) m_limit_per_mint.emplace(move(v)); }
+    const std::optional<uint128_t>& LimitPerMint() const { return m_limit_per_mint; }
+
+    void Term(auto v) { if (v <= std::numeric_limits<uint32_t>::max()) m_term.emplace((uint32_t)v); }
+    const std::optional<uint32_t>& Term() const { return m_term; }
+
+    void Deadline(auto v) { if (v <= std::numeric_limits<uint32_t>::max()) m_deadline.emplace((uint32_t)v); }
+    const std::optional<uint32_t>& Deadline() const { return m_deadline; }
+
+
+    RuneStone Etch() const;
+
+    RuneStone EtchAndMint(uint128_t amount, uint32_t nout) const;
+
+    RuneStone Mint(uint128_t amount, uint32_t nout) const;
+
+    void Read(const RuneStone& runestone);
+};
+
 
 std::optional<RuneStone> ParseRuneStone(const std::string& hex_tx, ChainMode chain);
 

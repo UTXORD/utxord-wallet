@@ -22,7 +22,7 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/l15/src/tools \
  -I$(top_srcdir)/l15/src/api \
  -I$(top_srcdir)/l15/src/core \
- -I$(top_srcdir)/l15/test \
+ -I$(top_srcdir)/test \
  -I$(top_srcdir)/src/contract
 
 

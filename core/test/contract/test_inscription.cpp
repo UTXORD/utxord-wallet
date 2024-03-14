@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
         configpath = (std::filesystem::current_path() / p).string();
     }
 
-    w = std::make_unique<TestcaseWrapper>(configpath, "bitcoin-cli");
+    w = std::make_unique<TestcaseWrapper>(configpath);
 
     return session.run();
 }

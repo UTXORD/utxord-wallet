@@ -87,9 +87,8 @@ public:
     std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const override;
 };
 
-class IContractDestination: public IJsonSerializable
+struct IContractDestination: IJsonSerializable
 {
-public:
     virtual CAmount Amount() const = 0;
     virtual void Amount(CAmount amount) = 0;
     virtual std::string Address() const = 0;
@@ -100,9 +99,8 @@ public:
     static std::shared_ptr<IContractDestination> ReadJson(Bech32 bech, const UniValue& json, bool allow_zero_destination = false);
 };
 
-class ZeroDestination: public IContractDestination
+struct ZeroDestination: IContractDestination
 {
-public:
     ZeroDestination() = default;
     explicit ZeroDestination(const UniValue &json);
     CAmount Amount() const override { return 0; }
