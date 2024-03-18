@@ -284,7 +284,6 @@ interface ICollectionTransferResult {
 
     async function refreshBalanceAndAdressed(tabId: number | undefined = undefined) {
         const success = await Api.checkSeed();
-        await Api.updateAddressesChallenges();
         await Api.sendMessageToWebPage(AUTH_STATUS, success, tabId);
         await Api.sendMessageToWebPage(GET_CONNECT_STATUS, {}, tabId);
         await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses, tabId);
@@ -477,8 +476,7 @@ interface ICollectionTransferResult {
       // Add new current addresses
       usedAddressesMap = {...usedAddressesMap, ..._addressesMap(Api.addresses)};
       console.debug('createChunkInscription: usedAddressesMap:', usedAddressesMap);
-      await Api.updateAddressesChallenges();
-      await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Object.values(usedAddressesMap), chunkData?._tabId);
+      await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.getAddressForSave(Object.values(usedAddressesMap)), chunkData?._tabId);
       await Api.sendMessageToWebPage(CREATE_CHUNK_INSCRIPTION_RESULT, chunkResults, chunkData?._tabId);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, chunkData?._tabId);
 
@@ -506,9 +504,9 @@ interface ICollectionTransferResult {
           await Api.sendMessageToWebPage(result_message, result, tabId);
           if (await Api.generateNewIndexes(used_wallets)) {
             Api.genKeys();
-            await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
+            await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.getAddressForSave(), tabId);
           }
-          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, tabId);
+          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave(), tabId);
         // },1000);
         return true;
       } catch (exception) {
@@ -730,9 +728,8 @@ interface ICollectionTransferResult {
         console.debug('Api.hasAllLocalAddressesIn payload.data.addresses: ', allAddressesSaved);
         if(!allAddressesSaved){
           setTimeout(async () => {
-                  await Api.updateAddressesChallenges();
-                  console.debug('ADDRESSES_TO_SAVE:', [...Api.addresses]);
-                  await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
+                  console.debug('ADDRESSES_TO_SAVE:', [...Api.getAddressForSave()]);
+                  await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.getAddressForSave(), tabId);
           }, 100);
         }
         // console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);

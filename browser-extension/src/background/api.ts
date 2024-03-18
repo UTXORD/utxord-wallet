@@ -427,17 +427,18 @@ class Api {
     return true;
   }
 
-  path(type) {
+  path(type: string, typeAddress: number | undefined = undefined) {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
     if (type === 'ext') return false;
     //m / purpose' / coin_type' / account' / change / index
+    if(!typeAddress) typeAddress = this.wallet[type].typeAddress
     const ignore = ['uns', 'intsk', 'intsk2', 'scrsk', 'auth'];
     const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
     const a = (this.derivate || ignore.includes(type)) ? this.wallet[type].account : 0 ;
     const c = this.wallet[type].change;
     const i = (this.derivate || ignore.includes(type)) ? this.wallet[type].index : 0;
-    const purpose = (this.wallet[type].typeAddress === 1) ? 84 : 86;
+    const purpose = (typeAddress === 1) ? 84 : 86;
     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
   }
 
@@ -506,6 +507,19 @@ class Api {
       }
     }
     return true;
+  }
+
+  hasPublicKey(public_key: string, addresses: object[] | undefined = undefined) {
+    if(!this.derivate) return false;
+    if (!addresses) {
+      addresses = this.addresses;
+    }
+    for (const item of addresses) {
+      if (item?.public_key === public_key) {
+        return true;
+      }
+    }
+    return false;
   }
 
   hasAddress(address: string, addresses: object[] | undefined = undefined) {
@@ -711,97 +725,129 @@ class Api {
     return dhash
   }
 
-  async updateChallenge(type){
-    this.wallet[type].challenge = this.challenge()
-    const dhash = this.sha256x2(this.wallet[type].challenge)
-    this.wallet[type].signature = this.wallet[type].key.SignSchnorr(dhash)
-    this.wallet[type].public_key = this.wallet[type].key.PubKey()
-    return true;
+  getChallenge(type: string, typeAddress: number | undefined = undefined ){
+    const key = this.getKey(type, typeAddress);
+    const challenge = this.challenge();
+    const dhash = this.sha256x2(challenge);
+    return {
+      challenge: challenge,
+      public_key: key.PubKey(),
+      signature: key.SignSchnorr(dhash)
+    };
   }
 
-  async updateAddressesChallenges(){
-    for (const addr of this.addresses) {
-      addr.challenge = this.challenge()
-      const dhash = this.sha256x2(addr.challenge)
-      addr.signature = this.wallet[addr.type].key.SignSchnorr(dhash)
-      addr.public_key = this.wallet[addr.type].key.PubKey()
+  updateAddressesChallenges(addresses: object[] | undefined = undefined){
+    if(!addresses) addresses = this.addresses;
+    for (let addr of addresses) {
+      if(addr.public_key){
+        let ch = this.getChallenge(addr.type, addr.typeAddress);
+        addr = Object.assign(addr, ch);
+      }
     }
   }
 
-  genKey(type) {
+  getKey(type: string, typeAddress: number | undefined = undefined){
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
-    this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-    this.wallet[type].address = this.wallet[type].typeAddress === 1
-        ? this.wallet[type].key.GetP2WPKHAddress(this.network)
-        : this.wallet[type].key.GetP2TRAddress(this.network);
-    this.updateChallenge(type);
+    if(!typeAddress) typeAddress = this.wallet[type].typeAddress
+    return this.wallet.root.key.Derive(this.path(type, typeAddress), for_script);
+  }
+
+  getAddress(type: string, key: object | undefined = undefined, typeAddress: number | undefined = undefined){
+    if(!key) key = this.wallet[type].key;
+    if(!typeAddress) typeAddress = this.wallet[type].typeAddress;
+    return typeAddress === 1
+        ? key.GetP2WPKHAddress(this.network)
+        : key.GetP2TRAddress(this.network);
+  }
+
+  genKey(type: string, typeAddress: number | undefined = undefined) {
+    if (!this.wallet_types.includes(type)) return false;
+    if (!this.checkSeed()) return false;
+    if(!typeAddress) typeAddress = this.wallet[type].typeAddress
+    this.wallet[type].key = this.getKey(type, typeAddress);
+    this.wallet[type].address = this.getAddress(type, typeAddress);
+    const ch = this.getChallenge(type, typeAddress);
+    this.wallet[type] = Object.assign(this.wallet[type], ch);
     return true;
   }
 
   addPopAddresses(){
-    this.wallet['oth'].typeAddress = 0;
-    if (this.genKey('oth')) {
-      if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 0)) {
-        this.addresses.push({ // add m86 fund address
-          address: this.wallet['oth'].address,
-          type: 'oth',
-          typeAddress: this.wallet['oth'].typeAddress,
-          index: this.path('oth'),
-          public_key: this.wallet['oth'].public_key,
-          challenge: this.wallet['oth'].challenge,
-          signature: this.wallet['oth'].signature,
+      const key_oth_0 = this.getKey('oth', 0);
+      const address_oth_0 = this.getAddress('oth',key_oth_0, 0);
+      if (!this.hasAddressFields(address_oth_0, 'oth', 0)) {
+         let ch = this.getChallenge('oth', 0);
+         if(this.hasPublicKey(ch.public_key)) ch = {}
+         this.addresses.push({
+            address: address_oth_0,
+            type: 'oth',
+            typeAddress: 0,
+            index: this.path('oth', 0),
+            ...ch
         });
       }
-    }
 
-    this.wallet['oth'].typeAddress = 1; // //default oth: m84
-    if (this.genKey('oth')) { // add m84 fund address
-      if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 1)) {
-        this.addresses.push({
-          address: this.wallet['oth'].address,
-          type: 'oth',
-          typeAddress: this.wallet['oth'].typeAddress,
-          index: this.path('oth'),
-          public_key: this.wallet['oth'].public_key,
-          challenge: this.wallet['oth'].challenge,
-          signature: this.wallet['oth'].signature,
+      const address_oth_1 = this.getAddress('oth', this.getKey('oth', 1), 1);
+      if (!this.hasAddressFields(address_oth_1, 'oth', 1)) {
+        let ch = this.getChallenge('oth', 1);
+        if(this.hasPublicKey(ch.public_key)) ch = {}
+         this.addresses.push({
+            address: address_oth_1,
+            type: 'oth',
+            typeAddress: 1,
+            index: this.path('oth', 1),
+            ...ch
         });
       }
-    }
 
-    this.wallet['fund'].typeAddress = 1;
-    if (this.genKey('fund')) {
-      if (!this.hasAddressFields(this.wallet['fund'].address,'fund',1)) {
-        this.addresses.push({ // add m84 fund address
-          address: this.wallet['fund'].address,
-          type: 'fund',
-          typeAddress: this.wallet['fund'].typeAddress,
-          index: this.path('fund'),
-          public_key: this.wallet['fund'].public_key,
-          challenge: this.wallet['fund'].challenge,
-          signature: this.wallet['fund'].signature,
+      const address_fund_1 = this.getAddress('fund',this.getKey('fund', 1), 1);
+      if (!this.hasAddressFields(address_fund_1, 'fund', 1)) {
+         let ch = this.getChallenge('fund', 1);
+         if(this.hasPublicKey(ch.public_key)) ch = {}
+         this.addresses.push(
+           {
+            address: address_fund_1,
+            type: 'fund',
+            typeAddress: 1,
+            index: this.path('fund', 1),
+            ...ch
+        }
+      );
+      }
+
+      const address_fund_0 = this.getAddress('fund',this.getKey('fund', 0), 0);
+      if (!this.hasAddressFields(address_fund_0, 'fund', 0)) {
+         let ch = this.getChallenge('fund', 0);
+         if(this.hasPublicKey(ch.public_key)) ch = {}
+         this.addresses.push({
+            address: address_fund_0,
+            type: 'fund',
+            typeAddress: 0,
+            index: this.path('fund', 0),
+            ...ch
         });
       }
-    }
+  }
 
-    this.wallet['fund'].typeAddress = 0; //default fund: m86
-    if (this.genKey('fund')) { // add m86 fund address
-      if (!this.hasAddressFields(this.wallet['fund'].address,'fund', 0)) {
-        this.addresses.push({
-          address: this.wallet['fund'].address,
-          type: 'fund',
-          typeAddress: this.wallet['fund'].typeAddress,
-          index: this.path('fund'),
-          public_key: this.wallet['fund'].public_key,
-          challenge: this.wallet['fund'].challenge,
-          signature: this.wallet['fund'].signature,
-        });
+  getAddressForSave(addresses: object[] | undefined = undefined){
+    const list = [];
+    const pubKeylist = [];
+    if(!addresses) addresses = this.addresses;
+    this.updateAddressesChallenges(addresses);
+    for(const item of addresses){
+      if(!pubKeylist.includes(item.public_key)){
+        pubKeylist.push(item.public_key);
+        list.push(item);
+      }else{
+        delete item.public_key;
+        delete item.challenge;
+        delete item.signature;
+        list.push(item);
       }
     }
-
+    return list;
   }
 
   genKeys() { //current keys
@@ -812,14 +858,15 @@ class Api {
         if (type !== 'auth' && type !== 'ext') {
           if (!this.hasAddress(this.wallet[type].address)) {
               if (!this.hasAddressType(type)) {
+                let ch = this.getChallenge(type);
+                if(this.hasPublicKey(ch.public_key)) ch = {}
                 const newAddress = {
                   address: this.wallet[type].address,
                   type: type,
                   typeAddress: this.wallet[type].typeAddress,
                   index: this.path(type),
-                  public_key: this.wallet[type].public_key,
-                  challenge: this.wallet[type].challenge,
-                  signature: this.wallet[type].signature,
+                  ...ch
+
                 };
                 console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
                 this.addresses.push(newAddress);
