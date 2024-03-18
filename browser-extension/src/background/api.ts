@@ -702,7 +702,10 @@ class Api {
 
   updateChallenge(type){
     this.wallet[type].challenge = this.challenge()
-    this.wallet[type].signature = this.wallet[type].key.SignSchnorr(this.wallet[type].challenge)
+    const hash = self.CryptoJS.SHA256(this.wallet[type].challenge).toString(CryptoJS.enc.Hex)
+    const dhash = self.CryptoJS.SHA256(hash).toString(CryptoJS.enc.Hex)
+    console.log('dhash:',dhash)
+    this.wallet[type].signature = this.wallet[type].key.SignSchnorr(dhash)
     this.wallet[type].public_key = this.wallet[type].key.PubKey()
   }
 
@@ -2188,23 +2191,30 @@ class Api {
   }
 
   zeroPad(n,length){
-  let s = `${n}`
-  const needed=length - s.length;
-    if (needed>0) s = `${Math.pow(10,needed)}`.slice(1) + s;
-    return s;
+    return n.toString().padStart(length, '0');
   }
 
   challenge(){
     const d = new Date();
-    const rnd = self.CryptoJS.lib.WordArray.random(20).toString()
+    const bytes = self.CryptoJS.lib.WordArray.random(14)
+    let salt = 0
+    for (let i = 0; i < bytes.words.length; i++) {
+      salt *= 256;
+      if (bytes.words[i] < 0) {
+          salt += 256 + bytes.words[i];
+      } else {
+          salt += bytes.words[i];
+        }
+    }
     // <year 2024><month 01><day 07><hour 24><minute 40> = 202401072440
     const year = d.getUTCFullYear()
-    const month = this.zeroPad(d.getUTCMonth(),2)
-    const day = this.zeroPad(d.getUTCDate(),2)
-    const hour = this.zeroPad(d.getUTCHours(),2)
-    const minute = this.zeroPad(d.getUTCMinutes(),2)
-    const timeformat = `${year}${month}${day}${hour}${minute}`
-    return `${rnd}${timeformat}`
+    const month = this.zeroPad((d.getUTCMonth()+1), 2)
+    const day = this.zeroPad(d.getUTCDate(), 2)
+    const hour = this.zeroPad(d.getUTCHours(), 2)
+    const minute = this.zeroPad(d.getUTCMinutes(), 2)
+    const second = this.zeroPad(d.getUTCSeconds(), 2)
+    const timeformat = `${year}-${month}-${day}-${hour}:${minute}:${second}`
+    return `Verify address salt: ${salt} Requested at: ${timeformat}`
   }
 
   decrypt (transitmessage, password) {
