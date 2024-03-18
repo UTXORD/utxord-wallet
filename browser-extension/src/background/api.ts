@@ -1,6 +1,6 @@
 import '~/libs/utxord.js';
 import '~/libs/safe-buffer.js';
-import '~/libs/crypto-js.js';
+import * as CryptoJS from 'crypto-js';
 import winHelpers from '~/helpers/winHelpers';
 import rest from '~/background/rest';
 import { sendMessage } from 'webext-bridge';
@@ -700,13 +700,32 @@ class Api {
     return this.wallet.ext.keys;
   }
 
-  updateChallenge(type){
+  sha256x2(word) {
+    //console.log('word:',word);
+    //CryptoJS.enc.Utf16LE.parse(word)
+    const hash = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(word)).toString()
+    console.log('hash:',hash)
+    const bytes = CryptoJS.enc.Hex.parse(hash)
+    const dhash = CryptoJS.SHA256(bytes).toString(CryptoJS.enc.Hex)
+    //console.log('dhash:',dhash);
+    return dhash
+  }
+
+  async updateChallenge(type){
     this.wallet[type].challenge = this.challenge()
-    const hash = self.CryptoJS.SHA256(this.wallet[type].challenge).toString(CryptoJS.enc.Hex)
-    const dhash = self.CryptoJS.SHA256(hash).toString(CryptoJS.enc.Hex)
-    console.log('dhash:',dhash)
+    const dhash = this.sha256x2(this.wallet[type].challenge)
     this.wallet[type].signature = this.wallet[type].key.SignSchnorr(dhash)
     this.wallet[type].public_key = this.wallet[type].key.PubKey()
+    return true;
+  }
+
+  async updateAddressesChallenges(){
+    for (const addr of this.addresses) {
+      addr.challenge = this.challenge()
+      const dhash = this.sha256x2(addr.challenge)
+      addr.signature = this.wallet[addr.type].key.SignSchnorr(dhash)
+      addr.public_key = this.wallet[addr.type].key.PubKey()
+    }
   }
 
   genKey(type) {
@@ -2171,20 +2190,20 @@ class Api {
     const ivSize = 128;
     const iterations = 100;
 
-    const salt = self.CryptoJS.lib.WordArray.random(128/8);
+    const salt = CryptoJS.lib.WordArray.random(128/8);
 
-    const key = self.CryptoJS.PBKDF2(password, salt, {
+    const key = CryptoJS.PBKDF2(password, salt, {
         keySize: keySize/32,
         iterations: iterations
       });
 
-    const iv = self.CryptoJS.lib.WordArray.random(ivSize/8);
+    const iv = CryptoJS.lib.WordArray.random(ivSize/8);
 
-    const encrypted = self.CryptoJS.AES.encrypt(msg, key, {
+    const encrypted = CryptoJS.AES.encrypt(msg, key, {
       iv: iv,
-      padding: self.CryptoJS.pad.Pkcs7,
-      mode: self.CryptoJS.mode.CBC,
-      hasher: self.CryptoJS.algo.SHA256
+      padding: CryptoJS.pad.Pkcs7,
+      mode: CryptoJS.mode.CBC,
+      hasher: CryptoJS.algo.SHA256
     });
 
     return salt.toString()+ iv.toString() + encrypted.toString();
@@ -2196,17 +2215,19 @@ class Api {
 
   challenge(){
     const d = new Date();
-    const bytes = self.CryptoJS.lib.WordArray.random(14)
+    const bytes = CryptoJS.lib.WordArray.random(20)
     let salt = 0
     for (let i = 0; i < bytes.words.length; i++) {
       salt *= 256;
       if (bytes.words[i] < 0) {
-          salt += 256 + bytes.words[i];
+          salt += 256 + Math.abs(bytes.words[i]);
       } else {
           salt += bytes.words[i];
         }
     }
-    // <year 2024><month 01><day 07><hour 24><minute 40> = 202401072440
+
+    salt = salt.toString().substr(0, 16)
+
     const year = d.getUTCFullYear()
     const month = this.zeroPad((d.getUTCMonth()+1), 2)
     const day = this.zeroPad(d.getUTCDate(), 2)
@@ -2222,22 +2243,22 @@ class Api {
     const ivSize = 128;
     const iterations = 100;
 
-    const salt = self.CryptoJS.enc.Hex.parse(transitmessage.substr(0, 32));
-    const iv = self.CryptoJS.enc.Hex.parse(transitmessage.substr(32, 32))
+    const salt = CryptoJS.enc.Hex.parse(transitmessage.substr(0, 32));
+    const iv = CryptoJS.enc.Hex.parse(transitmessage.substr(32, 32))
     const encrypted = transitmessage.substring(64);
 
-    const key = self.CryptoJS.PBKDF2(password, salt, {
+    const key = CryptoJS.PBKDF2(password, salt, {
         keySize: keySize/32,
         iterations: iterations
       });
 
-    const decrypted = self.CryptoJS.AES.decrypt(encrypted, key, {
+    const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
       iv: iv,
-      padding: self.CryptoJS.pad.Pkcs7,
-      mode: self.CryptoJS.mode.CBC,
-      hasher: self.CryptoJS.algo.SHA256
+      padding: CryptoJS.pad.Pkcs7,
+      mode: CryptoJS.mode.CBC,
+      hasher: CryptoJS.algo.SHA256
     })
-    return decrypted.toString(self.CryptoJS.enc.Utf8);
+    return decrypted.toString(CryptoJS.enc.Utf8);
   }
 
   async encryptedWallet(password) {
