@@ -11,23 +11,18 @@
             src="/assets/lockKey.svg"
             alt="Lock"
         />
-        <span>Let’s load a mnemonic phrase...</span>
+
+        <span>Welcome to the UTXORD Wallet Extention</span>
       </div>
       <div class="start-screen_form bg-[var(--section)] rounded-lg p-4">
         <div class="flex items-center">
-          <span class="mr-5 text-left text-[var(--text-color)]"
-          >I want a new one</span
-          >
-          <Button to="/generate" class="ml-auto w-[100px]">Generate</Button>
+          <Button to="/create-password-screen#alert-mnemonic" class="ml-auto">Create a new wallet</Button><br />
         </div>
         <div
             class="w-full min-h-[1px] bg-[var(--border-color)] my-4 dark:bg-[#555555]"
         />
         <div class="flex items-center">
-          <span class="mr-5 text-left text-[var(--text-color)]"
-          >I have it</span
-          >
-          <Button to="/load" class="ml-auto w-[100px]" outline>Load</Button>
+          <Button to="/create-password-screen#load" class="ml-auto" outline>I already have a wallet</Button>
         </div>
       </div>
     </div>

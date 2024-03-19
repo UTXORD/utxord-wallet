@@ -5,6 +5,8 @@
     <div
       class="generate-screen_content h-full flex flex-col items-center px-5 pb-5"
     >
+     <!-- title and content -->
+      <p class="generate-screen_title text-[var(--text-color)]">Your mnemonic phrase</p>
       <!-- Secret phrase -->
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
@@ -25,6 +27,10 @@
                 <option value="24" :selected="length === 24" class="w-full text-[var(--text-grey-color)]">24</option>
               </select>
             </div>
+      </div>
+    <div
+        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+    >
         <div class="flex items-center mb-2">
           <span class="w-full text-[var(--text-grey-color)]"
             >Store these safely:</span
@@ -36,7 +42,7 @@
           />
         </div>
         <div class="flex items-center mb-2">
-          <span class="w-full text-[var(--text-grey-color)]"
+          <span class="w-full text-[var(--text-grey-color)] hidden"
             >Show as: &nbsp;
           <input type="radio" v-model="picked" name="picked" value="line" checked/>
           &nbsp;<label for="line">Line</label> or
@@ -96,7 +102,7 @@
         </table>
         <!-- Passphrase -->
 
-        <div class="generate-screen_form-input flex flex-col p-3">
+        <div class="generate-screen_form-input flex flex-col p-3 hidden">
           <span class="mb-2 w-full text-[var(--text-grey-color)]"
             >Use Passphrase:
             <input
@@ -143,66 +149,50 @@
           <CustomInput
             type="text"
             v-model="passphrase"
+            name="passphrase"
             />
         </div>
-      </div>
 
-      <!-- Inputs -->
+      </div>
+      <!-- Alert -->
       <div
-        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl px-3 pt-3 mb-5"
+          class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+      >
+        <span class="mb-2 w-full text-[var(--text-grey-color)]"
+          >Do not share it with anyone </span
+        >
+      </div>
+      <!-- I saved my mnemonic -->
+      <div
+          class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
         <div class="generate-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Enter your Password:</span
-          >
-          <CustomInput
-            autofocus
-            type="password"
-            v-model="password"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters',
-              (val) => isLength(val) || 'Password must be minimum 9 characters',
-              (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
-            ]"
-          />
-        </div>
-
-        <div class="generate-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Confirm Password:</span
-          >
-          <CustomInput
-            type="password"
-            v-model="confirmPassword"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters',
-              (val) =>
-                val === password ||
-                'Confirm Password does not match the Password',
-              (val) => isLength(val) || 'Password must be minimum 9 characters',
-              (val) => isContains(val) ||
-              'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
-            ]"
-          />
-        </div>
+          <span class="mb-2 w-full text-[var(--text-red)]"
+            >I saved my mnemonic phrase</span
+            >
+            <input
+              name="mnemonicIsSaved"
+              type="checkbox"
+              v-model="mnemonicIsSaved"
+              />
+          </div>
       </div>
-
       <!-- Buttons -->
       <div class="flex w-full mb-5 mt-auto">
         <Button
           outline
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
-          @click="goToStartPage"
+          @click="goToBack"
         >
           <img src="/assets/arrow-left.svg" alt="Go Back" />
         </Button>
         <Button :disabled="isDisabled" class="w-full" @click="onStore"
-          >Store</Button
+          >Confirm</Button
         >
       </div>
 
       <!-- Info -->
-      <p class="generate-screen_info text-[var(--text-blue)]">
+      <p class="hidden generate-screen_info text-[var(--text-blue)]" >
         The data is stored locally in this extension
       </p>
     </div>
@@ -217,26 +207,21 @@ import useWallet from '~/popup/modules/useWallet'
 import { SAVE_GENERATED_SEED } from '~/config/events'
 import { isASCII, isLength, isContains, copyToClipboard } from '~/helpers/index'
 
-const { push } = useRouter()
+const { back, push } = useRouter()
 const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
-const password = ref('')
-const confirmPassword = ref('')
 const usePassphrase = ref(false)
 const passphrase = ref('')
 const length = ref(12)
 const picked = ref('line')
 const showInfo = ref(false)
+const mnemonicIsSaved = ref(false)
 
 const list = computed(() =>textarea.value.split(' '))
 
 const isDisabled = computed(() => {
+  if (!mnemonicIsSaved.value) return true
   if (!textarea.value) return true
-  if (!password.value.length || !confirmPassword.value.length) return true
-  if (password.value !== confirmPassword.value) return true
-  if (!isASCII(password.value) || !isASCII(confirmPassword.value)) return true
-  if (!isLength(password.value) || !isLength(confirmPassword.value)) return true
-  if (!isContains(password.value) || !isContains(confirmPassword.value)) return true
   return false
 })
 
@@ -250,8 +235,7 @@ async function onStore() {
     SAVE_GENERATED_SEED,
     {
       seed: textarea.value,
-      password: password.value,
-      passphrase: passphrase.value,
+      passphrase: passphrase.value
     },
     'background'
   )
@@ -260,14 +244,14 @@ async function onStore() {
     getBalance(fundAddress)
     localStorage.removeItem('temp-mnemonic')
     localStorage.removeItem('temp-length')
-    push('/')
+    push('/loading#wallet-created')
   }
 }
 
-function goToStartPage() {
+function goToBack() {
   localStorage.removeItem('temp-mnemonic')
   localStorage.removeItem('temp-length')
-  push('/start')
+  back()
 }
 
 function refreshMnemonic() {
@@ -304,6 +288,12 @@ onBeforeMount(() => {
     padding-bottom: 22px;
   }
 
+  &_title {
+    font-size: 18px;
+    line-height: 25px;
+    margin-bottom: 15px;
+  }
+
   &_form span {
     text-align: left;
     font-weight: 400;
@@ -316,7 +306,7 @@ onBeforeMount(() => {
     font-weight: 500;
     font-size: 15px;
     line-height: 20px;
-    display: flex;
+   /* display: flex; */
     align-items: center;
     text-align: center;
     letter-spacing: -0.32px;

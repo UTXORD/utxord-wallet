@@ -5,14 +5,17 @@
     <div
       class="load-screen_content h-full flex flex-col items-center px-5 pb-5"
     >
+    <!-- title and content -->
+      <p class="load-screen_title text-[var(--text-color)]">Import a mnemonic phrase</p>
+
       <!-- Secret phrase -->
       <div
         class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
         <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >Paste your secret words here:</span
+          >This is usually a set of 12–24 words</span
         >
-        <div class="flex items-center mb-2">
+        <div class="flex items-center mb-2 hidden">
           <span class="w-full text-[var(--text-grey-color)]"
             >Show as: &nbsp;
           <input type="radio" v-model="picked" name="picked" value="line" checked/>
@@ -48,9 +51,9 @@
         <!-- for 12 words -->
         <tbody v-if="length == 12" v-for="n in 4">
         <tr>
-          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-          <td>{{n+4}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @input="inputWords" v-model="list[n+3]"/></td>
-          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
+          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n-1]"/></td>
+          <td>{{n+4}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+3]"/></td>
+          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+7]"/></td>
         </tr>
         </tbody>
         <!-- for 15 words -->
@@ -87,8 +90,11 @@
         </tr>
         </tbody>
         </table>
+</div>
         <!-- Passphrase -->
-
+    <div
+      class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+    >
         <div class="load-screen_form-input flex flex-col p-3">
           <span class="mb-2 w-full text-[var(--text-grey-color)]"
             >Use Passphrase:
@@ -129,53 +135,19 @@
               </div>
             </span>
         </div>
-        <div class="load-screen_form-input flex flex-col" v-show="usePassphrase">
+      </div>
+    <div
+      class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5" v-show="usePassphrase"
+    >
+        <div class="load-screen_form-input flex flex-col">
           <span class="mb-2 w-full text-[var(--text-grey-color)]"
             >Passphrase(optional): </span
           >
           <CustomInput
             type="text"
             v-model="passphrase"
+            name="passphrase"
             />
-        </div>
-      </div>
-
-      <!-- Inputs -->
-      <div
-        class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl px-3 pt-3 mb-5"
-      >
-        <div class="load-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Enter your Password:</span
-          >
-          <CustomInput
-            type="password"
-            v-model="password"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters',
-              (val) => isLength(val) || 'Password must be minimum 9 characters',
-              (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
-            ]"
-          />
-        </div>
-        <div class="load-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Confirm Password:</span
-          >
-          <CustomInput
-            type="password"
-            v-model="confirmPassword"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters',
-              (val) =>
-                val === password ||
-                'Confirm Password does not match the Password',
-              (val) => isLength(val) || 'Password must be minimum 9 characters',
-              (val) => isContains(val) ||
-                'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
-
-            ]"
-          />
         </div>
       </div>
 
@@ -194,7 +166,7 @@
       </div>
 
       <!-- Info -->
-      <p class="load-screen_info text-[var(--text-blue)]">
+      <p class="hidden load-screen_info text-[var(--text-blue)]">
         The data is stored locally in this extension
       </p>
     </div>
@@ -207,13 +179,10 @@ import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-import { isASCII, isLength, isContains } from '~/helpers/index'
 
 const { back, push } = useRouter()
 const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
-const password = ref('')
-const confirmPassword = ref('')
 const usePassphrase = ref(false)
 const passphrase = ref('')
 const picked = ref('line')
@@ -230,11 +199,6 @@ const isDisabled = computed(() => {
       seedArr.length !== 21 &&
       seedArr.length !== 24) return true
   if (!textarea.value) return true
-  if (!password.value.length || !confirmPassword.value.length) return true
-  if (password.value !== confirmPassword.value) return true
-  if (!isASCII(password.value) || !isASCII(confirmPassword.value)) return true
-  if (!isLength(password.value) || !isLength(confirmPassword.value)) return true
-  if (!isContains(password.value) || !isContains(confirmPassword.value)) return true
   return false
 })
 
@@ -289,11 +253,11 @@ function clearTextarea(){
 }
 */
 async function onStore() {
+  console.log('passphrase.value-toSave:', passphrase.value, usePassphrase.value)
   const generated = await sendMessage(
     SAVE_GENERATED_SEED,
     {
       seed: textarea.value.replace(/\s\s+/g, ' ').trim(),
-      password: password.value,
       passphrase: passphrase.value
     },
     'background'
@@ -301,7 +265,7 @@ async function onStore() {
   if (generated) {
     await getFundAddress()
     getBalance()
-    push('/')
+    push('/loading#wallet-created')
   }
 }
 </script>
@@ -311,6 +275,12 @@ async function onStore() {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
+  }
+
+  &_title {
+    font-size: 18px;
+    line-height: 25px;
+    margin-bottom: 15px;
   }
 
   &_form span {
@@ -325,7 +295,7 @@ async function onStore() {
     font-weight: 500;
     font-size: 15px;
     line-height: 20px;
-    display: flex;
+    /* display: flex; */
     align-items: center;
     text-align: center;
     letter-spacing: -0.32px;
