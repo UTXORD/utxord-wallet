@@ -49,7 +49,10 @@ void WitnessStack::ReadJson(const UniValue &stack)
         }
 
         if (i < m_stack.size()) {
-            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch(move(((ContractInput::name_witness + '[') += std::to_string(i)) += ']'));
+            if (m_stack[i].empty() || IsZeroArray(m_stack[i])) {
+                m_stack[i] = unhex<bytevector>(v.get_str());
+            }
+            else if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch(move(((ContractInput::name_witness + '[') += std::to_string(i)) += ']'));
         }
         else {
             m_stack.emplace_back(unhex<bytevector>(v.get_str()));
@@ -283,7 +286,7 @@ CAmount IContractBuilder::CalculateWholeFee(const std::string& params) const {
     });
 }
 
-void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script)
+void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs, const CScript& spend_script)
 {
     if (sig.size() != 64 && sig.size() != 65) throw SignatureError("sig size");
 
@@ -320,7 +323,7 @@ void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature
     }
 }
 
-void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs) const
+void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CTransaction& tx, uint32_t nin, std::vector<CTxOut>&& spent_outputs) const
 {
     uint32_t witver;
     bytevector keyid;
