@@ -44,7 +44,7 @@
         <CustomInput v-if="picked == 'line'"
           type="textarea"
           class="w-full"
-          :rows="PASSPHRASE_TEXTAREA_ROWS[passphraseLength]"
+          :rows="3"
           v-model="textarea"
           readonly
         />
@@ -141,18 +141,21 @@
             type="text"
             v-model="passphrase"
             name="passphrase"
-            />
+          />
         </div>
 
       </div>
+
       <!-- Alert -->
-      <div
-          class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
-      >
-        <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >Do not share it with anyone </span
-        >
+      <div class="w-full flex justify-start">
+        <AlertBox>
+          <span class="w-full text-[15px]">
+            Do not share it with anyone
+          </span>
+        </AlertBox>
       </div>
+
+      <div class="w-full h-[1px] bg-[#404247] my-5" />
 
       <!-- I saved my mnemonic -->
       <div class="w-full flex justify-start">
@@ -164,7 +167,7 @@
       </div>
 
       <!-- Buttons -->
-      <div class="flex w-full mb-5 mt-auto">
+      <div class="flex w-full mt-1">
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
@@ -211,14 +214,6 @@ const PHRASE_LENGTH_OPTIONS = [
 
 const MNEMONIC_KEY = 'temp-mnemonic'
 const PASSPHRASE_LENGTH_KEY = 'temp-passphrase-length'
-
-const PASSPHRASE_TEXTAREA_ROWS = {
-  [LENGTH_12.value]: 2,
-  [LENGTH_15.value]: 3,
-  [LENGTH_18.value]: 4,
-  [LENGTH_21.value]: 4,
-  [LENGTH_24.value]: 5
-}
 
 const { back, push } = useRouter()
 const { getFundAddress, getBalance } = useWallet()
