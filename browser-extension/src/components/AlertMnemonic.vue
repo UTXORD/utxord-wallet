@@ -1,6 +1,5 @@
 <template>
   <div class="alert-mnemonic-screen flex flex-col h-full">
-    <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="alert-mnemonic-screen_content h-full flex flex-col items-start px-5">

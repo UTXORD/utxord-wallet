@@ -5,11 +5,10 @@
     <div class="start-screen_content h-full flex flex-col justify-between px-5 pb-5">
       <div class="start-screen_lock-key flex flex-col items-center">
         <img
-            class="start-screen_lock-key_img mb-5"
-            src="/assets/lockKey.svg"
-            alt="Lock"
+          class="start-screen_lock-key_img mb-5"
+          src="/assets/lockKey.svg"
+          alt="Lock"
         />
-
         <span>Welcome to the UTXORD Wallet Extention</span>
       </div>
       <div class="flex flex-col items-center">
