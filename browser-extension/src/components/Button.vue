@@ -23,6 +23,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  second: {
+    type: Boolean,
+    default: false
+  },
   to: {
     type: String,
     default: null
@@ -33,9 +37,12 @@ const emit = defineEmits(['click'])
 
 const classes = computed(() => {
   if (props.outline) {
-    return 'text-gray-900 dark:text-white bg-[transparent] border border-black dark:border-white font-medium rounded-md text-sm px-5 py-2.5'
+    return 'text-gray-900 dark:text-white bg-[transparent] border border-black dark:border-white rounded-md text-[15px] px-5 py-[10px]'
   }
-  return 'text-white bg-black dark:bg-white dark:text-black active:bg-black-800 font-medium rounded-md text-sm px-5 py-2.5 text-center'
+  if (props.second) {
+    return 'text-white bg-black dark:bg-slate-100/10 active:bg-black-800 rounded-md text-[15px] px-5 py-[10px] text-center'
+  }
+  return 'text-white bg-black dark:bg-white dark:text-black active:bg-black-800 rounded-md text-[15px] px-5 py-[10px] text-center'
 })
 
 function onClick() {
