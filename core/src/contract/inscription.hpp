@@ -33,8 +33,11 @@ class Inscription
     std::string m_inscription_id;
     std::string m_content_type;
     l15::bytevector m_content;
+    CAmount m_ord_shift = 0;
     std::string m_collection_id;
     l15::bytevector m_metadata;
+    std::string m_content_encoding;
+    std::string m_delegate_id;
 
 public:
     Inscription() = default;
@@ -54,6 +57,8 @@ public:
     { return m_content_type; }
     const l15::bytevector& GetContent() const
     { return m_content; }
+    CAmount GetOrdShift() const
+    { return m_ord_shift; }
 
     bool HasParent() const
     { return !m_collection_id.empty(); }
@@ -63,6 +68,12 @@ public:
 
     const l15::bytevector& GetMetadata() const
     { return m_metadata; }
+
+    const std::string& GetContentEncoding() const
+    { return m_content_encoding; }
+
+    const std::string& GetDelegateId() const
+    { return m_delegate_id; }
 };
 
 std::list<Inscription> ParseInscriptions(const std::string& hex_tx);

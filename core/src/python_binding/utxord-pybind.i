@@ -1,16 +1,14 @@
 %module libutxord_pybind
 
-%include "std_shared_ptr.i"
+%include "stdint.i"
 %include "std_string.i"
 %include "std_vector.i"
 %include "std_list.i"
 %include "exception.i"
 
-%apply unsigned int { uint32_t }
-%apply unsigned long long { uint64_t }
+%apply int64_t { CAmount }
 
 %template(StringVector) std::vector<std::string>;
-%template(SharedL15Error) std::shared_ptr<l15::Error>;
 
 %{
 
