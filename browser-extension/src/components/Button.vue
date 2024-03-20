@@ -3,7 +3,7 @@
     :is="to ? 'router-link' : 'button'"
     :to="to"
     type="button"
-    class="flex justify-center"
+    class="flex justify-center items-center min-h-[40px] text-[15px] px-5 py-[10px]"
     :class="[{ 'cursor-not-allowed opacity-70': disabled }, classes]"
     @click="onClick"
   >
@@ -37,12 +37,12 @@ const emit = defineEmits(['click'])
 
 const classes = computed(() => {
   if (props.outline) {
-    return 'text-gray-900 dark:text-white bg-[transparent] border border-black dark:border-white rounded-md text-[15px] px-5 py-[10px]'
+    return 'text-gray-900 dark:text-white bg-[transparent] border border-black dark:border-white rounded-md'
   }
   if (props.second) {
-    return 'text-white bg-black dark:bg-slate-100/10 active:bg-black-800 rounded-md text-[15px] px-5 py-[10px] text-center'
+    return 'text-white bg-black dark:bg-slate-100/10 active:bg-black-800 rounded-md text-center'
   }
-  return 'text-white bg-black dark:bg-white dark:text-black active:bg-black-800 rounded-md text-[15px] px-5 py-[10px] text-center'
+  return 'text-white bg-black dark:bg-white dark:text-black active:bg-black-800 rounded-md text-center'
 })
 
 function onClick() {
