@@ -1,6 +1,7 @@
 :root {
   --bg-color: #fff;
   --primary: #3ce5a2;
+  --primary-rgb: 60, 229, 162;
   --error: #ee505a;
   --section: #f4f4f4;
   --text-color: #000;
