@@ -3,6 +3,7 @@
     const api = await utxord();
     const bech = new api.Bech32(api.TESTNET);
     const funds_filter = "{\"look_cache\":true, \"key_type\":\"DEFAULT\", \"accounts\":[\"0'\",\"1'\"], \"change\":[\"0\",\"1\"], \"index_range\":\"0-256\"}";
+    const script_filter = "{\"look_cache\":false, \"key_type\":\"TAPSCRIPT\", \"accounts\":[\"0'\",\"1'\"], \"change\":[\"0\",\"1\"], \"index_range\":\"0-256\"}";
 
     try {
         /*KeyRegistry*/
@@ -110,7 +111,10 @@
         tx.MiningFeeRate("0.00001");
         tx1.MiningFeeRate("0.00001");
 
-        tx1.AddInput(tx.Output(0));
+        const txOutput = tx.Output(0);
+        tx1.AddInput(txOutput);
+        api.destroy(txOutput);
+
         tx1.AddOutput(output);
         api.destroy(output);
 
@@ -145,4 +149,78 @@
         console.log("FAIL", e);
         console.error(api.Exception.prototype.getMessage(e));
     }
+
+    try {
+        let masterKey = new api.KeyRegistry(api.TESTNET, "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+        masterKey.AddKeyType("funds", funds_filter);
+        masterKey.AddKeyType("script", script_filter);
+
+        let key               = masterKey.Derive("m/86'/1'/0'/0/0", false);
+        let outkey            = masterKey.Derive("m/86'/1'/0'/0/1", false);
+        let inscribeScriptKey = masterKey.Derive("m/86'/1'/0'/0/2", true);
+        let inscribeIntKey    = masterKey.Derive("m/86'/1'/0'/0/3", true);
+
+        let addr = key.GetP2TRAddress(api.TESTNET);
+        api.destroy(key);
+
+        console.log("addr: ", addr);
+
+        let outaddr = outkey.GetP2TRAddress(api.TESTNET);
+        api.destroy(outkey);
+
+        const scriptPK = inscribeScriptKey.PubKey();
+        const intPK = inscribeIntKey.PubKey();
+
+        api.destroy(inscribeScriptKey);
+        api.destroy(inscribeIntKey);
+
+        console.log("script pubkey: ", scriptPK);
+        console.log("internal pubkey: ", intPK);
+
+        let inscr = new api.CreateInscriptionBuilder(api.TESTNET, api.INSCRIPTION);
+
+        inscr.MarketFee("0", "");
+        inscr.MiningFeeRate("0.00001");
+        inscr.AddUTXO("8f3e642289eda5d79c3212b7c5cd990a81bbeed8e768a28400a79b090adb3166", 0, "0.0001", addr);
+        inscr.OrdDestination("0.00001", outaddr);
+        inscr.Data("text/application-json", "7b7d");
+        inscr.InscribeScriptPubKey(scriptPK);
+        inscr.InscribeInternalPubKey(intPK);
+
+        const inscrId = inscr.MakeInscriptionId();
+        console.log("inscription ID: ", inscrId.c_str());
+
+        const txCount = inscr.TransactionCount();
+        console.log("Tx count: ", txCount);
+
+        const rawCommit = inscr.RawTransaction(0).c_str();
+        console.log("Raw Commit: ", rawCommit);
+
+        let rune = new api.Rune("UTXORD TEST AAA", " ", 0);
+        let runeStone = rune.EtchAndMint(api.TESTNET, "100000", 0);
+        inscr.RuneStone(runeStone);
+        api.destroy(runeStone)
+        api.destroy(rune)
+
+        inscr.SignCommit(masterKey, "funds");
+
+        const rawCommitSigned = inscr.RawTransaction(0).c_str();
+        console.log("Raw Commit Signed: ", rawCommitSigned);
+
+        inscr.SignInscription(masterKey, "script");
+
+        api.destroy(masterKey);
+
+        let contract = inscr.Serialize(10, api.INSCRIPTION_SIGNATURE);
+        api.destroy(inscr);
+
+        console.log(contract.c_str());
+
+        console.log("Rune Etch & Mint - OK!");
+
+    } catch(e) {
+        console.log("FAIL", e);
+        console.error(api.Exception.prototype.getMessage(e));
+    }
+
 })();

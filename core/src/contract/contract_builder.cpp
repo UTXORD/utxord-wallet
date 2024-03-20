@@ -10,6 +10,7 @@
 #include "script_merkle_tree.hpp"
 #include "channel_keys.hpp"
 #include "contract_builder.hpp"
+#include "contract_builder_factory.hpp"
 #include "utils.hpp"
 
 #include <execution>
@@ -66,7 +67,7 @@ UniValue TxInput::MakeJson() const
 {
     // Do not serialize underlying contract as transaction input: copy it as UTXO and write UTXO related values only
     // Lazy mode copy of an UTXO state is used to allow early-set of not completed contract as the input at any time
-    UTXO utxo_out(bech32, *output);
+    UTXO utxo_out(chain, *output);
     UniValue json = utxo_out.MakeJson();
     if (witness) {
         json.pushKV(name_witness, witness.MakeJson());
@@ -78,11 +79,11 @@ UniValue TxInput::MakeJson() const
 void TxInput::ReadJson(const UniValue &json)
 {
     if (output) {
-        auto new_output = std::make_shared<UTXO>(bech32, json);
+        auto new_output = std::make_shared<UTXO>(chain, json);
         if (new_output->TxID() != output->TxID() || new_output->NOut() != output->NOut()) throw ContractTermMismatch("tx input"/*move((name_swap_inputs + '[') += std::to_string(i) += ']')*/);
     }
     else {
-        output = std::make_shared<UTXO>(bech32, json);
+        output = std::make_shared<UTXO>(chain, json);
     }
 
     {   const UniValue& val = json[name_witness];
@@ -139,7 +140,7 @@ void ZeroDestination::ReadJson(const UniValue &json)
 
 const char* P2Witness::type = "p2witness";
 
-P2Witness::P2Witness(Bech32 bech, const UniValue &json): mBech(bech)
+P2Witness::P2Witness(ChainMode chain, const UniValue &json): mBech(chain)
 {
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
@@ -167,29 +168,23 @@ void P2Witness::ReadJson(const UniValue &json)
     if (m_addr != json[IContractBuilder::name_addr].get_str())  throw ContractTermMismatch(std::string(IContractBuilder::name_addr));
 }
 
-std::shared_ptr<IContractDestination> IContractDestination::ReadJson(Bech32 bech, const UniValue& json, bool allow_zero_destination)
-{
-    if (json[name_type].getValStr() == P2Witness::type) {
-        P2Witness dest(bech, json);
 
-        return P2Witness::Construct(bech, dest.m_amount, dest.m_addr);
-    }
-    else if (allow_zero_destination && !json.exists(name_type)){
-        return std::make_shared<ZeroDestination>(json);
-    }
-    else throw std::domain_error("unknown destination type: " + json[name_type].getValStr());
+std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, const UniValue& json)
+{
+    P2Witness dest(chain, json);
+    return P2Witness::Construct(chain, dest.m_amount, dest.m_addr);
 }
 
-std::shared_ptr<IContractDestination> P2Witness::Construct(Bech32 bech, CAmount amount, std::string addr)
+std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, CAmount amount, std::string addr)
 {
     unsigned witver;
     bytevector data;
-    std::tie(witver, data) = bech.Decode(addr);
+    std::tie(witver, data) = Bech32(chain).Decode(addr);
     if (witver == 0) {
-        return std::make_shared<P2WPKH>(bech.GetChainMode(), amount, move(addr));
+        return std::make_shared<P2WPKH>(chain, amount, move(addr));
     }
     else if (witver == 1){
-        return std::make_shared<P2TR>(bech.GetChainMode(), amount, move(addr));
+        return std::make_shared<P2TR>(chain, amount, move(addr));
     }
     else {
         throw std::invalid_argument("address with wrong witness program version: " + std::to_string(witver));
@@ -253,7 +248,7 @@ void UTXO::ReadJson(const UniValue &json)
     if (dest.isNull())
         throw ContractTermWrongValue(std::string(IJsonSerializable::name_type));
 
-    m_destination = IContractDestination::ReadJson(mBech, dest);
+    m_destination = ContractDestinationFactory<P2Witness, ZeroDestination>::ReadJson(m_chain, dest);
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/

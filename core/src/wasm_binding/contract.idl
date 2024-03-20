@@ -75,7 +75,7 @@ interface IContractDestination
 };
 
 [Prefix="utxord::wasm::"]
-interface P2WPKH
+interface P2WPKH: IContractDestination
 {
     void P2WPKH(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
     void SetAmount([Const] DOMString amount);
@@ -84,7 +84,7 @@ interface P2WPKH
 };
 
 [Prefix="utxord::wasm::"]
-interface P2TR
+interface P2TR: IContractDestination
 {
     void P2TR(ChainMode mode, [Const] DOMString amount, [Const] DOMString address);
     void SetAmount([Const] DOMString amount);
@@ -109,18 +109,41 @@ interface UTXO : IContractOutput
 };
 
 
+[Prefix="utxord::wasm::"]
+interface RuneStoneDestination: IContractDestination
+{
+    void SetAmount([Const] DOMString amount);
+    [Const] DOMString Amount();
+    [Const] DOMString Address();
+};
+
+[Prefix="utxord::wasm::"]
+interface Rune
+{
+    void Rune([Const] DOMString runeText, [Const] DOMString spece, unsigned long unicodeSymbol);
+    void SetMintCap([Const] DOMString v);
+    void SetAmountPerMint([Const] DOMString v);
+    void SetMintHeightStart([Const] DOMString v);
+    void SetMintHeightEnd([Const] DOMString v);
+    void SetMintHeightOffsetStart([Const] DOMString v);
+    void SetMintHeightOffsetEnd([Const] DOMString v);
+
+    [Const] RuneStoneDestination Etch(ChainMode m);
+    [Const] RuneStoneDestination EtchAndMint(ChainMode m, [Const] DOMString amount, unsigned long nout);
+    [Const] RuneStoneDestination Mint(ChainMode m, unsigned long nout);
+};
 
 enum InscribeType
 {
     "INSCRIPTION",
-    "LASY_INSCRIPTION"
+    "LAZY_INSCRIPTION"
 };
 
 enum InscribePhase
 {
     "MARKET_TERMS",
-    "LASY_INSCRIPTION_MARKET_TERMS",
-    "LASY_INSCRIPTION_SIGNATURE",
+    "LAZY_INSCRIPTION_MARKET_TERMS",
+    "LAZY_INSCRIPTION_SIGNATURE",
     "INSCRIPTION_SIGNATURE"
 };
 
@@ -129,12 +152,12 @@ interface CreateInscriptionBuilder
 {
     void CreateInscriptionBuilder(ChainMode mode, InscribeType type);
     void MarketFee([Const] DOMString amount, [Const] DOMString addr);
-    void OrdAmount([Const] DOMString amount);
+    void OrdDestination([Const] DOMString amount, [Const] DOMString inscriptionAddr);
     void MiningFeeRate([Const] DOMString rate);
     void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
     void MetaData([Const] DOMString hexCborData);
-    void InscribeAddress([Const] DOMString inscriptionAddr);
+    void RuneStone([Const] RuneStoneDestination runeStone);
     void ChangeAddress([Const] DOMString changeAddr);
     void InscribeScriptPubKey([Const] DOMString pk);
     void InscribeInternalPubKey([Const] DOMString pk);
@@ -145,7 +168,6 @@ interface CreateInscriptionBuilder
     void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
     void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);
-    //void SignFundMiningFee(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
     [Value] string Serialize(long ver, InscribePhase phase);
     void Deserialize([Const] DOMString data, InscribePhase phase);
@@ -249,8 +271,8 @@ interface SimpleTransaction
     [Const] DOMString GetNewInputMiningFee();
     [Const] DOMString GetNewOutputMiningFee();
 
-    void AddInput(IContractOutput prevout);
-    void AddOutput(IContractDestination out);
+    void AddInput([Const] IContractOutput prevout);
+    void AddOutput([Const] IContractDestination out);
     void AddChangeOutput([Const] DOMString pk);
 
     void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);

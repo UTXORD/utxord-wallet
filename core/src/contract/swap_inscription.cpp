@@ -1,10 +1,12 @@
 #include <ranges>
 
-#include "swap_inscription.hpp"
-
 #include "core_io.h"
 #include "policy.h"
 #include "feerate.h"
+
+#include "contract_builder_factory.hpp"
+#include "swap_inscription.hpp"
+
 
 namespace utxord {
 
@@ -435,9 +437,9 @@ void SwapInscriptionBuilder::ReadJson(const UniValue &contract, utxord::SwapPhas
             if (!val.isObject()) throw ContractTermWrongFormat(std::string(name_market_fee));
 
             if (m_market_fee)
-                m_market_fee->ReadJson(bech32(), val, true);
+                m_market_fee->ReadJson(val);
             else
-                m_market_fee = IContractDestination::ReadJson(bech32(), val, true);
+                m_market_fee = DestinationFactory::ReadJson(chain(), val);
 
         }
     }
@@ -449,12 +451,12 @@ void SwapInscriptionBuilder::ReadJson(const UniValue &contract, utxord::SwapPhas
 
     {   const auto& val = contract[name_ord_commit];
         if (!val.isNull()) {
-            mOrdCommitBuilder = std::make_shared<SimpleTransaction>(bech32(), val);
+            mOrdCommitBuilder = std::make_shared<SimpleTransaction>(chain(), val);
         }
     }
     {   const auto& val = contract[name_funds];
         if (!val.isNull()) {
-            mCommitBuilder = std::make_shared<SimpleTransaction>(bech32(), val);
+            mCommitBuilder = std::make_shared<SimpleTransaction>(chain(), val);
         }
     }
     {   const auto& val = contract[name_swap_inputs];
@@ -463,7 +465,7 @@ void SwapInscriptionBuilder::ReadJson(const UniValue &contract, utxord::SwapPhas
             uint32_t i = 0;
             for (const UniValue &input: val.getValues()) {
                 if (i >= m_swap_inputs.size()) {
-                    m_swap_inputs.emplace_back(bech32(), m_swap_inputs.size(), input);
+                    m_swap_inputs.emplace_back(chain(), m_swap_inputs.size(), input);
                 }
                 else {
                     m_swap_inputs[i].ReadJson(input);
@@ -491,13 +493,13 @@ void SwapInscriptionBuilder::CommitOrdinal(const std::string &txid, uint32_t nou
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
     if (mOrdCommitBuilder) throw ContractStateError(name_ord_commit + " already defined");
 
-    mOrdCommitBuilder = std::make_shared<SimpleTransaction>(bech32());
+    mOrdCommitBuilder = std::make_shared<SimpleTransaction>(chain());
     mOrdCommitBuilder->MiningFeeRate(GetMiningFeeRate());
 
     //mOrdCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), ParseAmount(amount), bech32().Encode(get<0>(OrdSwapTapRoot()))));
 
     try {
-        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
+        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
     }
     catch(...) {
         std::throw_with_nested(ContractTermWrongValue(name_ord_commit + "[ord]"));
@@ -510,7 +512,7 @@ void SwapInscriptionBuilder::FundCommitOrdinal(const std::string &txid, uint32_t
     if (!mOrdCommitBuilder) throw ContractStateError(name_ord_commit + " not defined, call CommitOrdinal(...) first");
 
     try {
-        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
+        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
         if (mOrdCommitBuilder->Outputs().size() > 2) {
             mOrdCommitBuilder->Outputs().pop_back();
         }
@@ -531,7 +533,7 @@ void SwapInscriptionBuilder::CommitFunds(const string &txid, uint32_t nout, cons
     const CAmount dust = l15::Dust(DUST_RELAY_TX_FEE);
 
     if (!mCommitBuilder) {
-        mCommitBuilder = std::make_shared<SimpleTransaction>(bech32());
+        mCommitBuilder = std::make_shared<SimpleTransaction>(chain());
         mCommitBuilder->MiningFeeRate(GetMiningFeeRate());
 
         mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32(), dust, addr));
@@ -547,7 +549,7 @@ void SwapInscriptionBuilder::CommitFunds(const string &txid, uint32_t nout, cons
         // Remove the output with main funding if already exists
         mCommitBuilder->DropChangeOutput();
 
-        mCommitBuilder->AddInput(std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
+        mCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
 
         CAmount commit_fee = mCommitBuilder->CalculateWholeFee("") + TAPROOT_VOUT_VSIZE;
         CAmount output_required = CalculateSwapTxFee(false) + *m_ord_price + m_market_fee->Amount();
@@ -633,7 +635,7 @@ void SwapInscriptionBuilder::Brick1SwapUTXO(const string &txid, uint32_t nout, c
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
+    m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
@@ -646,7 +648,7 @@ void SwapInscriptionBuilder::Brick2SwapUTXO(const string &txid, uint32_t nout, c
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
+    m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
@@ -659,7 +661,7 @@ void SwapInscriptionBuilder::AddMainSwapUTXO(const std::string &txid, uint32_t n
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), m_swap_inputs.back().nin + 1, std::make_shared<UTXO>(bech32(), txid, nout, ParseAmount(amount), addr));
+    m_swap_inputs.emplace_back(bech32(), m_swap_inputs.back().nin + 1, std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 

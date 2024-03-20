@@ -8,6 +8,9 @@
 #include <sstream>
 #include <list>
 
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+
 #include "safe_ptr.hpp"
 
 #include "univalue.h"
@@ -33,6 +36,13 @@ using l15::bytevector;
 using l15::seckey;
 using l15::xonly_pubkey;
 using l15::signature;
+
+#ifndef DEBUG
+using boost::multiprecision::uint128_t;
+#else
+namespace bmp = boost::multiprecision;
+using uint128_t = bmp::number<bmp::debug_adaptor<bmp::cpp_int_backend<128, 128, bmp::unsigned_magnitude, bmp::unchecked, void> >>;
+#endif
 
 enum OutputType {
     P2WPKH_DEFAULT, // m/84'/0'/0'/0/*
@@ -96,8 +106,9 @@ struct IContractDestination: IJsonSerializable
     virtual std::vector<bytevector> DummyWitness() const = 0;
     virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const = 0;
 
-    static std::shared_ptr<IContractDestination> ReadJson(Bech32 bech, const UniValue& json, bool allow_zero_destination = false);
 };
+
+
 
 struct ZeroDestination: IContractDestination
 {
@@ -113,6 +124,7 @@ struct ZeroDestination: IContractDestination
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json) override;
 };
+
 
 class P2Witness: public IContractDestination
 {
@@ -131,9 +143,9 @@ public:
     P2Witness(const P2Witness&) = default;
     P2Witness(P2Witness&&) noexcept = default;
 
-    P2Witness(Bech32 bech, CAmount amount, std::string addr) : mBech(bech), m_amount(amount), m_addr(move(addr)) {}
+    P2Witness(ChainMode chain, CAmount amount, std::string addr) : mBech(chain), m_amount(amount), m_addr(move(addr)) {}
 
-    explicit P2Witness(Bech32 bech, const UniValue& json);
+    explicit P2Witness(ChainMode chain, const UniValue& json);
 
     ~P2Witness() override = default;
 
@@ -158,7 +170,8 @@ public:
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json) override;
 
-    static std::shared_ptr<IContractDestination> Construct(Bech32 bech, CAmount amount, std::string addr);
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json);
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, CAmount amount, std::string addr);
 };
 
 class P2WPKH: public P2Witness
@@ -167,8 +180,8 @@ public:
     P2WPKH() = delete;
     P2WPKH(const P2WPKH&) = default;
     P2WPKH(P2WPKH&&) noexcept = default;
-    P2WPKH(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
     P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2WPKH(Bech32(m), amount, move(addr)) {}
+    P2WPKH(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech.GetChainMode(), amount, move(addr)) {}
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override
     { return { bytevector(72), bytevector(33) }; }
@@ -180,8 +193,8 @@ public:
     P2TR() = delete;
     P2TR(const P2TR &) = default;
     P2TR(P2TR &&) noexcept = default;
-    P2TR(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech, amount, move(addr)) {}
     P2TR(ChainMode m, CAmount amount, std::string addr) : P2TR(Bech32(m), amount, move(addr)) {}
+    P2TR(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech.GetChainMode(), amount, move(addr)) {}
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
 };
@@ -230,31 +243,25 @@ public:
 
     static const char* type;
 private:
-    Bech32 mBech;
+    ChainMode m_chain;
     std::string m_txid;
     uint32_t m_nout = 0;
     std::shared_ptr<IContractDestination> m_destination;
 public:
     //UTXO() = default;
-    UTXO(Bech32 bech, std::string txid, uint32_t nout, CAmount amount, std::string addr)
-        : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(bech, amount, move(addr))) {}
+    UTXO(ChainMode chain, std::string txid, uint32_t nout, CAmount amount, std::string addr)
+        : m_chain(chain), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(chain, amount, move(addr))) {}
 
-    UTXO(Bech32 bech, std::string txid, uint32_t nout, std::shared_ptr<IContractDestination> destination)
-        : mBech(bech), m_txid(move(txid)), m_nout(nout), m_destination(move(destination)) {}
+    UTXO(ChainMode chain, std::string txid, uint32_t nout, std::shared_ptr<IContractDestination> destination)
+        : m_chain(chain), m_txid(move(txid)), m_nout(nout), m_destination(move(destination)) {}
 
-    UTXO(Bech32 bech, const IContractOutput& out)
-        : mBech(bech), m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
+    UTXO(ChainMode chain, const IContractOutput& out)
+        : m_chain(chain), m_txid(out.TxID()), m_nout(out.NOut()), m_destination(out.Destination()) {}
 
-    UTXO(Bech32 bech, const IContractMultiOutput& out, uint32_t nout)
-        : mBech(bech), m_txid(out.TxID()), m_nout(nout), m_destination(out.Destinations()[nout]) {}
+    UTXO(ChainMode chain, const IContractMultiOutput& out, uint32_t nout)
+        : m_chain(chain), m_txid(out.TxID()), m_nout(nout), m_destination(out.Destinations()[nout]) {}
 
-    UTXO(ChainMode m, std::string txid, uint32_t nout, CAmount amount, std::string addr)
-        : UTXO(Bech32(m), move(txid), nout, amount, move(addr)) {}
-
-    UTXO(ChainMode m, const IContractOutput& out)
-        : UTXO (Bech32(m), out) {}
-
-    explicit UTXO(Bech32 bech, const UniValue& json) : mBech(bech)
+    explicit UTXO(ChainMode chain, const UniValue& json) : m_chain(chain)
     { UTXO::ReadJson(json); }
 
     std::string TxID() const final
@@ -300,13 +307,13 @@ struct TxInput : public IJsonSerializable
 {
     static const std::string name_witness;
 
-    Bech32 bech32;
+    ChainMode chain;
     uint32_t nin;
     std::shared_ptr<IContractOutput> output;
     WitnessStack witness;
 
-    explicit TxInput(Bech32 bech, uint32_t n, std::shared_ptr<IContractOutput> prevout) : bech32(bech), nin(n), output(move(prevout)) {}
-    explicit TxInput(Bech32 bech, uint32_t n, const UniValue& json) : bech32(bech), nin(n)
+    explicit TxInput(Bech32 bech, uint32_t n, std::shared_ptr<IContractOutput> prevout) : chain(bech.GetChainMode()), nin(n), output(move(prevout)) {}
+    explicit TxInput(ChainMode ch, uint32_t n, const UniValue& json) : chain(ch), nin(n)
     { TxInput::ReadJson(json); }
 
     UniValue MakeJson() const override;
@@ -348,7 +355,7 @@ protected:
     static const std::string FEE_OPT_HAS_XTRA_UTXO;
     static const std::string FEE_OPT_HAS_P2WPKH_INPUT;
 
-    Bech32 mBech;
+    ChainMode m_chain;
 
     std::optional<CAmount> m_mining_fee_rate;
     std::shared_ptr<IContractDestination> m_market_fee;
@@ -366,8 +373,7 @@ public:
     IContractBuilder(const IContractBuilder&) = default;
     IContractBuilder(IContractBuilder&& ) noexcept = default;
 
-    explicit IContractBuilder(ChainMode chain) : mBech(chain) {}
-    explicit IContractBuilder(Bech32 coder) : mBech(coder) {}
+    explicit IContractBuilder(ChainMode chain) : m_chain(chain) {}
 
     virtual ~IContractBuilder() = default;
 
@@ -375,13 +381,16 @@ public:
 
     IContractBuilder &operator=(IContractBuilder&& ) noexcept = default;
 
-    const Bech32& bech32() const
-    { return mBech; }
+    ChainMode chain() const
+    { return m_chain; }
+
+    const Bech32 bech32() const
+    { return Bech32(m_chain); }
 
     void MarketFee(const std::string& amount, const std::string& addr)
     {
         if (l15::ParseAmount(amount) > 0) {
-            m_market_fee = P2Witness::Construct(bech32(), l15::ParseAmount(amount), addr);
+            m_market_fee = P2Witness::Construct(chain(), l15::ParseAmount(amount), addr);
         }
         else {
             m_market_fee = std::make_shared<ZeroDestination>();
@@ -443,7 +452,6 @@ public:
     ContractBuilder(ContractBuilder && ) noexcept = default;
 
     explicit ContractBuilder(ChainMode chain) : IContractBuilder(chain) {}
-    explicit ContractBuilder(Bech32 coder) : IContractBuilder(coder) {}
 
     ContractBuilder& operator=(const ContractBuilder&) = default;
     ContractBuilder& operator=(ContractBuilder&&) = default;

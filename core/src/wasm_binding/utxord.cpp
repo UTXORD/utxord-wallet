@@ -10,6 +10,7 @@
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "simple_transaction.hpp"
+#include "runes.hpp"
 
 
 namespace {
@@ -146,10 +147,10 @@ public:
     { return new KeyPair(utxord::KeyRegistry::Derive(path, for_script)); }
 
     KeyPair* LookupPubKey(const char* pk, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), {true, utxord::KeyLookupFilter::DEFAULT, {0, 1}})); }
+    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), std::string(key_lookup_opt_json))); }
 
     KeyPair* LookupAddress(const std::string& addr, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, {true, utxord::KeyLookupFilter::DEFAULT, {0, 1}})); }
+    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, std::string(key_lookup_opt_json))); }
 
 };
 
@@ -177,7 +178,7 @@ struct IContractDestination
 
     virtual const char* Address() const = 0;
 
-    virtual const std::shared_ptr<utxord::IContractDestination> &Share() const = 0;
+    virtual std::shared_ptr<utxord::IContractDestination> Share() const = 0;
 };
 
 class ContractDestinationWrapper : public IContractDestination
@@ -186,6 +187,13 @@ class ContractDestinationWrapper : public IContractDestination
 public:
     ContractDestinationWrapper(std::shared_ptr<utxord::IContractDestination> ptr) : m_ptr(move(ptr))
     {}
+
+    ContractDestinationWrapper() = default;
+    ContractDestinationWrapper(const ContractDestinationWrapper& ) = default;
+    ContractDestinationWrapper(ContractDestinationWrapper&& ) = default;
+
+    ContractDestinationWrapper& operator=(const ContractDestinationWrapper& ) = default;
+    ContractDestinationWrapper& operator=(ContractDestinationWrapper&& ) = default;
 
     void SetAmount(const std::string& amount) final
     { m_ptr->Amount(ParseAmount(amount)); }
@@ -204,9 +212,48 @@ public:
         return cache.c_str();
     }
 
-    const std::shared_ptr<utxord::IContractDestination> &Share() const final
+    std::shared_ptr<utxord::IContractDestination> Share() const final
     { return m_ptr; }
 };
+
+class RuneStoneDestination : public IContractDestination
+{
+    std::shared_ptr<utxord::RuneStoneDestination> m_ptr;
+public:
+    RuneStoneDestination(std::shared_ptr<utxord::RuneStoneDestination> ptr) : m_ptr(move(ptr))
+    {}
+
+    RuneStoneDestination() = default;
+    RuneStoneDestination(const RuneStoneDestination& ) = default;
+    RuneStoneDestination(RuneStoneDestination&& ) = default;
+
+    RuneStoneDestination& operator=(const RuneStoneDestination& ) = default;
+    RuneStoneDestination& operator=(RuneStoneDestination&& ) = default;
+
+    void SetAmount(const std::string& amount) final
+    { m_ptr->Amount(ParseAmount(amount)); }
+
+    const char* Amount() const final
+    {
+        static std::string cache;
+        cache = FormatAmount(m_ptr->Amount());
+        return cache.c_str();
+    }
+
+    const char* Address() const final
+    {
+        static std::string cache;
+        cache =  m_ptr->Address();
+        return cache.c_str();
+    }
+
+    std::shared_ptr<utxord::RuneStoneDestination> ShareRuneStone() const
+    { return m_ptr; }
+
+    std::shared_ptr<utxord::IContractDestination> Share() const final
+    { return m_ptr; }
+};
+
 
 class P2WPKH : public ContractDestinationWrapper
 {
@@ -220,6 +267,98 @@ class P2TR : public ContractDestinationWrapper
 public:
     P2TR(ChainMode mode, const std::string &amount, const std::string &addr) : ContractDestinationWrapper(std::make_shared<utxord::P2TR>(mode, ParseAmount(amount), addr))
     {}
+};
+
+
+class Rune: private utxord::Rune
+{
+public:
+    Rune(const std::string &rune_text, const std::string &space, unsigned unicode_symbol = 0)
+    : utxord::Rune(rune_text, space, unicode_symbol ? std::optional<wchar_t>(unicode_symbol) : std::optional<wchar_t>())
+    {}
+
+    void SetMintCap(const char* v)
+    {
+        uint128_t numval;
+        std::istringstream valstream(v);
+        valstream >> numval;
+        utxord::Rune::MintCap().emplace(numval);
+    }
+
+    void SetAmountPerMint(const char* v)
+    {
+        uint128_t numval;
+        std::istringstream valstream(v);
+        valstream >> numval;
+        utxord::Rune::AmountPerMint().emplace(numval);
+    }
+
+    void SetMintHeightStart(const char* v)
+    {
+        uint64_t numval;
+        std::istringstream valstream(v);
+        valstream >> numval;
+        utxord::Rune::MintHeightStart().emplace(numval);
+    }
+
+    void SetMintHeightEnd(const char* v)
+    {
+        uint64_t numval;
+        std::istringstream valstream(v);
+        valstream >> numval;
+        utxord::Rune::MintHeightEnd().emplace(numval);
+    }
+
+    void SetMintHeightOffsetStart(const char* v)
+    {
+        uint64_t numval;
+        std::istringstream valstream(v);
+        valstream >> numval;
+        utxord::Rune::MintHeightOffsetStart().emplace(numval);
+    }
+
+    void SetMintHeightOffsetEnd(const char* v)
+    {
+        uint64_t numval;
+        std::istringstream valstream(v);
+        valstream >> numval;
+        utxord::Rune::MintHeightOffsetEnd().emplace(numval);
+    }
+
+    const RuneStoneDestination* Etch(ChainMode mode) const
+    {
+        static RuneStoneDestination cache;
+
+        std::shared_ptr<utxord::RuneStoneDestination> ptr =
+                std::make_shared<utxord::RuneStoneDestination>(mode, utxord::Rune::Etch());
+        cache = RuneStoneDestination(move(ptr));
+        return &cache;
+    }
+
+    const RuneStoneDestination* EtchAndMint(ChainMode mode, const char* amount, uint32_t nout) const
+    {
+        static RuneStoneDestination cache;
+
+        uint128_t numamount;
+        std::istringstream amountstream(amount);
+        amountstream >> numamount;
+
+        std::shared_ptr<utxord::RuneStoneDestination> ptr =
+                std::make_shared<utxord::RuneStoneDestination>(mode, utxord::Rune::EtchAndMint(numamount, nout));
+        cache = RuneStoneDestination(move(ptr));
+        return &cache;
+    }
+
+    const RuneStoneDestination* Mint(ChainMode mode, uint32_t nout) const
+    {
+        static RuneStoneDestination cache;
+
+        std::shared_ptr<utxord::RuneStoneDestination> ptr =
+                std::make_shared<utxord::RuneStoneDestination>(mode, utxord::Rune::Mint(nout));
+        cache = RuneStoneDestination(move(ptr));
+        return &cache;
+    }
+
 };
 
 
@@ -396,8 +535,8 @@ public:
     void Deserialize(const std::string &data, TxPhase phase)
     { m_ptr->Deserialize(data, phase); }
 
-//    const std::shared_ptr<utxord::IContractMultiOutput> Share() const final
-//    { return m_ptr; }
+    std::shared_ptr<utxord::IContractMultiOutput> Share() const
+    { return m_ptr; }
 
     uint32_t TransactionCount(TxPhase phase) const
     { return 1; }
@@ -426,6 +565,9 @@ class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder
 {
 public:
     CreateInscriptionBuilder(ChainMode mode, InscribeType type) : utxord::CreateInscriptionBuilder(mode, type) {}
+
+    void RuneStone(const RuneStoneDestination* runeStone)
+    { utxord::CreateInscriptionBuilder::Rune(runeStone->ShareRuneStone()); }
 
     void SignCommit(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::CreateInscriptionBuilder::SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }

@@ -26,11 +26,10 @@ private:
 
 public:
     explicit SimpleTransaction(ChainMode chain) : ContractBuilder(chain) {}
-    explicit SimpleTransaction(Bech32 bech) : ContractBuilder(bech) {}
     SimpleTransaction(const SimpleTransaction&) = default;
     SimpleTransaction(SimpleTransaction&&) noexcept = default;
 
-    explicit SimpleTransaction(Bech32 bech, const UniValue& json) : ContractBuilder(bech)
+    explicit SimpleTransaction(ChainMode chain, const UniValue& json) : ContractBuilder(chain)
     { SimpleTransaction::ReadJson(json, TX_TERMS); }
 
     ~SimpleTransaction() override = default;
@@ -86,7 +85,7 @@ public:
     std::shared_ptr<IContractOutput> ChangeOutput() const
     {
         return m_change_nout
-            ? std::make_shared<UTXO>(bech32(), TxID(), *m_change_nout, m_outputs[*m_change_nout])
+            ? std::make_shared<UTXO>(chain(), TxID(), *m_change_nout, m_outputs[*m_change_nout])
             : std::shared_ptr<IContractOutput>();
     }
 };

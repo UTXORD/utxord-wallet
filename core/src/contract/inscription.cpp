@@ -62,6 +62,9 @@ Inscription::Inscription(std::string inscription_id, std::list<std::pair<bytevec
         else if (inscr_data.front().first == DELEGATE_ID_TAG) {
             m_delegate_id = DeserializeInscriptionId(inscr_data.front().second);
         }
+        else if (inscr_data.front().first == RUNE_TAG) {
+            m_rune_commitment = move(inscr_data.front().second);
+        }
 
         inscr_data.pop_front();
     }

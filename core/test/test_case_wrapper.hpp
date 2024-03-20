@@ -70,7 +70,7 @@ struct TestcaseWrapper
             }
         }
         if (mMode == "regtest") {
-            btc().GenerateToAddress(btc().GetNewAddress(), "151");
+            btc().GenerateToAddress(btc().GetNewAddress(), "101");
         }
         //        else if (mMode == "testnet") {
         //            btc().WalletPassPhrase("********", "30");

@@ -108,7 +108,7 @@ TEST_CASE("singleinout")
     SimpleTransaction tx_contract(w->chain());
     tx_contract.MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(Bech32(w->chain()), funds_txid, get<0>(prevout).n, 10000, cond.address)));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, cond.address)));
     REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(w->chain(), 7000, destination_addr)));
 
     REQUIRE_NOTHROW(tx_contract.Sign(master_key, "funds"));
@@ -194,8 +194,8 @@ TEST_CASE("2ins2outs")
     SimpleTransaction tx_contract(w->chain());
     tx_contract.MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(Bech32(w->chain()), funds_txid, get<0>(prevout).n, 10000, utxo_key.GetP2TRAddress(Bech32(w->chain())))));
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(Bech32(w->chain()), funds_txid1, get<0>(prevout1).n, 546, utxo_key1.GetP2TRAddress(Bech32(w->chain())))));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_key.GetP2TRAddress(Bech32(w->chain())))));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid1, get<0>(prevout1).n, 546, utxo_key1.GetP2TRAddress(Bech32(w->chain())))));
     REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(w->chain(), 546, destination_addr)));
     REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_addr1));
 
@@ -252,7 +252,7 @@ TEST_CASE("txchain")
     tx_contract->MiningFeeRate(fee_rate);
     tx1_contract->MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(Bech32(w->chain()), funds_txid, get<0>(prevout).n, 10000, addr)));
+    REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, addr)));
     REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(w->chain(), 10000, intermediate_key.GetP2TRAddress(Bech32(w->chain())))));
 
     REQUIRE_NOTHROW(tx1_contract->AddInput(make_shared<ContractOutput>(tx_contract, 0)));

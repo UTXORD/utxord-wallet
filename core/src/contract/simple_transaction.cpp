@@ -1,11 +1,13 @@
 
 #include "univalue.h"
 
+#include "policy.h"
 #include "core_io.h"
 
 #include "utils.hpp"
+
 #include "simple_transaction.hpp"
-#include "policy.h"
+#include "contract_builder_factory.hpp"
 
 namespace utxord {
 
@@ -71,7 +73,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
         AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, addr));
     }
     else {
-        throw ContractTermWrongValue("");
+        throw ContractTermWrongValue(name_change_addr.c_str());
     }
 
     CAmount required = l15::ParseAmount(GetMinFundingAmount(""));
@@ -165,18 +167,32 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 
         if (val.isNull() || val.empty()) throw ContractTermMissing(std::string(name_utxo));
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
+        if (!m_inputs.empty() && m_inputs.size() != val.size()) throw ContractTermMismatch(std::string(name_utxo) + " size");
 
-        for (const UniValue &input: val.getValues()) {
-            m_inputs.emplace_back(bech32(), m_inputs.size(), input);
+        m_inputs.reserve(val.size());
+
+        for (size_t i = 0; i < val.size(); ++i) {
+            if (i == m_inputs.size()) {
+                m_inputs.emplace_back(chain(), m_inputs.size(), val[i]);
+            }
+            else {
+                m_inputs[i].ReadJson(val[i]);
+            }
         }
     }
 
     {   const auto &val = contract[name_outputs];
         if (val.isNull() || val.empty()) throw ContractTermMissing(std::string(name_outputs));
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_outputs));
+        if (!m_outputs.empty() && m_outputs.size() != val.size()) throw ContractTermMismatch(std::string(name_outputs) + " size");
 
-        for (const UniValue &out: val.getValues()) {
-            m_outputs.emplace_back(IContractDestination::ReadJson(bech32(), out));
+        for (size_t i = 0; i < val.size(); ++i) {
+            if (i == m_outputs.size()) {
+                m_outputs.emplace_back(NoZeroDestinationFactory::ReadJson(chain(), val[i]));
+            }
+            else {
+                m_outputs[i]->ReadJson(val[i]);
+            }
         }
     }
 }
