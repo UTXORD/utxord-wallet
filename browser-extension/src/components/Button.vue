@@ -3,7 +3,7 @@
     :is="to ? 'router-link' : 'button'"
     :to="to"
     type="button"
-    class="flex justify-center items-center min-h-[40px] text-[15px] px-5 py-[10px]"
+    class="flex justify-center items-center min-h-[40px] text-[15px] px-5 py-[8px]"
     :class="[{ 'cursor-not-allowed opacity-70': disabled }, classes]"
     @click="onClick"
   >
