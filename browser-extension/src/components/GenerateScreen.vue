@@ -153,17 +153,16 @@
           >Do not share it with anyone </span
         >
       </div>
+
       <!-- I saved my mnemonic -->
-      <div class="flex w-full items-center">
-        <input
-          name="mnemonicIsSaved"
-          type="checkbox"
-          v-model="mnemonicIsSaved"
-        />
-        <span class="w-full text-[var(--text-red)]">
-          I saved my mnemonic phrase
-        </span>
+      <div class="w-full flex justify-start">
+        <Checkbox v-model="mnemonicIsSaved" class="mb-5">
+          <span class="w-full text-[var(--text-grey-color)] text-[15px]">
+            I saved my mnemonic phrase
+          </span>
+        </Checkbox>
       </div>
+
       <!-- Buttons -->
       <div class="flex w-full mb-5 mt-auto">
         <Button
