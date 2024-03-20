@@ -30,14 +30,22 @@
         :class="{ 'custom-input--error': errors?.length }"
       />
       <div class="absolute inset-y-0 right-0 flex items-center px-2">
-        <label
-          v-if="props.type === TYPE_PASSWORD"
+        <img
+          v-if="props.type === TYPE_PASSWORD && showedPassword"
+          src="/assets/hide-stroke.svg"
+          alt="hide"
+          title="hide"
+          class="select-none gray-300 hover:gray-400 active:gray-300 px-2 py-1 cursor-pointer"
           @click="togglePassword"
-          class="select-none bg-gray-300 hover:bg-gray-400 active:bg-gray-300 rounded px-2 py-1 text-sm text-gray-600 font-mono cursor-pointer js-password-label"
-          for="toggle"
-        >
-          {{ showedPassword ? 'hide' : 'show' }}
-        </label>
+        />
+        <img
+          v-if="props.type === TYPE_PASSWORD && !showedPassword"
+          src="/assets/show-stroke.svg"
+          alt="Show"
+          title="Show"
+          class="select-none gray-300 hover:gray-400 active:gray-300 px-2 py-1 cursor-pointer"
+          @click="togglePassword"
+        />
         <slot />
       </div>
     </div>

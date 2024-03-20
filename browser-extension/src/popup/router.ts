@@ -61,6 +61,16 @@ const routes: Array<RouteRecordRaw> = [
     name: 'ManageScreen',
     component: () => import('~/components/ManageScreen.vue')
   },
+  {
+    path: '/manage-password',
+    name: 'ManagePasswordScreen',
+    component: () => import('~/components/ManagePasswordScreen.vue')
+  },
+  {
+    path: '/manage-address',
+    name: 'ManageAddressScreen',
+    component: () => import('~/components/ManageAddressScreen.vue')
+  },
 ]
 
 const router = createRouter({
