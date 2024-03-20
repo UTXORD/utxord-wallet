@@ -15,6 +15,8 @@
 
 namespace utxord {
 
+class Rune;
+
 enum InscribeType { INSCRIPTION, LASY_INSCRIPTION };
 enum InscribePhase { MARKET_TERMS, LASY_INSCRIPTION_MARKET_TERMS, LASY_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 
@@ -42,7 +44,8 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
 
-    std::optional<std::string> m_metadata;
+    std::optional<bytevector> m_metadata;
+    std::optional<bytevector> m_rune_commitment;
 
     std::optional<xonly_pubkey> m_inscribe_script_pk;
     std::optional<xonly_pubkey> m_inscribe_script_market_pk;
@@ -85,7 +88,6 @@ private:
     const CMutableTransaction& GenesisTx() const;
 
 public:
-
     static const std::string name_ord_amount;
     static const std::string name_utxo;
     static const std::string name_content_type;
@@ -93,6 +95,7 @@ public:
     static const std::string name_collection;
     static const std::string name_collection_id;
     static const std::string name_metadata;
+    static const std::string name_rune_commitment;
     static const std::string name_inscribe_script_pk;
     static const std::string name_inscribe_script_market_pk;
     static const std::string name_inscribe_int_pk;
@@ -134,6 +137,8 @@ public:
     void Data(const std::string& content_type, const std::string& hex_data);
 
     void MetaData(const std::string& metadata);
+
+    void Rune(const Rune& rune);
 
     void InscribeScriptPubKey(const std::string& pk)
     { m_inscribe_script_pk = unhex<xonly_pubkey>(pk); }

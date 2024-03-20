@@ -22,7 +22,9 @@ const bytevector METADATA_TAG {'\x05'};
 const opcodetype CONTENT_ENCODING_OP_TAG {OP_9};
 const bytevector CONTENT_ENCODING_TAG {'\x09'};
 const opcodetype DELEGATE_ID_OP_TAG {OP_11};
-const bytevector DELEGATE_ID_TAG {'\x0a'};
+const bytevector DELEGATE_ID_TAG {'\x0b'};
+const opcodetype RUNE_OP_TAG {OP_13};
+const bytevector RUNE_TAG {'\x0d'};
 
 inline void CheckInscriptionId(const std::string& inscription_id)
 {

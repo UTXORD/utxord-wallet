@@ -1,5 +1,6 @@
 #pragma once
 
+#include <contract_builder.hpp>
 #include <string>
 
 #include "common.hpp"
@@ -38,6 +39,7 @@ class Inscription
     l15::bytevector m_metadata;
     std::string m_content_encoding;
     std::string m_delegate_id;
+    std::optional<l15::bytevector> m_rune_commitment;
 
 public:
     Inscription() = default;
@@ -55,8 +57,10 @@ public:
 
     const std::string& GetContentType() const
     { return m_content_type; }
+
     const l15::bytevector& GetContent() const
     { return m_content; }
+
     CAmount GetOrdShift() const
     { return m_ord_shift; }
 
@@ -74,6 +78,16 @@ public:
 
     const std::string& GetDelegateId() const
     { return m_delegate_id; }
+
+    bool HasRuneCommitment() const
+    { return m_rune_commitment.has_value(); }
+
+    const l15::bytevector& GetRuneCommitment() const
+    {
+        // This is because excessive rune optimization and even empty commitment means rune 'A'
+        if (!m_rune_commitment) throw InscriptionError("no rune");
+        return *m_rune_commitment;
+    }
 };
 
 std::list<Inscription> ParseInscriptions(const std::string& hex_tx);

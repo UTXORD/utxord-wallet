@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
         configpath = (std::filesystem::current_path() / p).string();
     }
 
-    w = std::make_unique<TestcaseWrapper>(configpath);
+    //w = std::make_unique<TestcaseWrapper>(configpath);
 
     return session.run();
 }
@@ -245,6 +245,29 @@ TEST_CASE("encode")
         CHECK(rune == testval.rune);
     }
 }
+
+struct committest
+{
+    std::string rune_text;
+    bytevector commit;
+};
+
+TEST_CASE("commit")
+{
+    auto condition = GENERATE(
+        committest{"A", {}},
+        committest{"B", {1}},
+        committest{"IV", {0xff}},
+        committest{"IW", {0, 1}},
+        committest{"CRXP", {0xff, 0xff}},
+        committest{"CRXQ", {0, 0, 1}},
+        committest{"BCGDENLQRQWDSLRUGSNLBTMFIJAV", bytevector(16, '\xff')});
+
+    Rune r(condition.rune_text, " ");
+
+    CHECK(r.Commit() == condition.commit);
+}
+
 
 struct varinttest
 {

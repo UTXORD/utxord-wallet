@@ -8,6 +8,9 @@
 #include <sstream>
 #include <list>
 
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/debug_adaptor.hpp>
+
 #include "safe_ptr.hpp"
 
 #include "univalue.h"
@@ -33,6 +36,13 @@ using l15::bytevector;
 using l15::seckey;
 using l15::xonly_pubkey;
 using l15::signature;
+
+#ifndef DEBUG
+using boost::multiprecision::uint128_t;
+#else
+namespace bmp = boost::multiprecision;
+using uint128_t = bmp::number<bmp::debug_adaptor<bmp::cpp_int_backend<128, 128, bmp::unsigned_magnitude, bmp::unchecked, void> >>;
+#endif
 
 enum OutputType {
     P2WPKH_DEFAULT, // m/84'/0'/0'/0/*

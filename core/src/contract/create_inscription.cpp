@@ -13,6 +13,8 @@
 
 #include "create_inscription.hpp"
 
+#include <runes.hpp>
+
 #include "inscription_common.hpp"
 #include "contract_builder.hpp"
 
@@ -32,6 +34,7 @@ const std::string CreateInscriptionBuilder::name_utxo = "utxo";
 const std::string CreateInscriptionBuilder::name_collection = "collection";
 const std::string CreateInscriptionBuilder::name_collection_id = "collection_id";
 const std::string CreateInscriptionBuilder::name_metadata = "metadata";
+const std::string CreateInscriptionBuilder::name_rune_commitment = "rune";
 const std::string CreateInscriptionBuilder::name_fund_mining_fee_int_pk = "fund_mining_fee_int_pk";
 const std::string CreateInscriptionBuilder::name_fund_mining_fee_sig = "fund_mining_fee_sig";
 const std::string CreateInscriptionBuilder::name_content_type = "content_type";
@@ -73,9 +76,8 @@ CScript CreateInscriptionBuilder::MakeInscriptionScript() const
     }
 
     if (m_metadata) {
-        bytevector metadata = unhex<bytevector>(*m_metadata);
-        for (auto pos = metadata.begin(); pos < metadata.end(); pos += MAX_PUSH) {
-            script << METADATA_TAG << bytevector(pos, ((pos + MAX_PUSH) < metadata.end()) ? (pos + MAX_PUSH) : metadata.end());
+        for (auto pos = m_metadata->begin(); pos < m_metadata->end(); pos += MAX_PUSH) {
+            script << METADATA_TAG << bytevector(pos, ((pos + MAX_PUSH) < m_metadata->end()) ? (pos + MAX_PUSH) : m_metadata->end());
         }
     }
 
@@ -144,11 +146,16 @@ void CreateInscriptionBuilder::AddToCollection(const std::string& collection_id,
 void CreateInscriptionBuilder::MetaData(const string &metadata)
 {
     bytevector cbor = l15::unhex<bytevector>(metadata);
-    auto check_metadata = nlohmann::json::from_cbor(move(cbor));
+    auto check_metadata = nlohmann::json::from_cbor(cbor);
     if (check_metadata.is_discarded())
         throw ContractTermWrongFormat(std::string(name_metadata));
 
-    m_metadata = metadata;
+    m_metadata = move(cbor);
+}
+
+void CreateInscriptionBuilder::Rune(const utxord::Rune &rune)
+{
+    m_rune_commitment.emplace(rune.Commit());
 }
 
 void CreateInscriptionBuilder::Data(const std::string& content_type, const std::string &hex_data)
@@ -370,9 +377,10 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
         contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
         contract.pushKV(name_content_type, *m_content_type);
         contract.pushKV(name_content, hex(*m_content));
-        if (m_metadata) {
-            contract.pushKV(name_metadata, *m_metadata);
-        }
+        if (m_metadata)
+            contract.pushKV(name_metadata, hex(*m_metadata));
+        if (m_rune_commitment)
+            contract.pushKV(name_rune_commitment, hex(*m_rune_commitment));
         {   UniValue utxo_arr(UniValue::VARR);
             for (const auto &input: m_inputs) {
                 UniValue utxo_val = input.MakeJson();
@@ -461,11 +469,20 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
     {   const auto &val = contract[name_metadata];
         if (!val.isNull()) {
             bytevector cbor = l15::unhex<bytevector>(val.get_str());
-            auto check_metadata = nlohmann::json::from_cbor(move(cbor));
+            auto check_metadata = nlohmann::json::from_cbor(cbor);
             if (check_metadata.is_discarded())
                 throw ContractTermWrongFormat(std::string(name_metadata));
 
-            m_metadata = val.get_str();
+            m_metadata = move(cbor);;
+        }
+    }
+    {   const auto &val = contract[name_rune_commitment];
+        if (!val.isNull()) {
+            bytevector v = l15::unhex<bytevector>(val.get_str());
+            if (v.size() > 16)
+                throw ContractTermWrongValue(name_rune_commitment + " too long");
+
+            m_rune_commitment = move(v);
         }
     }
 

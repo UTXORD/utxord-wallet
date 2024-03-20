@@ -5,34 +5,8 @@
 
 #include <optional>
 #include <tuple>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
-#include <boost/multiprecision/debug_adaptor.hpp>
 
 namespace utxord {
-
-#ifndef DEBUG
-using boost::multiprecision::uint128_t;
-#else
-namespace bmp = boost::multiprecision;
-using uint128_t = bmp::number<bmp::debug_adaptor<bmp::cpp_int_backend<128, 128, bmp::unsigned_magnitude, bmp::unchecked, void> >>;
-#endif
 
 const uint8_t MAX_DIVISIBILITY = 38;
 const uint128_t MAX_LIMIT = uint128_t(std::numeric_limits<uint64_t>::max()) + 1;
@@ -162,11 +136,10 @@ public:
     void Deadline(auto v) { if (v <= std::numeric_limits<uint32_t>::max()) m_deadline.emplace((uint32_t)v); }
     const std::optional<uint32_t>& Deadline() const { return m_deadline; }
 
+    bytevector Commit() const;
 
     RuneStone Etch() const;
-
     RuneStone EtchAndMint(uint128_t amount, uint32_t nout) const;
-
     RuneStone Mint(uint128_t amount, uint32_t nout) const;
 
     void Read(const RuneStone& runestone);

@@ -361,6 +361,17 @@ Rune::Rune(const std::string& rune_text, const std::string& space, std::optional
     , m_symbol(symbol)
 { }
 
+bytevector Rune::Commit() const
+{
+    bytevector res;
+    res.reserve(16);
+
+    for(uint128_t r = m_rune; r > 0; r /= 256)
+        res.push_back(static_cast<uint8_t>(r % 256));
+
+    return res;
+}
+
 RuneStone Rune::Etch() const
 {
     if (m_rune_id) throw std::runtime_error("already etched");
