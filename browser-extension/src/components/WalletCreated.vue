@@ -25,7 +25,7 @@
 import { useRouter } from 'vue-router'
 const { back, push } = useRouter()
 async function Start() {
-    push('/')
+  push('/')
 }
 </script>
 
