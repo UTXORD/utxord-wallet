@@ -1,6 +1,7 @@
 :root {
   --bg-color: #fff;
   --primary: #3ce5a2;
+  --primary-rgb: 60, 229, 162;
   --error: #ee505a;
   --section: #f4f4f4;
   --text-color: #000;
@@ -10,7 +11,7 @@
 }
 
 .dark {
-  --bg-color: #2b2d33;
+  --bg-color: #2B2D33;
   --error: #f27c83;
   --section: #404247;
   --text-color: #fff;
@@ -62,6 +63,18 @@ input {
     outline: none;
     box-shadow: 0 0 0 2px var(--primary);
   }
+}
+
+.v-popper--theme-dropdown .v-popper__inner {
+  border-color: #000 !important;
+}
+
+.v-popper__arrow-container .v-popper__arrow-outer {
+  border-color: #000 !important;
+}
+
+.v-popper__arrow-container .v-popper__arrow-inner {
+  border-color: #000 !important;
 }
 
 ::-webkit-scrollbar {
