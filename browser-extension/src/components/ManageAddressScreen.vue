@@ -45,21 +45,24 @@
             class="flex justify-between items-center py-4"
             :class="{ 'border-b-[1px] border-[var(--border-color)]': ADVANCED_LIST.length - 1 !== i }"
           >
-            <div class="flex flex-col">
-              <div class="flex mb-1 gap-1">
-                <span class="text-[15px] text-white">{{ adv.label }}</span>
-                <VDropdown :distance="10" placement="top">
-                  <QuestionIcon class="question-icon cursor-pointer" />
-                  <template #popper>
-                    <div class="max-w-[250px] load-screen_tooltip-descr bg-black py-2 px-3 text-white">
-                      {{ adv.tooltip }}
-                    </div>
-                  </template>
-                </VDropdown>
-              </div>
-              <span class="text-[13px] text-[var(--text-grey-color)]">{{ adv.description }}</span>
-            </div>
-            <RadioBox v-model="useDerivation" :value="adv.value" />
+            <RadioBox v-model="useDerivation" :value="adv.value" class="w-full">
+              <template #left>
+                <div class="flex flex-col w-full">
+                  <div class="flex mb-1 gap-1">
+                    <span class="text-[15px] text-white">{{ adv.label }}</span>
+                    <VDropdown :triggers="['hover']" :distance="10" placement="top">
+                      <QuestionIcon class="question-icon cursor-pointer" />
+                      <template #popper>
+                        <div class="max-w-[250px] load-screen_tooltip-descr bg-black py-2 px-3 text-white">
+                          {{ adv.tooltip }}
+                        </div>
+                      </template>
+                    </VDropdown>
+                  </div>
+                  <span class="text-[13px] text-[var(--text-grey-color)] text-left">{{ adv.description }}</span>
+                </div>
+              </template>
+            </RadioBox>
           </div>
         </div>
       </div>
@@ -68,13 +71,10 @@
       <div class="flex w-full mt-auto">
         <Button
           second
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
+          class="w-full px-0 flex items-center justify-center bg-white gap-2"
           @click="back"
         >
-          <ArrowLeftIcon />
-        </Button>
-        <Button class="w-full">
-          Got it
+          Go Back
         </Button>
       </div>
     </div>

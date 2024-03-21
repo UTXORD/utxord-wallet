@@ -4,6 +4,7 @@
     :class="{ 'radio--checked': checked }"
   >
     <input class="hidden" type="radio" :value="value" :checked="checked" @change="set" />
+    <slot name="left" />
     <div class="radio_figure bg-slate-100/1 flex items-center justify-center rounded-full border-1 border-[#AAABAD] w-[16px] min-w-[16px] h-[16px]">
       <div v-if="checked" class="radio_figure-dot bg-[var(--primary)] rounded-full w-[8px] min-w-[8px] h-[8px]" />
     </div>

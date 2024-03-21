@@ -5,23 +5,29 @@
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="password-screen_content h-full flex flex-col items-start px-5">
 
+      <h1 class="text-[var(--text-color)] text-[18px] mb-4">Settings</h1>
 
-      <p class="text-[var(--text-color)]">Settings</p>
-
-      <ul class="rounded-menu">
-        <li class="rounded-menu-item" style="cursor: pointer" @click="showManageAddress">Address Setup<span class="arrow-right">&#8250;</span></li>
-        <li class="rounded-menu-item" style="cursor: pointer" @click="showManagePassword">Manage Password<span class="arrow-right">&#8250;</span></li>
-      </ul>
-
+      <div class="w-full flex flex-col bg-[var(--section)] rounded-xl mb-5">
+        <span
+          v-for="(item, i) in LINKS"
+          :key="i"
+          @click="push(item.link)"
+          class="cursor-pointer p-4 flex items-center justify-between items-center text-[15px] text-[var(--text-color)] hover:text-[var(--text-blue)]"
+          :class="{ 'border-b-[1px] border-[#4e4e4e]': LINKS.length - 1 !== i }"
+        >
+          {{ item.label }}
+          <ChevronIcon class="transform rotate-270 h-[15px]" />
+        </span>
+      </div>
 
       <!-- Buttons -->
       <div class="flex w-full mt-auto">
         <Button
-          outline
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
+          second
+          class="w-full px-0 flex items-center justify-center bg-white gap-2"
           @click="back"
         >
-          Close settings
+          Go Back
         </Button>
       </div>
     </div>
@@ -34,6 +40,17 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { isASCII } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
+
+const LINKS = [
+  {
+    label: 'Manage Address',
+    link: '/manage-address'
+  },
+  {
+    label: 'Manage Password',
+    link: '/manage-password'
+  }
+]
 
 const store = useStore()
 const { useDerivation, typeAddress } = toRefs(store)
@@ -92,11 +109,11 @@ async function onStore() {
 }
 
 async function showManagePassword() {
-      push('/manage-password');
+  push('/manage-password');
 }
 
 async function showManageAddress() {
-      push('/manage-address');
+  push('/manage-address');
 }
 
 </script>

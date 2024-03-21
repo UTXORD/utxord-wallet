@@ -103,7 +103,7 @@
             Use Passphrase
           </span>
         </Checkbox>
-        <VDropdown :distance="10" placement="top">
+        <VDropdown :triggers="['hover']" :distance="10" placement="top">
           <QuestionIcon class="question-icon cursor-pointer" />
           <template #popper>
             <div class="max-w-[250px] load-screen_tooltip-descr bg-black py-2 px-3 text-white">
