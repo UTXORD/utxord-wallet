@@ -5,27 +5,25 @@
     <div
       class="generate-screen_content h-full flex flex-col items-center px-5 pb-5"
     >
+     <!-- title and content -->
+      <h1 class="generate-screen_title w-full mb-2 text-left text-[var(--text-color)]">Your mnemonic phrase</h1>
       <!-- Secret phrase -->
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
       >
-        <div class="flex items-center mb-2">
-          <span class="w-full text-[var(--text-grey-color)]"
-            >Words length:</span
-            >
-              <select
-              @change="refreshMnemonic"
-              v-model="length"
-              style="font-size: 14px; font-family: Arial;"
-              class="generate-screen_form w-full flex flex-col mr-2 bg-[var(--bg-color)] text-[var(--text-color)]">
-                <option value="12" :selected="length === 12" class="w-full text-[var(--text-grey-color)]">12</option>
-                <option value="15" :selected="length === 15" class="w-full text-[var(--text-grey-color)]">15</option>
-                <option value="18" :selected="length === 18" class="w-full text-[var(--text-grey-color)]">18</option>
-                <option value="21" :selected="length === 21" class="w-full text-[var(--text-grey-color)]">21</option>
-                <option value="24" :selected="length === 24" class="w-full text-[var(--text-grey-color)]">24</option>
-              </select>
-            </div>
-        <div class="flex items-center mb-2">
+        <div class="flex flex-col items-center">
+          <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s length</span>
+          <Dropdown
+            v-model="passphraseLength"
+            @update:model-value="refreshMnemonic"
+            :options="PHRASE_LENGTH_OPTIONS"
+          />
+        </div>
+      </div>
+      <div
+        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+      >
+        <div class="flex items-center">
           <span class="w-full text-[var(--text-grey-color)]"
             >Store these safely:</span
           >
@@ -36,67 +34,66 @@
           />
         </div>
         <div class="flex items-center mb-2">
-          <span class="w-full text-[var(--text-grey-color)]"
-            >Show as: &nbsp;
-          <input type="radio" v-model="picked" name="picked" value="line" checked/>
-          &nbsp;<label for="line">Line</label> or
-          <input type="radio" v-model="picked" name="picked" value="list" />
-          &nbsp;<label for="list">List</label>
+          <span class="w-full text-[var(--text-grey-color)] hidden">Show as: &nbsp;
+            <input type="radio" v-model="picked" name="picked" value="line" checked/>
+            &nbsp;<label for="line">Line</label> or
+            <input type="radio" v-model="picked" name="picked" value="list" />
+            &nbsp;<label for="list">List</label>
           </span>
-          </div>
+        </div>
         <CustomInput v-if="picked == 'line'"
           type="textarea"
           class="w-full"
-          rows="3"
+          :rows="3"
           v-model="textarea"
           readonly
         />
         <table style="width: 100%;" v-if="picked == 'list'">
-        <!-- for 12 words -->
-        <tbody v-if="length == 12" v-for="n in 4">
-        <tr>
-          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
-          <td>{{n+4}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+3]"/></td>
-          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
-        </tr>
-        </tbody>
-        <!-- for 15 words -->
-        <tbody v-if="length == 15" v-for="n in 5">
-        <tr>
-          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
-          <td>{{n+5}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+4]"/></td>
-          <td>{{n+10}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+9]"/></td>
-        </tr>
-        </tbody>
+          <!-- for 12 words -->
+          <tbody v-if="passphraseLength == 12" v-for="n in 4">
+            <tr>
+              <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+              <td>{{n+4}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+3]"/></td>
+              <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
+            </tr>
+          </tbody>
+          <!-- for 15 words -->
+          <tbody v-if="passphraseLength == 15" v-for="n in 5">
+            <tr>
+              <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+              <td>{{n+5}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+4]"/></td>
+              <td>{{n+10}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+9]"/></td>
+            </tr>
+          </tbody>
 
-        <!-- for 18 words -->
-        <tbody v-if="length == 18" v-for="n in 6">
-        <tr>
-          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
-          <td>{{n+6}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+5]"/></td>
-          <td>{{n+12}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+11]"/></td>
-        </tr>
-        </tbody>
-        <!-- for 21 words -->
-        <tbody v-if="length == 21" v-for="n in 7">
-        <tr>
-          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
-          <td>{{n+7}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+6]"/></td>
-          <td>{{n+14}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+13]"/></td>
-        </tr>
-        </tbody>
-        <!-- for 24 words -->
-        <tbody v-if="length == 24" v-for="n in 8">
-        <tr>
-          <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
-          <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
-          <td>{{n+16}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+15]"/></td>
-        </tr>
-        </tbody>
+          <!-- for 18 words -->
+          <tbody v-if="passphraseLength == 18" v-for="n in 6">
+            <tr>
+              <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+              <td>{{n+6}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+5]"/></td>
+              <td>{{n+12}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+11]"/></td>
+            </tr>
+          </tbody>
+          <!-- for 21 words -->
+          <tbody v-if="passphraseLength == 21" v-for="n in 7">
+            <tr>
+              <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+              <td>{{n+7}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+6]"/></td>
+              <td>{{n+14}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+13]"/></td>
+            </tr>
+          </tbody>
+          <!-- for 24 words -->
+          <tbody v-if="passphraseLength == 24" v-for="n in 8">
+            <tr>
+              <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
+              <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
+              <td>{{n+16}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+15]"/></td>
+            </tr>
+          </tbody>
         </table>
         <!-- Passphrase -->
 
-        <div class="generate-screen_form-input flex flex-col p-3">
+        <div class="generate-screen_form-input flex flex-col p-3 hidden">
           <span class="mb-2 w-full text-[var(--text-grey-color)]"
             >Use Passphrase:
             <input
@@ -143,66 +140,50 @@
           <CustomInput
             type="text"
             v-model="passphrase"
-            />
+            name="passphrase"
+          />
         </div>
+
       </div>
 
-      <!-- Inputs -->
-      <div
-        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl px-3 pt-3 mb-5"
-      >
-        <div class="generate-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Enter your Password:</span
-          >
-          <CustomInput
-            autofocus
-            type="password"
-            v-model="password"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters',
-              (val) => isLength(val) || 'Password must be minimum 9 characters',
-              (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
-            ]"
-          />
-        </div>
+      <!-- Alert -->
+      <div class="w-full flex justify-start">
+        <AlertBox>
+          <span class="w-full text-[15px]">
+            Do not share it with anyone
+          </span>
+        </AlertBox>
+      </div>
 
-        <div class="generate-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Confirm Password:</span
-          >
-          <CustomInput
-            type="password"
-            v-model="confirmPassword"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters',
-              (val) =>
-                val === password ||
-                'Confirm Password does not match the Password',
-              (val) => isLength(val) || 'Password must be minimum 9 characters',
-              (val) => isContains(val) ||
-              'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
-            ]"
-          />
-        </div>
+      <div class="w-full h-[1px] bg-[#404247] my-5" />
+
+      <!-- I saved my mnemonic -->
+      <div class="w-full flex justify-start">
+        <Checkbox v-model="mnemonicIsSaved" class="mb-5">
+          <span class="w-full text-[var(--text-grey-color)] text-[15px]">
+            I saved my mnemonic phrase
+          </span>
+        </Checkbox>
       </div>
 
       <!-- Buttons -->
-      <div class="flex w-full mb-5 mt-auto">
+      <div class="flex w-full mt-1">
         <Button
-          outline
+          second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
-          @click="goToStartPage"
+          @click="goToBack"
         >
-          <img src="/assets/arrow-left.svg" alt="Go Back" />
+          <ArrowLeftIcon />
         </Button>
-        <Button :disabled="isDisabled" class="w-full" @click="onStore"
-          >Store</Button
-        >
+        <Button
+          :disabled="isDisabled"
+          class="w-full"
+          @click="onStore"
+        >Confirm</Button>
       </div>
 
       <!-- Info -->
-      <p class="generate-screen_info text-[var(--text-blue)]">
+      <p class="hidden generate-screen_info text-[var(--text-blue)]" >
         The data is stored locally in this extension
       </p>
     </div>
@@ -217,32 +198,49 @@ import useWallet from '~/popup/modules/useWallet'
 import { SAVE_GENERATED_SEED } from '~/config/events'
 import { isASCII, isLength, isContains, copyToClipboard } from '~/helpers/index'
 
-const { push } = useRouter()
+const LENGTH_12 = { label: '12', value: 12 }
+const LENGTH_15 = { label: '15', value: 15 }
+const LENGTH_18 = { label: '18', value: 18 }
+const LENGTH_21 = { label: '21', value: 21 }
+const LENGTH_24 = { label: '24', value: 24 }
+
+const PHRASE_LENGTH_OPTIONS = [
+  LENGTH_12,
+  LENGTH_15,
+  LENGTH_18,
+  LENGTH_21,
+  LENGTH_24
+]
+
+const MNEMONIC_KEY = 'temp-mnemonic'
+const PASSPHRASE_LENGTH_KEY = 'temp-passphrase-length'
+
+const { back, push } = useRouter()
 const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
-const password = ref('')
-const confirmPassword = ref('')
 const usePassphrase = ref(false)
 const passphrase = ref('')
-const length = ref(12)
+const passphraseLength = ref(LENGTH_12)
 const picked = ref('line')
 const showInfo = ref(false)
+const mnemonicIsSaved = ref(false)
 
-const list = computed(() =>textarea.value.split(' '))
+const list = computed(() => textarea.value.split(' '))
 
 const isDisabled = computed(() => {
+  if (!mnemonicIsSaved.value) return true
   if (!textarea.value) return true
-  if (!password.value.length || !confirmPassword.value.length) return true
-  if (password.value !== confirmPassword.value) return true
-  if (!isASCII(password.value) || !isASCII(confirmPassword.value)) return true
-  if (!isLength(password.value) || !isLength(confirmPassword.value)) return true
-  if (!isContains(password.value) || !isContains(confirmPassword.value)) return true
   return false
 })
 
-function viewShowInfo(){
+function viewShowInfo() {
   showInfo.value = !showInfo.value
   return true
+}
+
+function removeTempDataFromLocalStorage() {
+  localStorage.removeItem(MNEMONIC_KEY)
+  localStorage.removeItem(PASSPHRASE_LENGTH_KEY)
 }
 
 async function onStore() {
@@ -250,44 +248,40 @@ async function onStore() {
     SAVE_GENERATED_SEED,
     {
       seed: textarea.value,
-      password: password.value,
-      passphrase: passphrase.value,
+      passphrase: passphrase.value
     },
     'background'
   )
   if (success) {
     const fundAddress = await getFundAddress()
     getBalance(fundAddress)
-    localStorage.removeItem('temp-mnemonic')
-    localStorage.removeItem('temp-length')
-    push('/')
+    removeTempDataFromLocalStorage()
+    push('/loading#wallet-created')
   }
 }
 
-function goToStartPage() {
-  localStorage.removeItem('temp-mnemonic')
-  localStorage.removeItem('temp-length')
-  push('/start')
+function goToBack() {
+  removeTempDataFromLocalStorage()
+  back()
 }
 
 function refreshMnemonic() {
-  localStorage.removeItem('temp-mnemonic')
-  localStorage.removeItem('temp-length')
+  removeTempDataFromLocalStorage()
   getMnemonic()
 }
 
 async function getMnemonic() {
-  const tempMnemonic = localStorage?.getItem('temp-mnemonic')
-  const tempLength = localStorage?.getItem('temp-length')
+  const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
+  const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
   if (tempMnemonic) {
     textarea.value = tempMnemonic
-    length.value = tempLength
+    passphraseLength.value = tempLength
   } else {
     const mnemonic = await sendMessage('GENERATE_MNEMONIC', {
-      length: length.value
+      length: passphraseLength.value
     }, 'background')
-    localStorage?.setItem('temp-mnemonic', mnemonic)
-    localStorage?.setItem('temp-length', length.value)
+    localStorage?.setItem(MNEMONIC_KEY, mnemonic)
+    localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
     textarea.value = mnemonic
   }
 }
@@ -304,6 +298,11 @@ onBeforeMount(() => {
     padding-bottom: 22px;
   }
 
+  &_title {
+    font-size: 18px;
+    line-height: 25px;
+  }
+
   &_form span {
     text-align: left;
     font-weight: 400;
@@ -316,7 +315,7 @@ onBeforeMount(() => {
     font-weight: 500;
     font-size: 15px;
     line-height: 20px;
-    display: flex;
+   /* display: flex; */
     align-items: center;
     text-align: center;
     letter-spacing: -0.32px;

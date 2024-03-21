@@ -14,7 +14,7 @@
           <Button
             outline
             :disabled="!isSynchronized"
-            class="home-screen_balance-refresh absolute top-2 right-2"
+            class="home-screen_balance-refresh absolute top-2 right-2 !min-h-[20px]"
             @click="refreshBalance"
           >
             <RefreshIcon />
@@ -38,10 +38,10 @@
         </span>
         <template v-if="!connected">
         <Button
-        outline
-        @click="connectToSite"
-        class="min-w-[40px] px-3 py-1 mt-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
-        >Connect to site</Button>
+          outline
+          @click="connectToSite"
+          class="min-w-[40px] px-3 py-1 mt-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+          >Connect to site</Button>
         </template>
       </div>
 
@@ -126,14 +126,14 @@
             v-if="useDerivation"
             outline
             @click="newFundAddress"
-            class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+            class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)] !min-h-[30px]"
           >
             New
           </Button>
           <Button
             outline
             @click="copyToClipboard(fundAddress)"
-            class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+            class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)] !min-h-[30px]"
           >
             Copy
           </Button>

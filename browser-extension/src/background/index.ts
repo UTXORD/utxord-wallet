@@ -10,6 +10,7 @@ import {
   BALANCE_REFRESH_DONE,
   CHECK_AUTH,
   CHECK_PASSWORD,
+  SET_UP_PASSWORD,
   COMMIT_BUY_INSCRIPTION,
   CONNECT_TO_PLUGIN,
   CONNECT_TO_SITE,
@@ -241,8 +242,12 @@ interface ICollectionTransferResult {
       return true;
     });
 
-    onMessage(SAVE_GENERATED_SEED, async (payload) => {
+    onMessage(SET_UP_PASSWORD, async (payload) => {
       const sup = await Api.setUpPassword(payload.data.password);
+      return sup;
+    });
+
+    onMessage(SAVE_GENERATED_SEED, async (payload) => {
       await Api.setUpSeed(payload.data.seed, payload.data?.passphrase);
       Api.genKeys();
       if(Api.wallet.auth.key) {
@@ -250,6 +255,7 @@ interface ICollectionTransferResult {
       }
       return Api.checkSeed();
     });
+
     onMessage(UPDATE_PASSWORD, async (payload) => {
       const checkOld = await Api.checkPassword(payload.data.old);
       if(!checkOld){

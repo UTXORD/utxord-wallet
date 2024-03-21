@@ -12,6 +12,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('~/components/StartScreen.vue')
   },
   {
+    path: '/create-password-screen',
+    name: 'CreatePasswordScreen',
+    component: () => import('~/components/CreatePasswordScreen.vue')
+  },
+  {
     path: '/export-keys',
     name: 'ExportKeys',
     component: () => import('~/components/ExportKeysScreen.vue')
@@ -25,6 +30,16 @@ const routes: Array<RouteRecordRaw> = [
     path: '/load',
     name: 'LoadScreen',
     component: () => import('~/components/LoadScreen.vue')
+  },
+  {
+    path: '/alert-mnemonic',
+    name: 'AlertMnemonic',
+    component: () => import('~/components/AlertMnemonic.vue')
+  },
+  {
+    path: '/wallet-created',
+    name: 'WalletCreated',
+    component: () => import('~/components/WalletCreated.vue')
   },
   {
     path: '/loading',

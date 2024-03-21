@@ -30,22 +30,14 @@
         :class="{ 'custom-input--error': errors?.length }"
       />
       <div class="absolute inset-y-0 right-0 flex items-center px-2">
-        <img
-          v-if="props.type === TYPE_PASSWORD && showedPassword"
-          src="/assets/hide-stroke.svg"
-          alt="hide"
-          title="hide"
-          class="select-none gray-300 hover:gray-400 active:gray-300 px-2 py-1 cursor-pointer"
+        <label
+          v-if="props.type === TYPE_PASSWORD"
           @click="togglePassword"
-        />
-        <img
-          v-if="props.type === TYPE_PASSWORD && !showedPassword"
-          src="/assets/show-stroke.svg"
-          alt="Show"
-          title="Show"
-          class="select-none gray-300 hover:gray-400 active:gray-300 px-2 py-1 cursor-pointer"
-          @click="togglePassword"
-        />
+          class="select-none rounded px-2 py-2 text-sm text-gray-600 font-mono cursor-pointer js-password-label"
+          for="toggle"
+        >
+          <EyeIcon :opened="showedPassword" class="opacity-70" />
+        </label>
         <slot />
       </div>
     </div>
@@ -55,7 +47,7 @@
       class="custom-input_error"
       :class="{ 'my-2': props.rules?.length }"
     >
-      <span v-if="errors?.length" class="text-red-300">{{ errors[0] }}</span>
+      <span v-if="errors?.length" class="text-red-300 text-left">{{ errors[0] }}</span>
     </div>
   </div>
 </template>
