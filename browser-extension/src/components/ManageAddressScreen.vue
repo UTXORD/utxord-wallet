@@ -1,41 +1,81 @@
 <template>
-  <div class="password-screen flex flex-col h-full">
+  <div class="manage-address-screen flex flex-col h-full">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="password-screen_content h-full flex flex-col items-start px-5">
+    <div class="manage-address-screen_content h-full flex flex-col items-start px-5">
 
-      <!-- Inputs -->
+      <h1 class="text-[var(--text-color)] text-[18px] mb-4">Address Setup</h1>
 
-      <p class="text-[var(--text-color)]">Address Setup</p>
+      <!-- Radio buttons -->
+      <div class="flex flex-col gap-3 mb-7">
+        <RadioBox v-model="typeAddress" :value="TAPROOT_VALUE">
+          <span
+            class="text-[var(--text-grey-color)] text-[15px]"
+            :class="{
+              '!text-[var(--text-color)]': typeAddress === TAPROOT_VALUE
+            }"
+          >
+            Taproot
+          </span>
+        </RadioBox>
+        <RadioBox v-model="typeAddress" :value="SEGWIT_VALUE">
+          <span
+            class="text-[var(--text-grey-color)] text-[15px]"
+            :class="{
+              '!text-[var(--text-color)]': typeAddress === SEGWIT_VALUE
+            }"
+          >
+            Segwit
+          </span>
+        </RadioBox>
+      </div>
 
+      <div @click="openedAdvanced = !openedAdvanced" class="flex items-center gap-2 mb-3 cursor-pointer w-full">
+        <ChevronIcon class="w-[20px]" :class="{ 'transform rotate-180': openedAdvanced }" />
+        <span class="text-[15px] text-[var(--text-color)]">Advanced Options</span>
+      </div>
 
-      <input type="radio" id="radio-taproot" value="0" :checked="typeAddress === 0" v-model="typeAddress" @change="setTypeAddress">
-      <label for="one">TapRoot</label>
-      <br>
-      <input type="radio" id="radio-segwit"  value="1" :checked="typeAddress === 1" v-model="typeAddress" @change="setTypeAddress">
-      <label for="two">SegWit</label>
-
-      <p class="text-[var(--text-color)]">Advanced Options</p>
-      <p class="text-[var(--text-color)]">Manage Derivation</p>
-
-      <input type="radio" id="radio-derivation-static" value="" :checked="useDerivation === false" v-model="useDerivation" @change="setDerivate">
-      <label for="one">No Derivation<span> Generate one static address</span><span class="tooltip"> More compatible with other ordinal wallets. Pseudo–anonymously discloses what you own, better stats for community. Bitcoin phased it out (2012-19) but will support forever.</span></label>
-      <br>
-      <input type="radio" id="radio-derivation-onetime"  value="1" :checked="useDerivation === true" v-model="useDerivation" @change="setDerivate">
-      <label for="two">Use Derivation<span> Autogenerate one-time addresses</span><span class="tooltip"> Bitcoin recommended. Some ordinal wallets do not support it. No one will tell if any two of your inscriptions belong to the same owner.  See BIP-32.</span></label>
-
+      <div v-show="openedAdvanced" class="w-full flex flex-col bg-[var(--section)] rounded-xl px-3 py-3 mb-5">
+        <span class="mb-2 w-full text-[var(--text-grey-color)] text-left text-[14px]">Manage derevation</span>
+        <div class="flex flex-col bg-[var(--bg-color)] rounded-xl px-4">
+          <div
+            v-for="(adv, i) in ADVANCED_LIST"
+            :key="i"
+            class="flex justify-between items-center py-4"
+            :class="{ 'border-b-[1px] border-[var(--border-color)]': ADVANCED_LIST.length - 1 !== i }"
+          >
+            <div class="flex flex-col">
+              <div class="flex mb-1 gap-1">
+                <span class="text-[15px] text-white">{{ adv.label }}</span>
+                <VDropdown :distance="10" placement="top">
+                  <QuestionIcon class="question-icon cursor-pointer" />
+                  <template #popper>
+                    <div class="max-w-[250px] load-screen_tooltip-descr bg-black py-2 px-3 text-white">
+                      {{ adv.tooltip }}
+                    </div>
+                  </template>
+                </VDropdown>
+              </div>
+              <span class="text-[13px] text-[var(--text-grey-color)]">{{ adv.description }}</span>
+            </div>
+            <RadioBox v-model="useDerivation" :value="adv.value" />
+          </div>
+        </div>
+      </div>
 
       <!-- Buttons -->
       <div class="flex w-full mt-auto">
         <Button
-          outline
+          second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
           @click="back"
         >
-          <img src="/assets/arrow-left.svg" alt="Go Back" />
+          <ArrowLeftIcon />
         </Button>
-        <p>You have chosen to use {{useDerivation === true ? "one-time" : "static"}} {{typeAddress == 0 ? "TapRoot" : "SegWit"}} address</p>>
+        <Button class="w-full">
+          Got it
+        </Button>
       </div>
     </div>
   </div>
@@ -47,16 +87,33 @@ import { computed, ref, toRefs} from 'vue'
 import { useRouter } from 'vue-router'
 import { isASCII } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
-import {BALANCE_CHANGE_PRESUMED, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION} from "~/config/events";
-import useWallet from "~/popup/modules/useWallet"
+import {BALANCE_CHANGE_PRESUMED, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION} from '~/config/events';
+import useWallet from '~/popup/modules/useWallet'
+
+const TAPROOT_VALUE = 0
+const SEGWIT_VALUE = 1
+
+const ADVANCED_LIST = [
+  {
+    label: 'No Derivation',
+    value: false,
+    description: 'Generate one static address',
+    tooltip: 'More compatible with other ordinal wallets. Pseudo–anonymously discloses what you own, better stats for community. Bitcoin phased it out (2012-19) but will support forever.'
+  },
+  {
+    label: 'Use Derivation',
+    value: true,
+    description: 'Autogenerate one-time addresses',
+    tooltip: 'Bitcoin recommended. Some ordinal wallets do not support it. No one will tell if any two of your inscriptions belong to the same owner.  See BIP-32.'
+  }
+]
 
 const store = useStore()
-const {fundAddress, useDerivation, typeAddress } = toRefs(store)
+const { fundAddress, useDerivation, typeAddress } = toRefs(store)
 const { getBalance, fetchUSDRate } = useWallet()
-
 const { back, push } = useRouter()
 
-// const radioTypeAddress = ref('')
+const openedAdvanced = ref(false)
 
 function refreshBalance() {
   store.setSyncToFalse()
@@ -85,7 +142,7 @@ async function setTypeAddress(typeAddr){
       },
       'background'
   )
-  const tl = Boolean(useDerivation.value)?'fund':'oth'
+  const tl = Boolean(useDerivation.value) ? 'fund' : 'oth'
   const addr = response?.addresses?.reverse()?.find(
     (item) => item.type === tl && item.typeAddress === ta
     )?.address
@@ -112,7 +169,7 @@ async function setDerivate(){
 </script>
 
 <style lang="scss" scoped>
-.password-screen {
+.manage-address-screen {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
@@ -141,6 +198,18 @@ async function setDerivate(){
     text-align: center;
     letter-spacing: -0.32px;
     color: #1b46f5;
+  }
+
+  :deep(.question-icon) {
+    path {
+      fill: var(--text-grey-color);
+    }
+
+    &:hover {
+      path {
+        fill: var(--text-color);
+      }
+    }
   }
 }
 </style>
