@@ -5,8 +5,8 @@
     <div class="load-screen_content h-full flex flex-col items-center px-5 pb-5">
       <!-- title and content -->
       <div class="flex flex-col w-full items-start mb-4">
-        <p class="load-screen_title text-[var(--text-color)] mb-2">Import a mnemonic phrase</p>
-        <span class="w-full text-left text-[var(--text-grey-color)]">
+        <h1 class="load-screen_title text-[var(--text-color)] mb-2">Import a mnemonic phrase</h1>
+        <span class="w-full text-left text-[13px] text-[var(--text-grey-color)]">
           This is usually a set of 12–24 words
         </span>
       </div>
@@ -106,7 +106,7 @@
         <VTooltip :distance="10">
           <QuestionIcon class="cursor-pointer" />
           <template #popper>
-            <div class="max-w-[200px]">
+            <div class="max-w-[250px] load-screen_tooltip-descr">
               A passphrase is not a password; it behaves differently. It will be accepted if you already have a passphrase and enter it wrong. However, it will produce an empty new set of addresses.
             </div>
           </template>
@@ -284,6 +284,12 @@ async function onStore() {
     border-color: white;
     border-radius: 0.75rem;
     height: 10em;
+  }
+
+  &_tooltip-descr {
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 22px;
   }
 }
 </style>
