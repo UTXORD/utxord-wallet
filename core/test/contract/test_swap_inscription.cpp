@@ -586,7 +586,7 @@ TEST_CASE("FundsNotEnough")
     REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(marketFundsConditions, FUNDS_TERMS));
 
     //Create insufficient funds utxo
-    std::string funds_amount = FormatAmount(ParseAmount(builderOrdBuyer.GetMinFundingAmount("")) - Dust(3000));
+    std::string funds_amount = FormatAmount(ParseAmount(ORD_PRICE));
     std::string funds_addr = funds_utxo_key.GetP2TRAddress(*bech);
     std::string funds_txid = w->btc().SendToAddress(funds_addr, funds_amount);
 

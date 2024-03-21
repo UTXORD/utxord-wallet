@@ -302,10 +302,10 @@ CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
     return commit_tx;
 }
 
-const CMutableTransaction &SwapInscriptionBuilder::GetFundsCommitTx() const
+const CTransaction &SwapInscriptionBuilder::GetFundsCommitTx() const
 {
     if (!mFundsCommitTx) {
-        mFundsCommitTx = MakeFundsCommitTx();
+        mFundsCommitTx.emplace(MakeFundsCommitTx());
     }
     return *mFundsCommitTx;
 }
@@ -339,7 +339,7 @@ void SwapInscriptionBuilder::SignFundsSwap(const KeyRegistry &master_key, const 
 
     auto keypair = master_key.Lookup(*m_swap_script_pk_B, key_filter);
 
-    const CMutableTransaction& funds_commit = GetFundsCommitTx();
+    auto& funds_commit = GetFundsCommitTx();
     CMutableTransaction swap_tx(MakeSwapTx(true));
 
     ChannelKeys key(keypair.PrivKey());
@@ -350,7 +350,7 @@ void SwapInscriptionBuilder::SignFundsPayBack(const KeyRegistry &master_key, con
 {
     CheckContractTerms(FUNDS_COMMIT_SIG);
 
-    const CMutableTransaction& funds_commit = GetFundsCommitTx(); // Request it here in order to force reuired fields check
+    auto& funds_commit = GetFundsCommitTx(); // Request it here in order to force reuired fields check
 
     auto keypair = master_key.Lookup(*m_swap_script_pk_B, key_filter);
     ChannelKeys key(keypair.PrivKey());
@@ -381,7 +381,7 @@ void SwapInscriptionBuilder::SignFundsPayBack(const KeyRegistry &master_key, con
     signature payback_sig = key.SignTaprootTx(payback_tx, 0, {funds_commit.vout[0]}, payback_script);
     payback_tx.vin.front().scriptWitness.stack.front() = move(payback_sig);
 
-    mFundsPaybackTx = move(payback_tx);
+    mFundsPaybackTx.emplace(move(payback_tx));
 }
 
 void SwapInscriptionBuilder::MarketSignOrdPayoffTx(const KeyRegistry &master_key, const std::string& key_filter)
@@ -405,7 +405,7 @@ void SwapInscriptionBuilder::MarketSignOrdPayoffTx(const KeyRegistry &master_key
 
     transfer_tx.vin[0].scriptWitness.stack[0] = *m_ord_payoff_sig;
 
-    mOrdPayoffTx = move(transfer_tx);
+    mOrdPayoffTx.emplace(move(transfer_tx));
 }
 
 void SwapInscriptionBuilder::MarketSignSwap(const KeyRegistry &master_key, const std::string& key_filter)
@@ -423,20 +423,20 @@ void SwapInscriptionBuilder::MarketSignSwap(const KeyRegistry &master_key, const
 
     swap_tx.vin[1].scriptWitness.stack[0] = *m_funds_swap_sig_M;
 
-    mSwapTx = move(swap_tx);
+    mSwapTx.emplace(move(swap_tx));
 
     PrecomputedTransactionData txdata;
     txdata.Init(*mSwapTx, {CTxOut(m_ord_input->output->Destination()->Amount(), utxo_pubkeyscript), GetFundsCommitTx().vout[0]}, /* force=*/ true);
 
     const CTxIn& ordTxin = mSwapTx->vin.at(0);
-    MutableTransactionSignatureChecker TxOrdChecker(&(*mSwapTx), 0, m_ord_input->output->Destination()->Amount(), txdata, MissingDataBehavior::FAIL);
+    TransactionSignatureChecker TxOrdChecker(&(*mSwapTx), 0, m_ord_input->output->Destination()->Amount(), txdata, MissingDataBehavior::FAIL);
     bool ordPath = VerifyScript(ordTxin.scriptSig, utxo_pubkeyscript, &ordTxin.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
     if (!ordPath) {
         throw ContractError("Ord path swap error");
     }
 
     const CTxIn& txin = mSwapTx->vin.at(1);
-    MutableTransactionSignatureChecker tx_checker(&(*mSwapTx), 1, GetFundsCommitTx().vout[0].nValue, txdata, MissingDataBehavior::FAIL);
+    TransactionSignatureChecker tx_checker(&(*mSwapTx), 1, GetFundsCommitTx().vout[0].nValue, txdata, MissingDataBehavior::FAIL);
     bool fundsPath = VerifyScript(txin.scriptSig, GetFundsCommitTx().vout[0].scriptPubKey, &txin.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, tx_checker);
     if (!fundsPath) {
         throw ContractError("Funds path swap error");
@@ -815,7 +815,7 @@ void SwapInscriptionBuilder::ReadJson(const UniValue& contract, SwapPhase phase)
 }
 
 
-const CMutableTransaction &SwapInscriptionBuilder::GetSwapTx() const
+const CTransaction &SwapInscriptionBuilder::GetSwapTx() const
 {
     if (!mSwapTx) {
         mSwapTx.emplace(MakeSwapTx(true));
@@ -823,7 +823,7 @@ const CMutableTransaction &SwapInscriptionBuilder::GetSwapTx() const
     return *mSwapTx;
 }
 
-const CMutableTransaction &SwapInscriptionBuilder::GetPayoffTx() const
+const CTransaction &SwapInscriptionBuilder::GetPayoffTx() const
 {
     if (!mOrdPayoffTx) {
 
@@ -838,7 +838,7 @@ const CMutableTransaction &SwapInscriptionBuilder::GetPayoffTx() const
         transfer_tx.vout[0].scriptPubKey = bech32().PubKeyScript(*m_ord_payoff_addr);
         transfer_tx.vout[0].nValue = m_ord_input->output->Destination()->Amount();
 
-        mOrdPayoffTx = move(transfer_tx);
+        mOrdPayoffTx.emplace(move(transfer_tx));
     }
     return *mOrdPayoffTx;
 }
@@ -896,7 +896,7 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
         VerifyTxSignature(m_ord_input->output->Destination()->Address(), m_ord_input->witness, *mSwapTx, 0, move(spent_outs));
     }
     else {
-        CMutableTransaction swap_tx(MakeSwapTx(has_funds_sig));
+        CTransaction swap_tx(MakeSwapTx(has_funds_sig));
         VerifyTxSignature(m_ord_input->output->Destination()->Address(), m_ord_input->witness, swap_tx, 0, move(spent_outs));
     }
 }
@@ -918,7 +918,7 @@ void SwapInscriptionBuilder::CheckFundsCommitSig() const
         }
     }
     else {
-        CMutableTransaction swap_tx(MakeFundsCommitTx());
+        CTransaction swap_tx(MakeFundsCommitTx());
         for (const auto& in: m_fund_inputs) {
             VerifyTxSignature(in.output->Destination()->Address(), in.witness, swap_tx, in.nin, std::vector<CTxOut>(spent_outs));
         }
@@ -933,7 +933,7 @@ void SwapInscriptionBuilder::CheckFundsSwapSig() const
         VerifyTxSignature(*m_swap_script_pk_B, *m_funds_swap_sig_B, *mSwapTx, 1, move(spent_outs), MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
     }
     else {
-        CMutableTransaction swap_tx(MakeSwapTx(true));
+        CTransaction swap_tx(MakeSwapTx(true));
         VerifyTxSignature(*m_swap_script_pk_B, *m_funds_swap_sig_B, swap_tx, 1, move(spent_outs), MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
     }
 }
@@ -946,7 +946,7 @@ void SwapInscriptionBuilder::CheckMarketSwapSig() const
         VerifyTxSignature(*m_swap_script_pk_M, *m_funds_swap_sig_M, *mSwapTx, 1, move(spent_outs), MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
     }
     else {
-        CMutableTransaction swap_tx(MakeSwapTx(true));
+        CTransaction swap_tx(MakeSwapTx(true));
         VerifyTxSignature(*m_swap_script_pk_M, *m_funds_swap_sig_M, swap_tx, 1, move(spent_outs), MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
     }
 }

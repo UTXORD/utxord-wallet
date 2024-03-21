@@ -5,7 +5,6 @@
 #include <vector>
 #include <optional>
 #include <memory>
-#include <list>
 
 #include "univalue.h"
 
@@ -34,7 +33,7 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     InscribeType m_type;
     std::optional<CAmount> m_ord_amount;
 
-    std::list<ContractInput> m_inputs;
+    std::vector<ContractInput> m_inputs;
 
     std::shared_ptr<IContractDestination> m_author_fee;
 
@@ -61,9 +60,8 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     std::optional<std::string> m_destination_addr;
 
     mutable std::optional<std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>> mInscriptionTaproot;
-    mutable std::optional<CMutableTransaction> mCommitTx;
-    mutable std::optional<CMutableTransaction> mGenesisTx;
-    mutable std::optional<CMutableTransaction> mCollectionCommitTx;
+    mutable std::optional<CTransaction> mCommitTx;
+    mutable std::optional<CTransaction> mGenesisTx;
 
 private:
     void CheckBuildArgs() const;
@@ -85,8 +83,8 @@ private:
 
     CMutableTransaction CreateGenesisTxTemplate() const;
 
-    const CMutableTransaction& CommitTx() const;
-    const CMutableTransaction& GenesisTx() const;
+    const CTransaction& CommitTx() const;
+    const CTransaction& GenesisTx() const;
 
 public:
 
@@ -96,18 +94,18 @@ public:
     static const std::string name_content;
     static const std::string name_collection;
     static const std::string name_collection_id;
+    static const std::string name_collection_address_override;
     static const std::string name_metadata;
     static const std::string name_inscribe_script_pk;
     static const std::string name_inscribe_script_market_pk;
     static const std::string name_inscribe_int_pk;
     static const std::string name_inscribe_sig;
+    static const std::string name_inscribe_market_sig;
     static const std::string name_fund_mining_fee_int_pk;
     static const std::string name_fund_mining_fee_sig;
+    static const std::string name_fund_mining_fee_market_sig;
     static const std::string name_destination_addr;
     static const std::string name_author_fee;
-//    static const std::string name_parent_collection_script_pk;
-//    static const std::string name_parent_collection_int_pk;
-//    static const std::string name_parent_collection_out_pk;
 
     //CreateInscriptionBuilder() : m_type(INSCRIPTION) {}
     CreateInscriptionBuilder(const CreateInscriptionBuilder&) = default;
