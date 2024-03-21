@@ -103,14 +103,14 @@
             Use Passphrase
           </span>
         </Checkbox>
-        <VTooltip :distance="10">
-          <QuestionIcon class="cursor-pointer" />
+        <VDropdown :distance="10" placement="top">
+          <QuestionIcon class="question-icon cursor-pointer" />
           <template #popper>
-            <div class="max-w-[250px] load-screen_tooltip-descr">
+            <div class="max-w-[250px] load-screen_tooltip-descr bg-black py-2 px-3 text-white">
               A passphrase is not a password; it behaves differently. It will be accepted if you already have a passphrase and enter it wrong. However, it will produce an empty new set of addresses.
             </div>
           </template>
-        </VTooltip>
+        </VDropdown>
       </div>
 
       <!-- Password field -->
@@ -290,6 +290,18 @@ async function onStore() {
     font-weight: 400;
     font-size: 14px;
     line-height: 22px;
+  }
+
+  :deep(.question-icon) {
+    path {
+      fill: var(--text-grey-color);
+    }
+
+    &:hover {
+      path {
+        fill: var(--text-color);
+      }
+    }
   }
 }
 </style>

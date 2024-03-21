@@ -65,6 +65,18 @@ input {
   }
 }
 
+.v-popper--theme-dropdown .v-popper__inner {
+  border-color: #000 !important;
+}
+
+.v-popper__arrow-container .v-popper__arrow-outer {
+  border-color: #000 !important;
+}
+
+.v-popper__arrow-container .v-popper__arrow-inner {
+  border-color: #000 !important;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   padding: 2px;

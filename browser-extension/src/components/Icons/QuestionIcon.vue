@@ -18,7 +18,7 @@ export default defineComponent({
 .dark {
   .svg-icon {
     > path {
-      stroke: #fff;
+      fill: #fff;
     }
   }
 }
