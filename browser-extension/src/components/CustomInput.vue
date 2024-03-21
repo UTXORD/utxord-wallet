@@ -33,10 +33,10 @@
         <label
           v-if="props.type === TYPE_PASSWORD"
           @click="togglePassword"
-          class="select-none bg-gray-300 hover:bg-gray-400 active:bg-gray-300 rounded px-2 py-1 text-sm text-gray-600 font-mono cursor-pointer js-password-label"
+          class="select-none rounded px-2 py-2 text-sm text-gray-600 font-mono cursor-pointer js-password-label"
           for="toggle"
         >
-          {{ showedPassword ? 'hide' : 'show' }}
+          <EyeIcon :opened="showedPassword" class="opacity-70" />
         </label>
         <slot />
       </div>
@@ -47,7 +47,7 @@
       class="custom-input_error"
       :class="{ 'my-2': props.rules?.length }"
     >
-      <span v-if="errors?.length" class="text-red-300">{{ errors[0] }}</span>
+      <span v-if="errors?.length" class="text-red-300 text-left">{{ errors[0] }}</span>
     </div>
   </div>
 </template>
