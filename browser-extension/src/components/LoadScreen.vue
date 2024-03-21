@@ -94,7 +94,7 @@
         </table>
       </div>
       <!-- Passphrase -->
-      <div class="w-full h-[1px] bg-[#404247] my-5" />
+      <div class="w-full h-[1px] bg-[var(--border-color)] my-5" />
 
       <!-- I saved my mnemonic -->
       <div class="w-full flex justify-start items-center gap-2 mb-5">

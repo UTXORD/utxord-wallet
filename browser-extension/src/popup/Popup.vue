@@ -69,7 +69,7 @@ async function checkAuth(): Promise<boolean> {
 
 function runHeartbeat() {
   setInterval(async () => {
-      await sendMessage(POPUP_HEARTBEAT, {}, 'background')
+    await sendMessage(POPUP_HEARTBEAT, {}, 'background')
   }, 10000)
 }
 
@@ -88,13 +88,6 @@ async function init() {
     runHeartbeat()
     // refreshBalance()
     fetchUSDRate()
-  } else {
-    const tempMnemonic = localStorage?.getItem('temp-mnemonic')
-    if (tempMnemonic) {
-      push('/generate')
-    } else {
-      push('/start')
-    }
   }
 }
 

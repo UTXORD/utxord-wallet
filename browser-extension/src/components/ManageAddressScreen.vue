@@ -49,7 +49,7 @@
               <template #left>
                 <div class="flex flex-col w-full">
                   <div class="flex mb-1 gap-1">
-                    <span class="text-[15px] text-white">{{ adv.label }}</span>
+                    <span class="text-[15px] text-[var(--text-color)]">{{ adv.label }}</span>
                     <VDropdown :triggers="['hover']" :distance="10" placement="top">
                       <QuestionIcon class="question-icon cursor-pointer" />
                       <template #popper>

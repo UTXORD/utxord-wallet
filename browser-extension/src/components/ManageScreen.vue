@@ -13,7 +13,7 @@
           :key="i"
           @click="push(item.link)"
           class="cursor-pointer p-4 flex items-center justify-between items-center text-[15px] text-[var(--text-color)] hover:text-[var(--text-blue)]"
-          :class="{ 'border-b-[1px] border-[#4e4e4e]': LINKS.length - 1 !== i }"
+          :class="{ 'border-b-[1px] border-[var(--border-color)] dark:border-[#4e4e4e]': LINKS.length - 1 !== i }"
         >
           {{ item.label }}
           <ChevronIcon class="transform rotate-270 h-[15px]" />

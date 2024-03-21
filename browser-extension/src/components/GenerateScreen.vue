@@ -155,7 +155,7 @@
         </AlertBox>
       </div>
 
-      <div class="w-full h-[1px] bg-[#404247] my-5" />
+      <div class="w-full h-[1px] bg-[var(--border-color)] my-5" />
 
       <!-- I saved my mnemonic -->
       <div class="w-full flex justify-start">
@@ -255,7 +255,6 @@ async function onStore() {
   if (success) {
     const fundAddress = await getFundAddress()
     getBalance(fundAddress)
-    removeTempDataFromLocalStorage()
     push('/loading#wallet-created')
   }
 }
@@ -273,8 +272,6 @@ function refreshMnemonic() {
 async function getMnemonic() {
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
   const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
-  console.log(tempMnemonic);
-  
   if (tempMnemonic) {
     textarea.value = tempMnemonic
     passphraseLength.value = tempLength

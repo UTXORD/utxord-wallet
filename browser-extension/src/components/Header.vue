@@ -51,12 +51,10 @@ const { push } = useRouter()
 const store = useStore()
 const { fundAddress } = toRefs(store)
 
-async function unload() {
-  const success = await sendMessage(UNLOAD_SEED, {}, 'background')
-  if (success) {
-    store.clearStore()
-    push('/start')
-  }
+function unload() {
+  localStorage.removeItem('temp-mnemonic')
+  store.clearStore()
+  sendMessage(UNLOAD_SEED, {}, 'background')
 }
 </script>
 

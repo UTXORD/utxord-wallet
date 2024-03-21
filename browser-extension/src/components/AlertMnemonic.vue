@@ -10,7 +10,7 @@
           You will be shown a mnemonic phrase on the next screen. Write it down and keep in a safe place
         </p>
         <p class="w-full text-left text-[var(--text-grey-color)]">
-          This phrase is the <span class="text-white">only</span> way to recover your wallet
+          This phrase is the <span class="text-[var(--text-color)]">only</span> way to recover your wallet
         </p>
       </div>
       <div class="flex w-full mt-auto">
