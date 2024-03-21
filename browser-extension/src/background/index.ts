@@ -1,6 +1,7 @@
 import {MAINNET, NETWORK, TESTNET} from '~/config/index';
 import {onMessage, sendMessage} from 'webext-bridge'
 import '~/background/api'
+import Errors from '~/background/errors'
 import WinManager from '~/background/winManager';
 import {
   ADDRESS_COPIED,
@@ -69,6 +70,7 @@ import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from 
 import Port = chrome.runtime.Port;
 import {HashedStore} from "~/background/hashedStore";
 import {bookmarks} from "webextension-polyfill";
+const err = new Errors();
 
 if (NETWORK === MAINNET){
   if(self){
@@ -79,7 +81,6 @@ if (NETWORK === MAINNET){
     self['console']['info']= () => {};
   }
 }
-
 // interface IInscription {
 //   collection: {},
 //   content: string,
@@ -221,10 +222,12 @@ interface ICollectionTransferResult {
     });
 
     const Api = await new self.Api(NETWORK);
+    err.handler(Api, 'Api');
     if(NETWORK === TESTNET){
       self.api = Api; // for debuging in devtols
     }
     const winManager = new WinManager();
+    err.handler(winManager, 'winManager');
 
     onMessage(GENERATE_MNEMONIC, async (payload) => {
       return await Api.generateMnemonic(payload.data?.length);
@@ -234,6 +237,7 @@ interface ICollectionTransferResult {
       const success = await Api.checkSeed();
       console.log('checkSeed', success)
       if(success){
+
         await Api.sendMessageToWebPage(CONNECT_TO_SITE, success);
         setTimeout(async () => {
           await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);

@@ -278,7 +278,7 @@ async function getMnemonic() {
     passphraseLength.value = tempLength
   } else {
     const mnemonic = await sendMessage('GENERATE_MNEMONIC', {
-      length: passphraseLength.value
+      length: passphraseLength.value.value
     }, 'background')
     localStorage?.setItem(MNEMONIC_KEY, mnemonic)
     localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)

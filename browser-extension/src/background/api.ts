@@ -29,6 +29,10 @@ import {Exception} from "sass";
 import * as WebBip39 from 'web-bip39';
 import wordlist from 'web-bip39/wordlists/english';
 
+import Errors from '~/background/errors'
+
+const err = new Errors();
+
 // import tabId = chrome.devtools.inspectedWindow.tabId;
 
 const limitQuery = 1000;
@@ -348,6 +352,7 @@ class Api {
 
   async init() {
     const myself = this
+
     try {
       const { seed } = await chrome.storage.local.get(['seed']);
       if (seed) {
@@ -361,7 +366,7 @@ class Api {
       }
       await myself.rememberIndexes();
       console.log('init...');
-      await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
+      myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
       myself.genRootKey();
 
       if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
@@ -607,9 +612,9 @@ class Api {
 
     await chrome.storage.local.clear();
     chrome.runtime.reload()
-    const err = chrome.runtime.lastError;
-    if (err) {
-      console.error(err)
+    const lastErr = chrome.runtime.lastError;
+    if (lastErr) {
+      console.error(lastErr)
       return false
     } else {
       return true
@@ -1156,7 +1161,6 @@ class Api {
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
-
     let tabs: Tab[];
     if (tabId != null) {
       tabs = [await chrome.tabs.get(tabId)]
