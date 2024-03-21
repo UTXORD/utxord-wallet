@@ -220,7 +220,7 @@ const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
 const usePassphrase = ref(false)
 const passphrase = ref('')
-const passphraseLength = ref(LENGTH_12)
+const passphraseLength = ref(LENGTH_12.value)
 const picked = ref('line')
 const showInfo = ref(false)
 const mnemonicIsSaved = ref(false)
@@ -273,6 +273,8 @@ function refreshMnemonic() {
 async function getMnemonic() {
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
   const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
+  console.log(tempMnemonic);
+  
   if (tempMnemonic) {
     textarea.value = tempMnemonic
     passphraseLength.value = tempLength

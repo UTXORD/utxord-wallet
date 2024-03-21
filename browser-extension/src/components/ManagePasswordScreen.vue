@@ -5,7 +5,8 @@
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="password-screen_content h-full flex flex-col items-start px-5">
 
-      <p class="text-[var(--text-color)]">Manage Password</p>
+      <h1 class="text-[var(--text-color)] text-[18px] mb-4">Manage Password</h1>
+
       <div
         class="password-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
       >
@@ -54,15 +55,13 @@
       <!-- Buttons -->
       <div class="flex w-full mt-auto">
         <Button
-          outline
+          second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
           @click="back"
         >
-          <img src="/assets/arrow-left.svg" alt="Go Back" />
+          <ArrowLeftIcon />
         </Button>
-        <Button :disabled="isDisabled" class="w-full" @click="onStore"
-          >Store</Button
-        >
+        <Button :disabled="isDisabled" class="w-full" @click="onStore">Store</Button>
       </div>
     </div>
   </div>
@@ -131,17 +130,6 @@ async function onStore() {
     font-size: 14px;
     line-height: 18px;
     letter-spacing: -0.154px;
-  }
-
-  &_info {
-    font-weight: 500;
-    font-size: 15px;
-    line-height: 20px;
-    display: flex;
-    align-items: center;
-    text-align: center;
-    letter-spacing: -0.32px;
-    color: #1b46f5;
   }
 }
 </style>
