@@ -1705,7 +1705,7 @@ class Api {
 
     const result = {
       contract: JSON.parse(payload_data.costs.data),
-      name: payload_data.name,
+      title: payload_data.title,
       description: payload_data?.description,
       type: payload_data?.type
     };
@@ -1716,39 +1716,6 @@ class Api {
 
     return result;
   }
-
-  //------------------------------------------------------------------------------
-
-  // async createInscription(payload_data) {
-  //   const myself = this;
-  //   if(!payload_data?.costs?.data) return;
-  //   try{
-  //     console.log('createInscription payload: ', {...payload_data || {}});
-  //
-  //     setTimeout(async () => {
-  //       const result = {
-  //         contract: JSON.parse(payload_data.costs.data),
-  //         name: payload_data.name,
-  //         description: payload_data?.description,
-  //         type: payload_data?.type
-  //       };
-  //       console.log(CREATE_INSCRIBE_RESULT,": ", result);
-  //
-  //       myself.WinHelpers.closeCurrentWindow();
-  //       await myself.sendMessageToWebPage(CREATE_INSCRIBE_RESULT, result, payload_data._tabId);
-  //
-  //       if (payload_data?.costs?.used_wallets) {
-  //         payload_data?.costs?.used_wallets.forEach((wType: string) => myself.generateNewIndex(wType));
-  //       }
-  //       myself.genKeys();
-  //       await myself.sendMessageToWebPage(ADDRESSES_TO_SAVE, myself.addresses, payload_data._tabId);
-  //       // ======================================================================
-  //     },1000);
-  //
-  //   } catch (exception) {
-  //     await this.sendExceptionMessage(CREATE_INSCRIPTION, exception)
-  //   }
-  // }
 
   //------------------------------------------------------------------------------
 
@@ -1818,26 +1785,6 @@ class Api {
       await this.sendExceptionMessage('SELL_INSCRIPTION_CONTRACT', exception);
     }
   }
-
-  // async sellInscription(payload_data) {
-  //   const myself = this;
-  //   if(!payload_data?.costs) return;
-  //   console.log("outData:", payload_data?.costs);
-  //   const data = payload_data?.costs;
-  //   try {
-  //     await (async (data) => {
-  //       console.log("SELL_DATA_RESULT:", data);
-  //       myself.WinHelpers.closeCurrentWindow()
-  //       myself.sendMessageToWebPage(
-  //         SELL_INSCRIBE_RESULT,
-  //         data,
-  //         payload_data._tabId);
-  //     })(data);
-  //
-  //   } catch (exception) {
-  //     await this.sendExceptionMessage(SELL_INSCRIPTION, exception)
-  //   }
-  // }
 
   //----------------------------------------------------------------------------
 
@@ -2060,23 +2007,6 @@ class Api {
       // return await myself.commitBuyInscriptionContract(payload, theIndex);
     }
   }
-
-  // async commitBuyInscription(payload_data) {
-  //     const myself = this;
-  //     if(!payload_data.costs.data) return;
-  //     if(!payload_data?.swap_ord_terms) return;
-  //     try {
-  //       console.log("data:", payload_data?.costs?.data," payload:", payload_data);
-  //       myself.WinHelpers.closeCurrentWindow()
-  //       myself.sendMessageToWebPage(
-  //         COMMIT_BUY_INSCRIBE_RESULT, {
-  //         contract_uuid: payload_data?.swap_ord_terms?.contract_uuid,
-  //         contract: JSON.parse(payload_data.costs.data)
-  //       }, payload_data?._tabId);
-  //   } catch (exception) {
-  //     await this.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
-  //   }
-  // }
 
   //------------------------------------------------------------------------------
 
