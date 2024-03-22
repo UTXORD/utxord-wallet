@@ -2,121 +2,121 @@ import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 
 const START_ROUTE = {
   path: '/start',
-  name: 'StartScreen',
-  component: () => import('~/components/StartScreen.vue')
+  name: 'StartPage',
+  component: () => import('~/pages/StartPage.vue')
 }
 
 const routes: Array<RouteRecordRaw> = [
   START_ROUTE,
   {
     path: '/',
-    name: 'HomeScreen',
-    component: () => import('~/components/HomeScreen.vue'),
+    name: 'HomePage',
+    component: () => import('~/pages/HomePage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/export-keys',
-    name: 'ExportKeys',
-    component: () => import('~/components/ExportKeysScreen.vue'),
+    name: 'ExportKeysPage',
+    component: () => import('~/pages/ExportKeysPage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/sign-transfer-collection',
-    name: 'SignTransferScreen',
-    component: () => import('~/components/SignTransferScreen.vue'),
+    name: 'SignTransferPage',
+    component: () => import('~/pages/SignTransferPage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/sign-create-inscription',
-    name: 'SignCreateScreen',
-    component: () => import('~/components/SignCreateScreen.vue'),
+    name: 'SignCreatePage',
+    component: () => import('~/pages/SignCreatePage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/sign-sell',
-    name: 'SignSellScreen',
-    component: () => import('~/components/SignSellScreen.vue'),
+    name: 'SignSellPage',
+    component: () => import('~/pages/SignSellPage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/sign-commit-buy',
-    name: 'SignCommitScreen',
-    component: () => import('~/components/SignCommitScreen.vue'),
+    name: 'SignCommitPage',
+    component: () => import('~/pages/SignCommitPage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/sign-buy',
-    name: 'SignBuyScreen',
-    component: () => import('~/components/SignBuyScreen.vue'),
+    name: 'SignBuyPage',
+    component: () => import('~/pages/SignBuyPage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/manage',
-    name: 'ManageScreen',
-    component: () => import('~/components/ManageScreen.vue'),
+    name: 'ManagePage',
+    component: () => import('~/pages/ManagePage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/manage-password',
-    name: 'ManagePasswordScreen',
-    component: () => import('~/components/ManagePasswordScreen.vue'),
+    name: 'ManagePasswordPage',
+    component: () => import('~/pages/ManagePasswordPage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/manage-address',
-    name: 'ManageAddressScreen',
-    component: () => import('~/components/ManageAddressScreen.vue'),
+    name: 'ManageAddressPage',
+    component: () => import('~/pages/ManageAddressPage.vue'),
     meta: {
       requiresAuth: true
     }
   },
   {
     path: '/create-password-screen',
-    name: 'CreatePasswordScreen',
-    component: () => import('~/components/CreatePasswordScreen.vue')
+    name: 'CreatePasswordPage',
+    component: () => import('~/pages/CreatePasswordPage.vue')
   },
   {
     path: '/generate',
-    name: 'GenerateScreen',
-    component: () => import('~/components/GenerateScreen.vue')
+    name: 'GeneratePage',
+    component: () => import('~/pages/GeneratePage.vue')
   },
   {
     path: '/load',
-    name: 'LoadScreen',
-    component: () => import('~/components/LoadScreen.vue')
+    name: 'LoadPage',
+    component: () => import('~/pages/LoadPage.vue')
   },
   {
     path: '/alert-mnemonic',
-    name: 'AlertMnemonic',
-    component: () => import('~/components/AlertMnemonic.vue')
+    name: 'AlertMnemonicPage',
+    component: () => import('~/pages/AlertMnemonicPage.vue')
   },
   {
     path: '/wallet-created',
-    name: 'WalletCreated',
-    component: () => import('~/components/WalletCreated.vue')
+    name: 'WalletCreatedPage',
+    component: () => import('~/pages/WalletCreatedPage.vue')
   },
   {
     path: '/loading',
-    name: 'LoadingScreen',
-    component: () => import('~/components/LoadingScreen.vue')
+    name: 'LoadingPage',
+    component: () => import('~/pages/LoadingPage.vue')
   },
 ]
 

@@ -1,5 +1,5 @@
 <template>
-  <LoadingScreen v-if="loading" />
+  <LoadingPage v-if="loading" />
   <div v-else class="start-screen flex flex-col h-full">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
@@ -73,7 +73,7 @@ import { ref, toRefs, computed, onMounted } from 'vue'
 import WinHelpers from '~/helpers/winHelpers'
 import { useStore } from '~/popup/store/index'
 import { EXPORT_INSCRIPTION_KEY_PAIR } from '~/config/events'
-import LoadingScreen from '~/components/LoadingScreen.vue'
+import LoadingPage from '~/pages/LoadingPage.vue'
 import CustomInput from '~/components/CustomInput.vue'
 import Modal from '~/components/Modal.vue'
 import { isASCII } from '~/helpers/index'
