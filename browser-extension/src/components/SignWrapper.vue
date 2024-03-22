@@ -1,5 +1,5 @@
 <template>
-  <LoadingScreen v-if="loading" />
+  <LoadingPage v-if="loading" />
   <div v-else class="sign-screen h-full flex flex-col">
     <Header />
     <Logo />
@@ -70,7 +70,7 @@ import {
   BALANCE_CHANGE_PRESUMED,
   CREATE_CHUNK_INSCRIPTION
 } from '~/config/events'
-import LoadingScreen from '~/components/LoadingScreen.vue'
+import LoadingPage from '~/pages/LoadingPage.vue'
 import CustomInput from '~/components/CustomInput.vue'
 import Modal from '~/components/Modal.vue'
 import { isASCII } from '~/helpers/index'

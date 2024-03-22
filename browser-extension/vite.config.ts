@@ -44,7 +44,7 @@ export default defineConfig(({ command }) => {
       Vue(),
 
       Components({
-        dirs: [r('src/components')],
+        dirs: [r('src/pages'), r('src/components')],
         // auto import icons
         resolvers: [
           IconsResolver({
