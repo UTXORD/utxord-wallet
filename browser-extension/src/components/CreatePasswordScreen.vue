@@ -24,6 +24,7 @@
           <CustomInput
             type="password"
             v-model="password"
+            autofocus
             :rules="[
               (val) => isASCII(val) || 'Please enter only Latin characters',
               (val) => isLength(val) || 'Password must be minimum 9 characters',
@@ -46,7 +47,6 @@
               (val) => isLength(val) || 'Password must be minimum 9 characters',
               (val) => isContains(val) ||
                 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
-
             ]"
           />
         </div>
@@ -61,7 +61,7 @@
         >
           <ArrowLeftIcon />
         </Button>
-        <Button @click="onConfirm" :disabled="isDisabled" class="w-full">
+        <Button @click="onConfirm" :disabled="isDisabled" enter class="w-full">
           Confirm
         </Button>
       </div>
@@ -85,8 +85,6 @@ import { isASCII, isLength, isContains } from '~/helpers/index'
 const { back, push } = useRouter()
 const password = ref('')
 const confirmPassword = ref('')
-
-
 
 const isDisabled = computed(() => {
   if (!password.value.length || !confirmPassword.value.length) return true

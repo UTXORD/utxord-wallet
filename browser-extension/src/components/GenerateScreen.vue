@@ -14,8 +14,8 @@
         <div class="flex flex-col items-center">
           <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s length</span>
           <Dropdown
-            v-model="passphraseLength"
-            @update:model-value="refreshMnemonic"
+            :model-value="LENGTH_12"
+            @update:model-value="onChangePhraseLength"
             :options="PHRASE_LENGTH_OPTIONS"
           />
         </div>
@@ -155,7 +155,7 @@
         </AlertBox>
       </div>
 
-      <div class="w-full h-[1px] bg-[#404247] my-5" />
+      <div class="w-full h-[1px] bg-[var(--border-color)] my-5" />
 
       <!-- I saved my mnemonic -->
       <div class="w-full flex justify-start">
@@ -176,6 +176,7 @@
           <ArrowLeftIcon />
         </Button>
         <Button
+          enter
           :disabled="isDisabled"
           class="w-full"
           @click="onStore"
@@ -220,7 +221,7 @@ const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
 const usePassphrase = ref(false)
 const passphrase = ref('')
-const passphraseLength = ref(LENGTH_12)
+const passphraseLength = ref(LENGTH_12.value)
 const picked = ref('line')
 const showInfo = ref(false)
 const mnemonicIsSaved = ref(false)
@@ -255,7 +256,8 @@ async function onStore() {
   if (success) {
     const fundAddress = await getFundAddress()
     getBalance(fundAddress)
-    removeTempDataFromLocalStorage()
+    localStorage?.setItem(MNEMONIC_KEY, textarea.value)
+    localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
     push('/loading#wallet-created')
   }
 }
@@ -270,6 +272,11 @@ function refreshMnemonic() {
   getMnemonic()
 }
 
+function onChangePhraseLength(option) {
+  passphraseLength.value = option;
+  refreshMnemonic();
+}
+
 async function getMnemonic() {
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
   const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
@@ -280,8 +287,6 @@ async function getMnemonic() {
     const mnemonic = await sendMessage('GENERATE_MNEMONIC', {
       length: passphraseLength.value
     }, 'background')
-    localStorage?.setItem(MNEMONIC_KEY, mnemonic)
-    localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
     textarea.value = mnemonic
   }
 }

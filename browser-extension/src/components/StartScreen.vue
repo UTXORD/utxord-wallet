@@ -20,7 +20,7 @@
         </Button>
         <Button
           to="/create-password-screen#load"
-          class="w-full"
+          class="w-full !bg-[grey]"
           second
         >
           I already have a wallet

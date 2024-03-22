@@ -61,10 +61,10 @@ export const useStore = defineStore('store', {
       this.ordAddress = addr
     },
     setUseDerivation(val: boolean){
-      this.useDerivation = val
+      this.useDerivation = Boolean(val)
     },
     setTypeAddress(type: number){
-      this.typeAddress = type
+      this.typeAddress = Number(type)
     },
     setDataForSign(data: {}) {
       this.dataForSign = data

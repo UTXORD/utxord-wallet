@@ -114,14 +114,6 @@
             {{ formatAddress(fundAddress, 6, 6) }}
           </p>
 
-          <label class="switch">
-          <div class="label">{{ nameTypeAddress }}</div>
-          <input type="checkbox"
-            :checked="Boolean(typeAddress)"
-            @click="toogleAddress">
-            <span class="slider round"></span>
-          </label>
-
           <Button
             v-if="useDerivation"
             outline
@@ -223,8 +215,6 @@ function refreshBalance() {
 const isSynchronized = computed(() => balance?.value?.sync)
 
 const connected = computed(() => balance?.value?.connect)
-
-const nameTypeAddress = computed(() => (typeAddress?.value===1)?'Taproot':'SegWit')
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)

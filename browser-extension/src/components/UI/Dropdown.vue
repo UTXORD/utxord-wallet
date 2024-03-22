@@ -1,7 +1,7 @@
 <template>
   <div class="dropdown relative w-full" v-click-outside="close">
     <button
-      class="w-full min-w-[160px] min-h-[44px] text-white bg-[var(--bg-color)] text-left rounded-[10px] text-sm px-4 py-2.5 justify-between inline-flex items-center"
+      class="w-full min-w-[160px] min-h-[44px] text-[var(--text-color)] bg-[var(--bg-color)] text-left rounded-[10px] text-sm px-4 py-2.5 justify-between inline-flex items-center"
       type="button"
       :class="{ 'dropdown--opened': opened }"
       @click="toggle"

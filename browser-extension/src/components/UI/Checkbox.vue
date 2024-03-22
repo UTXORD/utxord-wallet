@@ -53,6 +53,7 @@ export default defineComponent({
     :deep(.checkbox_figure) {
       background: var(--primary);
       border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba($color: var(--primary-rgb), $alpha: 0.1);
 
       svg {
         display: block;

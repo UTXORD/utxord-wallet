@@ -5,77 +5,30 @@
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="password-screen_content h-full flex flex-col items-start px-5">
 
-      <p class="text-[var(--text-color)]">Manage account</p>
-      <!-- Inputs -->
-      <div class="password-screen_form-input flex flex-col p-3">
-        <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >Use one-time addresses:
-          <input
-            name="useDerivation"
-            type="checkbox"
-            v-model="useDerivation"
-            @change="setDerivate"
-            />
+      <h1 class="text-[var(--text-color)] text-[18px] mb-4">Settings</h1>
+
+      <div class="w-full flex flex-col bg-[var(--section)] rounded-xl mb-5">
+        <span
+          v-for="(item, i) in LINKS"
+          :key="i"
+          @click="push(item.link)"
+          class="cursor-pointer p-4 flex items-center justify-between items-center text-[15px] text-[var(--text-color)] hover:text-[var(--text-blue)]"
+          :class="{ 'border-b-[1px] border-[var(--border-color)] dark:border-[#4e4e4e]': LINKS.length - 1 !== i }"
+        >
+          {{ item.label }}
+          <ChevronIcon class="transform rotate-270 h-[15px]" />
         </span>
-      </div>
-      <p class="text-[var(--text-color)]">Manage password</p>
-      <div
-        class="password-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
-      >
-        <div class="password-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Old Password:</span
-          >
-          <CustomInput
-            autofocus
-            type="password"
-            v-model="oldPassword"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters'
-            ]"
-          />
-        </div>
-        <div class="password-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >New Password:</span
-          >
-          <CustomInput
-            type="password"
-            v-model="password"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters'
-            ]"
-          />
-        </div>
-        <div class="password-screen_form-input flex flex-col">
-          <span class="mb-2 w-full text-[var(--text-grey-color)]"
-            >Confirm Password:</span
-          >
-          <CustomInput
-            type="password"
-            v-model="confirmPassword"
-            :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters',
-              (val) =>
-                val === password ||
-                'Confirm Password does not match the Password'
-            ]"
-          />
-        </div>
       </div>
 
       <!-- Buttons -->
       <div class="flex w-full mt-auto">
         <Button
-          outline
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
+          second
+          class="w-full px-0 flex items-center justify-center bg-white gap-2"
           @click="back"
         >
-          <img src="/assets/arrow-left.svg" alt="Go Back" />
+          Go Back
         </Button>
-        <Button :disabled="isDisabled" class="w-full" @click="onStore"
-          >Save Password to Store</Button
-        >
       </div>
     </div>
   </div>
@@ -87,6 +40,17 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { isASCII } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
+
+const LINKS = [
+  {
+    label: 'Manage Address',
+    link: '/manage-address'
+  },
+  {
+    label: 'Manage Password',
+    link: '/manage-password'
+  }
+]
 
 const store = useStore()
 const { useDerivation, typeAddress } = toRefs(store)
@@ -143,6 +107,15 @@ async function onStore() {
     push('/')
   }
 }
+
+async function showManagePassword() {
+  push('/manage-password');
+}
+
+async function showManageAddress() {
+  push('/manage-address');
+}
+
 </script>
 
 <style lang="scss" scoped>
