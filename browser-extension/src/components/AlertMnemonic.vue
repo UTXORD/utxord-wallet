@@ -22,6 +22,7 @@
           <ArrowLeftIcon />
         </Button>
         <Button
+          enter
           class="w-full"
           @click="GotIt"
         >Got it</Button>

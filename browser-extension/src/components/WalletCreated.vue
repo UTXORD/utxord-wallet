@@ -15,7 +15,7 @@
         </div>
       </div>
       <div class="flex w-full mt-auto">
-        <Button class="w-full" @click="Start">Start</Button>
+        <Button class="w-full" enter @click="Start">Start</Button>
       </div>
     </div>
   </div>

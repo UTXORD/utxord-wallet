@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits } from 'vue'
+import { computed, defineEmits, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   outline: {
@@ -24,6 +24,10 @@ const props = defineProps({
     default: false
   },
   second: {
+    type: Boolean,
+    default: false
+  },
+  enter: {
     type: Boolean,
     default: false
   },
@@ -50,4 +54,18 @@ function onClick() {
     emit('click')
   }
 }
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && props.enter) {
+    onClick()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
+})
 </script>

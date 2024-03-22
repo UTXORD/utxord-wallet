@@ -14,8 +14,8 @@
         <div class="flex flex-col items-center">
           <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s length</span>
           <Dropdown
-            v-model="passphraseLength"
-            @update:model-value="refreshMnemonic"
+            :model-value="LENGTH_12"
+            @update:model-value="onChangePhraseLength"
             :options="PHRASE_LENGTH_OPTIONS"
           />
         </div>
@@ -176,6 +176,7 @@
           <ArrowLeftIcon />
         </Button>
         <Button
+          enter
           :disabled="isDisabled"
           class="w-full"
           @click="onStore"
@@ -255,6 +256,8 @@ async function onStore() {
   if (success) {
     const fundAddress = await getFundAddress()
     getBalance(fundAddress)
+    localStorage?.setItem(MNEMONIC_KEY, textarea.value)
+    localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
     push('/loading#wallet-created')
   }
 }
@@ -269,6 +272,11 @@ function refreshMnemonic() {
   getMnemonic()
 }
 
+function onChangePhraseLength(option) {
+  passphraseLength.value = option;
+  refreshMnemonic();
+}
+
 async function getMnemonic() {
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
   const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
@@ -279,8 +287,6 @@ async function getMnemonic() {
     const mnemonic = await sendMessage('GENERATE_MNEMONIC', {
       length: passphraseLength.value
     }, 'background')
-    localStorage?.setItem(MNEMONIC_KEY, mnemonic)
-    localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
     textarea.value = mnemonic
   }
 }

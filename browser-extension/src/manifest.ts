@@ -48,6 +48,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
         'https://qa.utxord.com/*',
         'http://10.1.10.100:8080/*',
         'https://e2e.utxord.com/*',
+        'http://10.1.10.100:8080/*',
         'http://localhost/*',
         'http://127.0.0.1/*'
     ],

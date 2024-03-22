@@ -31,7 +31,9 @@
             type="password"
             v-model="password"
             :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters'
+              (val) => isASCII(val) || 'Please enter only Latin characters',
+              (val) => isLength(val) || 'Password must be minimum 9 characters',
+              (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
           />
         </div>
@@ -46,7 +48,10 @@
               (val) => isASCII(val) || 'Please enter only Latin characters',
               (val) =>
                 val === password ||
-                'Confirm Password does not match the Password'
+                'Confirm Password does not match the Password',
+              (val) => isLength(val) || 'Password must be minimum 9 characters',
+              (val) => isContains(val) ||
+                'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
           />
         </div>
@@ -61,7 +66,7 @@
         >
           <ArrowLeftIcon />
         </Button>
-        <Button :disabled="isDisabled" class="w-full" @click="onStore">Store</Button>
+        <Button :disabled="isDisabled" enter class="w-full" @click="onStore">Store</Button>
       </div>
     </div>
   </div>
@@ -71,7 +76,7 @@
 import { sendMessage } from 'webext-bridge'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII } from '~/helpers/index'
+import { isASCII, isLength, isContains } from '~/helpers/index'
 
 const { back, push } = useRouter()
 
