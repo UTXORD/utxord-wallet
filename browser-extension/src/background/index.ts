@@ -88,10 +88,10 @@ if (NETWORK === MAINNET){
 //   fee: number, // fee rate
 //   expect_amount: number,
 //   type: string,
-//   name: string,
+//   title: string,
 //   description: string,
 //   metadata: {
-//     name?: string,
+//     title?: string,
 //     description?: string,
 //   }
 // }
@@ -591,7 +591,7 @@ interface ICollectionTransferResult {
                 is_lazy ? PURCHASE_LAZY_INSCRIPTION_RESULT : CREATE_INSCRIBE_RESULT,
                 {
                   contract: JSON.parse(payload_data?.costs?.data || "{}"),
-                  name: payload_data?.name,
+                  title: payload_data?.title,
                   description: payload_data?.description,
                   type: payload_data?.type
                 },
