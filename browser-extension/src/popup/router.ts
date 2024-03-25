@@ -127,8 +127,8 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const tempMnemonic = localStorage?.getItem('temp-mnemonic')
-  console.log(tempMnemonic);
-  
+  console.log('tempMnemonic:',tempMnemonic, 'to.path:',to.path);
+
   if (!tempMnemonic && to.path !== START_ROUTE.path && to.matched.some((record) => record.meta.requiresAuth)) {
     next({ path: START_ROUTE.path })
   } else {
