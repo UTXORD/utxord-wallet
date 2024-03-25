@@ -1122,7 +1122,6 @@ class Api {
       return null;
     }
     // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
-    console.log(null.length)
 
     for (let tab of tabs) {
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {
