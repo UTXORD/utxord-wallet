@@ -1,4 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
+import {sendMessage} from "webext-bridge";
+import {CHECK_AUTH} from "~/config/events";
 
 const START_ROUTE = {
   path: '/start',
@@ -125,14 +127,14 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  const tempMnemonic = localStorage?.getItem('temp-mnemonic')
-  console.log('tempMnemonic:',tempMnemonic, 'to.path:',to.path);
+router.beforeEach(async (to, from, next) => {
+  const authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
+  console.log('authenticated:', authenticated, 'to.path:', to.path);
 
-  if (!tempMnemonic && to.path !== START_ROUTE.path && to.matched.some((record) => record.meta.requiresAuth)) {
-    next({ path: START_ROUTE.path })
+  if (!authenticated && to.path !== START_ROUTE.path && to.matched.some((record) => record.meta.requiresAuth)) {
+    next({ path: START_ROUTE.path });
   } else {
-    next()
+    next();
   }
 })
 
