@@ -1,6 +1,8 @@
 import {MAINNET, NETWORK, TESTNET} from '~/config/index';
 import {onMessage, sendMessage} from 'webext-bridge'
 import '~/background/api'
+import * as Sentry from "@sentry/browser"
+import { wasmIntegration } from "@sentry/wasm"
 import WinManager from '~/background/winManager';
 import {
   ADDRESS_COPIED,
@@ -69,6 +71,12 @@ import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from 
 import Port = chrome.runtime.Port;
 import {HashedStore} from "~/background/hashedStore";
 import {bookmarks} from "webextension-polyfill";
+Sentry.init({
+  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.l15.co/6",
+  // Performance Monitoring
+  tracesSampleRate: 1.0, //  Capture 100% of the transactions
+  integrations: [wasmIntegration()],
+});
 
 if (NETWORK === MAINNET){
   if(self){
@@ -79,7 +87,6 @@ if (NETWORK === MAINNET){
     self['console']['info']= () => {};
   }
 }
-
 // interface IInscription {
 //   collection: {},
 //   content: string,
@@ -221,10 +228,35 @@ interface ICollectionTransferResult {
     });
 
     const Api = await new self.Api(NETWORK);
+    if(Api.error_reporting){
+      Sentry.configureScope( async (scope) => {
+        scope.setTag('system_state', Api.error_reporting)
+        if(Api.wallet.auth?.key) {
+          scope.setUser({
+            othKey: Api.wallet.oth?.key?.PubKey(),
+            fundKey: Api.wallet.fund?.key?.PubKey(),
+            authKey: Api.wallet.auth?.key?.PubKey(),
+          })
+         }
+        const check = await Api.checkSeed();
+        const system_state = {
+          check_auth: check,
+          addresses: JSON.stringify(Api.addresses),
+          balances: JSON.stringify(Api.balances),
+          fundings: JSON.stringify(Api.fundings),
+          inscriptions: JSON.stringify(Api.inscriptions),
+          connect: Api.connect,
+          sync: Api.sync,
+          derivate: Api.derivate,
+        }
+        scope.setExtra('system',  system_state);
+      });
+    }
     if(NETWORK === TESTNET){
       self.api = Api; // for debuging in devtols
     }
     const winManager = new WinManager();
+
 
     onMessage(GENERATE_MNEMONIC, async (payload) => {
       return await Api.generateMnemonic(payload.data?.length);
@@ -234,6 +266,7 @@ interface ICollectionTransferResult {
       const success = await Api.checkSeed();
       console.log('checkSeed', success)
       if(success){
+
         await Api.sendMessageToWebPage(CONNECT_TO_SITE, success);
         setTimeout(async () => {
           await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
@@ -1012,6 +1045,7 @@ interface ICollectionTransferResult {
     await watchdog.run();
 
   } catch(e) {
+    Sentry.captureException(e);
     console.log('background:index.ts:',e);
   }
 })();

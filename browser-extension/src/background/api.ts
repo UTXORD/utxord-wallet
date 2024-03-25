@@ -5,6 +5,7 @@ import winHelpers from '~/helpers/winHelpers';
 import rest from '~/background/rest';
 import { sendMessage } from 'webext-bridge';
 import * as cbor from 'cbor-js';
+import * as Sentry from "@sentry/browser"
 import {
   EXCEPTION,
   WARNING,
@@ -28,6 +29,7 @@ import {Exception} from "sass";
 
 import * as WebBip39 from 'web-bip39';
 import wordlist from 'web-bip39/wordlists/english';
+
 
 // import tabId = chrome.devtools.inspectedWindow.tabId;
 
@@ -260,60 +262,6 @@ class Api {
   exception_count: number = 0
   warning_count: number = 0
 
-  async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
-    const out = {name, props, list, args, proto, lvl};
-    const myself = this;
-    if(!obj) return out;
-    let methods = Object.getOwnPropertyNames(obj).filter((n) => n[0]!== '_');
-    if(methods.length === 3 && methods.indexOf('length') !== -1 && methods.indexOf('prototype') !== -1){
-      out.args = obj?.length || 0;
-      out.lvl += 1;
-      out.proto = true;
-      return await this.upgradeProps(
-        obj.prototype,
-        out.name,
-        out.props,
-        out.list,
-        out.args,
-        out.proto,
-        out.lvl
-      );
-    }
-    for (let m of methods){
-      if((typeof obj[m]) === 'function' &&
-        m.indexOf('dynCall') === -1 &&
-        m.indexOf('constructor') === -1 &&
-        out.lvl < 8){
-        out.list.push(m);
-        let prps = await this.upgradeProps(obj[m],m,{},[],0,false, out.lvl+1);
-        out.props[m] = prps;
-        obj[`$_${m}`] = obj[m];
-        obj[`$_${m}`].prototype = obj[m].prototype;
-        obj[`_${m}`] = function(){
-            try{
-              let o;
-              if(!out.proto && out.lvl === 0){
-                o = new (obj[`$_${m}`])(...arguments);
-              }else{
-                o = this[`$_${m}`](...arguments);
-              }
-              return o;
-            }catch(e){
-              myself.sendExceptionMessage(m, e);
-              return null;
-            }
-        };
-        delete(obj[m]);
-        obj[m] = obj[`_${m}`];
-        obj[m].prototype = obj[`$_${m}`].prototype;
-        delete(obj[`_${m}`]);
-
-      }
-    }
-    return out;
-  }
-
-
   constructor(network) {
     return (async () => {
       try {
@@ -336,10 +284,12 @@ class Api {
         this.connect = false;
         this.sync = false;
         this.derivate = false;
+        this.error_reporting = true;
 
         await this.init(this);
         return this;
       } catch(e) {
+        Sentry.captureException(e);
         console.log('constructor->error:',e);
         chrome.runtime.reload();
       }
@@ -348,6 +298,7 @@ class Api {
 
   async init() {
     const myself = this
+
     try {
       const { seed } = await chrome.storage.local.get(['seed']);
       if (seed) {
@@ -361,7 +312,6 @@ class Api {
       }
       await myself.rememberIndexes();
       console.log('init...');
-      await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
       myself.genRootKey();
 
       if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
@@ -607,9 +557,9 @@ class Api {
 
     await chrome.storage.local.clear();
     chrome.runtime.reload()
-    const err = chrome.runtime.lastError;
-    if (err) {
-      console.error(err)
+    const lastErr = chrome.runtime.lastError;
+    if (lastErr) {
+      console.error(lastErr)
       return false
     } else {
       return true
@@ -1034,6 +984,7 @@ class Api {
       sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`);
       setTimeout(() =>this.warning_count = 0, 3000);
     }
+    Sentry.captureException(warning);
     console.warn(type, errorMessage, errorStack);
 
 
@@ -1053,6 +1004,7 @@ class Api {
       sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
       setTimeout(() =>this.exception_count = 0, 3000);
     }
+    Sentry.captureException(exception);
     console.error(type, errorMessage, errorStack);
 
     return `${type} ${errorMessage} ${errorStack}`;
@@ -1156,7 +1108,6 @@ class Api {
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
-
     let tabs: Tab[];
     if (tabId != null) {
       tabs = [await chrome.tabs.get(tabId)]
@@ -1171,6 +1122,7 @@ class Api {
       return null;
     }
     // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
+
     for (let tab of tabs) {
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {
       //   setTimeout(async () => await myself.sendMessageToWebPage(type, args), 100);
@@ -2133,6 +2085,7 @@ class Api {
       }
     }catch(e) {
       console.log('Api.checkPassword:',e);
+      Sentry.captureException(e);
     }
     return true;
   }

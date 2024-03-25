@@ -27,6 +27,11 @@
     "test:watch": "vitest run"
   },
   "dependencies": {
+    "@sentry/browser": "^7.108.0",
+    "@sentry/node": "^7.108.0",
+    "@sentry/vite-plugin": "^2.16.0",
+    "@sentry/vue": "^7.108.0",
+    "@sentry/wasm": "^7.108.0",
     "cbor-js": "^0.1.0",
     "floating-vue": "^5.2.2",
     "json5": "^2.2.3",
