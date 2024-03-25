@@ -168,6 +168,7 @@ const list = ref([])
 const length = ref(12)
 const showInfo = ref(false)
 
+const MNEMONIC_KEY = 'temp-mnemonic'
 
 const isDisabled = computed(() => {
   const seedArr = textarea.value?.trim()?.split(' ')
@@ -182,7 +183,6 @@ const isDisabled = computed(() => {
 
 async function inputWords(e){
   const l = await list.value
-  console.log(e,e.target,'e.target.value:',e.target.value,'| l:', l,'|textarea:',textarea.value)
 
   if(picked.value === 'line'){
     list.value = textarea.value?.trim()?.split(' ')
@@ -231,7 +231,7 @@ function clearTextarea(){
 }
 */
 async function onStore() {
-  console.log('passphrase.value-toSave:', passphrase.value, usePassphrase.value)
+  localStorage?.setItem(MNEMONIC_KEY, textarea.value.replace(/\s\s+/g, ' ').trim())
   const generated = await sendMessage(
     SAVE_GENERATED_SEED,
     {
