@@ -258,7 +258,7 @@ async function onStore() {
     getBalance(fundAddress)
     localStorage?.setItem(MNEMONIC_KEY, textarea.value)
     localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
-    push('/loading#wallet-created')
+    push('/wallet-created')
   }
 }
 

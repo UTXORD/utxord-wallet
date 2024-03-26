@@ -154,9 +154,6 @@ import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED } from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-import {
-  vTooltip
-} from 'floating-vue'
 
 const { back, push } = useRouter()
 const { getFundAddress, getBalance } = useWallet()
@@ -243,7 +240,7 @@ async function onStore() {
   if (generated) {
     await getFundAddress()
     getBalance()
-    push('/loading#wallet-created')
+    push('/wallet-created')
   }
 }
 </script>
