@@ -1,5 +1,6 @@
 <template>
-  <div class="wallet-created-screen flex flex-col h-full">
+  <LoadingPage v-if="loading" />
+  <div v-else class="wallet-created-screen flex flex-col h-full">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="wallet-created-screen_content h-full flex flex-col justify-center items-center px-5 pb-5">
@@ -15,18 +16,28 @@
         </div>
       </div>
       <div class="flex w-full mt-auto">
-        <Button class="w-full" enter @click="Start">Start</Button>
+        <Button class="w-full" enter @click="goToHomePage">Start</Button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-const { back, push } = useRouter()
-async function Start() {
+const { push } = useRouter()
+
+const loading = ref(true)
+
+function goToHomePage() {
   push('/')
 }
+
+onMounted(() => {
+  setTimeout(() => {
+    loading.value = false
+  }, 1000)
+})
 </script>
 
 <style lang="scss" scoped>

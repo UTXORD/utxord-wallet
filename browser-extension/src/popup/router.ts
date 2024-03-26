@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
-import {sendMessage} from "webext-bridge";
-import {CHECK_AUTH} from "~/config/events";
+import {sendMessage} from 'webext-bridge';
+import {CHECK_AUTH} from '~/config/events';
 
 const START_ROUTE = {
   path: '/start',

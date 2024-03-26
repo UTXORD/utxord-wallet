@@ -13,16 +13,6 @@
 
 <script setup lang="ts">
 import LoaderIcon from '~/components/Icons/LoaderIcon.vue'
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-const { push } = useRouter()
-
-const page = computed(() =>window?.history?.state?.current?.split('#')[1])
-
-setTimeout(() => {
-  push(`/${page.value}`)
-}, 3000);
-
 </script>
 
 <style scoped>
