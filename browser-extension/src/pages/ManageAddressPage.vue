@@ -9,7 +9,7 @@
 
       <!-- Radio buttons -->
       <div class="flex flex-col gap-3 mb-7">
-        <RadioBox v-model="typeAddress" :value="TAPROOT_VALUE">
+        <RadioBox v-model="typeAddress" :value="TAPROOT_VALUE" @update:model-value="onChangeTypeAddress">
           <span
             class="text-[var(--text-grey-color)] text-[15px]"
             :class="{
@@ -19,7 +19,7 @@
             Taproot
           </span>
         </RadioBox>
-        <RadioBox v-model="typeAddress" :value="SEGWIT_VALUE">
+        <RadioBox v-model="typeAddress" :value="SEGWIT_VALUE" @update:model-value="onChangeTypeAddress">
           <span
             class="text-[var(--text-grey-color)] text-[15px]"
             :class="{
@@ -45,7 +45,12 @@
             class="flex justify-between items-center py-4"
             :class="{ 'border-b-[1px] border-[var(--border-color)]': ADVANCED_LIST.length - 1 !== i }"
           >
-            <RadioBox v-model="useDerivation" :value="adv.value" class="w-full">
+            <RadioBox
+                v-model="useDerivation"
+                :value="adv.value"
+                class="w-full"
+                @update:model-value="onChangeUseDerivation"
+            >
               <template #left>
                 <div class="flex flex-col w-full">
                   <div class="flex mb-1 gap-1">
@@ -121,7 +126,7 @@ function refreshBalance() {
   setTimeout(async () => {
     const res = await sendMessage(STATUS_DERIVATION, {}, 'background')
     store.setUseDerivation(Boolean(res.derivate))
-    const ta = Number(!typeAddress.value);
+    const ta = Number(typeAddress.value);
     const tl = Boolean(useDerivation.value)?'fund':'oth'
     const addr = res.keys?.addresses?.reverse()?.find(
       (item) => item.type === tl && item.typeAddress === ta
@@ -131,7 +136,7 @@ function refreshBalance() {
   }, 1000)
 }
 
-async function setTypeAddress(typeAddr){
+async function onChangeTypeAddress(){
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   const ta = Number(typeAddress.value);
   store.setTypeAddress(ta);
@@ -150,7 +155,7 @@ async function setTypeAddress(typeAddr){
   await refreshBalance();
 }
 
-async function setDerivate(){
+async function onChangeUseDerivation(){
   const res = await sendMessage(
     'CHANGE_USE_DERIVATION',
     {
@@ -158,7 +163,7 @@ async function setDerivate(){
     },
     'background')
     store.setUseDerivation(Boolean(useDerivation.value))
-    const ta = Number(!typeAddress.value);
+    const ta = Number(typeAddress.value);
     const tl = Boolean(useDerivation.value)?'fund':'oth'
     const addr = res.keys?.addresses?.reverse()?.find(
       (item) => item.type === tl && item.typeAddress === ta
