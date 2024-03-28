@@ -24,7 +24,7 @@
       <div class="flex w-full mt-auto">
         <Button
           second
-          class="w-full px-0 flex items-center justify-center bg-white gap-2"
+          class="w-full px-0 flex items-center justify-center gap-2"
           @click="back"
         >
           Go Back
