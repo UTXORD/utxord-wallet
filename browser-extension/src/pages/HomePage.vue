@@ -166,29 +166,10 @@ async function connectToSite() {
   await refreshBalance()
 }
 
-async function toogleAddress(){
-  await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
-  const ta = Number(!typeAddress.value);
-  store.setTypeAddress(ta);
-  const response = await sendMessage(
-    CHANGE_TYPE_FUND_ADDRESS,
-    {
-      type: ta
-      },
-      'background'
-  )
-  const tl = Boolean(useDerivation.value)?'fund':'oth'
-  const addr = response?.addresses?.reverse()?.find(
-    (item) => item.type === tl && item.typeAddress === ta
-    )?.address
-  store.setFundAddress(addr)
-  await refreshBalance();
-}
-
 async function newFundAddress() {
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   const response = await sendMessage(NEW_FUND_ADDRESS, {}, 'background')
-  const ta = Number(!typeAddress.value);
+  const ta = Number(typeAddress.value);
   const tl = Boolean(useDerivation.value)?'fund':'oth'
   const addr = response?.addresses?.reverse()?.find(
     (item) => item.type === tl && item.typeAddress === ta
@@ -202,7 +183,7 @@ function refreshBalance() {
   setTimeout(async () => {
     const res = await sendMessage(STATUS_DERIVATION, {}, 'background')
     store.setUseDerivation(Boolean(res.derivate))
-    const ta = Number(!typeAddress.value);
+    const ta = Number(typeAddress.value);
     const tl = Boolean(useDerivation.value)?'fund':'oth'
     const addr = res.keys?.addresses?.reverse()?.find(
       (item) => item.type === tl && item.typeAddress === ta

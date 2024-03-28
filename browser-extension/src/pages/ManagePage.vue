@@ -78,44 +78,6 @@ const isDisabled = computed(() => {
   return false
 })
 
-async function setDerivate(){
-  const res = await sendMessage(
-    'CHANGE_USE_DERIVATION',
-    {
-      value: Boolean(useDerivation.value)
-    },
-    'background')
-    store.setUseDerivation(Boolean(useDerivation.value))
-    const ta = Number(!typeAddress.value);
-    const tl = Boolean(useDerivation.value)?'fund':'oth'
-    const addr = res.keys?.addresses?.reverse()?.find(
-      (item) => item.type === tl && item.typeAddress === ta
-    )?.address
-    store.setFundAddress(addr)
-}
-
-async function onStore() {
-  const saved = await sendMessage(
-    'UPDATE_PASSWORD',
-    {
-      old: oldPassword.value,
-      password: password.value
-    },
-    'background'
-  )
-  if (saved) {
-    push('/')
-  }
-}
-
-async function showManagePassword() {
-  push('/manage-password');
-}
-
-async function showManageAddress() {
-  push('/manage-address');
-}
-
 </script>
 
 <style lang="scss" scoped>
