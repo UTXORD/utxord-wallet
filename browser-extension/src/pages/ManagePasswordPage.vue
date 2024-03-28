@@ -92,12 +92,10 @@ const isDisabled = computed(() => {
   )
     return true
   if (password.value !== confirmPassword.value) return true
-  if (
-    !isASCII(oldPassword.value) ||
-    !isASCII(password.value) ||
-    !isASCII(confirmPassword.value)
-  )
-    return true
+  if (!isASCII(oldPassword.value))  return true
+  if (!isASCII(password.value) ||  !isASCII(confirmPassword.value)) return true
+  if (!isLength(password.value) || !isLength(confirmPassword.value)) return true
+  if (!isContains(password.value) || !isContains(confirmPassword.value)) return true
   return false
 })
 
