@@ -1370,6 +1370,7 @@ class Api {
       fee: payload.fee,
       size: (payload.content.length + payload.content_type.length),
       total_mining_fee: 0,
+      market_fee: data.platform_fee || 0,
       purchase_price: payload?.purchase_price || -1,
       raw: [],
       outputs: {
@@ -1597,7 +1598,7 @@ class Api {
       // }
       // console.debug('change_amount: ', outData.change_amount);
 
-      outData.data = newOrd.Serialize(
+      outData.data = await newOrd.Serialize(
           protocol_version,
           is_lazy ? myself.utxord.LASY_INSCRIPTION_SIGNATURE : myself.utxord.INSCRIPTION_SIGNATURE
       )?.c_str();
