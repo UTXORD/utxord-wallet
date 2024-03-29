@@ -724,6 +724,15 @@ class Api {
     return [];
   }
 
+  async updateBalancesFrom(msgType: string, addresses: []) {
+    const myself = this;
+    const balances = await Api.prepareBalances(addresses);
+    console.debug(`${msgType} balances:`, {...balances || {}});
+    myself.fundings = balances.funds;
+    myself.inscriptions = balances.inscriptions;
+    return balances;
+  }
+
   async prepareBalances(balances) {
     const myself = this;
     let list = this.balances?.addresses;
