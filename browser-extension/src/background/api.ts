@@ -1378,7 +1378,7 @@ class Api {
       fee: payload.fee,
       size: (payload.content.length + payload.content_type.length),
       total_mining_fee: 0,
-      market_fee: data.platform_fee || 0,
+      market_fee: payload.platform_fee || 0,
       purchase_price: payload?.purchase_price || -1,
       raw: [],
       outputs: {
