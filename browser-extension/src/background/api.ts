@@ -743,7 +743,7 @@ class Api {
     if (list?.length) {
       for (const item of list) {
         for (const i of item?.utxo_set || []) {
-          if (!i?.is_inscription) {
+          if (!i?.is_inscription && !i?.is_rune) {
             if (!i?.is_locked) {
               funds.push({
                 ...i,
@@ -1095,6 +1095,7 @@ class Api {
       nout: change?.nout,
       amount: this.btcToSat(change?.amount || "0.0"),
       is_inscription: false,
+      is_rune: false,
       is_locked: false,
       in_queue: true,
       path: "",
@@ -1108,6 +1109,7 @@ class Api {
       nout: ord?.nout,
       amount: this.btcToSat(ord?.amount || "0.0"),
       is_inscription: true,
+      is_rune: false,
       is_locked: false,
       in_queue: true,
       path: "",
