@@ -746,9 +746,7 @@ interface ICollectionTransferResult {
           // console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
           Api.inscriptions = await Api.freeBalance(Api.inscriptions);
-          const balances = await Api.prepareBalances(payload.data.addresses);
-          Api.fundings = balances.funds;
-          Api.inscriptions = balances.inscriptions;
+          const balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
           // console.log('Api.fundings:', Api.fundings);
           // console.log('Api.inscriptions:', Api.inscriptions);
 
@@ -778,12 +776,16 @@ interface ICollectionTransferResult {
       }
 
       if (payload.type === GET_INSCRIPTION_CONTRACT || payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION) {
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+
         const is_lazy = payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION;
         const contract = await Api.createInscriptionContract({...payload.data, is_lazy});
         await Api.sendMessageToWebPage(is_lazy ? ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT : GET_INSCRIPTION_CONTRACT_RESULT, contract);
       }
 
       if (payload.type === GET_BULK_INSCRIPTION_ESTIMATION) {
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+
         const data = payload.data as IBulkInscriptionEstimation;
         let bulkAmount = 0;
         let bulkExpectAmount = 0;
@@ -831,6 +833,8 @@ interface ICollectionTransferResult {
         // console.log('payload?.data?.type:', payload?.data?.type);
         // console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+
         let chunkData = _fixChunkInscriptionPayload(payload?.data) as IChunkInscription;
 
         const passwordId = `job:password:${chunkData.job_uuid}`;
@@ -865,10 +869,7 @@ interface ICollectionTransferResult {
       }
 
       if (payload.type === ESTIMATE_TRANSFER_LAZY_COLLECTION) {
-        const balances = await Api.prepareBalances(payload?.data?.addresses);
-        console.debug('ESTIMATE_TRANSFER_LAZY_COLLECTION balances:', {...balances || {}});
-        Api.fundings = balances.funds;
-        Api.inscriptions = balances.inscriptions;
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
         const contract = await Api.transferForLazyInscriptionContract(payload.data);
         await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, {
@@ -883,10 +884,7 @@ interface ICollectionTransferResult {
         // console.log('payload?.data?.type:', payload?.data?.type)
         // console.log('payload?.data?.collection?.owner_txid:', payload?.data?.collection?.genesis_txid);
 
-        const balances = await Api.prepareBalances(payload?.data?.addresses);
-        console.debug('TRANSFER_LAZY_COLLECTION balances:', {...balances || {}});
-        Api.fundings = balances.funds;
-        Api.inscriptions = balances.inscriptions;
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
         costs = await Api.transferForLazyInscriptionContract(payload.data);
         console.log('costs:', costs)
@@ -915,10 +913,7 @@ interface ICollectionTransferResult {
         console.log('payload?.data?.type:', payload?.data?.type)
         console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
-        const balances = await Api.prepareBalances(payload?.data?.addresses);
-        console.debug(`${payload.type} balances:`, {...balances || {}});
-        Api.fundings = balances.funds;
-        Api.inscriptions = balances.inscriptions;
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
         const is_lazy = payload.type === PURCHASE_LAZY_INSCRIPTION;
         costs = await Api.createInscriptionContract({...payload.data, is_lazy});
@@ -947,10 +942,7 @@ interface ICollectionTransferResult {
       }
 
       if (payload.type === SELL_INSCRIPTION) {
-        const balances = await Api.prepareBalances(payload?.data?.addresses);
-        console.debug('SELL_INSCRIPTION balances:', {...balances || {}});
-        Api.fundings = balances.funds;
-        Api.inscriptions = balances.inscriptions;
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
         const costs = await Api.sellInscriptionContract(payload.data);
         payload.data.costs = costs;
@@ -962,10 +954,7 @@ interface ICollectionTransferResult {
         });
       }
       if (payload.type === COMMIT_BUY_INSCRIPTION) {
-        const balances = await Api.prepareBalances(payload?.data?.addresses);
-        console.debug('COMMIT_BUY_INSCRIPTION balances:', {...balances || {}});
-        Api.fundings = balances.funds;
-        Api.inscriptions = balances.inscriptions;
+        await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
         payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
         payload.data.errorMessage = payload.data?.costs?.errorMessage;

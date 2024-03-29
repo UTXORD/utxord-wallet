@@ -724,6 +724,14 @@ class Api {
     return [];
   }
 
+  async updateBalancesFrom(msgType: string, addresses: []) {
+    const balances = await this.prepareBalances(addresses);
+    console.debug(`${msgType} balances:`, {...balances || {}});
+    this.fundings = balances.funds;
+    this.inscriptions = balances.inscriptions;
+    return balances;
+  }
+
   async prepareBalances(balances) {
     const myself = this;
     let list = this.balances?.addresses;
@@ -1370,7 +1378,7 @@ class Api {
       fee: payload.fee,
       size: (payload.content.length + payload.content_type.length),
       total_mining_fee: 0,
-      market_fee: data.platform_fee || 0,
+      market_fee: payload.platform_fee || 0,
       purchase_price: payload?.purchase_price || -1,
       raw: [],
       outputs: {
