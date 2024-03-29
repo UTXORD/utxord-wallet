@@ -778,12 +778,22 @@ interface ICollectionTransferResult {
       }
 
       if (payload.type === GET_INSCRIPTION_CONTRACT || payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION) {
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug(`${payload.type} balances:`, {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
         const is_lazy = payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION;
         const contract = await Api.createInscriptionContract({...payload.data, is_lazy});
         await Api.sendMessageToWebPage(is_lazy ? ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT : GET_INSCRIPTION_CONTRACT_RESULT, contract);
       }
 
       if (payload.type === GET_BULK_INSCRIPTION_ESTIMATION) {
+        const balances = await Api.prepareBalances(payload?.data?.addresses);
+        console.debug(`${payload.type} balances:`, {...balances || {}});
+        Api.fundings = balances.funds;
+        Api.inscriptions = balances.inscriptions;
+
         const data = payload.data as IBulkInscriptionEstimation;
         let bulkAmount = 0;
         let bulkExpectAmount = 0;
