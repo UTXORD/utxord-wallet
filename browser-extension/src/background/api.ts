@@ -725,11 +725,10 @@ class Api {
   }
 
   async updateBalancesFrom(msgType: string, addresses: []) {
-    const myself = this;
-    const balances = await Api.prepareBalances(addresses);
+    const balances = await this.prepareBalances(addresses);
     console.debug(`${msgType} balances:`, {...balances || {}});
-    myself.fundings = balances.funds;
-    myself.inscriptions = balances.inscriptions;
+    this.fundings = balances.funds;
+    this.inscriptions = balances.inscriptions;
     return balances;
   }
 
