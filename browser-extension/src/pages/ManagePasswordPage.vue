@@ -5,20 +5,8 @@
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="password-screen_content h-full flex flex-col items-start px-5">
 
-      <p class="text-[var(--text-color)]">Manage account</p>
-      <!-- Inputs -->
-      <div class="password-screen_form-input flex flex-col p-3">
-        <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >Use one-time addresses:
-          <input
-            name="useDerivation"
-            type="checkbox"
-            v-model="useDerivation"
-            @change="setDerivate"
-            />
-        </span>
-      </div>
-      <p class="text-[var(--text-color)]">Manage password</p>
+      <h1 class="text-[var(--text-color)] text-[18px] mb-4">Manage Password</h1>
+
       <div
         class="password-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3 mb-5"
       >
@@ -43,7 +31,9 @@
             type="password"
             v-model="password"
             :rules="[
-              (val) => isASCII(val) || 'Please enter only Latin characters'
+              (val) => isASCII(val) || 'Please enter only Latin characters',
+              (val) => isLength(val) || 'Password must be minimum 9 characters',
+              (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
           />
         </div>
@@ -58,7 +48,10 @@
               (val) => isASCII(val) || 'Please enter only Latin characters',
               (val) =>
                 val === password ||
-                'Confirm Password does not match the Password'
+                'Confirm Password does not match the Password',
+              (val) => isLength(val) || 'Password must be minimum 9 characters',
+              (val) => isContains(val) ||
+                'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
           />
         </div>
@@ -67,15 +60,13 @@
       <!-- Buttons -->
       <div class="flex w-full mt-auto">
         <Button
-          outline
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
+          second
+          class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
           @click="back"
         >
-          <img src="/assets/arrow-left.svg" alt="Go Back" />
+          <ArrowLeftIcon />
         </Button>
-        <Button :disabled="isDisabled" class="w-full" @click="onStore"
-          >Save Password to Store</Button
-        >
+        <Button :disabled="isDisabled" enter class="w-full" @click="onStore">Store</Button>
       </div>
     </div>
   </div>
@@ -85,11 +76,7 @@
 import { sendMessage } from 'webext-bridge'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII } from '~/helpers/index'
-import { useStore } from '~/popup/store/index'
-
-const store = useStore()
-const { useDerivation, typeAddress } = toRefs(store)
+import { isASCII, isLength, isContains } from '~/helpers/index'
 
 const { back, push } = useRouter()
 
@@ -105,30 +92,12 @@ const isDisabled = computed(() => {
   )
     return true
   if (password.value !== confirmPassword.value) return true
-  if (
-    !isASCII(oldPassword.value) ||
-    !isASCII(password.value) ||
-    !isASCII(confirmPassword.value)
-  )
-    return true
+  if (!isASCII(oldPassword.value))  return true
+  if (!isASCII(password.value) ||  !isASCII(confirmPassword.value)) return true
+  if (!isLength(password.value) || !isLength(confirmPassword.value)) return true
+  if (!isContains(password.value) || !isContains(confirmPassword.value)) return true
   return false
 })
-
-async function setDerivate(){
-  const res = await sendMessage(
-    'CHANGE_USE_DERIVATION',
-    {
-      value: Boolean(useDerivation.value)
-    },
-    'background')
-    store.setUseDerivation(Boolean(useDerivation.value))
-    const ta = Number(!typeAddress.value);
-    const tl = Boolean(useDerivation.value)?'fund':'oth'
-    const addr = res.keys?.addresses?.reverse()?.find(
-      (item) => item.type === tl && item.typeAddress === ta
-    )?.address
-    store.setFundAddress(addr)
-}
 
 async function onStore() {
   const saved = await sendMessage(
@@ -164,17 +133,6 @@ async function onStore() {
     font-size: 14px;
     line-height: 18px;
     letter-spacing: -0.154px;
-  }
-
-  &_info {
-    font-weight: 500;
-    font-size: 15px;
-    line-height: 20px;
-    display: flex;
-    align-items: center;
-    text-align: center;
-    letter-spacing: -0.32px;
-    color: #1b46f5;
   }
 }
 </style>

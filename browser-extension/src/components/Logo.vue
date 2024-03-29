@@ -1,8 +1,8 @@
 <template>
-  <div class="logo p-4">
+  <router-link to="/" class="logo p-4">
     <LogoIcon />
     <span class="network text-[var(--text-grey-color)]">{{ network }}</span>
-  </div>
+  </router-link>
 </template>
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'

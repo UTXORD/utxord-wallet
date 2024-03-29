@@ -2,6 +2,7 @@
 <!-- Total -->
 <div
   class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+  v-show="raws.length > 0"
 >
   <span><a @click="whatSigning" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>
   <span class="w-full text-[var(--text-grey-color)]"
@@ -50,7 +51,7 @@ const showContract = ref('')
 const activeTab = ref('')
 
 const raws = computed(() => {
-  return dataForSign.value?.data?.costs?.raw
+  return dataForSign.value?.data?.costs?.raw || dataForSign.value?.data?.raw
 })
 
 async function showRawTranscation(n){
@@ -67,7 +68,6 @@ async function whatSigning(){
     return;
   }
   showContract.value = true;
-  console.log(dataForSign.value.data)
   textarea.value = raws.value[0]
 }
 </script>

@@ -26,6 +26,32 @@
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
     >
+
+    <div class="flex items-center" v-show="dataForSign?.data?.costs?.purchase_price >= 0">
+      <span class="mr-2 text-[var(--text-grey-color)]">Purchase price:</span>
+      <PriceComp
+        class="ml-auto"
+        :price="dataForSign?.data?.costs?.purchase_price || 0"
+        :font-size-breakpoints="{
+          1000000: '15px'
+        }"
+      />
+    </div>
+
+    <div class="flex items-center">
+      <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
+      <PriceComp
+        class="ml-auto"
+        :price="
+        dataForSign?.data?.costs?.total_mining_fee ||
+        dataForSign?.data?.total_mining_fee ||
+        0"
+        :font-size-breakpoints="{
+          1000000: '15px'
+        }"
+      />
+    </div>
+
       <div class="flex items-center">
         <span class="mr-2 text-[var(--text-grey-color)]">Inscribing on:</span>
         <PriceComp
@@ -36,26 +62,22 @@
           }"
         />
       </div>
+
       <div class="flex items-center">
         <span class="mr-2 text-[var(--text-grey-color)]">Platform Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.market_fee || 0"
+          :price="
+          dataForSign?.data?.costs?.market_fee ||
+          dataForSign?.data?.market_fee ||
+          dataForSign?.data?.contract?.params?.market_fee?.amount || 
+          0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
         />
       </div>
-      <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Mining Fee:</span>
-        <PriceComp
-          class="ml-auto"
-          :price="dataForSign?.data?.costs?.total_mining_fee || 0"
-          :font-size-breakpoints="{
-            1000000: '15px'
-          }"
-        />
-      </div>
+
       <div
         class="w-full min-h-[1px] bg-[var(--border-color)] dark:bg-[#555555]"
       />

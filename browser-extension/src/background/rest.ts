@@ -1,5 +1,5 @@
 import { BACKEND_URL } from '~/config/index'
-
+import * as Sentry from "@sentry/browser"
 class Rest {
   constructor() {}
 
@@ -21,6 +21,7 @@ class Rest {
       }
     }catch(e){
       console.log(`Rest::get->error: ${e.message}`, e.stack);
+      Sentry.captureException(e);
     }
   }
 }

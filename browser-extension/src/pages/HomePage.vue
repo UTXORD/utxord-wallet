@@ -14,7 +14,7 @@
           <Button
             outline
             :disabled="!isSynchronized"
-            class="home-screen_balance-refresh absolute top-2 right-2"
+            class="home-screen_balance-refresh absolute top-2 right-2 !min-h-[20px]"
             @click="refreshBalance"
           >
             <RefreshIcon />
@@ -38,10 +38,10 @@
         </span>
         <template v-if="!connected">
         <Button
-        outline
-        @click="connectToSite"
-        class="min-w-[40px] px-3 py-1 mt-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
-        >Connect to site</Button>
+          outline
+          @click="connectToSite"
+          class="min-w-[40px] px-3 py-1 mt-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+          >Connect to site</Button>
         </template>
       </div>
 
@@ -114,26 +114,18 @@
             {{ formatAddress(fundAddress, 6, 6) }}
           </p>
 
-          <label class="switch">
-          <div class="label">{{ nameTypeAddress }}</div>
-          <input type="checkbox"
-            :checked="Boolean(typeAddress)"
-            @click="toogleAddress">
-            <span class="slider round"></span>
-          </label>
-
           <Button
             v-if="useDerivation"
             outline
             @click="newFundAddress"
-            class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+            class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)] !min-h-[30px]"
           >
             New
           </Button>
           <Button
             outline
             @click="copyToClipboard(fundAddress)"
-            class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
+            class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)] !min-h-[30px]"
           >
             Copy
           </Button>
@@ -174,29 +166,10 @@ async function connectToSite() {
   await refreshBalance()
 }
 
-async function toogleAddress(){
-  await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
-  const ta = Number(!typeAddress.value);
-  store.setTypeAddress(ta);
-  const response = await sendMessage(
-    CHANGE_TYPE_FUND_ADDRESS,
-    {
-      type: ta
-      },
-      'background'
-  )
-  const tl = Boolean(useDerivation.value)?'fund':'oth'
-  const addr = response?.addresses?.reverse()?.find(
-    (item) => item.type === tl && item.typeAddress === ta
-    )?.address
-  store.setFundAddress(addr)
-  await refreshBalance();
-}
-
 async function newFundAddress() {
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   const response = await sendMessage(NEW_FUND_ADDRESS, {}, 'background')
-  const ta = Number(!typeAddress.value);
+  const ta = Number(typeAddress.value);
   const tl = Boolean(useDerivation.value)?'fund':'oth'
   const addr = response?.addresses?.reverse()?.find(
     (item) => item.type === tl && item.typeAddress === ta
@@ -210,7 +183,7 @@ function refreshBalance() {
   setTimeout(async () => {
     const res = await sendMessage(STATUS_DERIVATION, {}, 'background')
     store.setUseDerivation(Boolean(res.derivate))
-    const ta = Number(!typeAddress.value);
+    const ta = Number(typeAddress.value);
     const tl = Boolean(useDerivation.value)?'fund':'oth'
     const addr = res.keys?.addresses?.reverse()?.find(
       (item) => item.type === tl && item.typeAddress === ta
@@ -223,8 +196,6 @@ function refreshBalance() {
 const isSynchronized = computed(() => balance?.value?.sync)
 
 const connected = computed(() => balance?.value?.connect)
-
-const nameTypeAddress = computed(() => (typeAddress?.value===1)?'Taproot':'SegWit')
 
 const status_message = computed(() => {
   if (!balance?.value?.connect)
