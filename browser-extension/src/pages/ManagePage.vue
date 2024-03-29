@@ -1,9 +1,9 @@
 <template>
-  <div class="password-screen flex flex-col h-full">
+  <div class="manage-screen flex flex-col h-full">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="password-screen_content h-full flex flex-col items-start px-5">
+    <div class="manage-screen_content h-full flex flex-col items-start px-5">
 
       <h1 class="text-[var(--text-color)] text-[18px] mb-4">Settings</h1>
 
@@ -35,11 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
-import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII } from '~/helpers/index'
-import { useStore } from '~/popup/store/index'
 
 const LINKS = [
   {
@@ -52,36 +48,11 @@ const LINKS = [
   }
 ]
 
-const store = useStore()
-const { useDerivation, typeAddress } = toRefs(store)
-
 const { back, push } = useRouter()
-
-const oldPassword = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-
-const isDisabled = computed(() => {
-  if (
-    !password.value.length ||
-    !confirmPassword.value.length ||
-    !oldPassword.value.length
-  )
-    return true
-  if (password.value !== confirmPassword.value) return true
-  if (
-    !isASCII(oldPassword.value) ||
-    !isASCII(password.value) ||
-    !isASCII(confirmPassword.value)
-  )
-    return true
-  return false
-})
-
 </script>
 
 <style lang="scss" scoped>
-.password-screen {
+.manage-screen {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;

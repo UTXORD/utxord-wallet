@@ -132,7 +132,7 @@
       <div class="flex w-full mt-auto">
         <Button
           second
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
+          class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
           @click="back"
         >
           <ArrowLeftIcon />
@@ -240,7 +240,7 @@ async function onStore() {
   if (generated) {
     await getFundAddress()
     getBalance()
-    push('/wallet-created')
+    push('/')
   }
 }
 </script>

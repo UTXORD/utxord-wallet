@@ -170,7 +170,7 @@
       <div class="flex w-full mt-1">
         <Button
           second
-          class="min-w-[40px] mr-3 px-0 flex items-center justify-center bg-white"
+          class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
           @click="goToBack"
         >
           <ArrowLeftIcon />
