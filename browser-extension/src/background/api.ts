@@ -1,6 +1,6 @@
 import '~/libs/utxord.js';
 import '~/libs/safe-buffer.js';
-import '~/libs/crypto-js.js';
+import * as CryptoJS from 'crypto-js';
 import winHelpers from '~/helpers/winHelpers';
 import rest from '~/background/rest';
 import { sendMessage } from 'webext-bridge';
@@ -23,7 +23,7 @@ import {
   DECRYPTED_WALLET,
   TRANSFER_LAZY_COLLECTION
 } from '~/config/events';
-import { BASE_URL_PATTERN } from '~/config/index';
+import { BASE_URL_PATTERN, NETWORK } from '~/config/index';
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
 
@@ -277,6 +277,7 @@ class Api {
         this.wallet = WALLET;
         this.wallet_types = WALLET_TYPES;
         this.addresses = [];
+        this.all_addresses = [];
 
         this.balances = [];
         this.fundings = [];
@@ -329,6 +330,130 @@ class Api {
     }
   }
 
+  sentry(){
+    const myself = this;
+    if(this.error_reporting){
+      Sentry.configureScope( async (scope) => {
+        scope.setTag('system_state', myself.error_reporting)
+        scope.setTag('network', NETWORK)
+        if(myself.wallet.auth?.key) {
+          scope.setUser({
+            othKey: myself.wallet.oth?.key?.PubKey(),
+            fundKey: myself.wallet.fund?.key?.PubKey(),
+            authKey: myself.wallet.auth?.key?.PubKey()
+          })
+         }
+        const check = await myself.checkSeed();
+        const system_state = {
+          check_auth: check,
+          addresses: JSON.stringify(myself.addresses),
+          filtred_addresses: JSON.stringify(myself.getAddressForSave()),
+          balances: JSON.stringify(myself.balances),
+          fundings: JSON.stringify(myself.fundings),
+          inscriptions: JSON.stringify(myself.inscriptions),
+          connect: myself.connect,
+          sync: myself.sync,
+          derivate: myself.derivate,
+        }
+        scope.setExtra('system',  system_state);
+
+      });
+    }
+  }
+
+  zeroPad(n,length){
+     return n.toString().padStart(length, '0');
+  }
+
+  challenge(){
+    const d = new Date();
+    const bytes = CryptoJS.lib.WordArray.random(20)
+    let salt = 0
+    for (let i = 0; i < bytes.words.length; i++) {
+      salt *= 256;
+      if (bytes.words[i] < 0) {
+          salt += 256 + Math.abs(bytes.words[i]);
+      } else {
+          salt += bytes.words[i];
+        }
+    }
+    salt = salt.toString().substr(0, 16)
+    const year = d.getUTCFullYear()
+    const month = this.zeroPad((d.getUTCMonth()+1), 2)
+    const day = this.zeroPad(d.getUTCDate(), 2)
+    const hour = this.zeroPad(d.getUTCHours(), 2)
+    const minute = this.zeroPad(d.getUTCMinutes(), 2)
+    const second = this.zeroPad(d.getUTCSeconds(), 2)
+    const timeformat = `${year}-${month}-${day}-${hour}:${minute}:${second}`
+    return `Verify address salt: ${salt} Requested at: ${timeformat}`
+}
+
+sha256x2(word) {
+  const hash = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(word)).toString()
+  const bytes = CryptoJS.enc.Hex.parse(hash)
+  const dhash = CryptoJS.SHA256(bytes).toString(CryptoJS.enc.Hex)
+  return dhash
+}
+
+getKey(type: string, typeAddress: number | undefined = undefined){
+    if (!this.wallet_types.includes(type)) return false;
+    if (!this.checkSeed()) return false;
+    this.genRootKey();
+    const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
+    if(!typeAddress) typeAddress = this.wallet[type].typeAddress
+    return this.wallet.root.key.Derive(this.path(type, typeAddress), for_script);
+  }
+
+  getAddress(type: string, key: object | undefined = undefined, typeAddress: number | undefined = undefined){
+    if(!key) key = this.wallet[type].key;
+    if(!typeAddress) typeAddress = this.wallet[type].typeAddress;
+    return typeAddress === 1
+        ? key.GetP2WPKHAddress(this.network)
+        : key.GetP2TRAddress(this.network);
+  }
+
+getChallenge(type: string, typeAddress: number | undefined = undefined ){
+  const key = this.getKey(type, typeAddress);
+  const challenge = this.challenge();
+  const dhash = this.sha256x2(challenge);
+  return {
+    challenge: challenge,
+    public_key: key.PubKey(),
+    signature: key.SignSchnorr(dhash)
+  };
+}
+
+updateAddressesChallenges(addresses: object[] | undefined = undefined){
+ if(!addresses) addresses = this.addresses;
+ for (let addr of addresses) {
+   if(addr?.public_key){
+     let ch = this.getChallenge(addr.type, addr.typeAddress);
+     addr = Object.assign(addr, ch);
+   }
+ }
+}
+
+ getAddressForSave(addresses: object[] | undefined = undefined){
+    const list = [];
+    const pubKeylist = [];
+    if(!addresses) addresses = this.addresses;
+    this.updateAddressesChallenges(addresses);
+    for(const item of addresses){
+      //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
+      if(!this.hasAddress(item?.address, this.all_addresses)){
+        if(item?.public_key && !pubKeylist.includes(item?.public_key)){
+          pubKeylist.push(item?.public_key);
+        }else{
+           delete item.public_key;
+           delete item.challenge;
+           delete item.signature;
+        }
+        list.push(item);
+      }
+    }
+    return list;
+  }
+
   async setIndexToStorage(type, value) {
     if(type==='ext') return;
     const Obj = {};
@@ -353,17 +478,18 @@ class Api {
     return true;
   }
 
-  path(type) {
+  path(type: string, typeAddress: number | undefined = undefined) {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
     if (type === 'ext') return false;
     //m / purpose' / coin_type' / account' / change / index
+    if(!typeAddress) typeAddress = this.wallet[type].typeAddress
     const ignore = ['uns', 'intsk', 'intsk2', 'scrsk', 'auth'];
     const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
     const a = (this.derivate || ignore.includes(type)) ? this.wallet[type].account : 0 ;
     const c = this.wallet[type].change;
     const i = (this.derivate || ignore.includes(type)) ? this.wallet[type].index : 0;
-    const purpose = (this.wallet[type].typeAddress === 1) ? 84 : 86;
+    const purpose = (typeAddress === 1) ? 84 : 86;
     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
   }
 
@@ -434,8 +560,19 @@ class Api {
     return true;
   }
 
+  hasPublicKey(public_key: string, addresses: object[] | undefined = undefined) {
+    if (!addresses) {
+      addresses = this.addresses;
+    }
+    for (const item of addresses) {
+      if (item?.public_key === public_key) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   hasAddress(address: string, addresses: object[] | undefined = undefined) {
-    if(!this.derivate) return false;
     if (!addresses) {
       addresses = this.addresses;
     }
@@ -626,63 +763,86 @@ class Api {
     return this.wallet.ext.keys;
   }
 
-  genKey(type) {
-    if (!this.wallet_types.includes(type)) return false;
-    if (!this.checkSeed()) return false;
-    this.genRootKey();
-    const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
-    this.wallet[type].key = this.wallet.root.key.Derive(this.path(type), for_script);
-    this.wallet[type].address = this.wallet[type].typeAddress === 1
-        ? this.wallet[type].key.GetP2WPKHAddress(this.network)
-        : this.wallet[type].key.GetP2TRAddress(this.network);
-    return true;
-  }
+  genKey(type: string, typeAddress: number | undefined = undefined) {
+   if (!this.wallet_types.includes(type)) return false;
+   if (!this.checkSeed()) return false;
+   if(!typeAddress) typeAddress = this.wallet[type].typeAddress
+   this.wallet[type].key = this.getKey(type, typeAddress);
+   this.wallet[type].address = this.getAddress(type, this.wallet[type].key, typeAddress);
+   return true;
+ }
 
   addPopAddresses(){
-    this.wallet['oth'].typeAddress = 0;
-    if (this.genKey('oth')) {
+    if (this.genKey('oth', 0)) {
       if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 0)) {
+        let ch = this.getChallenge('oth', 0);
         this.addresses.push({ // add m86 fund address
           address: this.wallet['oth'].address,
           type: 'oth',
-          typeAddress: this.wallet['oth'].typeAddress,
-          index: this.path('oth')
+          typeAddress: 0,
+          index: this.path('oth', 0),
+          ...(!this.hasPublicKey(ch.public_key) ? ch : {})
         });
       }
     }
 
-    this.wallet['oth'].typeAddress = 1; // //default oth: m84
-    if (this.genKey('oth')) { // add m84 fund address
+    if (this.genKey('oth', 1)) { // add m84 fund address
       if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 1)) {
+        let ch = this.getChallenge('oth', 1);
         this.addresses.push({
           address: this.wallet['oth'].address,
           type: 'oth',
-          typeAddress: this.wallet['oth'].typeAddress,
-          index: this.path('oth')
+          typeAddress: 1,
+          index: this.path('oth', 1),
+          ...(!this.hasPublicKey(ch.public_key) ? ch : {})
         });
       }
     }
 
-    this.wallet['fund'].typeAddress = 1;
-    if (this.genKey('fund')) {
-      if (!this.hasAddressFields(this.wallet['fund'].address,'fund',1)) {
+    if (this.genKey('fund', 1)) {
+      if (!this.hasAddressFields(this.wallet['fund'].address,'fund', 1)) {
+        let ch = this.getChallenge('fund', 1);
         this.addresses.push({ // add m84 fund address
           address: this.wallet['fund'].address,
           type: 'fund',
-          typeAddress: this.wallet['fund'].typeAddress,
-          index: this.path('fund')
+          typeAddress: 1,
+          index: this.path('fund', 1),
         });
       }
     }
 
-    this.wallet['fund'].typeAddress = 0; //default fund: m86
-    if (this.genKey('fund')) { // add m86 fund address
+    if (this.genKey('fund', 0)) { // add m86 fund address
       if (!this.hasAddressFields(this.wallet['fund'].address,'fund', 0)) {
+        let ch = this.getChallenge('fund', 0);
         this.addresses.push({
           address: this.wallet['fund'].address,
           type: 'fund',
-          typeAddress: this.wallet['fund'].typeAddress,
-          index: this.path('fund')
+          typeAddress: 0,
+          index: this.path('fund', 0),
+        });
+      }
+    }
+
+    if (this.genKey('ord', 1)) {
+      if (!this.hasAddressFields(this.wallet['ord'].address,'ord', 1)) {
+        let ch = this.getChallenge('ord', 1);
+        this.addresses.push({ // add m84 fund address
+          address: this.wallet['ord'].address,
+          type: 'ord',
+          typeAddress: 1,
+          index: this.path('ord', 1),
+        });
+      }
+    }
+
+    if (this.genKey('ord', 0)) { // add m86 fund address
+      if (!this.hasAddressFields(this.wallet['ord'].address,'ord', 0)) {
+        let ch = this.getChallenge('ord', 0);
+        this.addresses.push({
+          address: this.wallet['ord'].address,
+          type: 'ord',
+          typeAddress: 0,
+          index: this.path('ord', 0),
         });
       }
     }
@@ -693,15 +853,17 @@ class Api {
     this.addPopAddresses(); // add popular addresses
     const publicKeys = [];
     for (const type of this.wallet_types) {
-      if (this.genKey(type)) {
+      if (this.genKey(type, this.wallet[type].typeAddress)) {
         if (type !== 'auth' && type !== 'ext') {
           if (!this.hasAddress(this.wallet[type].address)) {
               if (!this.hasAddressType(type)) {
+                let ch = this.getChallenge(type);
                 const newAddress = {
                   address: this.wallet[type].address,
                   type: type,
                   typeAddress: this.wallet[type].typeAddress,
-                  index: this.path(type)
+                  index: this.path(type),
+                  ...ch
                 };
                 console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
                 this.addresses.push(newAddress);
@@ -992,6 +1154,7 @@ class Api {
       sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`);
       setTimeout(() =>this.warning_count = 0, 3000);
     }
+    this.sentry();
     Sentry.captureException(warning);
     console.warn(type, errorMessage, errorStack);
 
@@ -1012,6 +1175,7 @@ class Api {
       sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
       setTimeout(() =>this.exception_count = 0, 3000);
     }
+    this.sentry();
     Sentry.captureException(exception);
     console.error(type, errorMessage, errorStack);
 
@@ -1164,9 +1328,9 @@ class Api {
       const signature = myself.wallet.auth.key.SignSchnorr(challenge);
       console.log("SignSchnorr::challengeResult:", signature);
       myself.sendMessageToWebPage(CONNECT_RESULT, {
+        publickey: myself.wallet.auth.key.PubKey(),
         challenge: challenge,
-        signature: signature,
-        publickey: myself.wallet.auth.key.PubKey()
+        signature: signature
       }, tabId);
     myself.connect = true;
     myself.sync = false;
@@ -2016,20 +2180,20 @@ class Api {
     const ivSize = 128;
     const iterations = 100;
 
-    const salt = self.CryptoJS.lib.WordArray.random(128/8);
+    const salt = CryptoJS.lib.WordArray.random(128/8);
 
-    const key = self.CryptoJS.PBKDF2(password, salt, {
+    const key = CryptoJS.PBKDF2(password, salt, {
         keySize: keySize/32,
         iterations: iterations
       });
 
-    const iv = self.CryptoJS.lib.WordArray.random(ivSize/8);
+    const iv = CryptoJS.lib.WordArray.random(ivSize/8);
 
-    const encrypted = self.CryptoJS.AES.encrypt(msg, key, {
+    const encrypted = CryptoJS.AES.encrypt(msg, key, {
       iv: iv,
-      padding: self.CryptoJS.pad.Pkcs7,
-      mode: self.CryptoJS.mode.CBC,
-      hasher: self.CryptoJS.algo.SHA256
+      padding: CryptoJS.pad.Pkcs7,
+      mode: CryptoJS.mode.CBC,
+      hasher: CryptoJS.algo.SHA256
     });
 
     return salt.toString()+ iv.toString() + encrypted.toString();
@@ -2040,22 +2204,22 @@ class Api {
     const ivSize = 128;
     const iterations = 100;
 
-    const salt = self.CryptoJS.enc.Hex.parse(transitmessage.substr(0, 32));
-    const iv = self.CryptoJS.enc.Hex.parse(transitmessage.substr(32, 32))
+    const salt = CryptoJS.enc.Hex.parse(transitmessage.substr(0, 32));
+    const iv = CryptoJS.enc.Hex.parse(transitmessage.substr(32, 32))
     const encrypted = transitmessage.substring(64);
 
-    const key = self.CryptoJS.PBKDF2(password, salt, {
+    const key = CryptoJS.PBKDF2(password, salt, {
         keySize: keySize/32,
         iterations: iterations
       });
 
-    const decrypted = self.CryptoJS.AES.decrypt(encrypted, key, {
+    const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
       iv: iv,
-      padding: self.CryptoJS.pad.Pkcs7,
-      mode: self.CryptoJS.mode.CBC,
-      hasher: self.CryptoJS.algo.SHA256
+      padding: CryptoJS.pad.Pkcs7,
+      mode: CryptoJS.mode.CBC,
+      hasher: CryptoJS.algo.SHA256
     })
-    return decrypted.toString(self.CryptoJS.enc.Utf8);
+    return decrypted.toString(CryptoJS.enc.Utf8);
   }
 
   async encryptedWallet(password) {
