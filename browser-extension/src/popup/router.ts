@@ -91,6 +91,14 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/manage-errors',
+    name: 'ManageErrors',
+    component: () => import('~/pages/ManageErrors.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
     path: '/create-password-screen',
     name: 'CreatePasswordPage',
     component: () => import('~/pages/CreatePasswordPage.vue')

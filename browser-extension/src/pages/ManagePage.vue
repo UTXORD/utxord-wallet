@@ -45,6 +45,10 @@ const LINKS = [
   {
     label: 'Manage Password',
     link: '/manage-password'
+  },
+  {
+    label: 'Manage Errors',
+    link: '/manage-errors'
   }
 ]
 
