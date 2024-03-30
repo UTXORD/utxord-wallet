@@ -323,6 +323,7 @@ class Api {
         this.error_reporting = true;
 
         await this.init(this);
+        await this.sentry();
         return this;
       } catch(e) {
         this.sentry(e);
@@ -334,7 +335,6 @@ class Api {
 
   async init() {
     const myself = this
-
     try {
       const { seed } = await chrome.storage.local.get(['seed']);
       if (seed) {
@@ -365,7 +365,7 @@ class Api {
     }
   }
 
-  sentry(e){
+  sentry(e = undefined){
     const myself = this;
     if(this.error_reporting){
       Sentry.configureScope( async (scope) => {
@@ -396,7 +396,7 @@ class Api {
         }
         scope.setExtra('system',  system_state);
       });
-      Sentry.captureException(e);
+      if(e) Sentry.captureException(e);
     }
   }
 
