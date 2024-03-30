@@ -11,6 +11,18 @@ import VClickOutside from './directives/VClickOutside'
 import FloatingVue from 'floating-vue'
 import * as Sentry from '@sentry/vue'
 import 'floating-vue/dist/style.css'
+import {
+  BASE_URL_PATTERN,
+  PROD_URL_PATTERN,
+  STAGE_URL_PATTERN,
+  ETWOE_URL_PATTERN,
+  LOCAL_URL_PATTERN,
+  NETWORK,
+  TESTNET,
+  REGTEST,
+  MAINNET
+ } from '~/config/index';
+ import {version} from '~/../package.json';
 
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
@@ -19,6 +31,24 @@ const app = createApp(App)
 
 Sentry.init({
   app,
+  environment: () => {
+    switch (BASE_URL_PATTERN) {
+      case PROD_URL_PATTERN: return 'production'
+      case STAGE_URL_PATTERN: return 'staging'
+      case ETWOE_URL_PATTERN: return 'staging'
+      case LOCAL_URL_PATTERN: return 'debuging'
+      default: return 'debuging'
+    }
+  },
+  network: () => {
+    switch (NETWORK) {
+      case TESTNET: return 'testnet'
+      case REGTEST: return 'regtest'
+      case MAINNET: return 'mainnet'
+      default: return 'mainnet'
+    }
+  },
+  plugin: version,
   dsn: "https://9b55ac2faadbc147285ed63295e018ea@sntry.l15.co/4",
   integrations: [
     Sentry.browserTracingIntegration({ router }),

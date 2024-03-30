@@ -21,7 +21,6 @@ class Rest {
       }
     }catch(e){
       console.log(`Rest::get->error: ${e.message}`, e.stack);
-      Sentry.captureException(e);
     }
   }
 }

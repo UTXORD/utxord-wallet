@@ -5,7 +5,9 @@ import winHelpers from '~/helpers/winHelpers';
 import rest from '~/background/rest';
 import { sendMessage } from 'webext-bridge';
 import * as cbor from 'cbor-js';
-import * as Sentry from "@sentry/browser"
+import * as Sentry from "@sentry/browser";
+import { wasmIntegration } from "@sentry/wasm";
+import {version} from '~/../package.json';
 import {
   EXCEPTION,
   WARNING,
@@ -23,13 +25,46 @@ import {
   DECRYPTED_WALLET,
   TRANSFER_LAZY_COLLECTION
 } from '~/config/events';
-import { BASE_URL_PATTERN, NETWORK } from '~/config/index';
+
+import {
+  BASE_URL_PATTERN,
+  PROD_URL_PATTERN,
+  STAGE_URL_PATTERN,
+  ETWOE_URL_PATTERN,
+  LOCAL_URL_PATTERN,
+  NETWORK
+ } from '~/config/index';
+
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
 
 import * as WebBip39 from 'web-bip39';
 import wordlist from 'web-bip39/wordlists/english';
 
+function GetEnvironment(){
+  switch (BASE_URL_PATTERN) {
+    case PROD_URL_PATTERN: return 'production';
+    case STAGE_URL_PATTERN: return 'staging';
+    case ETWOE_URL_PATTERN: return 'staging';
+    case LOCAL_URL_PATTERN: return 'debuging';
+    default: return 'debuging';
+  }
+}
+
+Sentry.init({
+  environment: GetEnvironment(),
+  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.l15.co/6",
+  // Performance Monitoring
+  tracesSampleRate: 1.0, //  Capture 100% of the transactions
+  integrations: [wasmIntegration()],
+  ignoreErrors: [
+    'Frame with ID 0',
+    'Cannot access contents',
+    'No tab with id:',
+    'Cannot access a chrome://',
+    'Failed to fetch'
+  ]
+});
 
 // import tabId = chrome.devtools.inspectedWindow.tabId;
 
@@ -290,7 +325,7 @@ class Api {
         await this.init(this);
         return this;
       } catch(e) {
-        Sentry.captureException(e);
+        this.sentry(e);
         console.log('constructor->error:',e);
         chrome.runtime.reload();
       }
@@ -330,12 +365,16 @@ class Api {
     }
   }
 
-  sentry(){
+  sentry(e){
     const myself = this;
     if(this.error_reporting){
       Sentry.configureScope( async (scope) => {
+        scope.setTag('environment', GetEnvironment())
         scope.setTag('system_state', myself.error_reporting)
-        scope.setTag('network', NETWORK)
+        scope.setTag('network', myself.getCurrentNetWorkText())
+        scope.setTag('base_url', BASE_URL_PATTERN)
+        scope.setTag('plugin', version)
+
         if(myself.wallet.auth?.key) {
           scope.setUser({
             othKey: myself.wallet.oth?.key?.PubKey(),
@@ -356,8 +395,8 @@ class Api {
           derivate: myself.derivate,
         }
         scope.setExtra('system',  system_state);
-
       });
+      Sentry.captureException(e);
     }
   }
 
@@ -1070,7 +1109,19 @@ updateAddressesChallenges(addresses: object[] | undefined = undefined){
     const versions = JSON.parse(supported_versions || '[8]');
     return versions;
   }
-
+  getCurrentNetWorkText() {
+    if (!this.network) { return 'mainnet'; }
+    switch (this.network) {
+      case this.utxord.TESTNET:
+        return 'testnet';
+      case this.utxord.REGTEST:
+        return 'regtest';
+      case this.utxord.MAINNET:
+        return 'mainnet';
+      default:
+      return 'mainnet';
+    }
+  }
   getCurrentNetWorkLabel() {
     if (!this.network) { return ' '; }
     switch (this.network) {
@@ -1154,8 +1205,7 @@ updateAddressesChallenges(addresses: object[] | undefined = undefined){
       sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`);
       setTimeout(() =>this.warning_count = 0, 3000);
     }
-    this.sentry();
-    Sentry.captureException(warning);
+    this.sentry(warning);
     console.warn(type, errorMessage, errorStack);
 
 
@@ -1175,8 +1225,7 @@ updateAddressesChallenges(addresses: object[] | undefined = undefined){
       sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
       setTimeout(() =>this.exception_count = 0, 3000);
     }
-    this.sentry();
-    Sentry.captureException(exception);
+    this.sentry(exception);
     console.error(type, errorMessage, errorStack);
 
     return `${type} ${errorMessage} ${errorStack}`;
@@ -2261,7 +2310,6 @@ updateAddressesChallenges(addresses: object[] | undefined = undefined){
       }
     }catch(e) {
       console.log('Api.checkPassword:',e);
-      Sentry.captureException(e);
     }
     return true;
   }

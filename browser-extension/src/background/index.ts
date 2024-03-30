@@ -1,8 +1,6 @@
 import {MAINNET, NETWORK, TESTNET, BASE_URL_PATTERN} from '~/config/index';
 import {onMessage, sendMessage} from 'webext-bridge'
 import '~/background/api'
-import * as Sentry from "@sentry/browser"
-import { wasmIntegration } from "@sentry/wasm"
 import WinManager from '~/background/winManager';
 import {
   ADDRESS_COPIED,
@@ -71,13 +69,6 @@ import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from 
 import Port = chrome.runtime.Port;
 import {HashedStore} from "~/background/hashedStore";
 import {bookmarks} from "webextension-polyfill";
-Sentry.init({
-  environment: BASE_URL_PATTERN,
-  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.l15.co/6",
-  // Performance Monitoring
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
-  integrations: [wasmIntegration()],
-});
 
 if (NETWORK === MAINNET){
   if(self){
@@ -1015,7 +1006,6 @@ interface ICollectionTransferResult {
     await watchdog.run();
 
   } catch(e) {
-    Sentry.captureException(e);
     console.log('background:index.ts:',e);
   }
 })();
