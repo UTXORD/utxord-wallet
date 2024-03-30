@@ -499,6 +499,12 @@ updateAddressesChallenges(addresses: object[] | undefined = undefined){
     return true;
   }
 
+  async setErrorReporting(value) {
+    if (!this.checkSeed()) return false;
+    this.error_reporting = Boolean(value);
+    return true;
+  }
+
   async setTypeAddress(type, value) {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;

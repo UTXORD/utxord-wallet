@@ -31,6 +31,8 @@ import {
   CHANGE_TYPE_FUND_ADDRESS,
   CHANGE_USE_DERIVATION,
   STATUS_DERIVATION,
+  STATUS_ERROR_REPORTING,
+  CHANGE_ERROR_REPORTING,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
   OPEN_START_PAGE,
   PLUGIN_ID,
@@ -357,6 +359,17 @@ interface ICollectionTransferResult {
       const newKeys = Api.genKeys();
       console.log('newKeys', newKeys);
       return {derivate: Api.derivate, keys: newKeys};
+    });
+
+    onMessage(CHANGE_ERROR_REPORTING, async (payload: any) => {
+      console.log('CHANGE_ERROR_REPORTING:',payload.data?.value);
+      await Api.setErrorReporting(payload.data?.value);
+      return {error_reporting: Api.error_reporting};
+    });
+
+    onMessage(STATUS_ERROR_REPORTING, () => {
+      console.log('STATUS_ERROR_REPORTING:', Api.error_reporting);
+      return {error_reporting: Api.error_reporting};
     });
 
 
