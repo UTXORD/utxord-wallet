@@ -1,4 +1,4 @@
-import {MAINNET, NETWORK, TESTNET} from '~/config/index';
+import {MAINNET, NETWORK, TESTNET, BASE_URL_PATTERN} from '~/config/index';
 import {onMessage, sendMessage} from 'webext-bridge'
 import '~/background/api'
 import * as Sentry from "@sentry/browser"
@@ -72,6 +72,7 @@ import Port = chrome.runtime.Port;
 import {HashedStore} from "~/background/hashedStore";
 import {bookmarks} from "webextension-polyfill";
 Sentry.init({
+  environment: BASE_URL_PATTERN,
   dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.l15.co/6",
   // Performance Monitoring
   tracesSampleRate: 1.0, //  Capture 100% of the transactions
@@ -228,30 +229,8 @@ interface ICollectionTransferResult {
     });
 
     const Api = await new self.Api(NETWORK);
-    if(Api.error_reporting){
-      Sentry.configureScope( async (scope) => {
-        scope.setTag('system_state', Api.error_reporting)
-        if(Api.wallet.auth?.key) {
-          scope.setUser({
-            othKey: Api.wallet.oth?.key?.PubKey(),
-            fundKey: Api.wallet.fund?.key?.PubKey(),
-            authKey: Api.wallet.auth?.key?.PubKey(),
-          })
-         }
-        const check = await Api.checkSeed();
-        const system_state = {
-          check_auth: check,
-          addresses: JSON.stringify(Api.addresses),
-          balances: JSON.stringify(Api.balances),
-          fundings: JSON.stringify(Api.fundings),
-          inscriptions: JSON.stringify(Api.inscriptions),
-          connect: Api.connect,
-          sync: Api.sync,
-          derivate: Api.derivate,
-        }
-        scope.setExtra('system',  system_state);
-      });
-    }
+    Api.sentry();
+
     if(NETWORK === TESTNET){
       self.api = Api; // for debuging in devtols
     }
@@ -272,6 +251,7 @@ interface ICollectionTransferResult {
           await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
         }, 1000);
       }
+      Api.sentry();
       return true;
     });
 
@@ -325,8 +305,8 @@ interface ICollectionTransferResult {
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success, tabId);
         await Api.sendMessageToWebPage(GET_CONNECT_STATUS, {}, tabId);
-        await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses, tabId);
-        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, tabId);
+        await Api.sendMessageToWebPage(GET_BALANCES, Api.getAddressForSave(), tabId);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave(), tabId);
     };
 
     onMessage(GET_BALANCE, async (payload: any) => {
@@ -351,7 +331,7 @@ interface ICollectionTransferResult {
     onMessage(NEW_FUND_ADDRESS, async () => {
       await Api.generateNewIndex('fund');
       const newKeys = Api.genKeys();
-      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave());
       return newKeys;
     });
 
@@ -360,7 +340,7 @@ interface ICollectionTransferResult {
       await Api.setTypeAddress('fund', payload.data?.type);
       const newKeys = Api.genKeys();
       console.log('newKeys', newKeys);
-      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses);
+      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave());
       return newKeys;
     });
 
@@ -516,9 +496,9 @@ interface ICollectionTransferResult {
       usedAddressesMap = {...usedAddressesMap, ..._addressesMap(Api.addresses)};
       console.debug('createChunkInscription: usedAddressesMap:', usedAddressesMap);
 
-      await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Object.values(usedAddressesMap), chunkData?._tabId);
+      await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.getAddressForSave(Object.values(usedAddressesMap)), chunkData?._tabId);
       await Api.sendMessageToWebPage(CREATE_CHUNK_INSCRIPTION_RESULT, chunkResults, chunkData?._tabId);
-      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, chunkData?._tabId);
+      await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave(), chunkData?._tabId);
 
       Scheduler.getInstance().activate();
 
@@ -544,9 +524,9 @@ interface ICollectionTransferResult {
           await Api.sendMessageToWebPage(result_message, result, tabId);
           if (await Api.generateNewIndexes(used_wallets)) {
             Api.genKeys();
-            await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
+            await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.getAddressForSave(), tabId);
           }
-          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, tabId);
+          await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave(), tabId);
         // },1000);
         return true;
       } catch (exception) {
@@ -573,7 +553,7 @@ interface ICollectionTransferResult {
           }, payload?.data?.data?._tabId);
           setTimeout(async () => {
             Api.WinHelpers.closeCurrentWindow();
-            await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.addresses, payload?.data?.data?._tabId);
+            await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave(), payload?.data?.data?._tabId);
           }, 1000);
           await Api.encryptedWallet(payload.data.password);
 
@@ -761,18 +741,19 @@ interface ICollectionTransferResult {
 
       if (payload.type === GET_ALL_ADDRESSES) {
         console.log('GET_ALL_ADDRESSES: payload.data.addresses:', payload.data.addresses);
-        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.addresses]);
+        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.getAddressForSave()]);
+        Api.all_addresses = payload.data.addresses; // used to determine addresses stored on the server
         const allAddressesSaved = Api.hasAllLocalAddressesIn(payload.data.addresses);
         console.debug('Api.hasAllLocalAddressesIn payload.data.addresses: ', allAddressesSaved);
         if(!allAddressesSaved){
           setTimeout(async () => {
-                  console.debug('ADDRESSES_TO_SAVE:', [...Api.addresses]);
-                  await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.addresses, tabId);
+                  console.debug('ADDRESSES_TO_SAVE:', [...Api.getAddressForSave()]);
+                  await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, Api.getAddressForSave(), tabId);
           }, 100);
         }
         // console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);
         await Api.restoreAllTypeIndexes(payload.data.addresses);
-        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.addresses]);
+        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.getAddressForSave()]);
       }
 
       if (payload.type === GET_INSCRIPTION_CONTRACT || payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION) {
