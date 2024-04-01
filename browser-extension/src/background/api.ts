@@ -462,32 +462,23 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
   };
 }
 
-updateAddressesChallenges(addresses: object[] | undefined = undefined){
- if(!addresses) addresses = this.addresses;
- for (let addr of addresses) {
-   if(addr?.public_key){
-     let ch = this.getChallenge(addr.type, addr.typeAddress);
-     addr = Object.assign(addr, ch);
-   }
- }
-}
-
  getAddressForSave(addresses: object[] | undefined = undefined){
     const list = [];
     const pubKeylist = [];
     if(!addresses) addresses = this.addresses;
-    this.updateAddressesChallenges(addresses);
-    for(const item of addresses){
+    for(let item of addresses){
       //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
       if(!this.hasAddress(item?.address, this.all_addresses)){
         if(item?.public_key && !pubKeylist.includes(item?.public_key)){
+          let ch = this.getChallenge(item.type, item.typeAddress);
+          item = {...item,...ch};
           pubKeylist.push(item?.public_key);
+          list.push(item);
         }else{
            delete item.public_key;
            delete item.challenge;
            delete item.signature;
         }
-        list.push(item);
       }
     }
     return list;
