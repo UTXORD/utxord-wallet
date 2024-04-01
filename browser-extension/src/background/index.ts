@@ -331,6 +331,7 @@ interface ICollectionTransferResult {
     onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
       console.log('CHANGE_TYPE_FUND_ADDRESS:',payload.data?.type);
       await Api.setTypeAddress('fund', payload.data?.type);
+      await Api.setTypeAddress('ord', payload.data?.type);
       const newKeys = await Api.genKeys();
       console.log('newKeys', newKeys);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave());
