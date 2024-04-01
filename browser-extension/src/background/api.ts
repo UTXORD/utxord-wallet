@@ -1405,16 +1405,19 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
   //------------------------------------------------------------------------------
 
   async estimateInscription(payload) {
-    return await this.createInscriptionContract({
-      ...payload,
-      content: "00".repeat(payload.content_length),
-      content_length: undefined
-    });
+    return await this.createInscriptionContract(
+        {
+          ...payload,
+          content: "00".repeat(payload.content_length),
+          content_length: undefined
+        },
+        true
+    );
   }
 
   //------------------------------------------------------------------------------
 
-  async transferForLazyInscriptionContract(payload) {
+  async transferForLazyInscriptionContract(payload, estimate: boolean = false) {
     const myself = this;
 
     // // temporary safeguard
@@ -1508,7 +1511,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
       outData.amount = min_fund_amount;
 
-      if (!myself.fundings.length) {
+      if (!myself.fundings.length && !estimate) {
         outData.errorMessage = "Insufficient funds. Please add.";
         // outData.raw = [];
         return outData;
@@ -1521,7 +1524,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       console.log("min_fund_amount:", min_fund_amount);
       console.log("utxo_list:", utxo_list);
 
-      if (utxo_list?.length < 1) {
+      if (utxo_list?.length < 1 && !estimate) {
         outData.errorMessage = "Insufficient funds. Please add.";
         // outData.raw = [];
         return outData;
@@ -1572,7 +1575,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
   //------------------------------------------------------------------------------
 
-  async createInscriptionContract(payload, use_funds_in_queue = false) {
+  async createInscriptionContract(payload, estimate: boolean = false, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
       data: null,
@@ -1712,7 +1715,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           `${flagsFundingOptions}`
       )?.c_str());
       outData.amount = min_fund_amount;
-      if(!myself.fundings.length ) {
+      if(!myself.fundings.length && !estimate) {
           // TODO: REWORK FUNDS EXCEPTION
           // myself.sendExceptionMessage(
           //   'CREATE_INSCRIPTION',
@@ -1733,7 +1736,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       const inputs_sum = await myself.sumAllFunds(utxo_list);
       outData.inputs_sum = inputs_sum;
 
-      if(utxo_list?.length < 1) {
+      if(utxo_list?.length < 1 && !estimate) {
           // TODO: REWORK FUNDS EXCEPTION
           // this.sendExceptionMessage(
           //   'CREATE_INSCRIPTION',
