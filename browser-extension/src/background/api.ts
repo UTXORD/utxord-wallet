@@ -351,8 +351,8 @@ class Api {
       myself.genRootKey();
 
       if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
-        myself.genKeys();
-        myself.initPassword();
+        await myself.genKeys();
+        await myself.initPassword();
         const fund = myself.wallet.fund.key?.PubKey();
         const auth = myself.wallet.auth.key?.PubKey();
         if (fund && auth) {
@@ -464,20 +464,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
  getAddressForSave(addresses: object[] | undefined = undefined){
     const list = [];
-    const pubKeylist = [];
     if(!addresses) addresses = this.addresses;
     for(let item of addresses){
       //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
       if(!this.hasAddress(item?.address, this.all_addresses)){
-        if(item?.public_key && !pubKeylist.includes(item?.public_key)){
           let ch = this.getChallenge(item.type, item.typeAddress);
           item = {...item,...ch};
-          pubKeylist.push(item?.public_key);
-        }else{
-           delete item.public_key;
-           delete item.challenge;
-           delete item.signature;
-        }
           list.push(item);
       }
     }
@@ -554,12 +546,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
   }
 
   async generateNewIndex(type) {
-    if(!this.derivate) return false;
     if(!this.wallet_types.includes(type)) return false;
     if(!this.checkSeed()) return false;
     if(type==='ext') return false;
     this.wallet[type].index += 1;
-    return await this.setIndexToStorage(type, this.wallet[type].index);
+    await this.setIndexToStorage(type, this.wallet[type].index);
+    return true;
   }
 
   getIndex(type) {
@@ -817,7 +809,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           type: 'oth',
           typeAddress: 0,
           index: this.path('oth', 0),
-          ...(!this.hasPublicKey(ch.public_key) ? ch : {})
+          ...ch
         });
       }
     }
@@ -830,7 +822,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           type: 'oth',
           typeAddress: 1,
           index: this.path('oth', 1),
-          ...(!this.hasPublicKey(ch.public_key) ? ch : {})
+          ...ch
         });
       }
     }
@@ -843,6 +835,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           type: 'fund',
           typeAddress: 1,
           index: this.path('fund', 1),
+          ...ch
         });
       }
     }
@@ -855,6 +848,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           type: 'fund',
           typeAddress: 0,
           index: this.path('fund', 0),
+          ...ch
         });
       }
     }
@@ -867,6 +861,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           type: 'ord',
           typeAddress: 1,
           index: this.path('ord', 1),
+          ...ch
         });
       }
     }
@@ -879,13 +874,14 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           type: 'ord',
           typeAddress: 0,
           index: this.path('ord', 0),
+          ...ch
         });
       }
     }
 
   }
 
-  genKeys() { //current keys
+  async genKeys() { //current keys
     this.addPopAddresses(); // add popular addresses
     const publicKeys = [];
     for (const type of this.wallet_types) {
@@ -893,12 +889,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
         if (type !== 'auth' && type !== 'ext') {
           if (!this.hasAddress(this.wallet[type].address)) {
               if (!this.hasAddressType(type)) {
-                let ch = this.getChallenge(type);
+                let ch = this.getChallenge(type, this.wallet[type].typeAddress);
                 const newAddress = {
                   address: this.wallet[type].address,
                   type: type,
                   typeAddress: this.wallet[type].typeAddress,
-                  index: this.path(type),
+                  index: this.path(type, this.wallet[type].typeAddress),
                   ...ch
                 };
                 console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
@@ -1886,7 +1882,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
     // TODO: to debug this part when backend will ready for addresses support
     await myself.generateNewIndexes('ord, uns');
-    myself.genKeys();
+    await myself.genKeys();
 
     return result;
   }
@@ -2213,7 +2209,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           tabId
         );
         await myself.generateNewIndexes('scrsk, ord');
-        myself.genKeys();
+        await myself.genKeys();
       })(data, payload);
 
     } catch (exception) {
