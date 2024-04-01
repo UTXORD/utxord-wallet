@@ -473,12 +473,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           let ch = this.getChallenge(item.type, item.typeAddress);
           item = {...item,...ch};
           pubKeylist.push(item?.public_key);
-          list.push(item);
         }else{
            delete item.public_key;
            delete item.challenge;
            delete item.signature;
         }
+          list.push(item);
       }
     }
     return list;
