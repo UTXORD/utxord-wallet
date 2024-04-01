@@ -316,14 +316,14 @@ interface ICollectionTransferResult {
     });
 
     onMessage(GET_ADDRESSES, async () => {
-      const {addresses} = Api.genKeys();
+      const {addresses} = await Api.genKeys();
       console.log('GET_ADDRESSES->addresses:',addresses)
       return addresses;
     });
 
     onMessage(NEW_FUND_ADDRESS, async () => {
       await Api.generateNewIndex('fund');
-      const newKeys = Api.genKeys();
+      const newKeys = await Api.genKeys();
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave());
       return newKeys;
     });
@@ -331,7 +331,7 @@ interface ICollectionTransferResult {
     onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
       console.log('CHANGE_TYPE_FUND_ADDRESS:',payload.data?.type);
       await Api.setTypeAddress('fund', payload.data?.type);
-      const newKeys = Api.genKeys();
+      const newKeys = await Api.genKeys();
       console.log('newKeys', newKeys);
       await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, Api.getAddressForSave());
       return newKeys;
@@ -340,14 +340,14 @@ interface ICollectionTransferResult {
     onMessage(CHANGE_USE_DERIVATION, async (payload: any) => {
       console.log('CHANGE_USE_DERIVATION:',payload.data?.value);
       await Api.setDerivate(payload.data?.value);
-      const newKeys = Api.genKeys();
+      const newKeys = await Api.genKeys();
       console.log('newKeys', newKeys);
       return {derivate: Api.derivate, keys: newKeys};
     });
 
-    onMessage(STATUS_DERIVATION, () => {
+    onMessage(STATUS_DERIVATION, async () => {
       console.log('STATUS_DERIVATION:', Api.derivate);
-      const newKeys = Api.genKeys();
+      const newKeys = await Api.genKeys();
       console.log('newKeys', newKeys);
       return {derivate: Api.derivate, keys: newKeys};
     });
