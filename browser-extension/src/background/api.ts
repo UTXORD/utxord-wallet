@@ -1544,25 +1544,30 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       }
 
       tx.AddChangeOutput(myself.wallet.fund.address);  // should be last in/out definition
-      tx.Sign(myself.wallet.root.key, "fund");
-      outData.raw = await myself.getRawTransactions(tx);
 
-      // TODO: core API needs to be refactored to make change-related stuff more usable
-      const changeOutput = tx.ChangeOutput();
-      if (changeOutput.ptr != 0) {
-        const changeDestination = changeOutput.Destination();
-        if (changeDestination.ptr != 0) {
-          outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
-          myself.destroy(changeDestination);
+      if (!estimate) {
+        tx.Sign(myself.wallet.root.key, "fund");
+        outData.raw = await myself.getRawTransactions(tx);
+
+        // TODO: core API needs to be refactored to make change-related stuff more usable
+        const changeOutput = tx.ChangeOutput();
+        if (changeOutput.ptr != 0) {
+          const changeDestination = changeOutput.Destination();
+          if (changeDestination.ptr != 0) {
+            outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
+            myself.destroy(changeDestination);
+          }
+          myself.destroy(changeOutput);
         }
-        myself.destroy(changeOutput);
-      }
-      console.debug('change_amount: ', outData.change_amount);
+        console.debug('change_amount: ', outData.change_amount);
 
-      outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
+        outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
+
+        const contractData = JSON.parse(outData.data);
+        console.debug('transferForLazyInscriptionContract: contractData:', contractData);
+      }
+
       outData.total_mining_fee = myself.btcToSat(tx.GetTotalMiningFee(""));
-      const contractData = JSON.parse(outData.data);
-      console.debug('transferForLazyInscriptionContract: contractData:', contractData);
       myself.utxord.destroy(tx);
 
       return outData;
