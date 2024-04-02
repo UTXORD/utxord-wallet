@@ -427,7 +427,7 @@ interface ICollectionTransferResult {
 
           contractData.collection = parentInscription;
           console.debug('createChunkInscription: chunk contractData: ', contractData);
-          const contract = await Api.createInscriptionContract(contractData, true);
+          const contract = await Api.createInscriptionContract(contractData, false, true);
           console.debug('createChunkInscription: contract: ', contract);
 
           if (contract.errorMessage) {
@@ -765,7 +765,7 @@ interface ICollectionTransferResult {
         await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
         const is_lazy = payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION;
-        const contract = await Api.createInscriptionContract({...payload.data, is_lazy});
+        const contract = await Api.createInscriptionContract({...payload.data, is_lazy}, true);
         await Api.sendMessageToWebPage(is_lazy ? ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT : GET_INSCRIPTION_CONTRACT_RESULT, contract);
       }
 
@@ -857,7 +857,7 @@ interface ICollectionTransferResult {
       if (payload.type === ESTIMATE_TRANSFER_LAZY_COLLECTION) {
         await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
-        const contract = await Api.transferForLazyInscriptionContract(payload.data);
+        const contract = await Api.transferForLazyInscriptionContract(payload.data, true);
         await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, {
           contract,
           errorMessage: contract.errorMessage

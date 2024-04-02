@@ -1405,16 +1405,19 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
   //------------------------------------------------------------------------------
 
   async estimateInscription(payload) {
-    return await this.createInscriptionContract({
-      ...payload,
-      content: "00".repeat(payload.content_length),
-      content_length: undefined
-    });
+    return await this.createInscriptionContract(
+        {
+          ...payload,
+          content: "00".repeat(payload.content_length),
+          content_length: undefined
+        },
+        true
+    );
   }
 
   //------------------------------------------------------------------------------
 
-  async transferForLazyInscriptionContract(payload) {
+  async transferForLazyInscriptionContract(payload, estimate: boolean = false) {
     const myself = this;
 
     // // temporary safeguard
@@ -1508,7 +1511,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
       outData.amount = min_fund_amount;
 
-      if (!myself.fundings.length) {
+      if (!myself.fundings.length && !estimate) {
         outData.errorMessage = "Insufficient funds. Please add.";
         // outData.raw = [];
         return outData;
@@ -1521,7 +1524,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       console.log("min_fund_amount:", min_fund_amount);
       console.log("utxo_list:", utxo_list);
 
-      if (utxo_list?.length < 1) {
+      if (utxo_list?.length < 1 && !estimate) {
         outData.errorMessage = "Insufficient funds. Please add.";
         // outData.raw = [];
         return outData;
@@ -1572,7 +1575,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
   //------------------------------------------------------------------------------
 
-  async createInscriptionContract(payload, use_funds_in_queue = false) {
+  async createInscriptionContract(payload, estimate: boolean = false, use_funds_in_queue = false) {
     const myself = this;
     const outData = {
       data: null,
@@ -1619,10 +1622,10 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       if (payload?.collection?.genesis_txid) {
         // if collection is present.. than finding an output with collection
         collection = myself.selectByOrdOutput(
-           payload.collection.owner_txid,
-           payload.collection.owner_nout
-       );
-        console.log("payload.collection:",payload.collection)
+            payload.collection.owner_txid,
+            payload.collection.owner_nout
+        );
+        console.log("payload.collection:", payload.collection)
         console.debug('selectByOrdOutput collection:', collection);
       }
       if (payload?.collection?.genesis_txid || is_lazy) {
@@ -1631,10 +1634,10 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       }
 
       const newOrd = new myself.utxord.CreateInscriptionBuilder(
-        myself.network,
-        is_lazy ? myself.utxord.LASY_INSCRIPTION : myself.utxord.INSCRIPTION
+          myself.network,
+          is_lazy ? myself.utxord.LASY_INSCRIPTION : myself.utxord.INSCRIPTION
       );
-      console.log('newOrd:',newOrd);
+      console.log('newOrd:', newOrd);
       // TODO: we need to receive it from backend via frontend
       const contract = payload?.contract || {
         "contract_type": "CreateInscription",
@@ -1647,7 +1650,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       const protocol_version = Number(contract?.params?.protocol_version);
       if (protocol_version) {
         const versions = await myself.getSupportedVersions(newOrd);
-        if(versions.indexOf(protocol_version) === -1) {
+        if (versions.indexOf(protocol_version) === -1) {
           outData.errorMessage = 'Please update the plugin to latest version.';
           outData.raw = [];
           return outData;
@@ -1660,8 +1663,8 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
 
       // For now it's just a support for title and description
-      if(payload.metadata) {
-        console.log('payload.metadata:',payload.metadata);
+      if (payload.metadata) {
+        console.log('payload.metadata:', payload.metadata);
         await newOrd.MetaData(myself.arrayBufferToHex(cbor.encode(payload.metadata)));
       }
 
@@ -1670,12 +1673,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       let collection_addr = null;
       if (payload?.collection?.genesis_txid) {
         // collection is empty no output has been found, see code above
-        if(!collection) {
+        if (!collection) {
           myself.sendWarningMessage(
-            'CREATE_INSCRIPTION',
-            `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
+              'CREATE_INSCRIPTION',
+              `Collection(txid:${payload.collection.owner_txid}, nout:${payload.collection.owner_nout}) is not found in balances`
           );
-          setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+          setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
           // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
           // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
@@ -1684,11 +1687,11 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           return outData;
         }
         newOrd.AddToCollection(
-          `${payload.collection.genesis_txid}i0`,  // inscription ID = <genesis_txid>i<envelope(inscription)_number>
-          payload.collection.owner_txid,  // current collection utxo
-          payload.collection.owner_nout,  // current collection nout
-          (myself.satToBtc(collection.amount)).toFixed(8),  // amount from collection utxo
-          payload.collection.btc_owner_address
+            `${payload.collection.genesis_txid}i0`,  // inscription ID = <genesis_txid>i<envelope(inscription)_number>
+            payload.collection.owner_txid,  // current collection utxo
+            payload.collection.owner_nout,  // current collection nout
+            (myself.satToBtc(collection.amount)).toFixed(8),  // amount from collection utxo
+            payload.collection.btc_owner_address
         )
         collection_addr = payload.collection.btc_owner_address;
       }
@@ -1712,90 +1715,91 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           `${flagsFundingOptions}`
       )?.c_str());
       outData.amount = min_fund_amount;
-      if(!myself.fundings.length ) {
-          // TODO: REWORK FUNDS EXCEPTION
-          // myself.sendExceptionMessage(
-          //   'CREATE_INSCRIPTION',
-          //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
-          // );
-          // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-          // outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
-          //     "wait for several conformations or wait update on the server.";
-          outData.errorMessage = "Insufficient funds. Please add.";
-          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
-          // FIXME: l2xl response: it shouldn't work until SignCommit get executed
-          // outData.raw = await myself.getRawTransactions(newOrd);
-          outData.raw = [];
-          return outData;
+      if (!myself.fundings.length && !estimate) {
+        // TODO: REWORK FUNDS EXCEPTION
+        // myself.sendExceptionMessage(
+        //   'CREATE_INSCRIPTION',
+        //   "Insufficient funds, if you have replenish the balance, wait for several conformations or wait update on the server"
+        // );
+        // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        // outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
+        //     "wait for several conformations or wait update on the server.";
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
+        // FIXME: l2xl response: it shouldn't work until SignCommit get executed
+        // outData.raw = await myself.getRawTransactions(newOrd);
+        outData.raw = [];
+        return outData;
       }
       const utxo_list = await myself.selectKeysByFunds(min_fund_amount, [], [], use_funds_in_queue);
       outData.utxo_list = utxo_list;
       const inputs_sum = await myself.sumAllFunds(utxo_list);
       outData.inputs_sum = inputs_sum;
 
-      if(utxo_list?.length < 1) {
-          // TODO: REWORK FUNDS EXCEPTION
-          // this.sendExceptionMessage(
-          //   'CREATE_INSCRIPTION',
-          //   "There are no funds to create of the Inscription, please replenish the amount: "+
-          //   `${min_fund_amount} sat`
-          // );
-          // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-          outData.errorMessage = "Insufficient funds. Please add.";
-          // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
-          // FIXME: l2xl response: it shouldn't work until SignCommit get executed
-          // outData.raw = await myself.getRawTransactions(newOrd);
-          outData.raw = [];
-          return outData;
+      if (utxo_list?.length < 1 && !estimate) {
+        // TODO: REWORK FUNDS EXCEPTION
+        // this.sendExceptionMessage(
+        //   'CREATE_INSCRIPTION',
+        //   "There are no funds to create of the Inscription, please replenish the amount: "+
+        //   `${min_fund_amount} sat`
+        // );
+        // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
+        // FIXME: l2xl response: it shouldn't work until SignCommit get executed
+        // outData.raw = await myself.getRawTransactions(newOrd);
+        outData.raw = [];
+        return outData;
       }
 
-      if(inputs_sum > Number(payload.expect_amount)) {
+      if (inputs_sum > Number(payload.expect_amount)) {
         flagsFundingOptions += flagsFundingOptions ? "," : "";
         flagsFundingOptions += "change";
       }
 
-      console.log("min_fund_amount:",min_fund_amount);
-      console.log("utxo_list:",utxo_list);
+      console.log("min_fund_amount:", min_fund_amount);
+      console.log("utxo_list:", utxo_list);
 
-      for(const fund of utxo_list) {
+      for (const fund of utxo_list) {
         await newOrd.AddUTXO(
-          fund.txid,
-          fund.nout,
-          (myself.satToBtc(fund.amount)).toFixed(8),
-          fund.address
+            fund.txid,
+            fund.nout,
+            (myself.satToBtc(fund.amount)).toFixed(8),
+            fund.address
         );
       }
 
-      await newOrd.SignCommit(
-        myself.wallet.root.key,
-        'fund'
-      );
-
-      // get front root ord and select to addres or pubkey
-      // collection_utxo_key (root! image key) (current utxo key)
-      if (payload?.collection?.genesis_txid) {
-        await newOrd.SignCollection(
-          myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
-          'ord'
+      if (!estimate) {
+        await newOrd.SignCommit(
+            myself.wallet.root.key,
+            'fund'
         );
+
+        // get front root ord and select to addres or pubkey
+        // collection_utxo_key (root! image key) (current utxo key)
+        if (payload?.collection?.genesis_txid) {
+          await newOrd.SignCollection(
+              myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
+              'ord'
+          );
+        }
+        outData.used_wallets.add('ord');
+
+        await newOrd.SignInscription(
+            myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
+            'scrsk'
+        );
+        // TODO: unsure we need it
+        // outData.used_wallets.add('scrsk');
       }
-      outData.used_wallets.add('ord');
-
-      await newOrd.SignInscription(
-        myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
-        'scrsk'
-      );
-      // TODO: unsure we need it
-      // outData.used_wallets.add('scrsk');
-
       const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
       )?.c_str());
 
-      console.log('min_fund_amount_final_btc:',min_fund_amount_final_btc);
+      console.log('min_fund_amount_final_btc:', min_fund_amount_final_btc);
       const min_fund_amount_final = await myself.btcToSat(min_fund_amount_final_btc);
 
-      console.log('min_fund_amount_final:',min_fund_amount_final);
+      console.log('min_fund_amount_final:', min_fund_amount_final);
       outData.amount = min_fund_amount_final;
 
       const utxo_list_final = await myself.selectKeysByFunds(min_fund_amount_final, [], [], use_funds_in_queue);
@@ -1814,34 +1818,38 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       // }
       // console.debug('change_amount: ', outData.change_amount);
 
-      outData.data = await newOrd.Serialize(
-          protocol_version,
-          is_lazy ? myself.utxord.LASY_INSCRIPTION_SIGNATURE : myself.utxord.INSCRIPTION_SIGNATURE
-      )?.c_str();
-      outData.raw = await myself.getRawTransactions(newOrd);
+      if (!estimate) {
+        outData.data = await newOrd.Serialize(
+            protocol_version,
+            is_lazy ? myself.utxord.LASY_INSCRIPTION_SIGNATURE : myself.utxord.INSCRIPTION_SIGNATURE
+        )?.c_str();
+        outData.raw = await myself.getRawTransactions(newOrd);
+      }
 
       outData.total_mining_fee = myself.btcToSat(newOrd.GetTotalMiningFee("")?.c_str() || 0);
 
-      const sk = newOrd.GetIntermediateSecKey()?.c_str();
-      myself.wallet.root.key.AddKeyToCache(sk);
-      // outData.sk = newOrd.GetIntermediateSecKey()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
-      // TODOO: remove sk before > 2 conformations
-      // or wait and check utxo this translation on balances
+      if (!estimate) {
+        const sk = newOrd.GetIntermediateSecKey()?.c_str();
+        myself.wallet.root.key.AddKeyToCache(sk);
+        // outData.sk = newOrd.GetIntermediateSecKey()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
+        // TODOO: remove sk before > 2 conformations
+        // or wait and check utxo this translation on balances
 
-      outData.outputs = {
-        collection: is_lazy ? {} : {
-          ...JSON.parse(newOrd.GetCollectionLocation()?.c_str() || "{}"),
-          address: collection_addr
-        },
-        inscription: is_lazy ? {} : {
-          ...JSON.parse(newOrd.GetInscriptionLocation()?.c_str() || "{}"),
-          address: dst_address
-        },
-        change: {
-          ...JSON.parse(newOrd.GetChangeLocation()?.c_str() || "{}"),
-          address: myself.wallet.fund.address
-        },
-      };
+        outData.outputs = {
+          collection: is_lazy ? {} : {
+            ...JSON.parse(newOrd.GetCollectionLocation()?.c_str() || "{}"),
+            address: collection_addr
+          },
+          inscription: is_lazy ? {} : {
+            ...JSON.parse(newOrd.GetInscriptionLocation()?.c_str() || "{}"),
+            address: dst_address
+          },
+          change: {
+            ...JSON.parse(newOrd.GetChangeLocation()?.c_str() || "{}"),
+            address: myself.wallet.fund.address
+          },
+        };
+      }
 
       return outData;
     } catch (e) {
