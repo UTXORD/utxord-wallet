@@ -1,7 +1,11 @@
 
 #include "univalue.h"
 
+#include "serialize.h"
+#include "interpreter.h"
 #include "core_io.h"
+#include "feerate.h"
+#include "policy.h"
 
 #include "utils.hpp"
 #include "simple_transaction.hpp"
