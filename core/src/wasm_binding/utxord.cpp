@@ -146,10 +146,10 @@ public:
     { return new KeyPair(utxord::KeyRegistry::Derive(path, for_script)); }
 
     KeyPair* LookupPubKey(const char* pk, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), {true, utxord::KeyLookupFilter::DEFAULT, {0, 1}})); }
+    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), std::string(key_lookup_opt_json))); }
 
     KeyPair* LookupAddress(const std::string& addr, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, {true, utxord::KeyLookupFilter::DEFAULT, {0, 1}})); }
+    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, std::string(key_lookup_opt_json))); }
 
 };
 
@@ -344,8 +344,8 @@ public:
         else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
     }
 
-    const char* SupportedVersions() const
-    { return m_ptr->SupportedVersions(); }
+    static const char* SupportedVersions()
+    { return utxord::SimpleTransaction::SupportedVersions(); }
 
     IContractOutput* ChangeOutput() const
     {
