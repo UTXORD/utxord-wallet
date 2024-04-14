@@ -766,7 +766,7 @@ interface ICollectionTransferResult {
 
         const is_lazy = payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION;
         const contract = await Api.createInscriptionContract({...payload.data, is_lazy}, true);
-        await Api.sendMessageToWebPage(is_lazy ? ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT : GET_INSCRIPTION_CONTRACT_RESULT, contract);
+        await Api.sendMessageToWebPage(is_lazy ? ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT : GET_INSCRIPTION_CONTRACT_RESULT, contract, tabId);
       }
 
       if (payload.type === GET_BULK_INSCRIPTION_ESTIMATION) {
@@ -786,7 +786,7 @@ interface ICollectionTransferResult {
         await Api.sendMessageToWebPage(GET_BULK_INSCRIPTION_ESTIMATION_RESULT, {
           amount: bulkAmount,
           expect_amount: bulkExpectAmount
-        });
+        }, tabId);
       }
 
       function _fixChunkInscriptionPayload(data: IChunkInscription) {
@@ -861,7 +861,7 @@ interface ICollectionTransferResult {
         await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, {
           contract,
           errorMessage: contract.errorMessage
-        });
+        }, tabId);
       }
 
       if (payload.type === TRANSFER_LAZY_COLLECTION) {
