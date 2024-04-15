@@ -1193,6 +1193,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
     if(warning?.stack) errorStack = warning?.stack;
 
     const currentWindow = await this.WinHelpers.getCurrentWindow()
+    // console.debug("sendWarningMessage: currentWindow:", currentWindow);
     this.warning_count += 1;
     if(this.warning_count === 1){
       sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`);
@@ -1337,7 +1338,9 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       console.warn('sendMessageToWebPage-> error no args:', args,'type:', type);
       return null;
     }
-    // console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found`);
+    if (1 < tabs.length) {
+      console.warn(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
+    }
 
     for (let tab of tabs) {
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {
