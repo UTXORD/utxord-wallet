@@ -201,6 +201,21 @@ interface ICollectionTransferResult {
       }
     }
 
+    async function checkPossibleTabsConflict() {
+      const tabs = await chrome.tabs.query({
+        windowType: 'normal',
+        url: BASE_URL_PATTERN,
+      });
+
+      if (1 < tabs.length) {
+        await Api.sendWarningMessage(
+            'TABS',
+            "Don't use UTXORD market in multiple tabs/windows simultaneously!"
+        );
+        console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with BASE_URL_PATTERN: ${BASE_URL_PATTERN}`);
+      }
+    }
+
     chrome.runtime.onConnect.addListener(async (port) => {
       if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
 
@@ -214,7 +229,9 @@ interface ICollectionTransferResult {
       port.onMessage.addListener(async (payload) => {
         if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) return;
 
+        await checkPossibleTabsConflict();
         postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
+
         Scheduler.getInstance().action = async () => {
           postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
         }
@@ -698,12 +715,12 @@ interface ICollectionTransferResult {
     })
 
     chrome.runtime.onMessageExternal.addListener(async (payload, sender) => {
-      console.debug(`----- message from frontend: ${payload?.type}, data: `, {...payload?.data || {}});
-
       let tabId = sender?.tab?.id;
       if (typeof payload?.data === 'object' && payload?.data !== null) {
         payload.data._tabId = tabId;
       }
+
+      console.debug(`----- message from frontend(tabId:${tabId}): ${payload?.type}, data: `, {...payload?.data || {}});
 
       if (payload.type === SEND_CONNECT_STATUS) {
         Api.connect = payload?.data?.connected;
