@@ -1706,7 +1706,13 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
           is_lazy ? myself.utxord.LASY_INSCRIPTION : myself.utxord.INSCRIPTION
       );
       console.log('newOrd:', newOrd);
-      // TODO: we need to receive it from backend via frontend
+
+      if (is_lazy && !payload?.contract) {
+        outData.errorMessage = await myself.sendExceptionMessage(CREATE_INSCRIPTION, "(Internal error) No contract provided");
+        setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+        outData.raw = [];
+        return outData;
+      }
       const contract = payload?.contract || {
         "contract_type": "CreateInscription",
         "params": {
