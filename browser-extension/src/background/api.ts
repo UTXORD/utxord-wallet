@@ -347,6 +347,7 @@ class Api {
         }
       }
       await myself.rememberIndexes();
+      await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
       console.log('init...');
       myself.genRootKey();
 
@@ -398,6 +399,59 @@ class Api {
       });
       if(e) Sentry.captureException(e);
     }
+  }
+
+  async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
+    const out = {name, props, list, args, proto, lvl};
+    const myself = this;
+    if(!obj) return out;
+    let methods = Object.getOwnPropertyNames(obj).filter((n) => n[0]!== '_');
+    if(methods.length === 3 && methods.indexOf('length') !== -1 && methods.indexOf('prototype') !== -1){
+      out.args = obj?.length || 0;
+      out.lvl += 1;
+      out.proto = true;
+      return await this.upgradeProps(
+        obj.prototype,
+        out.name,
+        out.props,
+        out.list,
+        out.args,
+        out.proto,
+        out.lvl
+      );
+    }
+    for (let m of methods){
+      if((typeof obj[m]) === 'function' &&
+        m.indexOf('dynCall') === -1 &&
+        m.indexOf('constructor') === -1 &&
+        out.lvl < 8){
+        out.list.push(m);
+        let prps = await this.upgradeProps(obj[m],m,{},[],0,false, out.lvl+1);
+        out.props[m] = prps;
+        obj[`$_${m}`] = obj[m];
+        obj[`$_${m}`].prototype = obj[m].prototype;
+        obj[`_${m}`] = function(){
+            try{
+              let o;
+              if(!out.proto && out.lvl === 0){
+                o = new (obj[`$_${m}`])(...arguments);
+              }else{
+                o = this[`$_${m}`](...arguments);
+              }
+              return o;
+            }catch(e){
+              myself.sendWarningMessage(m, e);
+              return null;
+            }
+        };
+        delete(obj[m]);
+        obj[m] = obj[`_${m}`];
+        obj[m].prototype = obj[`$_${m}`].prototype;
+        delete(obj[`_${m}`]);
+
+      }
+    }
+    return out;
   }
 
   zeroPad(n,length){
@@ -1172,7 +1226,11 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
   getErrorMessage(exception: any) {
    if(typeof exception === 'number'){
-     return this.utxord.Exception.prototype.getMessage(Number.parseInt(exception, 10))
+     let errorMessage = this.utxord.Exception.prototype.getMessage(Number.parseInt(exception, 10));
+     if(errorMessage.indexOf('funds amount too small') > -1){
+       errorMessage = 'TransactionError: not enough funds';
+     }
+     return errorMessage;
    }
    return exception;
  }
@@ -2111,8 +2169,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.FUNDS_TERMS);
 
       const min_fund_amount = await myself.btcToSat(swapSim.GetMinFundingAmount("")?.c_str());
+      const utxo_list = await myself.selectKeysByFunds(min_fund_amount + 682);
+      const fund_sum = await myself.sumAllFunds(utxo_list);
+      // console.log('fund_sum:',fund_sum,'|min_fund_amount:',min_fund_amount);
+      // console.log('utxo_list:',utxo_list);
 
-      if(!myself.fundings.length ) {
+      if(utxo_list?.length < 1 || fund_sum < min_fund_amount) {
         // TODO: REWORK FUNDS EXCEPTION
         // myself.sendExceptionMessage(
         //   COMMIT_BUY_INSCRIPTION,
@@ -2128,10 +2190,6 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
         outData.raw = [];
         return outData;
       }
-
-      const utxo_list = await myself.selectKeysByFunds(min_fund_amount + 682);
-      console.log("min_fund_amount:",min_fund_amount);
-      console.log("utxo_list:",utxo_list);
 
       const buyOrd = new myself.utxord.SwapInscriptionBuilder(myself.network);
       const protocol_version = Number(payload.swap_ord_terms.contract?.params?.protocol_version);
@@ -2150,7 +2208,6 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
       buyOrd.ChangeAddress(myself.wallet.fund.address);
       buyOrd.SwapScriptPubKeyB(myself.wallet.scrsk.key.PubKey()); //!!!
-
       buyOrd.SignFundsCommitment(
         myself.wallet.root.key,  // TODO: rename/move wallet.root.key to wallet.keyRegistry?
         'fund'
@@ -2160,11 +2217,14 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       buyOrd.OrdPayoffAddress(dst_address);
 
       const min_fund_amount_final = myself.btcToSat(buyOrd.GetMinFundingAmount("")?.c_str());
-      outData.min_fund_amount = min_fund_amount_final;
+
+      outData.min_fund_amount = min_fund_amount_final || min_fund_amount;
       outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
       outData.utxo_list = utxo_list;
       outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_TERMS);
-      if (utxo_list?.length < 1) {
+      const inputs_sum = await myself.sumAllFunds(utxo_list);
+      // console.log('inputs_sum:',inputs_sum,'| outData.min_fund_amount:',outData.min_fund_amount)
+      if (utxo_list?.length < 1 || inputs_sum < outData.min_fund_amount) {
         // setTimeout(() => {
         //   // TODO: REWORK FUNDS EXCEPTION
         //   myself.sendExceptionMessage(

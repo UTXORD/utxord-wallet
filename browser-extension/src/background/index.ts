@@ -977,6 +977,7 @@ interface ICollectionTransferResult {
           }, 1000);
         });
       }
+
       if (payload.type === 'OPEN_SIGN_BUY_INSCRIBE_PAGE') { // hidden mode
         console.log("OPEN_SIGN_BUY_INSCRIBE_PAGE:", payload.data);
         const res = await Api.decryptedWallet(Api.wallet.tmp);
@@ -986,6 +987,7 @@ interface ICollectionTransferResult {
           Api.wallet.tmp = ''
         }
       }
+
       if (payload.type === OPEN_START_PAGE) {
         winManager.openWindow('start');
       }
