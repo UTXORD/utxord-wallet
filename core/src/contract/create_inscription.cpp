@@ -348,8 +348,8 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
             throw ContractTermMissing(name_fund_mining_fee_sig.c_str());
         //no break
     case LASY_INSCRIPTION_MARKET_TERMS:
-        if (!m_author_fee) throw ContractTermMissing(name_author_fee.c_str());
         if (m_type == LASY_INSCRIPTION) {
+            if (!m_author_fee) throw ContractTermMissing(name_author_fee.c_str());
             if (!m_inscribe_script_market_pk) throw ContractTermMissing(name_author_fee.c_str());
             if (!m_parent_collection_id) throw ContractTermMissing(name_collection_id.c_str());
             if (!m_collection_input) throw ContractTermMissing(name_collection.c_str());
@@ -397,7 +397,8 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
 
         //no break
     case LASY_INSCRIPTION_MARKET_TERMS:
-        contract.pushKV(name_author_fee, m_author_fee->MakeJson());
+        if (m_author_fee)
+            contract.pushKV(name_author_fee, m_author_fee->MakeJson());
         if (m_collection_input) {
             UniValue collection_val = m_collection_input->MakeJson();
             collection_val.pushKV(name_collection_id, *m_parent_collection_id);
@@ -521,7 +522,10 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
     }
 
     tx.vout.emplace_back(*m_ord_amount, CScript() << 1 << get<0>(GenesisTapRoot()));
-    CAmount genesis_sum_fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate()) + m_market_fee->Amount() + m_author_fee->Amount();
+    CAmount genesis_sum_fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate()) + m_market_fee->Amount();
+    if (m_author_fee) {
+        genesis_sum_fee += m_author_fee->Amount();
+    }
 
     if (m_parent_collection_id) {
         CAmount add_vsize = TAPROOT_KEYSPEND_VIN_VSIZE + TAPROOT_VOUT_VSIZE;
@@ -656,12 +660,15 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
     if (m_market_fee->Amount() > 0) {
         tx.vout.emplace_back(m_market_fee->Amount(), m_market_fee->PubKeyScript());
     }
-    if (m_author_fee->Amount() > 0) {
+    if (m_author_fee && m_author_fee->Amount() > 0) {
         tx.vout.emplace_back(m_author_fee->Amount(), m_author_fee->PubKeyScript());
     }
 
     if (!m_parent_collection_id) {
-        tx.vout.front().nValue = CalculateOutputAmount(commit_tx.vout.front().nValue, *m_mining_fee_rate, tx) - m_market_fee->Amount() - m_author_fee->Amount();
+        tx.vout.front().nValue = CalculateOutputAmount(commit_tx.vout.front().nValue, *m_mining_fee_rate, tx) - m_market_fee->Amount();
+        if (m_author_fee) {
+            tx.vout.front().nValue -= m_author_fee->Amount();
+        }
     }
 
     for (const auto& out: tx.vout) {
@@ -709,7 +716,7 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
     if (m_market_fee->Amount() > 0) {
         tx.vout.emplace_back(m_market_fee->Amount(), m_market_fee->PubKeyScript());
     }
-    if (m_author_fee->Amount() > 0) {
+    if (m_author_fee && m_author_fee->Amount() > 0) {
         tx.vout.emplace_back(m_author_fee->Amount(), m_author_fee->PubKeyScript());
     }
 
@@ -720,6 +727,7 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
 std::string CreateInscriptionBuilder::MakeInscriptionId() const
 {
     return MakeGenesisTx().GetHash().GetHex() + "i0";
+//    return uint256().GetHex() + "i0";
 }
 
 std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
@@ -727,9 +735,12 @@ std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& par
     if(!m_content_type) throw ContractTermMissing(std::string(name_content_type));
     if(!m_content) throw ContractTermMissing(std::string(name_content));
     if(!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
-    if(!m_author_fee) throw ContractTermMissing(std::string(name_author_fee));
+    if(m_type == LASY_INSCRIPTION && !m_author_fee) throw ContractTermMissing(std::string(name_author_fee));
 
-    CAmount amount = *m_ord_amount + m_market_fee->Amount() + m_author_fee->Amount() + CalculateWholeFee(params);
+    CAmount amount = *m_ord_amount + m_market_fee->Amount() + CalculateWholeFee(params);
+    if (m_author_fee) {
+        amount += m_author_fee->Amount();
+    }
     return FormatAmount(amount);
 }
 
