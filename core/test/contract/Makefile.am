@@ -49,6 +49,7 @@ bin_PROGRAMS = \
 test_contract_builder \
 test_create_inscription \
 test_swap_inscription \
+test_trustless_swap_inscription \
 test_signing \
 test_inscription \
 test_simple_tx \
@@ -66,6 +67,9 @@ test_create_inscription_LDADD = $(L15_LIBS)
 
 test_swap_inscription_SOURCES = test_swap_inscription.cpp
 test_swap_inscription_LDADD = $(L15_LIBS)
+
+test_trustless_swap_inscription_SOURCES = test_trustless_swap_inscription.cpp
+test_trustless_swap_inscription_LDADD = $(L15_LIBS)
 
 test_inscription_SOURCES = test_inscription.cpp
 test_inscription_LDADD = $(L15_LIBS)

@@ -18,6 +18,7 @@
 #include "keypair.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
+#include "trustless_swap_inscription.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
 #include "simple_transaction.hpp"
@@ -139,10 +140,12 @@ using namespace l15;
 
 %template (CreateInscriptionBase) utxord::ContractBuilder<utxord::InscribePhase>;
 %template (SwapInscriptionBase) utxord::ContractBuilder<utxord::SwapPhase>;
+%template (TrustlessSwapInscriptionBase) utxord::ContractBuilder<utxord::TrustlessSwapPhase>;
 %template (SimpleTransactionBase) utxord::ContractBuilder<utxord::TxPhase>;
 
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
+%include "trustless_swap_inscription.hpp"
 %include "simple_transaction.hpp"
 %include "transaction.hpp"
 %include "transaction.h"

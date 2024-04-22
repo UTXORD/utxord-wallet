@@ -9,6 +9,7 @@
 #include "contract_builder.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
+#include "trustless_swap_inscription.hpp"
 #include "simple_transaction.hpp"
 #include "runes.hpp"
 
@@ -587,17 +588,35 @@ public:
     void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::SwapInscriptionBuilder::SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
-    void SignMarketSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::SwapInscriptionBuilder::SignMarketSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
-
-    void SignOrdCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::SwapInscriptionBuilder::SignOrdCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
-
     void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::SwapInscriptionBuilder::SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { utxord::SwapInscriptionBuilder::SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignFundsPayBack(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::SwapInscriptionBuilder::SignFundsPayBack(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+};
+
+class TrustlessSwapInscriptionBuilder : public utxord::TrustlessSwapInscriptionBuilder
+{
+public:
+    TrustlessSwapInscriptionBuilder(ChainMode mode) : utxord::TrustlessSwapInscriptionBuilder(mode) {}
+
+    void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::TrustlessSwapInscriptionBuilder::SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignMarketSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::TrustlessSwapInscriptionBuilder::SignMarketSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignOrdCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::TrustlessSwapInscriptionBuilder::SignOrdCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::TrustlessSwapInscriptionBuilder::SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
+    { utxord::TrustlessSwapInscriptionBuilder::SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 };
 
 } // wasm

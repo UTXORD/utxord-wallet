@@ -194,17 +194,69 @@ interface CreateInscriptionBuilder
 enum SwapPhase
 {
     "ORD_TERMS",
-    "ORD_SWAP_SIG",
     "FUNDS_TERMS",
     "FUNDS_COMMIT_SIG",
-    "FUNDS_SWAP_TERMS",
-    "FUNDS_SWAP_SIG"
+    "MARKET_PAYOFF_TERMS",
+    "MARKET_PAYOFF_SIG",
+    "ORD_SWAP_SIG",
+    "FUNDS_SWAP_SIG",
+    "MARKET_SWAP_SIG",
 };
 
 [Prefix="utxord::wasm::"]
 interface SwapInscriptionBuilder
 {
     void SwapInscriptionBuilder(ChainMode mode);
+
+    void OrdPrice([Const] DOMString price);
+    void MarketFee([Const] DOMString amount, [Const] DOMString addr);
+
+    void OrdUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void AddFundsUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+
+    void ChangeAddress([Const] DOMString changeAddr);
+
+    void OrdPayoffAddress([Const] DOMString addr);
+    void FundsPayoffAddress([Const] DOMString addr);
+
+    void SwapScriptPubKeyB([Const] DOMString v);
+
+    void SignOrdSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+
+    void SignFundsCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    void SignFundsSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    void SignFundsPayBack(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+
+    void CheckContractTerms(SwapPhase phase);
+    [Value] string Serialize(long ver, SwapPhase phase);
+    void Deserialize([Const] DOMString data, SwapPhase phase);
+
+    long TransactionCount(SwapPhase phase);
+    [Value] string RawTransaction(SwapPhase phase, long n);
+
+    [Const] static DOMString SupportedVersions();
+
+    [Value] string GetTotalMiningFee([Const] DOMString params);
+    [Value] string GetMinFundingAmount([Const] DOMString params);
+    [Value] string GetNewInputMiningFee();
+    [Value] string GetNewOutputMiningFee();
+};
+
+
+enum TrustlessSwapPhase
+{
+    "TRUSTLESS_ORD_TERMS",
+    "TRUSTLESS_ORD_SWAP_SIG",
+    "TRUSTLESS_FUNDS_TERMS",
+    "TRUSTLESS_FUNDS_COMMIT_SIG",
+    "TRUSTLESS_FUNDS_SWAP_TERMS",
+    "TRUSTLESS_FUNDS_SWAP_SIG"
+};
+
+[Prefix="utxord::wasm::"]
+interface TrustlessSwapInscriptionBuilder
+{
+    void TrustlessSwapInscriptionBuilder(ChainMode mode);
 
     void OrdPrice([Const] DOMString price);
     void MarketFee([Const] DOMString amount, [Const] DOMString addr);
@@ -234,12 +286,12 @@ interface SwapInscriptionBuilder
     void SignFundsCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignFundsSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
-    void CheckContractTerms(SwapPhase phase);
-    [Value] string Serialize(long ver, SwapPhase phase);
-    void Deserialize([Const] DOMString data, SwapPhase phase);
+    void CheckContractTerms(TrustlessSwapPhase phase);
+    [Value] string Serialize(long ver, TrustlessSwapPhase phase);
+    void Deserialize([Const] DOMString data, TrustlessSwapPhase phase);
 
-    long TransactionCount(SwapPhase phase);
-    [Value] string RawTransaction(SwapPhase phase, long n);
+    long TransactionCount(TrustlessSwapPhase phase);
+    [Value] string RawTransaction(TrustlessSwapPhase phase, long n);
 
     [Const] static DOMString SupportedVersions();
 
