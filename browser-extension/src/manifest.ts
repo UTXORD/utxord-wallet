@@ -53,10 +53,6 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
       48: `./assets/${NETWORKS[TARGET]}-48x48.png`,
       128: `./assets/${NETWORKS[TARGET]}-128x128.png`
     },
-    options_ui: {
-      page: './options/index.html',
-      open_in_tab: true
-    },
     background: {
       service_worker: 'background.js',
     },
