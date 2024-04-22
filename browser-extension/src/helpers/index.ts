@@ -2,6 +2,8 @@ import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
 import {sendMessage} from "webext-bridge";
 import {ADDRESS_COPIED} from "~/config/events";
+import * as WebBip39 from 'web-bip39';
+import wordlist from 'web-bip39/wordlists/english';
 
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
@@ -58,6 +60,11 @@ export function copyToClipboard(text: string, message?: string) {
 
 export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
+}
+
+export async function isMnemonicValid(val: string){
+ const valid = await WebBip39.validateMnemonic(val, wordlist)
+ return valid
 }
 
 export function isContains(str: string) {
