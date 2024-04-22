@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import {sendMessage} from 'webext-bridge';
 import {CHECK_AUTH} from '~/config/events';
+import {settingsRoutes} from "~/popup/settingsRouter";
 
 const START_ROUTE = {
   path: '/start',
@@ -67,38 +68,6 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
-    path: '/manage',
-    name: 'ManagePage',
-    component: () => import('~/pages/ManagePage.vue'),
-    meta: {
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/manage-password',
-    name: 'ManagePasswordPage',
-    component: () => import('~/pages/ManagePasswordPage.vue'),
-    meta: {
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/manage-address',
-    name: 'ManageAddressPage',
-    component: () => import('~/pages/ManageAddressPage.vue'),
-    meta: {
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/manage-errors',
-    name: 'ManageErrors',
-    component: () => import('~/pages/ManageErrors.vue'),
-    meta: {
-      requiresAuth: true
-    }
-  },
-  {
     path: '/create-password-screen',
     name: 'CreatePasswordPage',
     component: () => import('~/pages/CreatePasswordPage.vue')
@@ -128,6 +97,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'LoadingPage',
     component: () => import('~/pages/LoadingPage.vue')
   },
+  ...settingsRoutes
 ]
 
 const router = createRouter({
