@@ -44,6 +44,7 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
 
     std::optional<std::string> m_content_type;
     std::optional<bytevector> m_content;
+    std::optional<std::string> m_delegate;
 
     std::optional<bytevector> m_metadata;
 
@@ -64,7 +65,6 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     mutable std::optional<CMutableTransaction> mCollectionCommitTx;
 
 private:
-    void CheckBuildArgs() const;
     void CheckContractTerms(InscribePhase phase) const override;
 
     void RestoreTransactions() const;
@@ -92,6 +92,7 @@ public:
     static const std::string name_utxo;
     static const std::string name_content_type;
     static const std::string name_content;
+    static const std::string name_delegate;
     static const std::string name_collection;
     static const std::string name_collection_id;
     static const std::string name_collection_destination;
@@ -122,8 +123,8 @@ public:
 
     static const char* SupportedVersions() { return s_versions; }
 
-    const std::string& GetContentType() const { return *m_content_type; }
-    std::string GetContent() const { return l15::hex(m_content.value()); }
+    std::string GetContentType() const { return m_content_type.value_or(""); }
+    std::string GetContent() const { return m_content ? l15::hex(m_content.value()) : std::string(); }
     std::string GetInscribeAddress() const { return m_ord_destination->Address(); }
 
     std::string GetIntermediateSecKey() const;
@@ -133,6 +134,7 @@ public:
 
     void AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& addr);
     void Data(const std::string& content_type, const std::string& hex_data);
+    void Delegate(const std::string& inscription_id);
     void MetaData(const std::string& metadata);
     void Rune(std::shared_ptr<RuneStoneDestination> runeStone);
 

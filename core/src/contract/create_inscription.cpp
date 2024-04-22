@@ -42,6 +42,7 @@ const std::string CreateInscriptionBuilder::name_fund_mining_fee_int_pk = "fund_
 const std::string CreateInscriptionBuilder::name_fund_mining_fee_sig = "fund_mining_fee_sig";
 const std::string CreateInscriptionBuilder::name_content_type = "content_type";
 const std::string CreateInscriptionBuilder::name_content = "content";
+const std::string CreateInscriptionBuilder::name_delegate = "delegate";
 const std::string CreateInscriptionBuilder::name_inscribe_script_pk = "inscribe_script_pk";
 const std::string CreateInscriptionBuilder::name_inscribe_int_pk = "inscribe_int_pk";
 const std::string CreateInscriptionBuilder::name_inscribe_sig = "inscribe_sig";
@@ -66,8 +67,6 @@ CScript CreateInscriptionBuilder::MakeInscriptionScript() const
     script << OP_0;
     script << OP_IF;
     script << ORD_TAG;
-    script << CONTENT_TYPE_TAG;
-    script << bytevector(m_content_type->begin(), m_content_type->end());
 
     if (m_parent_collection_id) {
         script << COLLECTION_ID_TAG;
@@ -83,10 +82,17 @@ CScript CreateInscriptionBuilder::MakeInscriptionScript() const
     if (m_rune_stone)
         script << RUNE_TAG << m_rune_stone->Commit();
 
-    script << CONTENT_OP_TAG;
+    if (m_delegate)
+        script << DELEGATE_ID_TAG << SerializeInscriptionId(*m_delegate);
 
-    for (auto pos = m_content->begin(); pos < m_content->end(); pos += MAX_PUSH) {
-        script << bytevector(pos, ((pos + MAX_PUSH) < m_content->end()) ? (pos + MAX_PUSH) : m_content->end());
+    if (m_content) {
+        script << CONTENT_TYPE_TAG << bytevector(m_content_type->begin(), m_content_type->end());
+
+        script << CONTENT_OP_TAG;
+
+        for (auto pos = m_content->begin(); pos < m_content->end(); pos += MAX_PUSH) {
+            script << bytevector(pos, ((pos + MAX_PUSH) < m_content->end()) ? (pos + MAX_PUSH) : m_content->end());
+        }
     }
 
     script << OP_ENDIF;
@@ -98,8 +104,8 @@ CScript CreateInscriptionBuilder::MakeInscriptionScript() const
 std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilder::GenesisTapRoot() const
 {
 
-    if (!m_content) throw ContractStateError(name_content + " not defined");
-    if (!m_content_type) throw ContractStateError(name_content_type + " not defined");
+//    if (!m_content) throw ContractStateError(name_content + " not defined");
+//    if (!m_content_type) throw ContractStateError(name_content_type + " not defined");
     if (!m_inscribe_int_pk) throw ContractStateError(name_inscribe_int_pk + " not defined");
     if (!m_inscribe_script_pk) throw ContractStateError(name_inscribe_script_pk + " not defined");
     if (m_type == LAZY_INSCRIPTION) {
@@ -184,6 +190,12 @@ void CreateInscriptionBuilder::Data(const std::string& content_type, const std::
     m_content = unhex<bytevector>(hex_data);
 }
 
+void CreateInscriptionBuilder::Delegate(const std::string& inscription_id)
+{
+    CheckInscriptionId(inscription_id);
+    m_delegate = inscription_id;
+}
+
 std::string CreateInscriptionBuilder::GetInscribeInternalPubKey() const
 {
     if (m_inscribe_int_pk) {
@@ -193,26 +205,8 @@ std::string CreateInscriptionBuilder::GetInscribeInternalPubKey() const
         throw ContractStateError(std::string(name_inscribe_int_pk) + " undefined");
 }
 
-void CreateInscriptionBuilder::CheckBuildArgs() const
-{
-    if (!m_content) {
-        throw ContractTermMissing("content");
-    }
-    if (!m_content_type) {
-        throw ContractTermMissing("content-type");
-    }
-    if (m_inputs.empty()) {
-        throw ContractTermMissing("UTXO");
-    }
-    if (!m_mining_fee_rate) {
-        throw ContractTermMissing("mining fee rate");
-    }
-}
-
 void CreateInscriptionBuilder::SignCommit(const KeyRegistry& master_key, const std::string& key_filter)
 {
-    CheckBuildArgs();
-
     if (!m_inscribe_int_pk) throw ContractStateError(name_inscribe_int_pk + " not defined");
     if (!m_inscribe_script_pk) throw ContractStateError(name_inscribe_script_pk + " not defined");
     if (m_type == LAZY_INSCRIPTION) {
@@ -344,8 +338,9 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
         }
         //no break
     case LAZY_INSCRIPTION_SIGNATURE:
-        if (!m_content_type) throw ContractTermMissing(name_content_type.c_str());
-        if (!m_content) throw ContractTermMissing(name_content.c_str());
+//        if (!m_content_type) throw ContractTermMissing(name_content_type.c_str());
+        if (m_content && !m_content_type) throw ContractTermMissing(name_content_type.c_str());
+        if (m_content && m_delegate) throw ContractTermMismatch(name_content + " conflicts " + name_delegate);
         if (!m_ord_destination) throw ContractTermMissing(std::string(name_ord));
         if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
         if (m_inputs.empty()) throw ContractTermMissing(std::string(name_utxo));
@@ -397,8 +392,10 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
     case INSCRIPTION_SIGNATURE:
     case LAZY_INSCRIPTION_SIGNATURE:
         contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
-        contract.pushKV(name_content_type, *m_content_type);
-        contract.pushKV(name_content, hex(*m_content));
+        if (m_content_type)
+            contract.pushKV(name_content_type, *m_content_type);
+        if (m_content_type)
+            contract.pushKV(name_content, hex(*m_content));
         if (m_metadata)
             contract.pushKV(name_metadata, hex(*m_metadata));
         {   UniValue utxo_arr(UniValue::VARR);
@@ -408,6 +405,8 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
             }
             contract.pushKV(name_utxo, utxo_arr);
         }
+        if (m_delegate)
+            contract.pushKV(name_delegate, *m_delegate);
         contract.pushKV(name_inscribe_script_pk, hex(*m_inscribe_script_pk));
         contract.pushKV(name_inscribe_int_pk, hex(*m_inscribe_int_pk));
         contract.pushKV(name_inscribe_sig, hex(*m_inscribe_sig));
@@ -581,6 +580,7 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
     DeserializeContractAmount(contract[name_mining_fee_rate], m_mining_fee_rate, [&](){ return name_mining_fee_rate; });
     DeserializeContractString(contract[name_content_type], m_content_type, [&](){ return name_content_type; });
     DeserializeContractHexData(contract[name_content], m_content, [&](){ return name_content; });
+    DeserializeContractString(contract[name_delegate], m_delegate, [&](){ return name_delegate; });
     DeserializeContractHexData(contract[name_inscribe_script_pk], m_inscribe_script_pk, [&](){ return name_inscribe_script_pk; });
     DeserializeContractHexData(contract[name_inscribe_script_market_pk], m_inscribe_script_market_pk, [&](){ return name_inscribe_script_market_pk; });
     DeserializeContractHexData(contract[name_inscribe_sig], m_inscribe_sig, [&](){ return name_inscribe_sig; });
@@ -807,8 +807,8 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
 }
 
 CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
-    if (!m_content_type) throw ContractStateError(std::string(name_content_type) + " undefined");
-    if (!m_content) throw ContractStateError(std::string(name_content) + " undefined");
+//    if (!m_content_type) throw ContractStateError(std::string(name_content_type) + " undefined");
+//    if (!m_content) throw ContractStateError(std::string(name_content) + " undefined");
 
     CMutableTransaction tx;
 
@@ -861,8 +861,10 @@ std::string CreateInscriptionBuilder::MakeInscriptionId() const
 
 std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
     if(!m_ord_destination) throw ContractStateError(std::string(name_ord_amount));
-    if(!m_content_type) throw ContractTermMissing(std::string(name_content_type));
-    if(!m_content) throw ContractTermMissing(std::string(name_content));
+    if (!m_delegate) {
+        if (!m_content_type) throw ContractTermMissing(std::string(name_content_type));
+        if (!m_content) throw ContractTermMissing(std::string(name_content));
+    }
     if(!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
     if(m_type == LAZY_INSCRIPTION && !m_author_fee) throw ContractTermMissing(std::string(name_author_fee));
 

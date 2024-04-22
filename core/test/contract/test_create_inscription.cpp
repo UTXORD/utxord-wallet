@@ -95,6 +95,7 @@ struct CreateCondition
 };
 
 std::string collection_id;
+std::string delegate_id;
 seckey collection_sk;
 Transfer collection_utxo;
 std::string fee_rate;
@@ -120,15 +121,16 @@ TEST_CASE("inscribe")
 
     fee_rate = "0.00003";
 
-    auto pixel_avif = std::tie("image/avif", "0000001c667479706d696631000000006d696631617669666d696166000000f16d657461000000000000002168646c72000000000000000070696374000000000000000000000000000000000e7069746d0000000000010000001e696c6f630000000004400001000100000000011500010000001e0000002869696e660000000000010000001a696e6665020000000001000061763031496d616765000000007069707270000000516970636f0000001469737065000000000000000100000001000000107061737000000001000000010000001561763143812000000a073800069010d002000000107069786900000000030808080000001769706d61000000000000000100010401028384000000266d6461740a073800069010d0023213164000004800000c066e6b60fb175753a17aa0");
-    auto pixel_png = std::tie("image/png", "89504e470d0a1a0a0000000d494844520000000100000001010300000025db56ca00000003504c5445ffa500ca92419b0000000a49444154789c636000000002000148afa4710000000049454e44ae426082");
-    auto pixel_webp = std::tie("image/webp", "524946463c000000574542505650382030000000d001009d012a0100010002003425a00274ba01f80003b000feef6497feef37ede6fdbcdff0d1ffcf4cd7983fa6800000");
-    auto simple_html = std::tie("text/html", "3c21444f43545950452068746d6c3e3c68746d6c3e3c686561643e3c7469746c653e546573743c2f7469746c653e3c2f686561643e3c626f64793e3c68313e41737365743c2f68313e3c2f626f64793e3c2f68746d6c3e");
+    auto pixel_avif = std::tuple<std::string, std::string>("image/avif", std::string("0000001c667479706d696631000000006d696631617669666d696166000000f16d657461000000000000002168646c72000000000000000070696374000000000000000000000000000000000e7069746d0000000000010000001e696c6f630000000004400001000100000000011500010000001e0000002869696e660000000000010000001a696e6665020000000001000061763031496d616765000000007069707270000000516970636f0000001469737065000000000000000100000001000000107061737000000001000000010000001561763143812000000a073800069010d002000000107069786900000000030808080000001769706d61000000000000000100010401028384000000266d6461740a073800069010d0023213164000004800000c066e6b60fb175753a17aa0"));
+    auto pixel_png = std::tuple<std::string, std::string>("image/png", std::string("89504e470d0a1a0a0000000d494844520000000100000001010300000025db56ca00000003504c5445ffa500ca92419b0000000a49444154789c636000000002000148afa4710000000049454e44ae426082"));
+    auto pixel_webp = std::tuple<std::string, std::string>("image/webp", std::string("524946463c000000574542505650382030000000d001009d012a0100010002003425a00274ba01f80003b000feef6497feef37ede6fdbcdff0d1ffcf4cd7983fa6800000"));
+    auto simple_html = std::tuple<std::string, std::string>("text/html", std::string("3c21444f43545950452068746d6c3e3c68746d6c3e3c686561643e3c7469746c653e546573743c2f7469746c653e3c2f686561643e3c626f64793e3c68313e41737365743c2f68313e3c2f626f64793e3c2f68746d6c3e"));
+    auto no_content = std::tuple<std::string, std::string>("", "");
 
     std::string svg_hex = hex(std::string("<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">sample collection</text></g></g></svg>"));
-    auto svg = std::tie("image/svg+xml", svg_hex);
+    auto svg = std::tuple<std::string, std::string>("image/svg+xml", svg_hex);
 
-    auto content = GENERATE_COPY(pixel_avif/*, pixel_png, pixel_webp, simple_html, svg*/);
+    auto content = GENERATE_COPY(pixel_avif, /*pixel_png, pixel_webp, simple_html, svg*/ no_content);
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
 
@@ -138,7 +140,10 @@ TEST_CASE("inscribe")
     REQUIRE_NOTHROW(test_inscription.MarketFee("0", market_fee_addr));
     REQUIRE_NOTHROW(test_inscription.AuthorFee("0", author_fee_addr));
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
-    REQUIRE_NOTHROW(test_inscription.Data(get<0>(content), get<1>(content)));
+    if (get<1>(content).empty())
+        REQUIRE_NOTHROW(test_inscription.Delegate(delegate_id));
+    else
+        REQUIRE_NOTHROW(test_inscription.Data(get<0>(content), get<1>(content)));
     std::string inscription_amount = test_inscription.GetMinFundingAmount("");
     std::string child_amount = test_inscription.GetMinFundingAmount("collection");
     std::string segwit_child_amount = test_inscription.GetMinFundingAmount("collection,p2wpkh_utxo");
@@ -148,7 +153,10 @@ TEST_CASE("inscribe")
     REQUIRE_NOTHROW(test_lazy_inscription.OrdDestination("0.00000546", destination_addr));
     REQUIRE_NOTHROW(test_lazy_inscription.MarketFee("0", market_fee_addr));
     REQUIRE_NOTHROW(test_lazy_inscription.MiningFeeRate(fee_rate));
-    REQUIRE_NOTHROW(test_lazy_inscription.Data(get<0>(content), get<1>(content)));
+    if (get<1>(content).empty())
+        REQUIRE_NOTHROW(test_lazy_inscription.Delegate(delegate_id));
+    else
+        REQUIRE_NOTHROW(test_lazy_inscription.Data(get<0>(content), get<1>(content)));
     REQUIRE_NOTHROW(test_lazy_inscription.AuthorFee("0.00001", author_fee_addr));
     CAmount lazy_add_amount = ParseAmount(test_lazy_inscription.GetMinFundingAmount("collection")) - ParseAmount(child_amount);
 
@@ -216,8 +224,11 @@ TEST_CASE("inscribe")
 
             CHECK_NOTHROW(builder.OrdDestination("0.00000546", condition.is_parent ? collection_key.GetP2TRAddress(Bech32(w->chain())) : destination_addr));
             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-            CHECK_NOTHROW(builder.AuthorFee("0", author_fee_addr));
-            CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+            //CHECK_NOTHROW(builder.AuthorFee("0", author_fee_addr));
+            if (get<1>(content).empty())
+                CHECK_NOTHROW(builder.Delegate(delegate_id));
+            else
+                CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
             CHECK_NOTHROW(builder.InscribeScriptPubKey(hex(script_key.PubKey())));
             CHECK_NOTHROW(builder.InscribeInternalPubKey(hex(int_key.PubKey())));
             if (condition.fixed_change != "0") {
@@ -271,7 +282,9 @@ TEST_CASE("inscribe")
 //            bool ok = VerifyScript(CScript(), bech->PubKeyScript(get<1>(condition.utxo[nin])), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
 //            //REQUIRE(ok);
 //        }
-        }SECTION("lazy inscribe") {
+        }
+
+        SECTION("lazy inscribe") {
             if (condition.has_parent) {
                 std::clog << "Lazy inscribe: " << condition.comment << " ====================================================" << std::endl;
 
@@ -291,7 +304,10 @@ TEST_CASE("inscribe")
                 CreateInscriptionBuilder builder(w->chain(), LAZY_INSCRIPTION);
                 REQUIRE_NOTHROW(builder.Deserialize(market_terms, LAZY_INSCRIPTION_MARKET_TERMS));
 
-                CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+                if (get<1>(content).empty())
+                    CHECK_NOTHROW(builder.Delegate(delegate_id));
+                else
+                    CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
                 CHECK_NOTHROW(builder.OrdDestination("0.00000546", condition.is_parent ? collection_key.GetP2TRAddress(Bech32(w->chain())) : destination_addr));
                 CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
                 CHECK_NOTHROW(builder.InscribeInternalPubKey(hex(int_key.PubKey())));
@@ -411,6 +427,10 @@ TEST_CASE("inscribe")
                 collection_utxo.m_txid = revealTx.GetHash().GetHex();
                 collection_utxo.m_nout = 1;
                 collection_utxo.m_amount = revealTx.vout[1].nValue;
+            }
+
+            if (delegate_id.empty()) {
+                delegate_id = collection_id;
             }
 
             w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
@@ -667,7 +687,7 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
 
-    w->btc().GenerateToAddress(return_addr, "6");
+    w->btc().GenerateToAddress(return_addr, "5");
 
     LogTx(revealTx);
 

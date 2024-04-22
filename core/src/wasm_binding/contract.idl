@@ -156,6 +156,7 @@ interface CreateInscriptionBuilder
     void MiningFeeRate([Const] DOMString rate);
     void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
+    void Delegate([Const] DOMString inscriptionId);
     void MetaData([Const] DOMString hexCborData);
     void RuneStone([Const] RuneStoneDestination runeStone);
     void ChangeAddress([Const] DOMString changeAddr);
