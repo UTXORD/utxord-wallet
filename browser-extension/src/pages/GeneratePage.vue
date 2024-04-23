@@ -47,7 +47,18 @@
           :rows="3"
           v-model="textarea"
           readonly
+          :rules="[
+          (val) => isASCII(val) || 'Please enter only Latin characters'
+          ]"
         />
+        <div
+          v-if="!valid"
+          class="custom-input_error"
+          :class="my-2"
+        >
+          <span v-if="!valid" class="text-red-300 text-left">Invalid checksum menemonic</span>
+        </div>
+        <NotifyInBody/>
         <table style="width: 100%;" v-if="picked == 'list'">
           <!-- for 12 words -->
           <tbody v-if="passphraseLength == 12" v-for="n in 4">
@@ -57,7 +68,7 @@
               <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n+7]"/></td>
             </tr>
           </tbody>
-          <!-- for 15 words -->
+          <!-- for 1s5 words -->
           <tbody v-if="passphraseLength == 15" v-for="n in 5">
             <tr>
               <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" :value="list[n-1]"/></td>
@@ -197,7 +208,8 @@ import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import useWallet from '~/popup/modules/useWallet'
 import { SAVE_GENERATED_SEED } from '~/config/events'
-import { isASCII, isLength, isContains, copyToClipboard } from '~/helpers/index'
+import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid } from '~/helpers/index'
+import NotifyInBody from '~/components/NotifyInBody.vue'
 
 const LENGTH_12 = { label: '12', value: 12 }
 const LENGTH_15 = { label: '15', value: 15 }
@@ -227,10 +239,15 @@ const showInfo = ref(false)
 const mnemonicIsSaved = ref(false)
 
 const list = computed(() => textarea.value.split(' '))
+const valid = ref(false)
 
 const isDisabled = computed(() => {
-  if (!mnemonicIsSaved.value) return true
+  (async ()=>{
+    valid.value = await isMnemonicValid(textarea.value.trim())
+  })()
   if (!textarea.value) return true
+  if (!valid.value) return true
+  if (!mnemonicIsSaved.value) return true
   return false
 })
 
@@ -251,9 +268,8 @@ async function onStore() {
       seed: textarea.value,
       passphrase: passphrase.value
     },
-    'background'
-  )
-  if (success) {
+    'background')
+  if (success === true) {
     const fundAddress = await getFundAddress()
     getBalance(fundAddress)
     localStorage?.setItem(MNEMONIC_KEY, textarea.value)

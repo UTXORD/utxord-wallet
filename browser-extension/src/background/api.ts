@@ -744,11 +744,19 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
     return mnemonic;
   }
 
+  async validateMnemonic(mnemonic){
+     const valid = await WebBip39.validateMnemonic(mnemonic, wordlist);
+     return valid;
+  }
+
   async setUpSeed(mnemonic, passphrase = ''){
     const buffer_seed = await WebBip39.mnemonicToSeed(mnemonic, passphrase);
+    const valid = this.validateMnemonic(mnemonic);
+    if(!valid) return 'Invalid checksum';
     const seed = this.bytesToHexString(buffer_seed);
     chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
+    return 'success';
   }
 
   getSeed() {
