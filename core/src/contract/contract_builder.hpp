@@ -387,35 +387,34 @@ public:
     const Bech32 bech32() const
     { return Bech32(m_chain); }
 
-    void MarketFee(const std::string& amount, const std::string& addr)
+    void MarketFee(CAmount amount, std::string addr)
     {
-        if (l15::ParseAmount(amount) > 0) {
-            m_market_fee = P2Witness::Construct(chain(), l15::ParseAmount(amount), addr);
+        if (amount > 0) {
+            m_market_fee = P2Witness::Construct(chain(), amount, move(addr));
         }
         else {
             m_market_fee = std::make_shared<ZeroDestination>();
         }
     }
 
-    void MiningFeeRate(const std::string& rate)
-    { m_mining_fee_rate = l15::ParseAmount(rate); }
+    void MiningFeeRate(CAmount rate)
+    { m_mining_fee_rate = rate; }
 
-    void ChangeAddress(const std::string& addr)
+    void ChangeAddress(std::string addr)
     {
         bech32().Decode(addr);
-        m_change_addr = addr;
+        m_change_addr = move(addr);
     }
 
-    std::string GetTotalMiningFee(const std::string& params) const
-    { return l15::FormatAmount(CalculateWholeFee(params)); }
+    CAmount GetTotalMiningFee(const std::string& params) const
+    { return CalculateWholeFee(params); }
 
-    virtual std::string GetMinFundingAmount(const std::string& params) const = 0;
+    virtual CAmount GetMinFundingAmount(const std::string& params) const = 0;
 
-    std::string GetNewInputMiningFee();
-    std::string GetNewOutputMiningFee();
+    CAmount GetNewInputMiningFee();
+    CAmount GetNewOutputMiningFee();
 
-    std::string GetMiningFeeRate() const { return l15::FormatAmount(m_mining_fee_rate.value()); }
-    void SetMiningFeeRate(const std::string& v) { m_mining_fee_rate = l15::ParseAmount(v); }
+    CAmount GetMiningFeeRate() const { return m_mining_fee_rate.value(); }
 
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script);
     void VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const;

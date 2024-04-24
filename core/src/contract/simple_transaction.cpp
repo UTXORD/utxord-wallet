@@ -76,7 +76,7 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
         throw ContractTermWrongValue(name_change_addr.c_str());
     }
 
-    CAmount required = l15::ParseAmount(GetMinFundingAmount(""));
+    CAmount required = GetMinFundingAmount("");
 
     CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
@@ -197,10 +197,10 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
     }
 }
 
-std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) const
+CAmount SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
-    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out);
+    return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out;
 }
 
 void SimpleTransaction::CheckContractTerms(TxPhase phase) const

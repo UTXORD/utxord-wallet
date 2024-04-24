@@ -188,23 +188,23 @@
         inscr.InscribeInternalPubKey(intPK);
 
         const inscrId = inscr.MakeInscriptionId();
-        console.log("inscription ID: ", inscrId.c_str());
+        console.log("inscription ID: ", inscrId);
 
         const txCount = inscr.TransactionCount();
         console.log("Tx count: ", txCount);
 
-        const rawCommit = inscr.RawTransaction(0).c_str();
+        const rawCommit = inscr.RawTransaction(0);
         console.log("Raw Commit: ", rawCommit);
 
         let rune = new api.Rune("UTXORD TEST AAA", " ", 0);
         let runeStone = rune.EtchAndMint(api.TESTNET, "100000", 0);
-        inscr.RuneStone(runeStone);
+        inscr.Rune(runeStone);
         api.destroy(runeStone)
         api.destroy(rune)
 
         inscr.SignCommit(masterKey, "funds");
 
-        const rawCommitSigned = inscr.RawTransaction(0).c_str();
+        const rawCommitSigned = inscr.RawTransaction(0);
         console.log("Raw Commit Signed: ", rawCommitSigned);
 
         inscr.SignInscription(masterKey, "script");
@@ -214,7 +214,7 @@
         let contract = inscr.Serialize(10, api.INSCRIPTION_SIGNATURE);
         api.destroy(inscr);
 
-        console.log(contract.c_str());
+        console.log(contract);
 
         console.log("Rune Etch & Mint - OK!");
 

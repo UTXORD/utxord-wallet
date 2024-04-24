@@ -1,12 +1,5 @@
 
 
-[Prefix="std::"]
-interface string
-{
-    void string([Const] DOMString str);
-    [Const] DOMString c_str();
-};
-
 enum ChainMode
 {
     "MAINNET",
@@ -158,37 +151,37 @@ interface CreateInscriptionBuilder
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
     void Delegate([Const] DOMString inscriptionId);
     void MetaData([Const] DOMString hexCborData);
-    void RuneStone([Const] RuneStoneDestination runeStone);
+    void Rune([Const] RuneStoneDestination runeStone);
     void ChangeAddress([Const] DOMString changeAddr);
     void InscribeScriptPubKey([Const] DOMString pk);
     void InscribeInternalPubKey([Const] DOMString pk);
     void FundMiningFeeInternalPubKey([Const] DOMString pk);
 
-    void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, long nout, [Const] DOMString amount,
+    void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, unsigned long nout, [Const] DOMString amount,
                                                    [Const] DOMString collectionAddr);
     void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
     void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
-    [Value] string Serialize(long ver, InscribePhase phase);
+    [Const] DOMString Serialize(unsigned long ver, InscribePhase phase);
     void Deserialize([Const] DOMString data, InscribePhase phase);
 
-    long TransactionCount();
-    [Value] string RawTransaction(long n);
+    unsigned long TransactionCount(InscribePhase phase);
+    [Const] DOMString RawTransaction(InscribePhase phase, unsigned long n);
 
     [Const] static DOMString SupportedVersions();
 
-    [Value] string GetIntermediateSecKey();
-    [Value] string MakeInscriptionId();
+    [Const] DOMString MakeInscriptionId();
 
-    [Value] string GetTotalMiningFee([Const] DOMString params);
-    [Value] string GetMinFundingAmount([Const] DOMString params);
-    [Value] string GetNewInputMiningFee();
-    [Value] string GetNewOutputMiningFee();
+    [Const] DOMString GetTotalMiningFee([Const] DOMString params);
+    [Const] DOMString GetMinFundingAmount([Const] DOMString params);
+    [Const] DOMString GetNewInputMiningFee();
+    [Const] DOMString GetNewOutputMiningFee();
 
-    [Value] string GetInscriptionLocation();
-    [Value] string GetCollectionLocation();
-    [Value] string GetChangeLocation();
+    [Const] IContractOutput InscriptionOutput();
+    [Const] IContractOutput CollectionOutput();
+    [Const] IContractOutput ChangeOutput();
+    [Const] IContractOutput FixedChangeOutput();
 };
 
 enum SwapPhase
@@ -227,19 +220,22 @@ interface SwapInscriptionBuilder
     void SignFundsSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignFundsPayBack(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
-    void CheckContractTerms(SwapPhase phase);
-    [Value] string Serialize(long ver, SwapPhase phase);
+    [Const] DOMString Serialize(long ver, SwapPhase phase);
     void Deserialize([Const] DOMString data, SwapPhase phase);
 
-    long TransactionCount(SwapPhase phase);
-    [Value] string RawTransaction(SwapPhase phase, long n);
+    unsigned long TransactionCount(SwapPhase phase);
+    [Const] DOMString RawTransaction(SwapPhase phase, unsigned long n);
 
     [Const] static DOMString SupportedVersions();
 
-    [Value] string GetTotalMiningFee([Const] DOMString params);
-    [Value] string GetMinFundingAmount([Const] DOMString params);
-    [Value] string GetNewInputMiningFee();
-    [Value] string GetNewOutputMiningFee();
+    [Const] DOMString GetTotalMiningFee([Const] DOMString params);
+    [Const] DOMString GetMinFundingAmount([Const] DOMString params);
+    [Const] DOMString GetNewInputMiningFee();
+    [Const] DOMString GetNewOutputMiningFee();
+
+    [Const] IContractOutput InscriptionOutput();
+    [Const] IContractOutput FundsOutput();
+    [Const] IContractOutput ChangeOutput();
 };
 
 
@@ -274,32 +270,32 @@ interface TrustlessSwapInscriptionBuilder
     void OrdPayoffAddress([Const] DOMString addr);
     void FundsPayoffAddress([Const] DOMString addr);
 
-    void MarketScriptPubKey([Const] DOMString v);
+//    void MarketScriptPubKey([Const] DOMString v);
 
     void OrdScriptPubKey([Const] DOMString v);
     void OrdIntPubKey([Const] DOMString v);
 
     void SignOrdSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
-    void SignMarketSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
+    //void SignMarketSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
     void SignOrdCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignFundsCommitment(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignFundsSwap(KeyRegistry keyRegistry, [Const] DOMString key_filter);
 
-    void CheckContractTerms(TrustlessSwapPhase phase);
-    [Value] string Serialize(long ver, TrustlessSwapPhase phase);
+//    void CheckContractTerms(TrustlessSwapPhase phase);
+    [Const] DOMString Serialize(unsigned long ver, TrustlessSwapPhase phase);
     void Deserialize([Const] DOMString data, TrustlessSwapPhase phase);
 
-    long TransactionCount(TrustlessSwapPhase phase);
-    [Value] string RawTransaction(TrustlessSwapPhase phase, long n);
+    unsigned long TransactionCount(TrustlessSwapPhase phase);
+    [Const] DOMString RawTransaction(TrustlessSwapPhase phase, unsigned long n);
 
     [Const] static DOMString SupportedVersions();
 
-    [Value] string GetTotalMiningFee([Const] DOMString params);
-    [Value] string GetMinFundingAmount([Const] DOMString params);
-    [Value] string GetMinSwapFundingAmount();
-    [Value] string GetNewInputMiningFee();
-    [Value] string GetNewOutputMiningFee();
+    [Const] DOMString GetTotalMiningFee([Const] DOMString params);
+    [Const] DOMString GetMinFundingAmount([Const] DOMString params);
+    [Const] DOMString GetMinSwapFundingAmount();
+    [Const] DOMString GetNewInputMiningFee();
+    [Const] DOMString GetNewOutputMiningFee();
 };
 
 enum TxPhase
@@ -313,9 +309,9 @@ interface SimpleTransaction
 {
     void SimpleTransaction(ChainMode mode);
 
-    [Value] string TxID();
-    long CountOutputs();
-    [Const] IContractOutput Output(long n);
+    [Const] DOMString TxID();
+    unsigned long CountOutputs();
+    [Const] IContractOutput Output(unsigned long n);
 
     void MiningFeeRate([Const] DOMString rate);
 
@@ -330,11 +326,11 @@ interface SimpleTransaction
 
     void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);
 
-    [Const] DOMString Serialize(long ver, TxPhase phase);
+    [Const] DOMString Serialize(unsigned long ver, TxPhase phase);
     void Deserialize([Const] DOMString data, TxPhase phase);
 
-    long TransactionCount(TxPhase phase);
-    [Const] DOMString RawTransaction(TxPhase phase, long n);
+    unsigned long TransactionCount(TxPhase phase);
+    [Const] DOMString RawTransaction(TxPhase phase, unsigned long n);
 
     [Const] static DOMString SupportedVersions();
     [Const] IContractOutput ChangeOutput();

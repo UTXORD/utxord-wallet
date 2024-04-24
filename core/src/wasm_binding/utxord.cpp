@@ -410,7 +410,7 @@ public:
     virtual const char* Amount() const final
     {
         static std::string cache;
-        cache = l15::FormatAmount(m_ptr->Amount());
+        cache = FormatAmount(m_ptr->Amount());
         return cache.c_str();
 
     }
@@ -463,11 +463,62 @@ public:
     {}
 };
 
-class SimpleTransaction
+template <class BUILDER>
+class ContractBuilder
 {
-    std::shared_ptr<utxord::SimpleTransaction> m_ptr;
+protected:
+    std::shared_ptr<BUILDER> m_ptr;
+
+    ContractBuilder(std::shared_ptr<BUILDER> ptr) : m_ptr(move(ptr))
+    {}
+
 public:
-    SimpleTransaction(ChainMode mode) : m_ptr(std::make_shared<utxord::SimpleTransaction>(mode))
+    void MiningFeeRate(const std::string& rate)
+    { m_ptr->MiningFeeRate(ParseAmount(rate)); }
+
+    void MarketFee(const std::string& amount, std::string addr)
+    { m_ptr->MarketFee(ParseAmount(amount), move(addr)); }
+
+    void ChangeAddress(std::string addr)
+    { m_ptr->ChangeAddress(move(addr)); }
+
+    const char* GetTotalMiningFee(const std::string& params) const
+    {
+        static std::string cache;
+        cache = FormatAmount(m_ptr->GetTotalMiningFee(params));
+        return cache.c_str();
+    }
+
+    const char* GetMinFundingAmount(const std::string& params) const
+    {
+        static std::string cache;
+        cache = FormatAmount(m_ptr->GetMinFundingAmount(params));
+        return cache.c_str();
+    }
+
+    const char* GetNewInputMiningFee() const
+    {
+        static std::string cache;
+        cache = FormatAmount(m_ptr->GetNewInputMiningFee());
+        return cache.c_str();
+    }
+
+    const char* GetNewOutputMiningFee() const
+    {
+        static std::string cache;
+        cache = FormatAmount(m_ptr->GetNewOutputMiningFee());
+        return cache.c_str();
+    }
+
+    std::shared_ptr<BUILDER> Share() const
+    { return m_ptr; }
+};
+
+class SimpleTransaction : public ContractBuilder<utxord::SimpleTransaction>
+{
+
+public:
+    SimpleTransaction(ChainMode mode) : ContractBuilder(std::make_shared<utxord::SimpleTransaction>(mode))
     {}
 
     const char* TxID() const
@@ -482,37 +533,6 @@ public:
 
     const IContractOutput* Output(uint32_t n) const
     { return new ContractOutputWrapper(std::make_shared<utxord::ContractOutput>(m_ptr, n)); }
-
-    void MiningFeeRate(const std::string &rate)
-    { m_ptr->MiningFeeRate(rate); }
-
-    const char* GetTotalMiningFee(const std::string& params) const
-    {
-        static std::string cache;
-        cache = m_ptr->GetTotalMiningFee(params);
-        return cache.c_str();
-    }
-
-    const char* GetMinFundingAmount(const std::string& params) const
-    {
-        static std::string cache;
-        cache = m_ptr->GetMinFundingAmount(params);
-        return cache.c_str();
-    }
-
-    const char* GetNewInputMiningFee()
-    {
-        static std::string cache;
-        cache = m_ptr->GetNewInputMiningFee();
-        return cache.c_str();
-    }
-
-    const char* GetNewOutputMiningFee()
-    {
-        static std::string cache;
-        cache = m_ptr->GetNewInputMiningFee();
-        return cache.c_str();
-    }
 
     void AddInput(const IContractOutput *prevout)
     { m_ptr->AddInput(prevout->Share()); }
@@ -536,9 +556,6 @@ public:
     void Deserialize(const std::string &data, TxPhase phase)
     { m_ptr->Deserialize(data, phase); }
 
-    std::shared_ptr<utxord::IContractMultiOutput> Share() const
-    { return m_ptr; }
-
     uint32_t TransactionCount(TxPhase phase) const
     { return 1; }
 
@@ -549,7 +566,7 @@ public:
             cache = m_ptr->RawTransactions()[0];
             return cache.c_str();
         }
-        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+        else return {};
     }
 
     static const char* SupportedVersions()
@@ -557,66 +574,269 @@ public:
 
     const IContractOutput* ChangeOutput() const
     {
-        auto out = m_ptr->SimpleTransaction::ChangeOutput();
+        auto out = m_ptr->ChangeOutput();
         return out ? new ContractOutputWrapper(out) : nullptr;
     }
 };
 
-class CreateInscriptionBuilder : public utxord::CreateInscriptionBuilder
+class CreateInscriptionBuilder : public ContractBuilder<utxord::CreateInscriptionBuilder>
 {
 public:
-    CreateInscriptionBuilder(ChainMode mode, InscribeType type) : utxord::CreateInscriptionBuilder(mode, type) {}
+    CreateInscriptionBuilder(ChainMode mode, InscribeType type)
+    : ContractBuilder(std::make_shared<utxord::CreateInscriptionBuilder>(mode, type))
+    {}
 
-    void RuneStone(const RuneStoneDestination* runeStone)
-    { utxord::CreateInscriptionBuilder::Rune(runeStone->ShareRuneStone()); }
+    void OrdDestination(const std::string& amount, std::string addr)
+    { m_ptr->OrdDestination(ParseAmount(amount), move(addr)); }
+
+    void AddUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->AddUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void Data(std::string content_type, const std::string& hex_data)
+    { m_ptr->Data(move(content_type), unhex<bytevector>(hex_data)); }
+
+    void Delegate(std::string inscription_id)
+    { m_ptr->Delegate(move(inscription_id)); }
+
+    void MetaData(const std::string& metadata)
+    { m_ptr->MetaData(unhex<bytevector>(metadata)); }
+
+    void Rune(const RuneStoneDestination* runeStone)
+    { m_ptr->Rune(runeStone->ShareRuneStone()); }
+
+    void InscribeScriptPubKey(const std::string& pk)
+    { m_ptr->InscribeScriptPubKey(unhex<xonly_pubkey>(pk)); }
+
+    void MarketInscribeScriptPubKey(const std::string& pk)
+    { m_ptr->MarketInscribeScriptPubKey(unhex<xonly_pubkey>(pk)); }
+
+    void InscribeInternalPubKey(const std::string& pk)
+    { m_ptr->InscribeInternalPubKey(unhex<xonly_pubkey>(pk)); }
+
+    void FundMiningFeeInternalPubKey(const std::string& pk)
+    { m_ptr->FundMiningFeeInternalPubKey(unhex<xonly_pubkey>(pk)); }
+
+    void AddToCollection(std::string collection_id, std::string txid, uint32_t nout, const std::string& amount, std::string collection_addr)
+    { m_ptr->AddToCollection(move(collection_id), move(txid), nout, ParseAmount(amount), move(collection_addr)); }
+
 
     void SignCommit(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::CreateInscriptionBuilder::SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignInscription(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::CreateInscriptionBuilder::SignInscription(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignInscription(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignCollection(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::CreateInscriptionBuilder::SignCollection(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignCollection(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    const char* Serialize(uint32_t version, InscribePhase phase) const
+    {
+        static std::string cache;
+        cache = m_ptr->Serialize(version, phase);
+        return cache.c_str();
+    }
+
+    void Deserialize(const std::string &data, InscribePhase phase)
+    { m_ptr->Deserialize(data, phase); }
+
+    uint32_t TransactionCount(InscribePhase phase) const
+    { return m_ptr->TransactionCount(phase); }
+
+    const char* RawTransaction(InscribePhase phase, uint32_t n) const
+    {
+        static std::string cache;
+        cache = m_ptr->RawTransaction(phase, n);
+        return cache.c_str();
+    }
+
+    static const char* SupportedVersions()
+    { return utxord::CreateInscriptionBuilder::SupportedVersions(); }
+
+    const char* MakeInscriptionId() const
+    {
+        static std::string cache;
+        cache = m_ptr->MakeInscriptionId();
+        return cache.c_str();
+    }
+
+    const IContractOutput* InscriptionOutput() const
+    { return new ContractOutputWrapper(m_ptr->InscriptionOutput()) ; }
+
+    const IContractOutput* CollectionOutput() const
+    {
+        auto out = m_ptr->CollectionOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
+
+    const IContractOutput* ChangeOutput() const
+    {
+        auto out = m_ptr->ChangeOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
+
+    const IContractOutput* FixedChangeOutput() const
+    {
+        auto out = m_ptr->FixedChangeOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
+
 };
 
-class SwapInscriptionBuilder : public utxord::SwapInscriptionBuilder
+class SwapInscriptionBuilder : public ContractBuilder<utxord::SwapInscriptionBuilder>
 {
 public:
-    SwapInscriptionBuilder(ChainMode mode) : utxord::SwapInscriptionBuilder(mode) {}
+    SwapInscriptionBuilder(ChainMode mode)
+    : ContractBuilder(std::make_shared<utxord::SwapInscriptionBuilder>(mode))
+    {}
+
+    void OrdPrice(const std::string& price)
+    { m_ptr->OrdPrice(ParseAmount(price)); }
+
+    void OrdUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->OrdUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void AddFundsUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->AddFundsUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void OrdPayoffAddress(std::string addr)
+    { m_ptr->OrdPayoffAddress(move(addr)); }
+
+    void FundsPayoffAddress(std::string addr)
+    { m_ptr->FundsPayoffAddress(move(addr)); }
+
+    void SwapScriptPubKeyB(const std::string pk)
+    { m_ptr->SwapScriptPubKeyB(unhex<xonly_pubkey>(pk)); }
 
     void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::SwapInscriptionBuilder::SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::SwapInscriptionBuilder::SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::SwapInscriptionBuilder::SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsPayBack(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::SwapInscriptionBuilder::SignFundsPayBack(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsPayBack(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    const char* Serialize(uint32_t version, SwapPhase phase) const
+    {
+        static std::string cache;
+        cache = m_ptr->Serialize(version, phase);
+        return cache.c_str();
+    }
+
+    void Deserialize(const std::string &data, SwapPhase phase)
+    { m_ptr->Deserialize(data, phase); }
+
+    uint32_t TransactionCount(SwapPhase phase) const
+    { return m_ptr->TransactionCount(phase); }
+
+    const char* RawTransaction(SwapPhase phase, uint32_t n) const
+    {
+        static std::string cache;
+        cache = m_ptr->RawTransaction(phase, n);
+        return cache.c_str();
+    }
+
+    static const char* SupportedVersions()
+    { return utxord::SwapInscriptionBuilder::SupportedVersions(); }
+
+    const IContractOutput* InscriptionOutput() const
+    { return new ContractOutputWrapper(m_ptr->InscriptionOutput()) ; }
+
+    const IContractOutput* FundsOutput() const
+    { return new ContractOutputWrapper(m_ptr->FundsOutput()); }
+
+    const IContractOutput* ChangeOutput() const
+    {
+        auto out = m_ptr->ChangeOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
 };
 
-class TrustlessSwapInscriptionBuilder : public utxord::TrustlessSwapInscriptionBuilder
+class TrustlessSwapInscriptionBuilder : public ContractBuilder<utxord::TrustlessSwapInscriptionBuilder>
 {
 public:
-    TrustlessSwapInscriptionBuilder(ChainMode mode) : utxord::TrustlessSwapInscriptionBuilder(mode) {}
+    TrustlessSwapInscriptionBuilder(ChainMode mode)
+    : ContractBuilder(std::make_shared<utxord::TrustlessSwapInscriptionBuilder>(mode))
+    {}
+
+    void OrdPrice(const std::string& price)
+    { m_ptr->OrdPrice(ParseAmount(price)); }
+
+    void CommitOrdinal(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->CommitOrdinal(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void FundCommitOrdinal(std::string txid, uint32_t nout, const std::string& amount, std::string addr, std::string change_addr)
+    { m_ptr->FundCommitOrdinal(move(txid), nout, ParseAmount(amount), move(addr), move(change_addr)); }
+
+    void CommitFunds(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->CommitFunds(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void Brick1SwapUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->Brick1SwapUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void Brick2SwapUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->Brick2SwapUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void AddMainSwapUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->AddMainSwapUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void OrdPayoffAddress(std::string addr)
+    { m_ptr->OrdPayoffAddress(move(addr)); }
+
+    void FundsPayoffAddress(std::string addr)
+    { m_ptr->FundsPayoffAddress(move(addr)); }
+
+    void OrdScriptPubKey(const std::string pk)
+    { m_ptr->OrdScriptPubKey(unhex<xonly_pubkey>(pk)); }
+
+    void OrdIntPubKey(const std::string pk)
+    { m_ptr->OrdIntPubKey(unhex<xonly_pubkey>(pk)); }
 
     void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::TrustlessSwapInscriptionBuilder::SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
-
-    void SignMarketSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::TrustlessSwapInscriptionBuilder::SignMarketSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignOrdCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::TrustlessSwapInscriptionBuilder::SignOrdCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignOrdCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::TrustlessSwapInscriptionBuilder::SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { utxord::TrustlessSwapInscriptionBuilder::SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+
+    const char* Serialize(uint32_t version, TrustlessSwapPhase phase) const
+    {
+        static std::string cache;
+        cache = m_ptr->Serialize(version, phase);
+        return cache.c_str();
+    }
+
+    void Deserialize(const std::string &data, TrustlessSwapPhase phase)
+    { m_ptr->Deserialize(data, phase); }
+
+    uint32_t TransactionCount(TrustlessSwapPhase phase) const
+    { return m_ptr->TransactionCount(phase); }
+
+    const char* RawTransaction(TrustlessSwapPhase phase, uint32_t n) const
+    {
+        static std::string cache;
+        cache = m_ptr->RawTransaction(phase, n);
+        return cache.c_str();
+    }
+
+    static const char* SupportedVersions()
+    { return utxord::CreateInscriptionBuilder::SupportedVersions(); }
+
+    const char* GetMinSwapFundingAmount()
+    {
+        static std::string cache;
+        cache = m_ptr->GetMinSwapFundingAmount();
+        return cache.c_str();
+    }
+
 };
 
 } // wasm

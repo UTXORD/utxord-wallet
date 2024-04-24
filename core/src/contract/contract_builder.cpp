@@ -4,7 +4,6 @@
 #include "univalue.h"
 #include "nlohmann/json.hpp"
 #include <exception>
-#include <ranges>
 #include "interpreter.h"
 #include "feerate.h"
 #include "script_merkle_tree.hpp"
@@ -13,10 +12,7 @@
 #include "contract_builder_factory.hpp"
 #include "utils.hpp"
 
-#include <execution>
 #include <atomic>
-
-#include <limits>
 
 namespace utxord {
 
@@ -365,14 +361,14 @@ void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vec
     }
 }
 
-std::string IContractBuilder::GetNewInputMiningFee()
+CAmount IContractBuilder::GetNewInputMiningFee()
 {
-    return FormatAmount(CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_KEYSPEND_VIN_VSIZE));
+    return CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_KEYSPEND_VIN_VSIZE);
 }
 
-std::string IContractBuilder::GetNewOutputMiningFee()
+CAmount IContractBuilder::GetNewOutputMiningFee()
 {
-    return FormatAmount(CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE));
+    return CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE);
 }
 
 void IContractBuilder::DeserializeContractAmount(const UniValue &val, std::optional<CAmount> &target, std::function<std::string()> lazy_name)

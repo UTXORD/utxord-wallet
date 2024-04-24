@@ -127,50 +127,51 @@ public:
     std::string GetContent() const { return m_content ? l15::hex(m_content.value()) : std::string(); }
     std::string GetInscribeAddress() const { return m_ord_destination->Address(); }
 
-    std::string GetIntermediateSecKey() const;
+    void OrdDestination(CAmount amount, const std::string& addr)
+    { m_ord_destination = P2Witness::Construct(chain(), amount, move(addr)); }
 
-    void OrdDestination(const std::string& amount, const std::string& addr)
-    { m_ord_destination = P2Witness::Construct(chain(), l15::ParseAmount(amount), addr); }
-
-    void AddUTXO(const std::string &txid, uint32_t nout, const std::string& amount, const std::string& addr);
-    void Data(const std::string& content_type, const std::string& hex_data);
-    void Delegate(const std::string& inscription_id);
-    void MetaData(const std::string& metadata);
-    void Rune(std::shared_ptr<RuneStoneDestination> runeStone);
-
-    void InscribeScriptPubKey(const std::string& pk)
-    { m_inscribe_script_pk = unhex<xonly_pubkey>(pk); }
-
-    void MarketInscribeScriptPubKey(const std::string& pk)
-    { m_inscribe_script_market_pk = unhex<xonly_pubkey>(pk); }
-
-    void InscribeInternalPubKey(const std::string& pk)
-    { m_inscribe_int_pk = unhex<xonly_pubkey>(pk); }
-
-    void FundMiningFeeInternalPubKey(const std::string& pk)
-    { m_fund_mining_fee_int_pk = unhex<xonly_pubkey>(pk); }
-
-    void AuthorFee(const std::string& amount, const std::string& addr)
+    void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void Data(std::string content_type, bytevector data)
     {
-        if (l15::ParseAmount(amount) > 0) {
-            m_author_fee = P2Witness::Construct(chain(), l15::ParseAmount(amount), addr);
+        m_content_type = move(content_type);
+        m_content = move(data);
+    }
+    void Delegate(std::string inscription_id);
+    void MetaData(bytevector metadata);
+    void Rune(std::shared_ptr<RuneStoneDestination> runeStone)
+    { m_rune_stone = move(runeStone); }
+
+    void InscribeScriptPubKey(xonly_pubkey pk)
+    { m_inscribe_script_pk = move(pk); }
+
+    void MarketInscribeScriptPubKey(xonly_pubkey pk)
+    { m_inscribe_script_market_pk = move(pk); }
+
+    void InscribeInternalPubKey(xonly_pubkey pk)
+    { m_inscribe_int_pk = move(pk); }
+
+    void FundMiningFeeInternalPubKey(xonly_pubkey pk)
+    { m_fund_mining_fee_int_pk = move(pk); }
+
+    void AuthorFee(CAmount amount, std::string addr)
+    {
+        if (amount > 0) {
+            m_author_fee = P2Witness::Construct(chain(), amount, move(addr));
         }
         else {
             m_author_fee = std::make_shared<ZeroDestination>();
         }
     }
 
-    void FixedChange(const std::string& amount, const std::string& addr)
-    { m_fixed_change = P2Witness::Construct(chain(), l15::ParseAmount(amount), addr); }
+    void FixedChange(CAmount amount, std::string addr)
+    { m_fixed_change = P2Witness::Construct(chain(), amount, move(addr)); }
 
-    void AddToCollection(const std::string& collection_id,
-                                              const std::string& utxo_txid, uint32_t utxo_nout, const std::string& amount,
-                                              const std::string& collection_addr);
+    void AddToCollection(std::string collection_id,
+                         std::string utxo_txid, uint32_t utxo_nout, CAmount amount, std::string collection_addr);
 
-    void Collection(const std::string& collection_id, const std::string& amount, const std::string& collection_addr);
+    void Collection(std::string collection_id, CAmount amount, std::string collection_addr);
 
-    void OverrideCollectionAddress(const std::string& addr);
-    // { m_collection_address_override = addr; }
+    void OverrideCollectionAddress(std::string addr);
 
     std::string MakeInscriptionId() const;
 
@@ -191,19 +192,19 @@ public:
     void SignCollection(const KeyRegistry &master_key, const std::string& key_filter);
 
     CAmount CalculateWholeFee(const std::string& params) const override;
-    std::string GetMinFundingAmount(const std::string& params) const override;
+    CAmount GetMinFundingAmount(const std::string& params) const override;
 
     std::vector<std::string> RawTransactions() const;
 
-    uint32_t TransactionCount() const
+    uint32_t TransactionCount(InscribePhase phase) const
     { return 2; }
 
-    std::string RawTransaction(uint32_t n) const;
+    std::string RawTransaction(InscribePhase phase, uint32_t n) const;
 
-    std::string GetInscriptionLocation() const;
-    std::string GetCollectionLocation() const;
-    std::string GetChangeLocation() const;
-
+    std::shared_ptr<IContractOutput> InscriptionOutput() const;
+    std::shared_ptr<IContractOutput> CollectionOutput() const;
+    std::shared_ptr<IContractOutput> ChangeOutput() const;
+    std::shared_ptr<IContractOutput> FixedChangeOutput() const;
 };
 
 } // utxord

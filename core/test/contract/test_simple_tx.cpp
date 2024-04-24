@@ -90,12 +90,12 @@ TEST_CASE("singleinout")
 
     auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond);
 
-    std::string fee_rate;
+    CAmount fee_rate;
     try {
-        fee_rate = w->btc().EstimateSmartFee("1");
+        fee_rate = ParseAmount(w->btc().EstimateSmartFee("1"));
     }
     catch(...) {
-        fee_rate = "0.00001";
+        fee_rate = 1000;
     }
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
@@ -181,12 +181,12 @@ TEST_CASE("2ins2outs")
     std::string destination_addr = w->btc().GetNewAddress();
     std::string destination_addr1 = w->btc().GetNewAddress();
 
-    std::string fee_rate;
+    CAmount fee_rate;
     try {
-        fee_rate = w->btc().EstimateSmartFee("1");
+        fee_rate = ParseAmount(w->btc().EstimateSmartFee("1"));
     }
     catch(...) {
-        fee_rate = "0.00001";
+        fee_rate = 1000;
     }
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
@@ -237,12 +237,12 @@ TEST_CASE("txchain")
     std::string destination_addr = w->btc().GetNewAddress();
     std::string change_addr = w->btc().GetNewAddress();
 
-    std::string fee_rate;
+    CAmount fee_rate;
     try {
-        fee_rate = w->btc().EstimateSmartFee("1");
+        fee_rate = ParseAmount(w->btc().EstimateSmartFee("1"));
     }
     catch(...) {
-        fee_rate = "0.00001";
+        fee_rate = 1000;
     }
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
@@ -258,7 +258,7 @@ TEST_CASE("txchain")
     REQUIRE_NOTHROW(tx1_contract->AddInput(make_shared<ContractOutput>(tx_contract, 0)));
     REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(w->chain(), 546, destination_addr)));
 
-    REQUIRE_NOTHROW(tx_contract->Outputs().back()->Amount(ParseAmount(tx1_contract->GetMinFundingAmount(""))));
+    REQUIRE_NOTHROW(tx_contract->Outputs().back()->Amount(tx1_contract->GetMinFundingAmount("")));
     REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_addr));
 
     REQUIRE_NOTHROW(tx_contract->Sign(master_key, "funds"));

@@ -44,7 +44,7 @@ public:
     { return s_versions; }
 
     CAmount CalculateWholeFee(const std::string& params) const override;
-    std::string GetMinFundingAmount(const std::string& params) const override;
+    CAmount GetMinFundingAmount(const std::string& params) const override;
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
     { m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout)); }

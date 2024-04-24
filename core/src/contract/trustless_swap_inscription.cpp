@@ -19,7 +19,7 @@ using l15::CalculateOutputAmount;
 
 namespace {
 
-const std::string val_swap_inscription("SwapInscription");
+const std::string val_trustless_swap_inscription("TrustlessSwapInscription");
 
 }
 
@@ -428,7 +428,7 @@ void TrustlessSwapInscriptionBuilder::CheckContractTerms(TrustlessSwapPhase phas
 void TrustlessSwapInscriptionBuilder::ReadJson(const UniValue &contract, utxord::TrustlessSwapPhase phase)
 {
     if (contract[name_version].getInt<uint32_t>() != s_protocol_version) {
-        throw ContractProtocolError("Wrong " + val_swap_inscription + " contract version: " + contract[name_version].getValStr());
+        throw ContractProtocolError("Wrong " + val_trustless_swap_inscription + " contract version: " + contract[name_version].getValStr());
     }
 
     DeserializeContractAmount(contract[name_ord_price], m_ord_price, [](){ return name_ord_price; });
@@ -488,7 +488,7 @@ const CMutableTransaction &TrustlessSwapInscriptionBuilder::GetSwapTx() const
     return *mSwapTx;
 }
 
-void TrustlessSwapInscriptionBuilder::CommitOrdinal(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr)
+void TrustlessSwapInscriptionBuilder::CommitOrdinal(std::string txid, uint32_t nout, CAmount amount, std::string addr)
 {
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
     if (mOrdCommitBuilder) throw ContractStateError(name_ord_commit + " already defined");
@@ -499,24 +499,24 @@ void TrustlessSwapInscriptionBuilder::CommitOrdinal(const std::string &txid, uin
     //mOrdCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), ParseAmount(amount), bech32().Encode(get<0>(OrdSwapTapRoot()))));
 
     try {
-        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     }
     catch(...) {
         std::throw_with_nested(ContractTermWrongValue(name_ord_commit + "[ord]"));
     }
 }
 
-void TrustlessSwapInscriptionBuilder::FundCommitOrdinal(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr, const std::string& change_addr)
+void TrustlessSwapInscriptionBuilder::FundCommitOrdinal(std::string txid, uint32_t nout, CAmount amount, std::string addr, std::string change_addr)
 {
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
     if (!mOrdCommitBuilder) throw ContractStateError(name_ord_commit + " not defined, call CommitOrdinal(...) first");
 
     try {
-        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+        mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
         if (mOrdCommitBuilder->Outputs().size() > 2) {
             mOrdCommitBuilder->Outputs().pop_back();
         }
-        mOrdCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, change_addr));
+        mOrdCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, move(change_addr)));
 //        mOrdCommitBuilder->AddChangeOutput(change_addr);
     }
     catch(...) {
@@ -524,7 +524,7 @@ void TrustlessSwapInscriptionBuilder::FundCommitOrdinal(const std::string &txid,
     }
 }
 
-void TrustlessSwapInscriptionBuilder::CommitFunds(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
+void TrustlessSwapInscriptionBuilder::CommitFunds(std::string txid, uint32_t nout, CAmount amount, std::string addr)
 {
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
     if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
@@ -549,7 +549,7 @@ void TrustlessSwapInscriptionBuilder::CommitFunds(const string &txid, uint32_t n
         // Remove the output with main funding if already exists
         mCommitBuilder->DropChangeOutput();
 
-        mCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+        mCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), move(txid), nout, amount, addr));
 
         CAmount commit_fee = mCommitBuilder->CalculateWholeFee("") + TAPROOT_VOUT_VSIZE;
         CAmount output_required = CalculateSwapTxFee(false) + *m_ord_price + m_market_fee->Amount();
@@ -569,7 +569,7 @@ void TrustlessSwapInscriptionBuilder::CommitFunds(const string &txid, uint32_t n
                 mCommitBuilder->Outputs()[1]->Amount(change - dust);
             }
 
-            mCommitBuilder->AddChangeOutput(addr);
+            mCommitBuilder->AddChangeOutput(move(addr));
         }
     }
     catch(...) {
@@ -610,23 +610,23 @@ void TrustlessSwapInscriptionBuilder::BuildOrdCommit()
 
 }
 
-void TrustlessSwapInscriptionBuilder::OrdScriptPubKey(const std::string& pk)
+void TrustlessSwapInscriptionBuilder::OrdScriptPubKey(xonly_pubkey pk)
 {
-    m_ord_script_pk = unhex<xonly_pubkey>(pk);
+    m_ord_script_pk = move(pk);
     if (m_ord_int_pk) {
         BuildOrdCommit();
     }
 }
 
-void TrustlessSwapInscriptionBuilder::OrdIntPubKey(const std::string& pk)
+void TrustlessSwapInscriptionBuilder::OrdIntPubKey(xonly_pubkey pk)
 {
-    m_ord_int_pk = unhex<xonly_pubkey>(pk);
+    m_ord_int_pk = move(pk);
     if (m_ord_script_pk) {
         BuildOrdCommit();
     }
 }
 
-void TrustlessSwapInscriptionBuilder::Brick1SwapUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
+void TrustlessSwapInscriptionBuilder::Brick1SwapUTXO(string txid, uint32_t nout, CAmount amount, std::string addr)
 {
     if (mCommitBuilder) throw ContractStateError("Brick 1 swap tx input already defined");
     if (m_swap_inputs.empty()) throw ContractStateError(name_ord_commit + " is not defined");
@@ -635,11 +635,11 @@ void TrustlessSwapInscriptionBuilder::Brick1SwapUTXO(const string &txid, uint32_
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+    m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
-void TrustlessSwapInscriptionBuilder::Brick2SwapUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
+void TrustlessSwapInscriptionBuilder::Brick2SwapUTXO(string txid, uint32_t nout, CAmount amount, std::string addr)
 {
     if (mCommitBuilder) throw ContractStateError("Brick 2 swap tx input already defined");
     if (m_swap_inputs.empty()) throw ContractStateError(name_ord_commit + " is not defined");
@@ -648,11 +648,11 @@ void TrustlessSwapInscriptionBuilder::Brick2SwapUTXO(const string &txid, uint32_
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+    m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
-void TrustlessSwapInscriptionBuilder::AddMainSwapUTXO(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr)
+void TrustlessSwapInscriptionBuilder::AddMainSwapUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
 {
     if (mCommitBuilder) throw ContractStateError("Main swap tx input already defined");
     if (m_swap_inputs.empty()) throw ContractStateError(name_ord_commit + " is not defined");
@@ -661,7 +661,7 @@ void TrustlessSwapInscriptionBuilder::AddMainSwapUTXO(const std::string &txid, u
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), m_swap_inputs.back().nin + 1, std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+    m_swap_inputs.emplace_back(bech32(), m_swap_inputs.back().nin + 1, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
@@ -748,7 +748,7 @@ CAmount TrustlessSwapInscriptionBuilder::CalculateWholeFee(const std::string& pa
 }
 
 
-std::string TrustlessSwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
+CAmount TrustlessSwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
 {
     if (!m_ord_price) throw ContractStateError(name_ord_price + " not defined");
     if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
@@ -757,11 +757,11 @@ std::string TrustlessSwapInscriptionBuilder::GetMinFundingAmount(const std::stri
     if (m_market_fee->Amount() < l15::Dust() * 2)
         res += l15::Dust() * 2;
 
-    return FormatAmount(res);
+    return res;
 }
 
 
-std::string TrustlessSwapInscriptionBuilder::GetMinSwapFundingAmount() const
+CAmount TrustlessSwapInscriptionBuilder::GetMinSwapFundingAmount() const
 {
     if (!m_ord_price) throw ContractStateError(name_ord_price + " not defined");
     if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
@@ -770,7 +770,7 @@ std::string TrustlessSwapInscriptionBuilder::GetMinSwapFundingAmount() const
     if (m_market_fee->Amount() < l15::Dust() * 2)
         res += m_market_fee->Amount();
 
-    return FormatAmount(res);
+    return res;
 }
 
 void TrustlessSwapInscriptionBuilder::CheckFundsCommitSig() const
@@ -806,26 +806,26 @@ std::string TrustlessSwapInscriptionBuilder::RawTransaction(TrustlessSwapPhase p
             return OrdCommitRawTransaction();
         else if (n == 1)
             return OrdSwapRawTransaction();
-        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+        else return {};
     case TRUSTLESS_FUNDS_TERMS:
     case TRUSTLESS_FUNDS_COMMIT_SIG:
         if (n == 0)
             return FundsCommitRawTransaction();
-        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+        else return {};
     case TRUSTLESS_FUNDS_SWAP_TERMS:
     case TRUSTLESS_FUNDS_SWAP_SIG:
         if (n == 0)
             return OrdCommitRawTransaction();
         else if (n == 1)
             return OrdSwapRawTransaction();
-        else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
+        else return {};
     default:
-        throw ContractStateError("Raw transaction data are not available");
+        return {};
     }
 }
 
 const std::string &TrustlessSwapInscriptionBuilder::GetContractName() const
-{ return val_swap_inscription; }
+{ return val_trustless_swap_inscription; }
 
 
 } // namespace l15::utxord

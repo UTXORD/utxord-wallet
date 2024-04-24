@@ -20,7 +20,7 @@ enum TrustlessSwapPhase {
     TRUSTLESS_FUNDS_SWAP_SIG,
 };
 
-class TrustlessSwapInscriptionBuilder : public ContractBuilder<TrustlessSwapPhase>
+class TrustlessSwapInscriptionBuilder : public ContractBuilder<utxord::TrustlessSwapPhase>
 {
     static const CAmount TX_SWAP_BASE_VSIZE = 413;
 
@@ -95,33 +95,32 @@ public:
 
     static const char* SupportedVersions() { return s_versions; }
 
-    void OrdPrice(const std::string& price)
-    { m_ord_price = l15::ParseAmount(price); }
+    void OrdPrice(CAmount price)
+    { m_ord_price = price; }
 
-    void MarketScriptPubKey(const std::string& pk)
-    { m_market_script_pk = unhex<xonly_pubkey>(pk); }
+    void MarketScriptPubKey(xonly_pubkey pk)
+    { m_market_script_pk = move(pk); }
 
-    void OrdScriptPubKey(const std::string& pk);
+    void OrdScriptPubKey(xonly_pubkey pk);
+    void OrdIntPubKey(xonly_pubkey pk);
 
-    void OrdIntPubKey(const std::string& pk);
+    void CommitOrdinal(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void FundCommitOrdinal(std::string txid, uint32_t nout, CAmount amount, std::string addr, std::string change_addr);
+    void CommitFunds(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void Brick1SwapUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void Brick2SwapUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void AddMainSwapUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
 
-    void CommitOrdinal(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr);
-    void FundCommitOrdinal(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr, const std::string& change_addr);
-    void CommitFunds(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
-    void Brick1SwapUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
-    void Brick2SwapUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
-    void AddMainSwapUTXO(const std::string &txid, uint32_t nout, const std::string &amount, const std::string& addr);
-
-    void OrdPayoffAddress(const std::string& addr)
+    void OrdPayoffAddress(std::string addr)
     {
         bech32().Decode(addr);
-        m_ord_payoff_addr = addr;
+        m_ord_payoff_addr = move(addr);
     }
 
-    void FundsPayoffAddress(const std::string& addr)
+    void FundsPayoffAddress(std::string addr)
     {
         bech32().Decode(addr);
-        m_funds_payoff_addr = addr;
+        m_funds_payoff_addr = move(addr);
     }
 
     void SignOrdSwap(const KeyRegistry &masterKey, const std::string& key_filter);
@@ -140,8 +139,8 @@ public:
     std::string RawTransaction(TrustlessSwapPhase phase, uint32_t n);
 
     CAmount CalculateWholeFee(const std::string& params) const override;
-    std::string GetMinFundingAmount(const std::string& params) const override;
-    std::string GetMinSwapFundingAmount() const;
+    CAmount GetMinFundingAmount(const std::string& params) const override;
+    CAmount GetMinSwapFundingAmount() const;
 };
 
 } // namespace l15::utxord

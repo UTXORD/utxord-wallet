@@ -271,7 +271,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
 {
     CMutableTransaction commit_tx = GetFundsCommitTxTemplate();
 
-    CAmount funds_required = ParseAmount(GetMinFundingAmount(""));
+    CAmount funds_required = GetMinFundingAmount("");
     CAmount funds_provided = 0;
     for (const auto &utxo: m_fund_inputs) {
         funds_provided += utxo.output->Destination()->Amount();
@@ -285,7 +285,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
     } else {
         commit_tx.vout.pop_back();
 
-        funds_required = ParseAmount(GetMinFundingAmount("")); // Calculate again since one output was removed
+        funds_required = GetMinFundingAmount(""); // Calculate again since one output was removed
     }
 
     if(funds_provided < funds_required) {
@@ -563,7 +563,7 @@ void SwapInscriptionBuilder::CheckContractTerms(SwapPhase phase) const
 
                 ++n;
             }
-            CAmount req_amount = ParseAmount(GetMinFundingAmount(""));
+            CAmount req_amount = GetMinFundingAmount("");
             if (funds_amount < req_amount) throw ContractFundsNotEnough(FormatAmount(funds_amount) + ", required: " + FormatAmount(req_amount));
         }
         if (!m_swap_script_pk_B) throw ContractTermMissing(std::string(name_swap_script_pk_B));
@@ -852,20 +852,20 @@ std::vector<std::pair<CAmount,CMutableTransaction>> SwapInscriptionBuilder::GetT
     };
 }
 
-void SwapInscriptionBuilder::OrdUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
+void SwapInscriptionBuilder::OrdUTXO(string txid, uint32_t nout, CAmount amount, std::string addr)
 {
     try {
-        m_ord_input.emplace(bech32(), 0, std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+        m_ord_input.emplace(bech32(), 0, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     }
     catch(...) {
         std::throw_with_nested(ContractTermWrongValue(name_ord_input.c_str()));
     }
 }
 
-void SwapInscriptionBuilder::AddFundsUTXO(const string &txid, uint32_t nout, const string &amount, const std::string& addr)
+void SwapInscriptionBuilder::AddFundsUTXO(string txid, uint32_t nout, CAmount amount, std::string addr)
 {
     try {
-        m_fund_inputs.emplace_back(bech32(), m_fund_inputs.size(), std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+        m_fund_inputs.emplace_back(bech32(), m_fund_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     }
     catch(...) {
         std::throw_with_nested(ContractTermWrongValue(name_funds + '[' + std::to_string(m_fund_inputs.size()) + ']'));
@@ -902,9 +902,9 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
     }
 }
 
-std::string SwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
+CAmount SwapInscriptionBuilder::GetMinFundingAmount(const std::string& params) const
 {
-    return FormatAmount(*m_ord_price + m_market_fee->Amount() + CalculateWholeFee(params));
+    return *m_ord_price + m_market_fee->Amount() + CalculateWholeFee(params);
 }
 
 void SwapInscriptionBuilder::CheckFundsCommitSig() const
@@ -1011,8 +1011,32 @@ std::string SwapInscriptionBuilder::RawTransaction(SwapPhase phase, uint32_t n)
 //    case MARKET_PAYOFF_SIG:
 //    case MARKET_PAYOFF_TERMS:
     default:
-        throw ContractStateError("Raw transaction data are not available");
+        return {};
     }
+}
+
+std::shared_ptr<IContractOutput> SwapInscriptionBuilder::InscriptionOutput() const
+{
+    auto tx = GetPayoffTx();
+    return std::make_shared<UTXO>(chain(), tx.GetHash().GetHex(), 0, tx.vout.front().nValue, *m_ord_payoff_addr);
+}
+
+std::shared_ptr<IContractOutput> SwapInscriptionBuilder::FundsOutput() const
+{
+    auto tx = GetSwapTx();
+    return std::make_shared<UTXO>(chain(), tx.GetHash().GetHex(), 1, tx.vout[1].nValue, *m_funds_payoff_addr);
+}
+
+std::shared_ptr<IContractOutput> SwapInscriptionBuilder::ChangeOutput() const
+{
+    std::shared_ptr<IContractOutput> res;
+    if (m_change_addr) {
+        auto commitTx = GetFundsCommitTx();
+        if (commitTx.vout.size() > 1) {
+            res = std::make_shared<UTXO>(chain(), commitTx.GetHash().GetHex(), 1, commitTx.vout[1].nValue, *m_change_addr);
+        }
+    }
+    return res;
 }
 
 } // namespace l15::utxord

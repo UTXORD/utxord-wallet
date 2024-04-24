@@ -103,9 +103,6 @@ CScript CreateInscriptionBuilder::MakeInscriptionScript() const
 
 std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilder::GenesisTapRoot() const
 {
-
-//    if (!m_content) throw ContractStateError(name_content + " not defined");
-//    if (!m_content_type) throw ContractStateError(name_content_type + " not defined");
     if (!m_inscribe_int_pk) throw ContractStateError(name_inscribe_int_pk + " not defined");
     if (!m_inscribe_script_pk) throw ContractStateError(name_inscribe_script_pk + " not defined");
     if (m_type == LAZY_INSCRIPTION) {
@@ -129,49 +126,46 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
 }
 
 
-void CreateInscriptionBuilder::AddUTXO(const std::string &txid, uint32_t nout,
-                                                            const std::string& amount,
-                                                            const std::string& addr)
+void CreateInscriptionBuilder::AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
 {
-    m_inputs.emplace_back(bech32(), m_inputs.size(), std::make_shared<UTXO>(chain(), txid, nout, ParseAmount(amount), addr));
+    m_inputs.emplace_back(bech32(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
 }
 
-void CreateInscriptionBuilder::AddToCollection(const std::string& collection_id,
-                                               const std::string& utxo_txid, uint32_t utxo_nout, const std::string& amount,
-                                               const std::string& collection_addr)
+void CreateInscriptionBuilder::AddToCollection(std::string collection_id,
+                                               std::string utxo_txid, uint32_t utxo_nout, CAmount amount,
+                                               std::string collection_addr)
 {
-    Collection(collection_id, amount, collection_addr);
-    m_collection_input.emplace(bech32(), 1, std::make_shared<UTXO>(chain(), utxo_txid, utxo_nout, ParseAmount(amount), collection_addr));
+    Collection(move(collection_id), amount, collection_addr);
+    m_collection_input.emplace(bech32(), 1, std::make_shared<UTXO>(chain(), move(utxo_txid), utxo_nout, amount, move(collection_addr)));
 }
 
-void CreateInscriptionBuilder::Collection(const std::string &collection_id, const std::string &amount, const std::string &collection_addr)
+void CreateInscriptionBuilder::Collection(std::string collection_id, CAmount amount, std::string collection_addr)
 {
     if (m_parent_collection_id) {
         if (m_parent_collection_id != collection_id) throw ContractTermMismatch(name_collection_id + ": " + *m_parent_collection_id);
     }
     else {
         CheckInscriptionId(collection_id);
-        m_parent_collection_id = collection_id;
+        m_parent_collection_id = move(collection_id);
     }
 
     if (m_collection_destination) {
-        if (m_collection_destination->Amount() != ParseAmount(amount) ||
+        if (m_collection_destination->Amount() != amount ||
             m_collection_destination->Address() != collection_addr)
             throw ContractTermMismatch(name_collection_destination.c_str());
     }
     else
-        m_collection_destination = P2Witness::Construct(chain(), ParseAmount(amount), collection_addr);
+        m_collection_destination = P2Witness::Construct(chain(), amount, move(collection_addr));
 }
 
-void CreateInscriptionBuilder::OverrideCollectionAddress(const std::string &addr)
+void CreateInscriptionBuilder::OverrideCollectionAddress(std::string addr)
 {
     if (!m_collection_destination) throw ContractStateError(name_collection_destination + " is needed to override collection address");
-    m_collection_destination = P2Witness::Construct(chain(), m_collection_destination->Amount(), addr);
+    m_collection_destination = P2Witness::Construct(chain(), m_collection_destination->Amount(), move(addr));
 }
 
-void CreateInscriptionBuilder::MetaData(const string &metadata)
+void CreateInscriptionBuilder::MetaData(bytevector cbor)
 {
-    bytevector cbor = l15::unhex<bytevector>(metadata);
     auto check_metadata = nlohmann::json::from_cbor(cbor);
     if (check_metadata.is_discarded())
         throw ContractTermWrongFormat(std::string(name_metadata));
@@ -179,21 +173,10 @@ void CreateInscriptionBuilder::MetaData(const string &metadata)
     m_metadata = move(cbor);
 }
 
-void CreateInscriptionBuilder::Rune(std::shared_ptr<RuneStoneDestination> runeStone)
-{
-    m_rune_stone = runeStone;
-}
-
-void CreateInscriptionBuilder::Data(const std::string& content_type, const std::string &hex_data)
-{
-    m_content_type = content_type;
-    m_content = unhex<bytevector>(hex_data);
-}
-
-void CreateInscriptionBuilder::Delegate(const std::string& inscription_id)
+void CreateInscriptionBuilder::Delegate(std::string inscription_id)
 {
     CheckInscriptionId(inscription_id);
-    m_delegate = inscription_id;
+    m_delegate = move(inscription_id);
 }
 
 std::string CreateInscriptionBuilder::GetInscribeInternalPubKey() const
@@ -233,7 +216,6 @@ void CreateInscriptionBuilder::SignCommit(const KeyRegistry& master_key, const s
     }
 }
 
-
 const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>& CreateInscriptionBuilder::GetInscriptionTapRoot() const
 {
     if (!mInscriptionTaproot) {
@@ -241,13 +223,6 @@ const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>& CreateInscriptio
     }
     return *mInscriptionTaproot;
 }
-
-
-std::string CreateInscriptionBuilder::GetIntermediateSecKey() const
-{
-    return hex(get<0>(GetInscriptionTapRoot()));
-}
-
 
 void CreateInscriptionBuilder::SignCollection(const KeyRegistry &master_key, const std::string& key_filter)
 {
@@ -859,7 +834,7 @@ std::string CreateInscriptionBuilder::MakeInscriptionId() const
     return MakeGenesisTx().GetHash().GetHex() + "i0";
 }
 
-std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
+CAmount CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
     if(!m_ord_destination) throw ContractStateError(std::string(name_ord_amount));
     if (!m_delegate) {
         if (!m_content_type) throw ContractTermMissing(std::string(name_content_type));
@@ -874,7 +849,7 @@ std::string CreateInscriptionBuilder::GetMinFundingAmount(const std::string& par
     if (m_rune_stone)
         amount += m_rune_stone->Amount();
 
-    return FormatAmount(amount);
+    return amount;
 }
 
 std::string CreateInscriptionBuilder::GetGenesisTxMiningFee() const
@@ -925,54 +900,54 @@ CAmount CreateInscriptionBuilder::CalculateWholeFee(const std::string& params) c
     return genesis_fee + CFeeRate(*m_mining_fee_rate).GetFee(genesis_vsize_add + commit_vsize);
 }
 
-std::string CreateInscriptionBuilder::GetInscriptionLocation() const
+std::shared_ptr<IContractOutput> CreateInscriptionBuilder::InscriptionOutput() const
 {
-    UniValue res(UniValue::VOBJ);
-
-    res.pushKV("txid", GenesisTx().GetHash().GetHex());
-    res.pushKV("nout", 0);
-    res.pushKV("amount", FormatAmount(GenesisTx().vout[0].nValue));
-
-    return res.write();
+    return std::make_shared<UTXO>(chain(), GenesisTx().GetHash().GetHex(), 0, m_ord_destination);
 }
 
-std::string CreateInscriptionBuilder::GetCollectionLocation() const
+std::shared_ptr<IContractOutput> CreateInscriptionBuilder::CollectionOutput() const
 {
-    UniValue res(UniValue::VOBJ);
-
-    res.pushKV("txid", GenesisTx().GetHash().GetHex());
-    res.pushKV("nout", 1);
-    res.pushKV("amount", FormatAmount(GenesisTx().vout[1].nValue));
-
-    return res.write();
+    if (m_collection_destination) {
+        return std::make_shared<UTXO>(chain(), GenesisTx().GetHash().GetHex(), 1, m_collection_destination);
+    }
+    else
+        return {};
 }
 
-std::string CreateInscriptionBuilder::GetChangeLocation() const
+std::shared_ptr<IContractOutput> CreateInscriptionBuilder::ChangeOutput() const
 {
-    UniValue res(UniValue::VOBJ);
-
+    std::shared_ptr<IContractOutput> res;
     if (m_change_addr) {
         CMutableTransaction commitTx = CommitTx();
-        if (m_parent_collection_id) {
+        if (m_parent_collection_id && m_fixed_change) {
+            if (commitTx.vout.size() == 4) {
+                res = std::make_shared<UTXO>(chain(), commitTx.GetHash().GetHex(), 3, commitTx.vout[3].nValue, *m_change_addr);
+            }
+        }
+        if (m_parent_collection_id || m_fixed_change) {
             if (commitTx.vout.size() == 3) {
-                res.pushKV("txid", commitTx.GetHash().GetHex());
-                res.pushKV("nout", 2);
-                res.pushKV("amount", FormatAmount(commitTx.vout[2].nValue));
+                res = std::make_shared<UTXO>(chain(), commitTx.GetHash().GetHex(), 2, commitTx.vout[2].nValue, *m_change_addr);
             }
         }
         else {
             if (commitTx.vout.size() == 2) {
-                res.pushKV("txid", commitTx.GetHash().GetHex());
-                res.pushKV("nout", 1);
-                res.pushKV("amount", FormatAmount(commitTx.vout[1].nValue));
+                res = std::make_shared<UTXO>(chain(), commitTx.GetHash().GetHex(), 1, commitTx.vout[1].nValue, *m_change_addr);
             }
         }
     }
-
-    return res.write();
+    return res;
 }
 
-std::string CreateInscriptionBuilder::RawTransaction(uint32_t n) const
+std::shared_ptr<IContractOutput> CreateInscriptionBuilder::FixedChangeOutput() const
+{
+    if (m_fixed_change) {
+        return std::make_shared<UTXO>(chain(), CommitTx().GetHash().GetHex(), m_parent_collection_id ? 2 : 1, m_fixed_change);
+    }
+    else
+        return {};
+}
+
+std::string CreateInscriptionBuilder::RawTransaction(InscribePhase phase, uint32_t n) const
 {
     if (n == 0) {
         return EncodeHexTx(CTransaction(MakeCommitTx()));

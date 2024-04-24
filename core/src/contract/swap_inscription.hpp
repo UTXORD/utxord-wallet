@@ -141,32 +141,32 @@ public:
 
     static const char* SupportedVersions() { return s_versions; }
 
-    void OrdPrice(const std::string& price)
-    { m_ord_price = l15::ParseAmount(price); }
+    void OrdPrice(CAmount price)
+    { m_ord_price = price; }
 
-    void OrdUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
-    void AddFundsUTXO(const std::string& txid, uint32_t nout, const std::string& amount, const std::string& addr);
+    void OrdUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void AddFundsUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
 
-    void OrdPayoffAddress(const std::string& addr)
+    void OrdPayoffAddress(std::string addr)
     {
         bech32().Decode(addr);
-        m_ord_payoff_addr = addr;
+        m_ord_payoff_addr = move(addr);
     }
 
-    void FundsPayoffAddress(const std::string& addr)
+    void FundsPayoffAddress(std::string addr)
     {
         bech32().Decode(addr);
-        m_funds_payoff_addr = addr;
+        m_funds_payoff_addr = move(addr);
     }
 
-    void SwapScriptPubKeyB(const std::string& v) { m_swap_script_pk_B = unhex<xonly_pubkey>(v); }
+    void SwapScriptPubKeyB(xonly_pubkey v) { m_swap_script_pk_B = move(v); }
 
-    std::string GetSwapScriptPubKeyB() const { return hex(m_swap_script_pk_B.value()); }
+    const xonly_pubkey& GetSwapScriptPubKeyB() const { return m_swap_script_pk_B.value(); }
 
-    void SetOrdMiningFeeRate(const std::string& fee_rate) { m_ord_mining_fee_rate = l15::ParseAmount(fee_rate); }
+    void SetOrdMiningFeeRate(CAmount fee_rate) { m_ord_mining_fee_rate = fee_rate; }
 
-    std::string GetSwapScriptPubKeyM() const { return hex(m_swap_script_pk_M.value()); }
-    void SetSwapScriptPubKeyM(const std::string& v) { m_swap_script_pk_M = unhex<xonly_pubkey>(v); }
+    const xonly_pubkey& GetSwapScriptPubKeyM() const { return m_swap_script_pk_M.value(); }
+    void SetSwapScriptPubKeyM(xonly_pubkey v) { m_swap_script_pk_M = move(v); }
 
     void SignOrdSwap(const KeyRegistry &master_key, const std::string& key_filter);
 
@@ -186,7 +186,11 @@ public:
     uint32_t TransactionCount(SwapPhase phase) const;
     std::string RawTransaction(SwapPhase phase, uint32_t n);
 
-    std::string GetMinFundingAmount(const std::string& params) const override;
+    CAmount GetMinFundingAmount(const std::string& params) const override;
+
+    std::shared_ptr<IContractOutput> InscriptionOutput() const;
+    std::shared_ptr<IContractOutput> FundsOutput() const;
+    std::shared_ptr<IContractOutput> ChangeOutput() const;
 };
 
 } // namespace l15::utxord
