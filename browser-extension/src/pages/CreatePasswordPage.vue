@@ -24,6 +24,7 @@
           <CustomInput
             type="password"
             v-model="password"
+            @change="upDatePasswordFromLocalStorage"
             autofocus
             :rules="[
               (val) => isASCII(val) || 'Please enter only Latin characters',
@@ -39,6 +40,7 @@
           <CustomInput
             type="password"
             v-model="confirmPassword"
+            @change="upDatePasswordFromLocalStorage"
             :rules="[
               (val) => isASCII(val) || 'Please enter only Latin characters',
               (val) =>
@@ -57,7 +59,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="goToBack"
         >
           <ArrowLeftIcon />
         </Button>
@@ -75,16 +77,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeMount } from 'vue'
 import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
 import { SET_UP_PASSWORD } from '~/config/events'
+import CustomInput from '~/components/CustomInput.vue'
 
 import { isASCII, isLength, isContains } from '~/helpers/index'
 
 const { back, push } = useRouter()
+
 const password = ref('')
 const confirmPassword = ref('')
+
+const SET_UP_PASSWORD_PAGE = 'SET_UP_PASSWORD_PAGE'
+const SET_UP_PASSWORD_CONFIRM_PAGE = 'SET_UP_PASSWORD_CONFIRM_PAGE'
+
+function upDatePasswordFromLocalStorage(){
+  console.log('password.value:', password.value)
+  console.log('confirmPassword.value:', confirmPassword.value)
+  localStorage?.setItem(SET_UP_PASSWORD_PAGE, password.value)
+  localStorage?.setItem(SET_UP_PASSWORD_CONFIRM_PAGE, confirmPassword.value)
+}
 
 const isDisabled = computed(() => {
   if (!password.value.length || !confirmPassword.value.length) return true
@@ -97,6 +111,16 @@ const isDisabled = computed(() => {
 
 const page = computed(() =>window?.history?.state?.current?.split('#')[1])
 
+function removeTempDataFromLocalStorage() {
+  localStorage.removeItem(SET_UP_PASSWORD_PAGE)
+  localStorage.removeItem(SET_UP_PASSWORD_CONFIRM_PAGE)
+}
+
+function goToBack() {
+  removeTempDataFromLocalStorage()
+  back()
+}
+
 async function onConfirm() {
   const setuped = await sendMessage(
     SET_UP_PASSWORD,
@@ -106,9 +130,33 @@ async function onConfirm() {
     'background'
   )
   if (setuped) {
+    localStorage?.setItem(SET_UP_PASSWORD, true)
     push(`/${page.value}`)
   }
 }
+
+async function getPassword() {
+  const isPassSetUpd = Boolean(localStorage?.getItem(SET_UP_PASSWORD))
+  if(isPassSetUpd === true){
+  console.log('isPassSetUpd:', isPassSetUpd)
+  console.log(`/${page.value}`)
+    push(`/${page.value}`)
+  }
+  const tempPassword = localStorage?.getItem(SET_UP_PASSWORD_PAGE)
+  const tempConfirmPassword = localStorage?.getItem(SET_UP_PASSWORD_CONFIRM_PAGE)
+
+  console.log('tempPassword:', tempPassword);
+  if (tempPassword) {
+    password.value = tempPassword
+    confirmPassword.value = tempConfirmPassword
+  }
+
+}
+
+onBeforeMount(() => {
+console.log('onBeforeMount')
+  getPassword()
+})
 </script>
 
 <style lang="scss" scoped>

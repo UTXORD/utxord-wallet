@@ -17,7 +17,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="goToBack"
         >
           <ArrowLeftIcon />
         </Button>
@@ -33,9 +33,17 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { SET_UP_PASSWORD } from '~/config/events'
 const { back, push } = useRouter()
 async function GotIt() {
   push('/generate')
+}
+function goToBack(){
+  const isPassSetUpd = Boolean(localStorage?.getItem(SET_UP_PASSWORD))
+  if(isPassSetUpd){
+    return push('/start')
+  }
+  return back()
 }
 </script>
 
