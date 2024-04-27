@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import {sendMessage} from 'webext-bridge';
-import {CHECK_AUTH} from '~/config/events';
+import {CHECK_AUTH, CURRENT_PAGE} from '~/config/events';
 
 const START_ROUTE = {
   path: '/start',
@@ -137,13 +137,18 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
-  console.log('authenticated:', authenticated, 'to.path:', to.path);
-
-  if (!authenticated && to.path !== START_ROUTE.path && to.matched.some((record) => record.meta.requiresAuth)) {
-    next({ path: START_ROUTE.path });
-  } else {
-    next();
+  const currentPage = await localStorage?.getItem(CURRENT_PAGE)
+  const pageMatched = await to.matched.some(record => record.meta.requiresAuth)
+  console.log('authenticated:', authenticated, ' to.path:', to.path);
+  if (!authenticated && pageMatched) {
+    if(!currentPage) next({ path: START_ROUTE.path });
+    if(currentPage === '/') next({ path: START_ROUTE.path });
+    if(currentPage !=='/' && currentPage !== START_ROUTE.path){
+      next({ path: currentPage });
+    }
   }
+  await localStorage?.setItem(CURRENT_PAGE, to.path);
+  next();
 })
 
 export default router

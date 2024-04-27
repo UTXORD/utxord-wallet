@@ -145,7 +145,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="goToBack"
         >
           <ArrowLeftIcon />
         </Button>
@@ -164,12 +164,13 @@
 import { ref, computed } from 'vue'
 import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
-import { SAVE_GENERATED_SEED } from '~/config/events'
+import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
 import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid} from '~/helpers/index'
 import useWallet from '~/popup/modules/useWallet'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 
 const { back, push } = useRouter()
+
 const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
 const usePassphrase = ref(false)
@@ -270,6 +271,13 @@ async function onStore() {
     getBalance()
     push('/')
   }
+}
+function goToBack(){
+  const isPassSetUpd = Boolean(localStorage?.getItem(SET_UP_PASSWORD))
+  if(isPassSetUpd){
+    return push('/start')
+  }
+  return back()
 }
 </script>
 
