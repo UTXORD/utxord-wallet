@@ -142,6 +142,7 @@ router.beforeEach(async (to, from, next) => {
   console.log('authenticated:', authenticated, ' to.path:', to.path);
   if (!authenticated && pageMatched) {
     if(!currentPage) next({ path: START_ROUTE.path });
+    if(to.path === '/' && currentPage === START_ROUTE.path) next({ path: START_ROUTE.path });
     if(currentPage === '/') next({ path: START_ROUTE.path });
     if(currentPage !=='/' && currentPage !== START_ROUTE.path){
       next({ path: currentPage });
