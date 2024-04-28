@@ -109,16 +109,21 @@ const isDisabled = computed(() => {
   return false
 })
 
-const page = computed(() =>window?.history?.state?.current?.split('#')[1])
+const page = computed(() =>{
+  const current_page = window?.history?.state?.current?.split('#')[1] || localStorage?.getItem('current-page')
+  if(!current_page) return 'start'
+  return current_page;
+})
 
 function removeTempDataFromLocalStorage() {
   localStorage.removeItem(SET_UP_PASSWORD_PAGE)
   localStorage.removeItem(SET_UP_PASSWORD_CONFIRM_PAGE)
+  localStorage.removeItem('current-page')
 }
 
 function goToBack() {
   removeTempDataFromLocalStorage()
-  back()
+  push('/start')
 }
 
 async function onConfirm() {
@@ -154,7 +159,10 @@ async function getPassword() {
 }
 
 onBeforeMount(() => {
-console.log('onBeforeMount')
+  console.log('onBeforeMount')
+  const current_page = window?.history?.state?.current?.split('#')[1] || localStorage?.getItem('current-page')
+  console.log('current_page:', current_page);
+  if(current_page) localStorage?.setItem('current-page', current_page)
   getPassword()
 })
 </script>
