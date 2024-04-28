@@ -41,7 +41,7 @@
 import { toRefs } from 'vue'
 import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
-import { UNLOAD_SEED } from '~/config/events'
+import {UNLOAD_SEED, SET_UP_PASSWORD } from '~/config/events'
 import Modal from '~/components/Modal.vue'
 import ThemeBtn from '~/components/ThemeBtn.vue'
 import { useStore } from '~/popup/store'
@@ -54,8 +54,8 @@ const { fundAddress } = toRefs(store)
 function unload() {
   localStorage.removeItem('temp-mnemonic')
   localStorage.removeItem(SET_UP_PASSWORD)
-  localStorage.removeItem(SET_UP_PASSWORD_PAGE)
-  localStorage.removeItem(SET_UP_PASSWORD_CONFIRM_PAGE)
+  localStorage.removeItem('SET_UP_PASSWORD_PAGE')
+  localStorage.removeItem('SET_UP_PASSWORD_CONFIRM_PAGE')
   store.clearStore()
   sendMessage(UNLOAD_SEED, {}, 'background')
 }
