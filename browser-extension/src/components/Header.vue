@@ -53,6 +53,9 @@ const { fundAddress } = toRefs(store)
 
 function unload() {
   localStorage.removeItem('temp-mnemonic')
+  localStorage.removeItem(SET_UP_PASSWORD)
+  localStorage.removeItem(SET_UP_PASSWORD_PAGE)
+  localStorage.removeItem(SET_UP_PASSWORD_CONFIRM_PAGE)
   store.clearStore()
   sendMessage(UNLOAD_SEED, {}, 'background')
 }
