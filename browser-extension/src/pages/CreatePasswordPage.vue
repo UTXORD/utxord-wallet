@@ -118,7 +118,7 @@ function removeTempDataFromLocalStorage() {
 
 function goToBack() {
   removeTempDataFromLocalStorage()
-  back()
+  push('/start')
 }
 
 async function onConfirm() {
