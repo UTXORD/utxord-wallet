@@ -23,6 +23,7 @@
               : TYPE_PASSWORD
             : props.type
         "
+        :value="props.modelValue"
         :model-value="props.modelValue"
         @input="onInput"
         class="w-full bg-[var(--bg-color)] text-[var(--text-color)]"

@@ -42,13 +42,25 @@
         <CustomInput
           v-if="picked == 'line'"
           @change="inputWords"
+          @input="inputWords"
           type="textarea"
           class="w-full"
           autofocus
           rows="3"
           placeholder="Enter your phrase here"
-          v-model="textarea"
+          v-model.lazy="textarea"
+          :rules="[
+            (val) => isASCII(val) || 'Please enter only Latin characters'
+          ]"
         />
+        <div
+          v-if="flag_check"
+          class="custom-input_error"
+          :class="my-2"
+        >
+          <span v-if="!valid" class="text-red-300 text-left">Invalid checksum menemonic</span>
+        </div>
+        <NotifyInBody/>
         <table style="width: 100%;" v-if="picked == 'list'">
         <!-- for 12 words -->
           <tbody v-if="length == 12" v-for="n in 4">
@@ -133,7 +145,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="goToBack"
         >
           <ArrowLeftIcon />
         </Button>
@@ -152,10 +164,13 @@
 import { ref, computed } from 'vue'
 import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
-import { SAVE_GENERATED_SEED } from '~/config/events'
+import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
+import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid} from '~/helpers/index'
 import useWallet from '~/popup/modules/useWallet'
+import NotifyInBody from '~/components/NotifyInBody.vue'
 
 const { back, push } = useRouter()
+
 const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
 const usePassphrase = ref(false)
@@ -165,9 +180,15 @@ const list = ref([])
 const length = ref(12)
 const showInfo = ref(false)
 
+const valid = ref(false)
+
+const flag_check = ref(false)
+
 const MNEMONIC_KEY = 'temp-mnemonic'
 
+
 const isDisabled = computed(() => {
+  checkValid(textarea.value?.trim())
   const seedArr = textarea.value?.trim()?.split(' ')
   if (seedArr.length !== 12 &&
       seedArr.length !== 15 &&
@@ -175,10 +196,24 @@ const isDisabled = computed(() => {
       seedArr.length !== 21 &&
       seedArr.length !== 24) return true
   if (!textarea.value) return true
+  if (!valid.value) return true
   return false
 })
 
+function checkValid(val = ''){
+  (async ()=>{
+    valid.value = await isMnemonicValid(val.trim())
+    if(val.length){
+     flag_check.value = true
+     }else{
+     flag_check.value = false
+     }
+  })()
+  return valid.value
+}
+
 async function inputWords(e){
+    checkValid(textarea.value?.trim())
   const l = await list.value
 
   if(picked.value === 'line'){
@@ -220,13 +255,7 @@ function viewShowInfo(){
   showInfo.value = !showInfo.value
   return true
 }
-/*
-function clearTextarea(){
-  textarea.value = ''
-  list.value = []
-  return true
-}
-*/
+
 async function onStore() {
   localStorage?.setItem(MNEMONIC_KEY, textarea.value.replace(/\s\s+/g, ' ').trim())
   const generated = await sendMessage(
@@ -237,11 +266,18 @@ async function onStore() {
     },
     'background'
   )
-  if (generated) {
+  if (generated === true) {
     await getFundAddress()
     getBalance()
     push('/')
   }
+}
+function goToBack(){
+  const isPassSetUpd = Boolean(localStorage?.getItem(SET_UP_PASSWORD))
+  if(isPassSetUpd){
+    return push('/start')
+  }
+  return back()
 }
 </script>
 

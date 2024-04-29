@@ -191,7 +191,8 @@ interface ICollectionTransferResult {
 (async () => {
   try {
     let store = HashedStore.getInstance();
-
+    const Api = await new self.Api(NETWORK);
+    Api.sentry();
     // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
     let popupPort: Port | null = null;
@@ -228,18 +229,14 @@ interface ICollectionTransferResult {
 
       port.onMessage.addListener(async (payload) => {
         if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) return;
-
-        await checkPossibleTabsConflict();
-        postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
-
-        Scheduler.getInstance().action = async () => {
-          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: Api?.connect});
-        }
+          await checkPossibleTabsConflict();
+          const connect = await Api.connect;
+          postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: connect });
+          Scheduler.getInstance().action = async () => {
+            postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: connect });
+          }
       });
     });
-
-    const Api = await new self.Api(NETWORK);
-    Api.sentry();
 
     if(NETWORK === TESTNET){
       self.api = Api; // for debuging in devtols
