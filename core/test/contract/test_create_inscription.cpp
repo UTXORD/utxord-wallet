@@ -686,7 +686,15 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
 
-    w->btc().GenerateToAddress(return_addr, "5");
+    w->btc().GenerateToAddress(return_addr, "4");
+
+    LogTx(revealTx);
+
+    REQUIRE_THROWS(w->btc().SpendTx(CTransaction(revealTx)));
+
+    w->btc().GenerateToAddress(return_addr, "1");
+
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
     LogTx(revealTx);
 

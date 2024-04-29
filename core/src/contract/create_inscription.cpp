@@ -762,6 +762,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
         tx.vout.emplace_back(m_author_fee->Amount(), m_author_fee->PubKeyScript());
     }
     if (m_rune_stone) {
+        tx.vin.front().nSequence = 5;
         tx.vout.emplace_back(m_rune_stone->Amount(), m_rune_stone->PubKeyScript());
     }
 
