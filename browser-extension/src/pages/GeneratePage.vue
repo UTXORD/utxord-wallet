@@ -280,7 +280,7 @@ async function onStore() {
 
 function goToBack() {
   removeTempDataFromLocalStorage()
-  back()
+  push('/start')
 }
 
 function refreshMnemonic() {
