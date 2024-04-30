@@ -1251,7 +1251,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
     return `${message}`;
   }
 
-  async sendWarningMessage(type?: string, warning: any) {
+  async sendWarningMessage(type?: string, warning: any, reportToSentry: boolean = true) {
     let errorStack = '';
     warning = this.getErrorMessage(warning);
     const errorMessage = warning?.message || warning;
@@ -1265,7 +1265,9 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`);
       setTimeout(() =>this.warning_count = 0, 3000);
     }
-    this.sentry(warning);
+    if (reportToSentry) {
+      this.sentry(warning);
+    }
     console.warn(type, errorMessage, errorStack);
 
 
