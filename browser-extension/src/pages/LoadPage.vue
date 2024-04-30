@@ -15,7 +15,7 @@
       <div
         class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3"
       >
-        <div class="flex items-center mb-2 hidden">
+        <div class="flex items-center mb-2">
           <span class="w-full text-[var(--text-grey-color)]"
             >Show as: &nbsp;
           <input type="radio" v-model="picked" name="picked" value="line" checked/>
@@ -133,7 +133,7 @@
         <div class="load-screen_form-input flex flex-col">
           <span class="mb-2 w-full text-[var(--text-grey-color)]">Passphrase (optional)</span>
           <CustomInput
-            type="text"
+            type="password"
             v-model="passphrase"
             name="passphrase"
           />
