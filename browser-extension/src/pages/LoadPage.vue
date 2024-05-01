@@ -132,6 +132,7 @@
             type="password"
             v-model="passphrase"
             name="passphrase"
+            @input="saveTempDataToLocalStorage"
           />
         </div>
       </div>
@@ -185,11 +186,22 @@ const PHRASE_LENGTH_OPTIONS = [
 
 
 const textarea = ref('')
-const usePassphrase = ref(false)
-const passphrase = ref('')
+
 const picked = ref('list')
-const list = ref([])
-const passphraseLength = ref(LENGTH_12.value)
+
+const usePassphrase = ref(
+  Boolean(localStorage?.getItem(PASSPHRASE_KEY)) || false
+)
+
+const passphrase = ref(
+  localStorage?.getItem(PASSPHRASE_KEY) || ''
+)
+const list = ref(
+  localStorage?.getItem(MNEMONIC_KEY)?.trim()?.split(' ') || []
+)
+const passphraseLength = ref(
+  Number(localStorage?.getItem(MNEMONIC_LENGTH)) || LENGTH_12.value
+)
 const showInfo = ref(false)
 
 const valid = ref(false)
@@ -197,9 +209,12 @@ const valid = ref(false)
 const flag_check = ref(false)
 
 const MNEMONIC_KEY = 'temp-mnemonic'
+const MNEMONIC_LENGTH = 'mnemonic-length'
+const PASSPHRASE_KEY = 'passphrase-key'
 
 function onChangePhraseLength(option) {
   passphraseLength.value = option;
+  saveTempDataToLocalStorage()
 }
 
 const isDisabled = computed(() => {
@@ -240,9 +255,11 @@ console.log('picked.value:', picked.value);
         list.value.length === 21 ||
         list.value.length === 24){
           passphraseLength.value = list.value.length
+          saveTempDataToLocalStorage()
           return;
         }
         passphraseLength.value = 12
+        saveTempDataToLocalStorage()
     return;
   }
 
@@ -254,21 +271,38 @@ console.log('picked.value:', picked.value);
     if(list.value.length >= e.target.value?.trim()?.split(' ')?.length){
       textarea.value = list.value?.join(' ')?.trim()
     }
-console.log('list.value.length:', list.value.length)
+
     if (list.value.length === 12 ||
         list.value.length === 15 ||
         list.value.length === 18 ||
         list.value.length === 21 ||
         list.value.length === 24){
         passphraseLength.value = list.value.length
+        saveTempDataToLocalStorage()
           return;
     }
+    saveTempDataToLocalStorage()
     return;
   }
   if(!passphraseLength.value) passphraseLength.value = 12
+  saveTempDataToLocalStorage()
   return;
 }
 
+function saveTempDataToLocalStorage(){
+console.log('save to store')
+  localStorage?.setItem(MNEMONIC_LENGTH, passphraseLength.value)
+  localStorage?.setItem(MNEMONIC_KEY, list.value.join(' '))
+  localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)
+
+
+}
+
+function removeTempDataFromLocalStorage() {
+  localStorage?.removeItem(MNEMONIC_LENGTH)
+  localStorage?.removeItem(MNEMONIC_KEY)
+  localStorage?.removeItem(PASSPHRASE_KEY)
+}
 
 function viewShowInfo(){
   showInfo.value = !showInfo.value
@@ -288,16 +322,28 @@ async function onStore() {
   if (generated === true) {
     await getFundAddress()
     getBalance()
+    removeTempDataFromLocalStorage()
     push('/')
   }
 }
+
 function goToBack(){
   const isPassSetUpd = Boolean(localStorage?.getItem(SET_UP_PASSWORD))
+  removeTempDataFromLocalStorage()
   if(isPassSetUpd){
     return push('/start')
   }
   return back()
 }
+onBeforeMount(() => {
+  console.log('onBeforeMount')
+  if(list.value.length) inputWords({
+    target:{
+      value: list.value.join(' ')
+    }
+  })
+
+})
 </script>
 
 <style lang="scss" scoped>
