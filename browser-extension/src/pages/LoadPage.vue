@@ -15,12 +15,12 @@
       <div
         class="load-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3"
       >
-        <div class="flex items-center mb-2">
+        <div class="flex items-center mb-2 hidden">
           <span class="w-full text-[var(--text-grey-color)]"
             >Show as: &nbsp;
-          <input type="radio" v-model="picked" name="picked" value="line" checked/>
+          <input type="radio" v-model="picked" name="picked" value="line"/>
           &nbsp;<label for="line">Line</label> or
-          <input type="radio" v-model="picked" name="picked" value="list" />
+          <input type="radio" v-model="picked" name="picked" value="list" checked />
           &nbsp;<label for="list">List</label>
           </span>
           </div>
@@ -28,16 +28,11 @@
             <span class="w-full text-[var(--text-grey-color)]"
               >Words length:</span
               >
-                <select
-                v-model="length"
-                style="font-size: 14px; font-family: Arial;"
-                class="load-screen_form w-full flex flex-col mr-2 bg-[var(--bg-color)] text-[var(--text-color)]">
-                  <option value="12" :selected="length === 12" class="w-full text-[var(--text-grey-color)]">12</option>
-                  <option value="15" :selected="length === 15" class="w-full text-[var(--text-grey-color)]">15</option>
-                  <option value="18" :selected="length === 18" class="w-full text-[var(--text-grey-color)]">18</option>
-                  <option value="21" :selected="length === 21" class="w-full text-[var(--text-grey-color)]">21</option>
-                  <option value="24" :selected="length === 24" class="w-full text-[var(--text-grey-color)]">24</option>
-                </select>
+              <Dropdown
+                :model-value="passphraseLength"
+                @update:model-value="onChangePhraseLength"
+                :options="PHRASE_LENGTH_OPTIONS"
+              />
               </div>
         <CustomInput
           v-if="picked == 'line'"
@@ -63,44 +58,44 @@
         <NotifyInBody/>
         <table style="width: 100%;" v-if="picked == 'list'">
         <!-- for 12 words -->
-          <tbody v-if="length == 12" v-for="n in 4">
+          <tbody v-if="passphraseLength == 12" v-for="n in 4">
           <tr>
-            <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n-1]"/></td>
-            <td>{{n+4}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+3]"/></td>
-            <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+7]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+4" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+3]"/></td>
+            <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
           </tr>
           </tbody>
           <!-- for 15 words -->
-          <tbody v-if="length == 15" v-for="n in 5">
+          <tbody v-if="passphraseLength == 15" v-for="n in 5">
           <tr>
-            <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n-1]"/></td>
-            <td>{{n+5}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+4]"/></td>
-            <td>{{n+10}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+9]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+5" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+4]"/></td>
+            <td><input :placeholder="n+10" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+9]"/></td>
           </tr>
           </tbody>
 
           <!-- for 18 words -->
-          <tbody v-if="length == 18" v-for="n in 6">
+          <tbody v-if="passphraseLength == 18" v-for="n in 6">
           <tr>
-            <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n-1]"/></td>
-            <td>{{n+6}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+5]"/></td>
-            <td>{{n+12}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+11]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+6" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]"/></td>
+            <td><input :placeholder="n+12" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]"/></td>
           </tr>
           </tbody>
           <!-- for 21 words -->
-          <tbody v-if="length == 21" v-for="n in 7">
+          <tbody v-if="passphraseLength == 21" v-for="n in 7">
           <tr>
-            <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n-1]"/></td>
-            <td>{{n+7}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+6]"/></td>
-            <td>{{n+14}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+13]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+7" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]"/></td>
+            <td><input :placeholder="n+14" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]"/></td>
           </tr>
           </tbody>
           <!-- for 24 words -->
-          <tbody v-if="length == 24" v-for="n in 8">
+          <tbody v-if="passphraseLength == 24" v-for="n in 8">
           <tr>
-            <td>{{n}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n-1]"/></td>
-            <td>{{n+8}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+7]"/></td>
-            <td>{{n+16}}.&nbsp;<input class="bg-[var(--bg-color)] text-[var(--text-color)]" size="10" type="text" @change="inputWords" v-model="list[n+15]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
+            <td><input :placeholder="n+16" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]"/></td>
           </tr>
           </tbody>
         </table>
@@ -115,6 +110,7 @@
             Use Passphrase
           </span>
         </Checkbox>
+
         <VDropdown :triggers="['hover']" :distance="10" placement="top">
           <QuestionIcon class="question-icon cursor-pointer" />
           <template #popper>
@@ -172,12 +168,28 @@ import NotifyInBody from '~/components/NotifyInBody.vue'
 const { back, push } = useRouter()
 
 const { getFundAddress, getBalance } = useWallet()
+
+const LENGTH_12 = { label: '12', value: 12 }
+const LENGTH_15 = { label: '15', value: 15 }
+const LENGTH_18 = { label: '18', value: 18 }
+const LENGTH_21 = { label: '21', value: 21 }
+const LENGTH_24 = { label: '24', value: 24 }
+
+const PHRASE_LENGTH_OPTIONS = [
+  LENGTH_12,
+  LENGTH_15,
+  LENGTH_18,
+  LENGTH_21,
+  LENGTH_24
+]
+
+
 const textarea = ref('')
 const usePassphrase = ref(false)
 const passphrase = ref('')
-const picked = ref('line')
+const picked = ref('list')
 const list = ref([])
-const length = ref(12)
+const passphraseLength = ref(LENGTH_12.value)
 const showInfo = ref(false)
 
 const valid = ref(false)
@@ -186,6 +198,9 @@ const flag_check = ref(false)
 
 const MNEMONIC_KEY = 'temp-mnemonic'
 
+function onChangePhraseLength(option) {
+  passphraseLength.value = option;
+}
 
 const isDisabled = computed(() => {
   checkValid(textarea.value?.trim())
@@ -213,9 +228,10 @@ function checkValid(val = ''){
 }
 
 async function inputWords(e){
+console.log('run inputWords');
     checkValid(textarea.value?.trim())
   const l = await list.value
-
+console.log('picked.value:', picked.value);
   if(picked.value === 'line'){
     list.value = textarea.value?.trim()?.split(' ')
     if (list.value.length === 12 ||
@@ -223,34 +239,37 @@ async function inputWords(e){
         list.value.length === 18 ||
         list.value.length === 21 ||
         list.value.length === 24){
-          length.value = list.value.length
+          passphraseLength.value = list.value.length
           return;
         }
-        length.value = 12
+        passphraseLength.value = 12
     return;
   }
-  if(picked.value === 'list'){
 
+  if(picked.value === 'list'){
     if(e.target.value?.trim()?.split(' ')?.length > list.value.length){
       textarea.value = e.target.value
+      list.value = textarea.value?.trim()?.split(' ')
     }
     if(list.value.length >= e.target.value?.trim()?.split(' ')?.length){
       textarea.value = list.value?.join(' ')?.trim()
     }
-
+console.log('list.value.length:', list.value.length)
     if (list.value.length === 12 ||
         list.value.length === 15 ||
         list.value.length === 18 ||
         list.value.length === 21 ||
         list.value.length === 24){
-        length.value = list.value.length
+        passphraseLength.value = list.value.length
           return;
     }
     return;
   }
-  if(!length.value) length.value = 12
+  if(!passphraseLength.value) passphraseLength.value = 12
   return;
 }
+
+
 function viewShowInfo(){
   showInfo.value = !showInfo.value
   return true

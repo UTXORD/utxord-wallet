@@ -7,6 +7,7 @@
     >
      <!-- title and content -->
       <h1 class="generate-screen_title w-full mb-2 text-left text-[var(--text-color)]">Your mnemonic phrase</h1>
+
       <!-- Secret phrase -->
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-1"
@@ -20,6 +21,7 @@
           />
         </div>
       </div>
+
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-1"
       >
