@@ -186,7 +186,6 @@ async function Check() {
   errorMessage.value='The mnemonic phrase does not match the previously created one'
   setTimeout(()=>{
     flag_check.value = false
-    valid.value = true
     errorMessage.value=''
   },3000)
 
