@@ -73,7 +73,10 @@ export function isContains(str: string) {
   const containsNumber = /[0-9]/.test(str)
   const containsSpecial = /[#?!@$%^&*-\|\.;\'\"\`,\\/\>\<\[\]{}()]/.test(str)
 return containsUppercase && containsLowercase && containsNumber && containsSpecial;
+}
 
+export function getRandom(mins:number = 0, maxs:number = 2147483647): number{
+  return Math.floor(Math.random() * (maxs - mins + 1)) + mins;
 }
 
 export function isLength(str: string) {

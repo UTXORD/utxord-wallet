@@ -15,7 +15,7 @@
         <div class="flex flex-col items-center">
           <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s length</span>
           <Dropdown
-            :model-value="LENGTH_12"
+            :model-value="passphraseLength"
             @update:model-value="onChangePhraseLength"
             :options="PHRASE_LENGTH_OPTIONS"
           />
@@ -134,6 +134,7 @@
               type="password"
               v-model="passphrase"
               name="passphrase"
+              @input="saveTempDataToLocalStorage"
             />
           </div>
         </div>
@@ -188,8 +189,7 @@
 import { sendMessage } from 'webext-bridge'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
-import useWallet from '~/popup/modules/useWallet'
-import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
+import { SET_UP_PASSWORD } from '~/config/events'
 import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 
@@ -209,13 +209,17 @@ const PHRASE_LENGTH_OPTIONS = [
 
 const MNEMONIC_KEY = 'temp-mnemonic'
 const PASSPHRASE_LENGTH_KEY = 'temp-passphrase-length'
+const PASSPHRASE_KEY = 'temp-passphrase'
 
 const { back, push } = useRouter()
-const { getFundAddress, getBalance } = useWallet()
 const textarea = ref('')
-const usePassphrase = ref(false)
+const usePassphrase = ref(
+  Boolean(localStorage?.getItem(PASSPHRASE_KEY)) || false
+)
 const passphrase = ref('')
-const passphraseLength = ref(LENGTH_12.value)
+const passphraseLength = ref(
+  Number(localStorage?.getItem(PASSPHRASE_LENGTH_KEY)) || LENGTH_12.value
+)
 const picked = ref('list')
 const showInfo = ref(false)
 const mnemonicIsSaved = ref(false)
@@ -241,23 +245,19 @@ function viewShowInfo() {
 function removeTempDataFromLocalStorage() {
   localStorage.removeItem(MNEMONIC_KEY)
   localStorage.removeItem(PASSPHRASE_LENGTH_KEY)
+  localStorage.removeItem(PASSPHRASE_KEY)
+}
+
+function saveTempDataToLocalStorage(){
+  localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
+  localStorage?.setItem(MNEMONIC_KEY, textarea.value)
+  localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)
 }
 
 async function onStore() {
-  const success = await sendMessage(
-    SAVE_GENERATED_SEED,
-    {
-      seed: textarea.value,
-      passphrase: passphrase.value
-    },
-    'background')
-  if (success === true) {
-    const fundAddress = await getFundAddress()
-    getBalance(fundAddress)
-    localStorage?.setItem(MNEMONIC_KEY, textarea.value)
-    localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
-    push('/wallet-created')
-  }
+
+    saveTempDataToLocalStorage()
+    push('/check-user-mnemonic')
 }
 
 function goToBack() {
@@ -278,14 +278,17 @@ function onChangePhraseLength(option) {
 async function getMnemonic() {
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
   const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
+  const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
   if (tempMnemonic) {
     textarea.value = tempMnemonic
     passphraseLength.value = tempLength
+    passphrase.value = tempPassphrase
   } else {
     const mnemonic = await sendMessage('GENERATE_MNEMONIC', {
       length: passphraseLength.value
     }, 'background')
     textarea.value = mnemonic
+    saveTempDataToLocalStorage()
   }
 }
 

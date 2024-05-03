@@ -109,6 +109,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('~/pages/GeneratePage.vue')
   },
   {
+    path: '/check-user-mnemonic',
+    name: 'checkUserMnemonic',
+    component: () => import('~/pages/checkUserMnemonic.vue')
+  },
+  {
     path: '/load',
     name: 'LoadPage',
     component: () => import('~/pages/LoadPage.vue')

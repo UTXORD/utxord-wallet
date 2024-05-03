@@ -290,12 +290,9 @@ console.log('picked.value:', picked.value);
 }
 
 function saveTempDataToLocalStorage(){
-console.log('save to store')
   localStorage?.setItem(MNEMONIC_LENGTH, passphraseLength.value)
   localStorage?.setItem(MNEMONIC_KEY, list.value.join(' '))
   localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)
-
-
 }
 
 function removeTempDataFromLocalStorage() {
