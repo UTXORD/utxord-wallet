@@ -33,10 +33,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, ref } from 'vue'
+import { defineComponent ,PropType, watch, ref, toRefs } from 'vue'
 
 interface IOption {
-  label: string
+  label: string | number
   value: string | number
 }
 
@@ -58,6 +58,7 @@ export default defineComponent({
   },
   emits: ['update:model-value'],
   setup(props, { emit }) {
+    const { modelValue } = toRefs(props);
     const selected = ref(props.modelValue)
     const opened = ref(false)
 
@@ -74,6 +75,11 @@ export default defineComponent({
     function toggle() {
       opened.value = !opened.value
     }
+
+    watch(modelValue, (value) => {
+      selected.value = value;
+    })
+
 
     return {
       selected,
