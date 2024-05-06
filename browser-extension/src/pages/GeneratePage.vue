@@ -262,6 +262,7 @@ async function onStore() {
 
 function goToBack() {
   removeTempDataFromLocalStorage()
+
     return push('/start')
 }
 

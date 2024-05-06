@@ -211,7 +211,8 @@ interface ICollectionTransferResult {
       if (1 < tabs.length) {
         await Api.sendWarningMessage(
             'TABS',
-            "Don't use UTXORD market in multiple tabs/windows simultaneously!"
+            "Don't use UTXORD market in multiple tabs/windows simultaneously!",
+            false
         );
         console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with BASE_URL_PATTERN: ${BASE_URL_PATTERN}`);
       }
@@ -991,25 +992,39 @@ interface ICollectionTransferResult {
     })
 
     // SET PLUGIN ID TO WEB PAGE
-    async function sendhello() {
+    async function sendhello(tabId: number | undefined = undefined) {
       // const [tab] = await chrome.tabs.query({ active: true });
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) return;
 
       console.log(PLUGIN_ID, chrome.runtime.id);
       console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
-      await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      if(Api.wallet.auth.key) await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
+      await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id, tabId);
+      if(Api.wallet.auth.key) await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey(), tabId);
       const versions = await Api.getSupportedVersions();
       console.log(PLUGIN_SUPPORTED_VERSIONS, versions);
-      await Api.sendMessageToWebPage(PLUGIN_SUPPORTED_VERSIONS, versions);
+      await Api.sendMessageToWebPage(PLUGIN_SUPPORTED_VERSIONS, versions, tabId);
       return true;
     }
 
-    // TODO: to implement usage of tabId ? (unsure)
-    chrome.tabs.onActivated.addListener(sendhello);
-    chrome.tabs.onCreated.addListener(sendhello);
-    chrome.tabs.onUpdated.addListener(sendhello);
-    chrome.tabs.onReplaced.addListener(sendhello);
+    const base_url = BASE_URL_PATTERN.replace('*', '');
+    // chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    //   await sendhello(activeInfo.tabId);
+    // });
+    chrome.tabs.onCreated.addListener(async (tab) => {
+      const url = tab.url || tab.pendingUrl;
+      if (url?.startsWith(base_url)) {
+        await sendhello(tab.id);
+      }
+    });
+    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+      const url = changeInfo.url || tab.url || tab.pendingUrl;
+      if (url?.startsWith(base_url)) {
+        await sendhello(tabId);
+      }
+    });
+    // chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
+    //   await sendhello(addedTabId);
+    // });
 
 
     let alarmName = "utxord_wallet.alarm.balance_refresh_main_schedule";
