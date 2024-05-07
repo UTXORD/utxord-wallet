@@ -106,29 +106,24 @@
       <div
         class="home-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 gap-3 mt-auto"
       >
-        <span class="mr-2 text-left text-[var(--text-grey-color)]"
-          >To Add Funds Use This Address</span
-        >
+        <div class="flex items-center gap-2">
+          <span class="mr-auto text-left text-[var(--text-grey-color)]">
+            To add funds use this address
+          </span>
+          <RefreshIcon
+            v-if="useDerivation"
+            class="w-4 h-4 clickable"
+            @click="newFundAddress"
+          />
+          <CopyIcon
+            class="clickable"
+            @click="copyToClipboard(fundAddress, 'Address was copied!')"
+          />
+        </div>
         <div class="flex items-center justify-between">
           <p class="p-0 mr-auto text-[var(--text-color)]">
-            {{ formatAddress(fundAddress, 6, 6) }}
+            {{ formatAddress(fundAddress, 15, 18) }}
           </p>
-
-          <Button
-            v-if="useDerivation"
-            outline
-            @click="newFundAddress"
-            class="min-w-[40px] mr-2 px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)] !min-h-[30px]"
-          >
-            New
-          </Button>
-          <Button
-            outline
-            @click="copyToClipboard(fundAddress)"
-            class="min-w-[40px] px-3 py-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)] !min-h-[30px]"
-          >
-            Copy
-          </Button>
         </div>
       </div>
 
@@ -152,6 +147,7 @@ import { toRefs, computed } from 'vue'
 import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
+import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'

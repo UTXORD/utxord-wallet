@@ -3,11 +3,11 @@
     <span
       @click="copyToClipboard(fundAddress)"
       class="cursor-pointer text-black"
-      >Fund: {{ formatAddress(fundAddress, 6, 6) }}</span
+      >{{ formatAddress(fundAddress, 9, 9) }}</span
     >
     <div class="header-buttons flex ml-auto">
-      <ThemeBtn class="mr-5" />
-      <router-link to="/manage">
+      <ThemeBtn class="mr-5 clickable" />
+      <router-link to="/manage" class="clickable">
         <img
           class="header-settings mr-5"
           src="/assets/settings.svg"
@@ -18,7 +18,7 @@
       <Modal @on-submit="unload" title="Logout" submit-text="Yes">
         <template #button="{ onClick }">
           <img
-            class="header-logout"
+            class="header-logout clickable"
             src="/assets/logout.svg"
             alt="Logout"
             title="Change account"
