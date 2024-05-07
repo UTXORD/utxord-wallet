@@ -100,3 +100,15 @@ input {
   background-color: transparent;
   cursor: pointer !important;
 }
+
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
