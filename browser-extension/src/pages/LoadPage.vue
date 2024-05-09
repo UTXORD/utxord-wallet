@@ -26,7 +26,7 @@
           </div>
           <div class="flex items-center mb-2" v-if="picked == 'list'">
             <span class="w-full text-[var(--text-grey-color)]"
-              >Words length:</span
+              >How many words:</span
               >
               <Dropdown
                 :model-value="passphraseLength"
