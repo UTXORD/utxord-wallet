@@ -7,7 +7,7 @@
 
       <div class="check-mnemonic-screen_text flex flex-col">
         <p class="mb-2 w-full text-left text-[var(--text-grey-color)]">
-        Please include some words from your mnemonic phrase
+        Just to make sure: please fill in the missing words
         </p>
         <div
           class="check-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-2 mb-3"
@@ -122,7 +122,6 @@ const isDisabled = computed(() => {
 
 function inputWords(e){
   if(isEmpty()) return false
-  checkValid(list.value.join(' '))
 }
 
 function removeTempDataFromLocalStorage() {
