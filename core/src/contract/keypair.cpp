@@ -108,7 +108,7 @@ KeyLookupFilter ParseKeyLookupFilter(const nlohmann::json& json)
 
 }
 
-KeyPair KeyRegistry::Derive(const char *path, bool for_script) const
+KeyPair KeyRegistry::Derive(const std::string& path, bool for_script) const
 {
     l15::core::ChannelKeys keypair = mMasterKey.Derive(path, for_script);
     return KeyPair(m_ctx, keypair.GetLocalPrivKey());

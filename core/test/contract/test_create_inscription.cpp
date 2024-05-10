@@ -773,3 +773,204 @@ TEST_CASE("etch")
     }
 }
 
+struct AvatarCondition
+{
+    std::string content;
+    std::string content_type;
+    bool is_parent;
+    bool skip_for_avatar;
+};
+
+static const std::string avatar_html = R"(<!DOCTYPE html>
+<html><head>
+<script>
+function cbor(raw){
+let a=new Uint8Array(raw.match(/[\da-f]{2}/gi).map(function(h){return parseInt(h,16)}))
+let d=a.buffer.slice(a.byteOffset,a.byteLength+a.byteOffset)
+var dv=new DataView(d)
+var off=0
+function cr(l,v){off+=l;return v}
+function ru8(){return cr(1,dv.getUint8(off))}
+function rb(){if(dv.getUint8(off) !== 0xff)return false;off+=1;return true}
+function rl(f){
+if(f<24)return f
+if(f===24)return ru8()
+if(f===25)return cr(2,dv.getUint16(off))
+if(f===26)return cr(4,dv.getUint32(off))
+if(f===27)return cr(4,dv.getUint32(off))*0x0100000000+cr(4,dv.getUint32(off))
+if(f===31)return-1
+throw"len"}
+function risl(t){
+let ib=ru8()
+if(ib===0xff)return-1
+let l=rl(ib&0x1f)
+if(l<0||(ib>>5)!==t)throw"len"
+return l}
+function item(){
+let ib=ru8(),t=ib>>5,inf=ib&0x1f,i,l
+if(t===7){
+switch(inf){case 25:case 26:case 27:throw"float"}}
+l=rl(inf)
+if(l<0&&(t<2||6<t))throw"len"
+switch(t){
+case 0:return l
+case 1:return-1-l
+case 2:
+if(l<0){
+let el=[],al=0
+while((l=risl(t))>=0){al += l;el.push(cr(l, new Uint8Array(d, off, l)))}
+let fr=new Uint8Array(al),ff=0
+for(i=0;i<el.length;++i){fr.set(el[i],ff);ff+=el[i].length}
+return fr}
+return cr(l,new Uint8Array(d,off,l))
+case 3:
+for(i=0,s='';i<l;i++){var x=ru8().toString(16);if(x.length<2) x=`0${x}`;s+=`%${x}`}
+return decodeURIComponent(s)
+case 5:
+let r={}
+for(i=0;i<l||l<0&&!rb();++i){let k=item();r[k]=item()}
+return r
+case 6:return item()
+case 7:
+switch(l){
+case 20:return false
+case 21:return true
+case 22:return null
+default:return undefined}}}
+try{
+let r=item()
+if(off !== d.byteLength) return{}
+return r
+}catch(e){return{}}}
+(async()=>{
+let h={method:'GET',headers:{'Accept':'application/json'}}
+async function a(){
+let s=(await(await fetch('/r/children/----',h)).json()).ids[0]
+let c=await(await fetch(`/r/children/${s}`,h)).json()
+for(let i=0;c.more;++i){
+let c1=await fetch(`/r/children/${s}/${i}`,h).json()
+c.ids=c.concat(c1.ids)
+c.more=c1.more}
+do{let d=await fetch(`/r/metadata/${c.ids.at(-1)}`)
+if(d.status!==200)break
+let m=cbor(await d.json())
+if(m.avatar===false) c.ids.pop();else break
+}while(c.ids.length>0)
+if(c.ids.length>0){
+let i=document.createElement('img')
+i.src=`/content/${c.ids.at(-1)}`
+document.body.appendChild(i)}}
+window.addEventListener("load",async()=>{await a()})})()
+</script>
+</head><body/></html>)";
+
+static const std::string svg_1 = R"lit(<svg width="440" height="101" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(-82 -206)">
+<text fill="#777777" font-family="Arial,Arial_MSFontService,sans-serif" font-variant="normal" font-weight="400" font-size="37" transform="matrix(1 0 0 1 191.984 275)">s1</text>
+</g></svg>)lit";
+
+static const std::string svg_2 = R"lit(<svg width="440" height="101" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(-82 -206)"><text fill="#777777" font-family="Arial,Arial_MSFontService,sans-serif" font-style="normal" font-variant="normal" font-weight="400" font-stretch="normal" font-size="37" transform="matrix(1 0 0 1 191.984 275)">s2</text></g></svg>)lit";
+static const std::string svg_3 = R"lit(<svg width="440" height="101" xmlns="http://www.w3.org/2000/svg"><g transform="translate(-82 -206)"><text fill="#777777" font-family="Arial,Arial_MSFontService,sans-serif" font-style="normal" font-variant="normal" font-weight="400" font-stretch="normal" font-size="37" transform="matrix(1 0 0 1 191.984 275)">s3</text></g></svg>)lit";
+
+
+std::optional<Transfer> avatar_collection_utxo;
+
+TEST_CASE("avatar")
+{
+    KeyRegistry master_key(w->chain(), hex(seed));
+    master_key.AddKeyType("funds", R"({"look_cache":false, "key_type":"DEFAULT", "accounts":["0'"], "change":["0"], "index_range":"0-10"})");
+    master_key.AddKeyType("inscribe", R"({"look_cache":false, "key_type":"TAPSCRIPT", "accounts":["0'"], "change":["0", "1"], "index_range":"0-10"})");
+
+    KeyPair ord_key = master_key.Derive(w->DerivationPath(86, 0, 0, 0), false);
+    KeyPair script_key = master_key.Derive(w->DerivationPath(86, 0, 1, 0), true);
+    KeyPair int_key = master_key.Derive(w->DerivationPath(86, 0, 0, 1), true);
+
+    std::string return_addr = ord_key.GetP2TRAddress(Bech32(w->chain()));
+
+    fee_rate = 3000;
+
+    auto &condition = GENERATE_REF(
+                                    AvatarCondition{"", "text/ascii", true, false},
+                                    AvatarCondition{avatar_html, "text/html", true, false},
+                                    AvatarCondition{svg_1, "image/svg+xml", false, false},
+                                    AvatarCondition{svg_2, "image/svg+xml", false, false},
+                                    AvatarCondition{svg_3, "image/svg+xml", false, true});
+
+    CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
+    REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(builder.MarketFee(0, ""));
+    REQUIRE_NOTHROW(builder.AuthorFee(0, ""));
+    REQUIRE_NOTHROW(builder.OrdDestination(546, return_addr));
+
+    std::string content = condition.content;
+    if (avatar_collection_utxo) {
+        auto pos = content.find("----");
+        if (pos != content.npos) {
+            content.replace(pos, 4, collection_id);
+            std::clog << "Avatar size: " << content.length() << std::endl;
+        }
+    }
+
+    REQUIRE_NOTHROW(builder.Data(condition.content_type, bytevector(content.begin(), content.end())));
+    if (condition.skip_for_avatar) {
+        REQUIRE_NOTHROW(builder.MetaData(nlohmann::json::to_cbor(nlohmann::json::parse("{\"avatar\":false,\"title\":\"test inscription\"}"))));
+    }
+    else {
+        REQUIRE_NOTHROW(builder.MetaData(nlohmann::json::to_cbor(nlohmann::json::parse("{\"title\":\"test inscription\"}"))));
+
+    }
+    if (avatar_collection_utxo) {
+        REQUIRE_NOTHROW(builder.AddToCollection(collection_id, avatar_collection_utxo->m_txid, avatar_collection_utxo->m_nout, avatar_collection_utxo->m_amount, avatar_collection_utxo->m_addr));
+    }
+
+    std::string utxo_addr = ord_key.GetP2TRAddress(Bech32(w->chain()));
+    CAmount min_funding = builder.GetMinFundingAmount("");
+    string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(min_funding));
+    auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
+
+    std::string destination_addr = w->btc().GetNewAddress();
+
+    REQUIRE_NOTHROW(builder.AddUTXO(funds_txid, get<0>(prevout).n, min_funding, utxo_addr));
+
+    REQUIRE_NOTHROW(builder.InscribeScriptPubKey(script_key.PubKey()));
+    REQUIRE_NOTHROW(builder.InscribeInternalPubKey(int_key.PubKey()));
+
+    CHECK_NOTHROW(builder.SignCommit(master_key, "funds"));
+    CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
+    if (avatar_collection_utxo) {
+        CHECK_NOTHROW(builder.SignCollection(master_key, "funds"));
+    }
+
+    std::string terms = builder.Serialize(8, INSCRIPTION_SIGNATURE);
+
+    CreateInscriptionBuilder contract(w->chain(), INSCRIPTION);
+    contract.Deserialize(terms, INSCRIPTION_SIGNATURE);
+
+    stringvector rawtxs;
+    REQUIRE_NOTHROW(rawtxs = contract.RawTransactions());
+
+    CMutableTransaction commitTx, revealTx;
+
+    REQUIRE(rawtxs.size() == 2);
+    REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
+    REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
+
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
+
+    w->WaitForConfirmations(5);
+
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+
+    w->WaitForConfirmations(1);
+
+    if (condition.is_parent) {
+        collection_id = revealTx.GetHash().GetHex() + "i0";
+        avatar_collection_utxo = Transfer{revealTx.GetHash().GetHex(), 0, 546, return_addr};
+    }
+    else {
+        avatar_collection_utxo = Transfer{revealTx.GetHash().GetHex(), 1, 546, avatar_collection_utxo->m_addr};
+    }
+
+}
+

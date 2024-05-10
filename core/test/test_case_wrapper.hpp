@@ -4,9 +4,14 @@
 #include "chain_api.hpp"
 #include "config.hpp"
 #include "exechelper.hpp"
+#include "keypair.hpp"
 #include "nodehelper.hpp"
 
 #include "address.hpp"
+#include <chrono>
+#include <cstdio>
+#include <string>
+#include <thread>
 
 
 namespace utxord {
@@ -137,6 +142,27 @@ struct TestcaseWrapper
         std::filesystem::remove(mConfFactory.GetBitcoinDataDir() + "/regtest/mempool.dat");
 
         StopRegtestBitcoinNode();
+    }
+
+    void WaitForConfirmations(uint32_t n)
+    {
+        if (chain() == REGTEST) {
+            btc().GenerateToAddress(btc().GetNewAddress(), std::to_string(n));
+        }
+        else {
+            uint32_t target_height = btc().GetChainHeight() + n;
+            do {
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+            }
+            while (target_height < btc().GetChainHeight());
+        }
+    }
+
+    std::string DerivationPath(uint32_t purpose, uint32_t account, uint32_t change, uint32_t index) const
+    {
+        char buf[32];
+        sprintf(buf, "m/%d'/%d'/%d'/%d/%d", purpose, chain() == MAINNET ? 0 : 1, account, change, index);
+        return {buf};
     }
 };
 
