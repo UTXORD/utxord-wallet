@@ -127,7 +127,7 @@ public:
     std::string GetContent() const { return m_content ? l15::hex(m_content.value()) : std::string(); }
     std::string GetInscribeAddress() const { return m_ord_destination->Address(); }
 
-    void OrdDestination(CAmount amount, const std::string& addr)
+    void OrdDestination(CAmount amount, std::string addr)
     { m_ord_destination = P2Witness::Construct(chain(), amount, move(addr)); }
 
     void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);

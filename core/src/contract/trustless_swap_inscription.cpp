@@ -350,14 +350,14 @@ void TrustlessSwapInscriptionBuilder::CheckContractTerms(TrustlessSwapPhase phas
         if (m_swap_inputs.size() == 1) {
             if (!m_swap_inputs.front().output->Destination()) throw ContractTermMissing(name_swap_inputs + "[ord]");
             if (m_swap_inputs.front().output->Destination()->Amount() < l15::Dust(DUST_RELAY_TX_FEE)) throw ContractTermWrongValue(
-                        move((((name_swap_inputs + "[ord].") += name_amount) += ": ") += std::to_string(
+                        move((((name_swap_inputs + "[ord].") += IContractDestination::name_amount) += ": ") += std::to_string(
                                 m_swap_inputs.front().output->Destination()->Amount())));
             if (!m_swap_inputs.front().witness) throw ContractTermMissing(move((name_swap_inputs + "[ord].") += TxInput::name_witness));
         }
         else {
             if (!m_swap_inputs[2].output->Destination()) throw ContractTermMissing(name_swap_inputs + "[ord]");
             if (m_swap_inputs[2].output->Destination()->Amount() < l15::Dust(DUST_RELAY_TX_FEE)) throw ContractTermWrongValue(
-                        move((((name_swap_inputs + "[ord].") += name_amount) += ": ") += std::to_string(
+                        move((((name_swap_inputs + "[ord].") += IContractDestination::name_amount) += ": ") += std::to_string(
                                 m_swap_inputs[2].output->Destination()->Amount())));
             if (!m_swap_inputs[2].witness) throw ContractTermMissing(move((name_swap_inputs + "[ord].") += TxInput::name_witness));
         }

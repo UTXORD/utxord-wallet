@@ -363,7 +363,7 @@ UniValue RuneStoneDestination::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
     res.pushKV(name_type, type);
-    res.pushKV(IContractBuilder::name_amount, m_amount);
+    res.pushKV(name_amount, m_amount);
     res.pushKV(name_flags, (std::ostringstream() << action_flags).view());
 
     if (rune) res.pushKV(name_rune, (std::ostringstream() << *rune).view());
@@ -384,7 +384,7 @@ UniValue RuneStoneDestination::MakeJson() const
         UniValue opsVal(UniValue::VARR);
         for (const auto& op: op_dictionary) {
             UniValue opVal = op.first.MakeJson();
-            opVal.pushKV(IContractBuilder::name_amount, (std::ostringstream() << get<0>(op.second)).view());
+            opVal.pushKV(name_amount, (std::ostringstream() << get<0>(op.second)).view());
             opVal.pushKV(IContractBuilder::name_nout, get<1>(op.second));
 
             opsVal.push_back(move(opVal));
@@ -401,7 +401,7 @@ void RuneStoneDestination::ReadJson(const UniValue &json)
         throw ContractTermWrongValue(std::string(name_type));
     }
 
-    m_amount = json[IContractBuilder::name_amount].getInt<CAmount>();
+    m_amount = json[name_amount].getInt<CAmount>();
 
     {   const UniValue& val = json[name_flags];
         if (val.isNull()) throw ContractTermMissing(name_flags);
@@ -542,18 +542,18 @@ void RuneStoneDestination::ReadJson(const UniValue &json)
                 RuneId id;
                 id.ReadJson(opVal, [=]{return std::string(name_op_dictionary) + '[' + std::to_string(i) + ']';});
 
-                if (opVal[IContractBuilder::name_amount].isNull()) throw ContractTermMissing(std::string(name_op_dictionary) + '[' + std::to_string(i) + "]." + IContractBuilder::name_amount);
+                if (opVal[name_amount].isNull()) throw ContractTermMissing(std::string(name_op_dictionary) + '[' + std::to_string(i) + "]." + name_amount);
                 if (opVal[IContractBuilder::name_nout].isNull()) throw ContractTermMissing(std::string(name_op_dictionary) + '[' + std::to_string(i) + "]." + IContractBuilder::name_nout);
 
                 uint128_t amount;
-                std::istringstream(opVal[IContractBuilder::name_amount].getValStr()) >> amount;
+                std::istringstream(opVal[name_amount].getValStr()) >> amount;
 
                 if (dict_empty) {
                     op_dictionary[id] = {move(amount), opVal[IContractBuilder::name_nout].getInt<uint32_t>()};
                 }
                 else {
                     if (dictIt->first != id) throw ContractTermMismatch(std::string(name_op_dictionary) + '[' + std::to_string(i) + "].rune_id");
-                    if (get<0>(dictIt->second) != amount) throw ContractTermMismatch(std::string(name_op_dictionary) + '[' + std::to_string(i) + "]." + IContractBuilder::name_amount);
+                    if (get<0>(dictIt->second) != amount) throw ContractTermMismatch(std::string(name_op_dictionary) + '[' + std::to_string(i) + "]." + name_amount);
                     if (get<1>(dictIt->second) != opVal[IContractBuilder::name_nout].getInt<uint32_t>()) throw ContractTermMismatch(std::string(name_op_dictionary) + '[' + std::to_string(i) + "]." + IContractBuilder::name_nout);
                     ++dictIt;
                 }

@@ -488,9 +488,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
 
             if (amount || addr) {
                 UniValue ordVal(UniValue::VOBJ);
-                ordVal.pushKV(IContractDestination::name_type, P2Witness::type);
-                if (amount) ordVal.pushKV(name_amount, *amount);
-                if (addr) ordVal.pushKV(name_addr, *addr);
+                ordVal.pushKV(IJsonSerializable::name_type, P2Witness::type);
+                if (amount) ordVal.pushKV(IContractDestination::name_amount, *amount);
+                if (addr) ordVal.pushKV(IContractDestination::name_addr, *addr);
                 if (m_ord_destination) {
                     m_ord_destination->ReadJson(ordVal);
                 }

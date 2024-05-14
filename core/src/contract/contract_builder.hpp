@@ -99,6 +99,9 @@ public:
 
 struct IContractDestination: IJsonSerializable
 {
+    static const std::string name_amount;
+    static const std::string name_addr;
+
     virtual CAmount Amount() const = 0;
     virtual void Amount(CAmount amount) = 0;
     virtual std::string Address() const = 0;
@@ -336,9 +339,7 @@ public:
     static const char* name_utxo;
     static const std::string name_txid;
     static const std::string name_nout;
-    static const std::string name_amount;
     static const std::string name_pk;
-    static const std::string name_addr;
     static const std::string name_sig;
 
     static const std::string name_change_addr;

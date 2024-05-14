@@ -117,19 +117,19 @@ std::vector<bytevector> TaprootSigner::Sign(const CMutableTransaction &tx, uint3
 
 ZeroDestination::ZeroDestination(const UniValue &json)
 {
-    if (json[IContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
+    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(name_amount));
 }
 
 UniValue ZeroDestination::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
-    res.pushKV(IContractBuilder::name_amount, 0);
+    res.pushKV(name_amount, 0);
     return res;
 }
 
 void ZeroDestination::ReadJson(const UniValue &json)
 {
-    if (json[IContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
+    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(name_amount));
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -141,16 +141,16 @@ P2Witness::P2Witness(ChainMode chain, const UniValue &json): mBech(chain)
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
-    m_amount = json[IContractBuilder::name_amount].getInt<CAmount>();
-    m_addr = json[IContractBuilder::name_addr].get_str();
+    m_amount = json[name_amount].getInt<CAmount>();
+    m_addr = json[name_addr].get_str();
 }
 
 UniValue P2Witness::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
     res.pushKV(name_type, type);
-    res.pushKV(IContractBuilder::name_amount, m_amount);
-    res.pushKV(IContractBuilder::name_addr, m_addr);
+    res.pushKV(name_amount, m_amount);
+    res.pushKV(name_addr, m_addr);
 
     return res;
 }
@@ -160,8 +160,8 @@ void P2Witness::ReadJson(const UniValue &json)
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
-    if (m_amount != json[IContractBuilder::name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
-    if (m_addr != json[IContractBuilder::name_addr].get_str())  throw ContractTermMismatch(std::string(IContractBuilder::name_addr));
+    if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(name_amount));
+    if (m_addr != json[name_addr].get_str())  throw ContractTermMismatch(std::string(name_addr));
 }
 
 
@@ -194,7 +194,7 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const s
     unsigned witver;
     bytevector pkhash;
     std::tie(witver, pkhash) = mBech.Decode(m_addr);
-    if (witver != 0) throw ContractTermWrongValue(std::string(IContractBuilder::name_addr));
+    if (witver != 0) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
     EcdsaKeypair ecdsa(masterKey.Secp256k1Context(), keypair.PrivKey());
@@ -206,7 +206,7 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std
     unsigned witver;
     bytevector pk;
     std::tie(witver, pk) = mBech.Decode(m_addr);
-    if (witver != 1) throw ContractTermWrongValue(std::string(IContractBuilder::name_addr));
+    if (witver != 1) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
     ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
@@ -257,9 +257,9 @@ const std::string IContractBuilder::name_market_fee = "market_fee";
 const char* IContractBuilder::name_utxo = "utxo";
 const std::string IContractBuilder::name_txid = "txid";
 const std::string IContractBuilder::name_nout = "nout";
-const std::string IContractBuilder::name_amount = "amount";
+const std::string IContractDestination::name_amount = "amount";
 const std::string IContractBuilder::name_pk = "pubkey";
-const std::string IContractBuilder::name_addr = "addr";
+const std::string IContractDestination::name_addr = "addr";
 const std::string IContractBuilder::name_sig = "sig";
 const std::string IContractBuilder::name_change_addr = "change_addr";
 

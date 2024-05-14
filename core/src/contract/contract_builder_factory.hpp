@@ -36,7 +36,7 @@ template <>
 struct ContractDestinationFactory<ZeroDestination>
 {
     static std::shared_ptr<IContractDestination> ReadJson(ChainMode chain, const UniValue& json)
-    { return std::make_shared<ZeroDestination>(ZeroDestination(json)); }
+    { return std::make_shared<ZeroDestination>(json); }
 };
 
 
