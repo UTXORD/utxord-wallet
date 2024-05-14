@@ -115,19 +115,19 @@ std::vector<bytevector> TaprootSigner::Sign(const CMutableTransaction &tx, uint3
 
 ZeroDestination::ZeroDestination(const UniValue &json)
 {
-    if (json[IContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
+    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(name_amount));
 }
 
 UniValue ZeroDestination::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
-    res.pushKV(IContractBuilder::name_amount, 0);
+    res.pushKV(name_amount, 0);
     return res;
 }
 
 void ZeroDestination::ReadJson(const UniValue &json)
 {
-    if (json[IContractBuilder::name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
+    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(name_amount));
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -139,7 +139,7 @@ P2Witness::P2Witness(Bech32 bech, const UniValue &json): mBech(bech)
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
-    m_amount = json[IContractBuilder::name_amount].getInt<CAmount>();
+    m_amount = json[name_amount].getInt<CAmount>();
     m_addr = json[IContractBuilder::name_addr].get_str();
 }
 
@@ -147,7 +147,7 @@ UniValue P2Witness::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
     res.pushKV(name_type, type);
-    res.pushKV(IContractBuilder::name_amount, m_amount);
+    res.pushKV(name_amount, m_amount);
     res.pushKV(IContractBuilder::name_addr, m_addr);
 
     return res;
@@ -158,10 +158,11 @@ void P2Witness::ReadJson(const UniValue &json)
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(std::string(name_type));
     }
-    if (m_amount != json[IContractBuilder::name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(IContractBuilder::name_amount));
+    if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(name_amount));
     if (m_addr != json[IContractBuilder::name_addr].get_str())  throw ContractTermMismatch(std::string(IContractBuilder::name_addr));
 }
 
+const std::string IContractDestination::name_amount = "amount";
 std::shared_ptr<IContractDestination> IContractDestination::ReadJson(Bech32 bech, const UniValue& json, bool allow_zero_destination)
 {
     if (json[name_type].getValStr() == P2Witness::type) {
@@ -169,7 +170,7 @@ std::shared_ptr<IContractDestination> IContractDestination::ReadJson(Bech32 bech
 
         return P2Witness::Construct(bech, dest.m_amount, dest.m_addr);
     }
-    else if (allow_zero_destination && !json.exists(name_type)){
+    else if (allow_zero_destination && /*json[name_type].isNull() && */json[name_amount].getInt<CAmount>() == 0){
         return std::make_shared<ZeroDestination>(json);
     }
     else throw std::domain_error("unknown destination type: " + json[name_type].getValStr());
@@ -261,7 +262,6 @@ const std::string IContractBuilder::name_market_fee = "market_fee";
 const char* IContractBuilder::name_utxo = "utxo";
 const std::string IContractBuilder::name_txid = "txid";
 const std::string IContractBuilder::name_nout = "nout";
-const std::string IContractBuilder::name_amount = "amount";
 const std::string IContractBuilder::name_pk = "pubkey";
 const std::string IContractBuilder::name_addr = "addr";
 const std::string IContractBuilder::name_sig = "sig";
