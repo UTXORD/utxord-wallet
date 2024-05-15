@@ -2,7 +2,7 @@
   <div class="check-mnemonic-screen flex flex-col h-full">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="check-mnemonic-screen_content h-full flex flex-col items-start px-5">
+    <div class="check-mnemonic-screen_content overflow-y-auto overflow-x-hidden h-full flex flex-col items-start px-5 pb-5">
       <h1 class="text-[var(--text-color)]">Do you remember the mnemonic phrase?</h1>
 
       <div class="check-mnemonic-screen_text flex flex-col">
@@ -10,11 +10,11 @@
         Just to make sure: please fill in the missing words
         </p>
         <div
-          class="check-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-2 mb-3"
+          class="check-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-2 mb-5"
         >
         <div
           v-if="flag_check"
-          class="custom-input_error"
+          class="custom-input_error pb-1"
           :class="my-2"
         >
           <span class="text-red-300 text-left">{{errorMessage}}</span>
@@ -41,25 +41,25 @@
           <!-- for 18 words -->
           <tbody v-if="passphraseLength == 18" v-for="n in 6">
           <tr>
-            <td><input :disabled="disable[n-1]" :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :disabled="disable[n+5]" :placeholder="n+6" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]"/></td>
-            <td><input :disabled="disable[n+11]" :placeholder="n+12" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]"/></td>
+            <td><input :disabled="disable[n-1]" :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :disabled="disable[n+5]" :placeholder="n+6" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]"/></td>
+            <td><input :disabled="disable[n+11]" :placeholder="n+12" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]"/></td>
           </tr>
           </tbody>
           <!-- for 21 words -->
           <tbody v-if="passphraseLength == 21" v-for="n in 7">
           <tr>
-            <td><input :disabled="disable[n-1]" :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :disabled="disable[n+6]" :placeholder="n+7" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]"/></td>
-            <td><input :disabled="disable[n+13]" :placeholder="n+14" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]"/></td>
+            <td><input :disabled="disable[n-1]" :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :disabled="disable[n+6]" :placeholder="n+7" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]"/></td>
+            <td><input :disabled="disable[n+13]" :placeholder="n+14" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]"/></td>
           </tr>
           </tbody>
           <!-- for 24 words -->
           <tbody v-if="passphraseLength == 24" v-for="n in 8">
           <tr>
-            <td><input :disabled="disable[n-1]" :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :disabled="disable[n+7]" :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
-            <td><input :disabled="disable[n+15]" :placeholder="n+16" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]"/></td>
+            <td><input :disabled="disable[n-1]" :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :disabled="disable[n+7]" :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
+            <td><input :disabled="disable[n+15]" :placeholder="n+16" class="bg-[var(--bg-color)] text-[var(--text-gray-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]"/></td>
           </tr>
           </tbody>
         </table>
@@ -203,6 +203,7 @@ function goToBack(){
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
+    max-height: inherit;
 
     h1 {
       font-size: 18px;
