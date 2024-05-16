@@ -193,6 +193,9 @@ import { SET_UP_PASSWORD } from '~/config/events'
 import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 
+const WORDS_COUNT = 'temp-words-count'
+const ROW_POSITION= 'temp-row-position'
+
 const LENGTH_12 = { label: '12', value: 12 }
 const LENGTH_15 = { label: '15', value: 15 }
 const LENGTH_18 = { label: '18', value: 18 }
@@ -252,6 +255,9 @@ function saveTempDataToLocalStorage(){
   localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
   localStorage?.setItem(MNEMONIC_KEY, textarea.value)
   localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)
+  localStorage?.removeItem(WORDS_COUNT)
+  localStorage?.removeItem(ROW_POSITION)
+
 }
 
 async function onStore() {
@@ -273,6 +279,7 @@ function refreshMnemonic() {
 
 function onChangePhraseLength(option) {
   passphraseLength.value = option;
+  saveTempDataToLocalStorage();
   refreshMnemonic();
 }
 

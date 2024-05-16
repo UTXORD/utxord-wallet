@@ -146,7 +146,7 @@ function userChallenge(){
   const dismap =  Array(mnemonic.length).fill(true)
   const count = localStorage?.getItem(WORDS_COUNT) || getRandom(3,4)
   const row = localStorage?.getItem(ROW_POSITION)?.split(' ') || Array(count)
-  for(let i = 0; i <= count; i += 1){
+  for(let i = 0; i < count; i += 1){
     let index = row[i] || getRandom(1, mnemonic.length -1)
     mnemonic[index] = ''
     dismap[index] = false
