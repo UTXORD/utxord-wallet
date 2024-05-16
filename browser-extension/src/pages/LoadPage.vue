@@ -2,7 +2,7 @@
   <div class="load-screen flex flex-col h-full">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="load-screen_content h-full flex flex-col items-center px-5 pb-5">
+    <div class="load-screen_content h-full overflow-y-auto flex flex-col items-center px-5 pb-5">
       <!-- title and content -->
       <div class="flex flex-col w-full items-start mb-4">
         <h1 class="load-screen_title text-[var(--text-color)] mb-2">Import a mnemonic phrase</h1>
@@ -60,48 +60,48 @@
         <!-- for 12 words -->
           <tbody v-if="passphraseLength == 12" v-for="n in 4">
           <tr>
-            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :placeholder="n+4" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+3]"/></td>
-            <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" :class="{'px-3 py-2.5': !usePassphrase}" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+4" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]"  :class="{'px-3 py-2.5': !usePassphrase}" size="10" type="text" @input="inputWords" v-model="list[n+3]"/></td>
+            <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]"  :class="{'px-3 py-2.5': !usePassphrase}" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
           </tr>
           </tbody>
           <!-- for 15 words -->
           <tbody v-if="passphraseLength == 15" v-for="n in 5">
           <tr>
-            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :placeholder="n+5" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+4]"/></td>
-            <td><input :placeholder="n+10" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+9]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+5" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+4]"/></td>
+            <td><input :placeholder="n+10" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+9]"/></td>
           </tr>
           </tbody>
 
           <!-- for 18 words -->
           <tbody v-if="passphraseLength == 18" v-for="n in 6">
           <tr>
-            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :placeholder="n+6" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]"/></td>
-            <td><input :placeholder="n+12" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+6" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]"/></td>
+            <td><input :placeholder="n+12" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]"/></td>
           </tr>
           </tbody>
           <!-- for 21 words -->
           <tbody v-if="passphraseLength == 21" v-for="n in 7">
           <tr>
-            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :placeholder="n+7" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]"/></td>
-            <td><input :placeholder="n+14" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+7" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]"/></td>
+            <td><input :placeholder="n+14" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]"/></td>
           </tr>
           </tbody>
           <!-- for 24 words -->
           <tbody v-if="passphraseLength == 24" v-for="n in 8">
           <tr>
-            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
-            <td><input :placeholder="n+16" class="bg-[var(--bg-color)] text-[var(--text-color)] px-3 py-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]"/></td>
+            <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
+            <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
+            <td><input :placeholder="n+16" class="bg-[var(--bg-color)] text-[var(--text-color)] p-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]"/></td>
           </tr>
           </tbody>
         </table>
       </div>
       <!-- Passphrase -->
-      <div class="w-full h-[1px] bg-[var(--border-color)] my-5" />
+      <hr class="w-full border-[var(--border-color)] my-5" />
 
       <!-- I saved my mnemonic -->
       <div class="w-full flex justify-start items-center gap-2 mb-5">
@@ -348,6 +348,7 @@ onBeforeMount(() => {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
+    max-height: inherit;
   }
 
   &_title {

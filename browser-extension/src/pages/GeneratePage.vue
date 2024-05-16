@@ -3,14 +3,14 @@
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div
-      class="generate-screen_content h-full flex flex-col items-center px-5 pb-5"
+      class="generate-screen_content h-full overflow-y-auto flex flex-col items-center px-5 pb-5"
     >
      <!-- title and content -->
       <h1 class="generate-screen_title w-full mb-2 text-left text-[var(--text-color)]">Your mnemonic phrase</h1>
 
       <!-- Secret phrase -->
       <div
-        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-1"
+        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3"
       >
         <div class="flex flex-col items-center">
           <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s length</span>
@@ -23,9 +23,9 @@
       </div>
 
       <div
-        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-1"
+        class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-4"
       >
-        <div class="flex items-center">
+        <div class="flex items-center mb-1">
           <span class="w-full text-[var(--text-grey-color)]"
             >Store these safely:</span
           >
@@ -65,49 +65,49 @@
           <!-- for 12 words -->
           <tbody v-if="passphraseLength == 12" v-for="n in 4">
             <tr>
-              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
-              <td><input :placeholder="n+4" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+3]"/></td>
-              <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+7]"/></td>
+              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
+              <td><input :placeholder="n+4" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+3]"/></td>
+              <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+7]"/></td>
             </tr>
           </tbody>
           <!-- for 1s5 words -->
           <tbody v-if="passphraseLength == 15" v-for="n in 5">
             <tr>
-              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
-              <td><input :placeholder="n+5" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+4]"/></td>
-              <td><input :placeholder="n+10" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+9]"/></td>
+              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
+              <td><input :placeholder="n+5" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+4]"/></td>
+              <td><input :placeholder="n+10" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+9]"/></td>
             </tr>
           </tbody>
 
           <!-- for 18 words -->
           <tbody v-if="passphraseLength == 18" v-for="n in 6">
             <tr>
-              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
-              <td><input :placeholder="n+6" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+5]"/></td>
-              <td><input :placeholder="n+12" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+11]"/></td>
+              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
+              <td><input :placeholder="n+6" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+5]"/></td>
+              <td><input :placeholder="n+12" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+11]"/></td>
             </tr>
           </tbody>
           <!-- for 21 words -->
           <tbody v-if="passphraseLength == 21" v-for="n in 7">
             <tr>
-              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
-              <td><input :placeholder="n+7" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+6]"/></td>
-              <td><input :placeholder="n+14" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+13]"/></td>
+              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
+              <td><input :placeholder="n+7" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+6]"/></td>
+              <td><input :placeholder="n+14" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+13]"/></td>
             </tr>
           </tbody>
           <!-- for 24 words -->
           <tbody v-if="passphraseLength == 24" v-for="n in 8">
             <tr>
-              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
-              <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+7]"/></td>
-              <td><input :placeholder="n+16" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect px-3 py-2.5 min-h-[33px]" size="10" type="text" :value="list[n+15]"/></td>
+              <td><input :placeholder="n" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n-1]"/></td>
+              <td><input :placeholder="n+8" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+7]"/></td>
+              <td><input :placeholder="n+16" class="bg-[var(--bg-color)] text-[var(--text-color)] noselect p-2.5 min-h-[33px]" size="10" type="text" :value="list[n+15]"/></td>
             </tr>
           </tbody>
         </table>
         <!-- Passphrase -->
 
         <!-- I saved my mnemonic -->
-        <div class="w-full flex justify-start items-center gap-2 mt-1">
+        <div class="w-full flex justify-start items-center gap-2 mt-2.5">
           <Checkbox v-model="usePassphrase">
             <span class="w-full text-[var(--text-grey-color)] text-[15px]">
               Use Passphrase
@@ -125,7 +125,7 @@
 
         <!-- Password field -->
         <div
-          class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mt-1"
+          class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl pt-3 mt-1"
           v-show="usePassphrase"
         >
           <div class="generate-screen_form-input flex flex-col">
@@ -141,7 +141,7 @@
         </div>
 
       <!-- Alert -->
-      <div class="w-full flex justify-start">
+      <div class="w-full flex justify-start mt-3">
         <AlertBox>
           <span class="w-full text-[15px]">
             Do not share it with anyone
@@ -149,11 +149,11 @@
         </AlertBox>
       </div>
 
-      <div class="w-full h-[1px] bg-[var(--border-color)] my-5" />
+      <hr class="w-full border-[var(--border-color)] my-4" />
 
       <!-- I saved my mnemonic -->
       <div class="w-full flex justify-start">
-        <Checkbox v-model="mnemonicIsSaved" class="mb-5">
+        <Checkbox v-model="mnemonicIsSaved" class="mb-3">
           <span class="w-full text-[var(--text-grey-color)] text-[15px]">
             I saved my mnemonic phrase
           </span>
@@ -161,7 +161,7 @@
       </div>
 
       <!-- Buttons -->
-      <div class="flex w-full mt-1">
+      <div class="flex w-full mt-6">
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
@@ -311,6 +311,7 @@ onBeforeMount(() => {
   &_content {
     padding-top: 22px;
     padding-bottom: 22px;
+    max-height: inherit;
   }
 
   &_title {
