@@ -738,7 +738,7 @@ interface ICollectionTransferResult {
       if (payload.type === SEND_BALANCES) {
         console.log('SEND_BALANCES:',payload.data)
         if (payload.data?.addresses) {
-          Api.balances = payload.data;
+          Api.balances = Api.prepareAddressToPlugin(payload.data);
           // -------
           Api.sync = true;    // FIXME: Seems useless because happening too much late.
           Api.connect = true; // FIXME: However it's working for some reason in v1.1.5.
@@ -746,7 +746,7 @@ interface ICollectionTransferResult {
           // console.log('payload.data.addresses: ',payload.data.addresses);
           Api.fundings = await Api.freeBalance(Api.fundings);
           Api.inscriptions = await Api.freeBalance(Api.inscriptions);
-          const balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+          const balances = await Api.updateBalancesFrom(payload.type, Api.prepareAddressToPlugin(payload?.data?.addresses));
           // console.log('Api.fundings:', Api.fundings);
           // console.log('Api.inscriptions:', Api.inscriptions);
 
@@ -762,7 +762,7 @@ interface ICollectionTransferResult {
       if (payload.type === GET_ALL_ADDRESSES) {
         console.log('GET_ALL_ADDRESSES: payload.data.addresses:', payload.data.addresses);
         console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...Api.getAddressForSave()]);
-        Api.all_addresses = payload.data.addresses; // used to determine addresses stored on the server
+        Api.all_addresses = Api.prepareAddressToPlugin(payload.data.addresses); // used to determine addresses stored on the server
         const allAddressesSaved = Api.hasAllLocalAddressesIn(payload.data.addresses);
         console.debug('Api.hasAllLocalAddressesIn payload.data.addresses: ', allAddressesSaved);
         if(!allAddressesSaved){
