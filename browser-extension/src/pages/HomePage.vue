@@ -122,7 +122,7 @@
         </div>
         <div class="flex items-center justify-between">
           <p class="p-0 mr-auto text-[var(--text-color)]">
-            {{ formatAddress(fundAddress, 15, 18) }}
+            {{ formatAddress(fundAddress, 15, 15) }}
           </p>
         </div>
       </div>
