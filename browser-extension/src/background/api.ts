@@ -313,6 +313,7 @@ class Api {
         this.wallet_types = WALLET_TYPES;
         this.addresses = [];
         this.all_addresses = [];
+        this.max_index_range = 1;
 
         this.balances = [];
         this.fundings = [];
@@ -440,7 +441,7 @@ class Api {
               }
               return o;
             }catch(e){
-              myself.sendWarningMessage(m, e);
+              if(m!=='LookupAddress') myself.sendWarningMessage(m, e);
               return null;
             }
         };
@@ -516,12 +517,22 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
   };
 }
 
+ prepareAddressToPlugin(addresses){
+   const list = []
+   if(addresses.length > 0){
+     for(const item of addresses){
+       if(this.hasAddressKeyRegistry(item?.address)) list.push(item);
+     }
+   }
+  return list;
+ }
+
  getAddressForSave(addresses: object[] | undefined = undefined){
     const list = [];
     if(!addresses) addresses = this.addresses;
     for(let item of addresses){
       //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
-      if(!this.hasAddress(item?.address, this.all_addresses)){
+      if(!this.hasAddress(item?.address, this.all_addresses) && this.hasAddressKeyRegistry(item?.address)){
           let ch = this.getChallenge(item.type, item.typeAddress);
           item = {...item,...ch};
           list.push(item);
@@ -565,6 +576,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
     const a = (this.derivate || ignore.includes(type)) ? this.wallet[type].account : 0 ;
     const c = this.wallet[type].change;
     const i = (this.derivate || ignore.includes(type)) ? this.wallet[type].index : 0;
+    this.setIndexRange(i);
     const purpose = (typeAddress === 1) ? 84 : 86;
     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
   }
@@ -690,6 +702,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
     return false;
   }
 
+  async setIndexRange(index){
+    if(index > this.max_index_range) this.max_index_range = index;
+    return true;
+  }
+
+
   async restoreTypeIndexFromServer(type, addresses) {
     let store_index = 0;
     let wallet_index = 0;
@@ -697,10 +715,12 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
       store_index = Number(await this.getIndexFromStorage(type));
       wallet_index = Number(this.getIndex(type));
       if (store_index > wallet_index) {
-        await this.setIndex(type, store_index)
+        await this.setIndex(type, store_index);
+        await this.setIndexRange(store_index);
       }
       if (store_index < wallet_index) {
         await this.setIndexToStorage(type, wallet_index);
+        await this.setIndexRange(wallet_index);
       }
     }
     if (addresses) {
@@ -711,6 +731,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
             //  console.log(`currind for type - ${type}:`,currind)
             await this.setIndex(type, currind)
             await this.setIndexToStorage(type, currind);
+            await this.setIndexRange(currind);
           }
         } else {
           if (type === 'ext') {
@@ -943,6 +964,34 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
   }
 
+  async hasAddressKeyRegistry(address){
+    const filterDefault = {
+          look_cache: true,
+          key_type: "DEFAULT",
+          accounts: ["0'", "1'", "2'"],
+          change: ["0"],
+          index_range: `0-${this.max_index_range}`
+        };
+    const filterTapscript = {
+          look_cache: true,
+          key_type: "TAPSCRIPT",
+          accounts: ["3'", "4'", "5'", "6'"],
+          change: ["0"],
+          index_range: `0-${this.max_index_range}`
+        };
+    let outDefault = null, outTapscript = null;
+    try{
+      const outDefault = await this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
+      if(outDefault?.ptr) return true;
+      const outTapscript = await this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
+      if(outTapscript?.ptr) return true;
+        } catch(e){
+          console.log('hasAddressKeyRegistry:',this.getErrorMessage(e));
+          return false;
+      }
+      return false;
+  }
+
   async genKeys() { //current keys
     this.addPopAddresses(); // add popular addresses
     const publicKeys = [];
@@ -981,7 +1030,8 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
   }
 
   async updateBalancesFrom(msgType: string, addresses: []) {
-    const balances = await this.prepareBalances(addresses);
+    const list = this.prepareAddressToPlugin(addresses);
+    const balances = await this.prepareBalances(list);
     console.debug(`${msgType} balances:`, {...balances || {}});
     this.fundings = balances.funds;
     this.inscriptions = balances.inscriptions;
