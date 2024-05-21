@@ -964,7 +964,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
   }
 
-  async hasAddressKeyRegistry(address){
+hasAddressKeyRegistry(address){
     const filterDefault = {
           look_cache: true,
           key_type: "DEFAULT",
@@ -981,9 +981,9 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
         };
     let outDefault = null, outTapscript = null;
     try{
-      const outDefault = await this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
+      const outDefault = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
       if(outDefault?.ptr) return true;
-      const outTapscript = await this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
+      const outTapscript = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
       if(outTapscript?.ptr) return true;
         } catch(e){
           console.log('hasAddressKeyRegistry:',this.getErrorMessage(e));
