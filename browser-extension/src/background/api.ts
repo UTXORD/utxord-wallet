@@ -501,13 +501,28 @@ getKey(type: string, typeAddress: number | undefined = undefined){
   getAddress(type: string, key: object | undefined = undefined, typeAddress: number | undefined = undefined){
     if(!key) key = this.wallet[type].key;
     if(!typeAddress) typeAddress = this.wallet[type].typeAddress;
+    if(!key?.GetP2TRAddress || !key?.GetP2WPKHAddress){
+      console.log('Error->Key:',key); //!!!
+      return;
+    }
     return typeAddress === 1
         ? key.GetP2WPKHAddress(this.network)
         : key.GetP2TRAddress(this.network);
   }
 
-getChallenge(type: string, typeAddress: number | undefined = undefined ){
+getChallengeFromType(type: string, typeAddress: number | undefined = undefined ){
   const key = this.getKey(type, typeAddress);
+  const challenge = this.challenge();
+  const dhash = this.sha256x2(challenge);
+  return {
+    challenge: challenge,
+    public_key: key.PubKey(),
+    signature: key.SignSchnorr(dhash)
+  };
+}
+getChallengeFromAddress(address: striong){
+  const key = this.getKeyFromKeyRegistry(address);
+  if(!key?.ptr) return null;
   const challenge = this.challenge();
   const dhash = this.sha256x2(challenge);
   return {
@@ -532,10 +547,13 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
     if(!addresses) addresses = this.addresses;
     for(let item of addresses){
       //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
-      if(!this.hasAddress(item?.address, this.all_addresses) && this.hasAddressKeyRegistry(item?.address)){
-          let ch = this.getChallenge(item.type, item.typeAddress);
-          item = {...item,...ch};
-          list.push(item);
+      if(!this.hasAddress(item?.address, this.all_addresses)){
+          let ch = this.getChallengeFromAddress(item?.address);
+          if(ch){
+            // console.log('item:',item,'|ch:',ch); //!!!
+            item = {...item,...ch};
+            list.push(item);
+          }
       }
     }
     return list;
@@ -886,7 +904,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
   addPopAddresses(){
     if (this.genKey('oth', 0)) {
       if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 0)) {
-        let ch = this.getChallenge('oth', 0);
+        let ch = this.getChallengeFromType('oth', 0);
         this.addresses.push({ // add m86 fund address
           address: this.wallet['oth'].address,
           type: 'oth',
@@ -899,7 +917,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
     if (this.genKey('oth', 1)) { // add m84 fund address
       if (!this.hasAddressFields(this.wallet['oth'].address, 'oth', 1)) {
-        let ch = this.getChallenge('oth', 1);
+        let ch = this.getChallengeFromType('oth', 1);
         this.addresses.push({
           address: this.wallet['oth'].address,
           type: 'oth',
@@ -912,7 +930,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
     if (this.genKey('fund', 1)) {
       if (!this.hasAddressFields(this.wallet['fund'].address,'fund', 1)) {
-        let ch = this.getChallenge('fund', 1);
+        let ch = this.getChallengeFromType('fund', 1);
         this.addresses.push({ // add m84 fund address
           address: this.wallet['fund'].address,
           type: 'fund',
@@ -925,7 +943,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
     if (this.genKey('fund', 0)) { // add m86 fund address
       if (!this.hasAddressFields(this.wallet['fund'].address,'fund', 0)) {
-        let ch = this.getChallenge('fund', 0);
+        let ch = this.getChallengeFromType('fund', 0);
         this.addresses.push({
           address: this.wallet['fund'].address,
           type: 'fund',
@@ -938,7 +956,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
     if (this.genKey('ord', 1)) {
       if (!this.hasAddressFields(this.wallet['ord'].address,'ord', 1)) {
-        let ch = this.getChallenge('ord', 1);
+        let ch = this.getChallengeFromType('ord', 1);
         this.addresses.push({ // add m84 fund address
           address: this.wallet['ord'].address,
           type: 'ord',
@@ -951,7 +969,7 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
     if (this.genKey('ord', 0)) { // add m86 fund address
       if (!this.hasAddressFields(this.wallet['ord'].address,'ord', 0)) {
-        let ch = this.getChallenge('ord', 0);
+        let ch = this.getChallengeFromType('ord', 0);
         this.addresses.push({
           address: this.wallet['ord'].address,
           type: 'ord',
@@ -964,32 +982,37 @@ getChallenge(type: string, typeAddress: number | undefined = undefined ){
 
   }
 
-hasAddressKeyRegistry(address){
-    const filterDefault = {
-          look_cache: true,
-          key_type: "DEFAULT",
-          accounts: ["0'", "1'", "2'"],
-          change: ["0"],
-          index_range: `0-${this.max_index_range}`
-        };
-    const filterTapscript = {
-          look_cache: true,
-          key_type: "TAPSCRIPT",
-          accounts: ["3'", "4'", "5'", "6'"],
-          change: ["0"],
-          index_range: `0-${this.max_index_range}`
-        };
-    let outDefault = null, outTapscript = null;
-    try{
-      const outDefault = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
-      if(outDefault?.ptr) return true;
-      const outTapscript = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
-      if(outTapscript?.ptr) return true;
-        } catch(e){
-          console.log('hasAddressKeyRegistry:',this.getErrorMessage(e));
-          return false;
-      }
-      return false;
+getKeyFromKeyRegistry(address: string){
+  const filterDefault = {
+        look_cache: true,
+        key_type: "DEFAULT",
+        accounts: ["0'", "1'", "2'"],
+        change: ["0"],
+        index_range: `0-${this.max_index_range}`
+      };
+  const filterTapscript = {
+        look_cache: true,
+        key_type: "TAPSCRIPT",
+        accounts: ["3'", "4'", "5'", "6'"],
+        change: ["0"],
+        index_range: `0-${this.max_index_range}`
+      };
+      let outDefault = null, outTapscript = null;
+      try{
+        const outDefault = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
+        if(outDefault?.ptr) return outDefault;
+        const outTapscript = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
+        if(outTapscript?.ptr) return outTapscript;
+          } catch(e){
+            console.log('getKeyFromKeyRegistry:',this.getErrorMessage(e));
+            return null;
+        }
+}
+
+hasAddressKeyRegistry(address: string){
+    const out = this.getKeyFromKeyRegistry(address);
+    if(out?.ptr) return true;
+    return false;
   }
 
   async genKeys() { //current keys
@@ -1000,7 +1023,7 @@ hasAddressKeyRegistry(address){
         if (type !== 'auth' && type !== 'ext') {
           if (!this.hasAddress(this.wallet[type].address)) {
               if (!this.hasAddressType(type)) {
-                let ch = this.getChallenge(type, this.wallet[type].typeAddress);
+                let ch = this.getChallengeFromAddress(this.wallet[type].address);
                 const newAddress = {
                   address: this.wallet[type].address,
                   type: type,
@@ -1909,7 +1932,7 @@ hasAddressKeyRegistry(address){
             'fund'
         );
 
-        // get front root ord and select to addres or pubkey
+        // get front root ord and select to address or pubkey
         // collection_utxo_key (root! image key) (current utxo key)
         if (payload?.collection?.genesis_txid) {
           await newOrd.SignCollection(
