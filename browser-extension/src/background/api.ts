@@ -338,8 +338,12 @@ class Api {
     const myself = this
     try {
       const { seed } = await chrome.storage.local.get(['seed']);
+      const { derivate } = await chrome.storage.local.get(['derivate']);
       if (seed) {
         myself.wallet.root.seed = seed;
+      }
+      if(derivate){
+        myself.derivate = derivate;
       }
       const { ext_keys } = await chrome.storage.local.get(['ext_keys']);
       if(ext_keys) {
@@ -347,6 +351,7 @@ class Api {
            myself.resExtKeys(ext_keys);
         }
       }
+
       await myself.rememberIndexes();
       await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
       console.log('init...');
@@ -602,6 +607,9 @@ getChallengeFromAddress(address: striong){
   async setDerivate(value) {
     if (!this.checkSeed()) return false;
     this.derivate = Boolean(value);
+    setTimeout(() => {
+      chrome.storage.local.set({derivate: this.derivate});
+    }, 2000);
     return true;
   }
 
