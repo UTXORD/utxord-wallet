@@ -347,19 +347,18 @@ async function newAddress(){
   const newKeys = await Api.genKeys();
   const addresses = await Api.getAddressForSave();
   if(addresses.length > 0){
+    await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
     await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
-    return addresses;
+    return newKeys;
   }
-  return;
+  return newKeys;
 }
 
     onMessage(NEW_FUND_ADDRESS, async () => {
       let addresses = newAddress()
       if(addresses.length > 0){
+        await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
-      }else{
-        addresses = await newAddress();
-        if(addresses.length > 0) await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
       return addresses;
     });
@@ -371,7 +370,10 @@ async function newAddress(){
       const newKeys = await Api.genKeys();
       console.log('newKeys', newKeys);
       const addresses = await Api.getAddressForSave();
-      if(addresses.length > 0) await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+      if(addresses.length > 0){
+        await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+      }
       return newKeys;
     });
 
