@@ -321,6 +321,7 @@ interface ICollectionTransferResult {
 
     };
 
+
     onMessage(GET_BALANCE, async (payload: any) => {
       const balance = await Api.fetchBalance(payload.data?.address);
       setTimeout(async () => {
@@ -340,12 +341,27 @@ interface ICollectionTransferResult {
       return addresses;
     });
 
+async function newAddress(){
+  await Api.setDerivate(1);
+  await Api.generateNewIndex('fund');
+  const newKeys = await Api.genKeys();
+  const addresses = await Api.getAddressForSave();
+  if(addresses.length > 0){
+    await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+    return addresses;
+  }
+  return;
+}
+
     onMessage(NEW_FUND_ADDRESS, async () => {
-      await Api.generateNewIndex('fund');
-      const newKeys = await Api.genKeys();
-      const addresses = await Api.getAddressForSave();
-      if(addresses.length > 0) await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
-      return newKeys;
+      let addresses = newAddress()
+      if(addresses.length > 0){
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+      }else{
+        addresses = await newAddress();
+        if(addresses.length > 0) await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+      }
+      return addresses;
     });
 
     onMessage(CHANGE_TYPE_FUND_ADDRESS, async (payload: any) => {
