@@ -495,13 +495,13 @@ sha256x2(word) {
   return dhash
 }
 
-getKey(type: string, typeAddress: number | undefined = undefined){
+getKey(type: string, typeAddress: number | undefined = undefined, index: number | undefined = undefined){
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
     if(!typeAddress) typeAddress = this.wallet[type].typeAddress
-    return this.wallet.root.key.Derive(this.path(type, typeAddress), for_script);
+    return this.wallet.root.key.Derive(this.path(type, typeAddress, index), for_script);
   }
 
   getAddress(type: string, key: object | undefined = undefined, typeAddress: number | undefined = undefined){
@@ -528,7 +528,10 @@ getChallengeFromType(type: string, typeAddress: number | undefined = undefined )
 }
 getChallengeFromAddress(address: striong){
   const key = this.getKeyFromKeyRegistry(address);
-  if(!key?.ptr) return null;
+  if(!key?.ptr){
+    // console.log('getChallengeFromAddress->no ptr', key,'|address:',address,'|max_index_range:',this.max_index_range);
+     return null;
+  }
   const challenge = this.challenge();
   const dhash = this.sha256x2(challenge);
   return {
@@ -548,12 +551,13 @@ getChallengeFromAddress(address: striong){
   return list;
  }
 
- getAddressForSave(addresses: object[] | undefined = undefined){
+ getAddressForSave(addresses: object[] | undefined = undefined, all_addresses: object[] | undefined = undefined){
     const list = [];
-    if(!addresses) addresses = this.addresses;
+    if(!addresses) {addresses = this.addresses; }
+    if(!all_addresses) {all_addresses = this.all_addresses; }
     for(let item of addresses){
       //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
-      if(!this.hasAddress(item?.address, this.all_addresses)){
+      if(!this.hasAddress(item?.address, all_addresses)){
           let ch = this.getChallengeFromAddress(item?.address);
           if(ch){
             // console.log('item:',item,'|ch:',ch); //!!!
@@ -569,11 +573,9 @@ getChallengeFromAddress(address: striong){
     if(type==='ext') return;
     const Obj = {};
     Obj[`${type}Index`] = Number(value);
-    const check_index = await this.getIndexFromStorage(type);
-    if(check_index) return;
     return setTimeout(() => {
       chrome.storage.local.set(Obj);
-    }, 3000);
+    }, 2000);
 
   }
 
@@ -589,7 +591,7 @@ getChallengeFromAddress(address: striong){
     return true;
   }
 
-  path(type: string, typeAddress: number | undefined = undefined) {
+  path(type: string, typeAddress: number | undefined = undefined, index: number | undefined = undefined) {
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
     if (type === 'ext') return false;
@@ -599,8 +601,13 @@ getChallengeFromAddress(address: striong){
     const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
     const a = (this.derivate || ignore.includes(type)) ? this.wallet[type].account : 0 ;
     const c = this.wallet[type].change;
-    const i = (this.derivate || ignore.includes(type)) ? this.wallet[type].index : 0;
-    this.setIndexRange(i);
+    let i = 0;
+    if(index === undefined){
+      i = (this.derivate || ignore.includes(type)) ? this.wallet[type].index : 0;
+      this.setIndexRange(i);
+    }else{
+      i = index;
+    }
     const purpose = (typeAddress === 1) ? 84 : 86;
     return `m/${purpose}'/${t}'/${a}'/${c}/${i}`;
   }
@@ -644,6 +651,7 @@ getChallengeFromAddress(address: striong){
     if(type==='ext') return false;
     this.wallet[type].index += 1;
     await this.setIndexToStorage(type, this.wallet[type].index);
+    this.setIndexRange(this.wallet[type].index);
     return true;
   }
 
@@ -656,13 +664,16 @@ getChallengeFromAddress(address: striong){
   setIndex(type, index) {
     if(type==='ext') return false;
     this.wallet[type].index = index;
+    this.setIndexRange(index);
     return true;
   }
 
   getNexIndex(type) {
     if(!this.derivate) return false;
     if(type==='ext') return 0;
-    return this.wallet[type].index + 1;
+    const index = this.wallet[type].index + 1;
+    this.setIndexRange(index);
+    return index;
   }
 
   hasAllLocalAddressesIn(ext_addresses = []) {
@@ -734,6 +745,27 @@ getChallengeFromAddress(address: striong){
     return true;
   }
 
+  async restoreAddressesFromIndex(type, index){ //!!!
+    for(let i=0; i < index; i += 1 ){
+      for(let x = 0; x < 2; x += 1){
+        if (type !== 'auth' && type !== 'ext') {
+          let address = await this.getAddress(type, this.getKey(type, x, index), x);
+          if (!this.hasAddress(address)) {
+            if (!this.hasAddressType(type)) {
+              const newAddress = {
+                address: address,
+                type: type,
+                typeAddress: x,
+                index: this.path(type, x, index),
+                ...this.getChallengeFromAddress(address)
+              };
+              this.addresses.push(newAddress);
+            }
+          }
+        }
+      }
+    }
+  }
 
   async restoreTypeIndexFromServer(type, addresses) {
     let store_index = 0;
@@ -744,10 +776,12 @@ getChallengeFromAddress(address: striong){
       if (store_index > wallet_index) {
         await this.setIndex(type, store_index);
         await this.setIndexRange(store_index);
+        await this.restoreAddressesFromIndex(type, store_index);
       }
       if (store_index < wallet_index) {
         await this.setIndexToStorage(type, wallet_index);
         await this.setIndexRange(wallet_index);
+        await this.restoreAddressesFromIndex(type, wallet_index);
       }
     }
     if (addresses) {
@@ -759,6 +793,7 @@ getChallengeFromAddress(address: striong){
             await this.setIndex(type, currind)
             await this.setIndexToStorage(type, currind);
             await this.setIndexRange(currind);
+            await this.restoreAddressesFromIndex(type, currind);
           }
         } else {
           if (type === 'ext') {
@@ -767,7 +802,6 @@ getChallengeFromAddress(address: striong){
             this.addToExternalKey(ext);
           }
         }
-
       }
     }
   }
@@ -997,21 +1031,28 @@ getKeyFromKeyRegistry(address: string){
         key_type: "DEFAULT",
         accounts: ["0'", "1'", "2'"],
         change: ["0"],
-        index_range: `0-${this.max_index_range}`
+        index_range: `0-${this.max_index_range+1}`
       };
   const filterTapscript = {
         look_cache: true,
         key_type: "TAPSCRIPT",
         accounts: ["3'", "4'", "5'", "6'"],
         change: ["0"],
-        index_range: `0-${this.max_index_range}`
+        index_range: `0-${this.max_index_range+1}`
       };
       let outDefault = null, outTapscript = null;
       try{
         const outDefault = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
-        if(outDefault?.ptr) return outDefault;
+        // console.log('outDefault:',outDefault);
+        if(outDefault?.ptr) {
+          return outDefault;
+        }
         const outTapscript = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
-        if(outTapscript?.ptr) return outTapscript;
+        // console.log('outTapscript',outTapscript);
+        if(outTapscript?.ptr) {
+          return outTapscript;
+        }
+        return null;
           } catch(e){
             console.log('getKeyFromKeyRegistry:',this.getErrorMessage(e));
             return null;
@@ -1023,6 +1064,8 @@ hasAddressKeyRegistry(address: string){
     if(out?.ptr) return true;
     return false;
   }
+
+
 
   async genKeys() { //current keys
     this.addPopAddresses(); // add popular addresses

@@ -371,7 +371,7 @@ async function newAddress(){
   await Api.setDerivate(1);
   await Api.generateNewIndex('fund');
   const newKeys = await Api.genKeys();
-  const addresses = await Api.getAddressForSave();
+  const addresses = await Api.getAddressForSave(newKeys.addresses);
   if(addresses.length > 0){
     const re = await reConnectSession();
     if(re){
@@ -402,8 +402,7 @@ async function newAddress(){
       await Api.setTypeAddress('fund', payload.data?.type);
       await Api.setTypeAddress('ord', payload.data?.type);
       const newKeys = await Api.genKeys();
-      console.log('newKeys', newKeys);
-      const addresses = await Api.getAddressForSave();
+      const addresses = await Api.getAddressForSave(newKeys.addresses);
       if(addresses.length > 0){
         const re = await reConnectSession();
         if(re){
@@ -419,14 +418,30 @@ async function newAddress(){
       console.log('CHANGE_USE_DERIVATION:',payload.data?.value);
       await Api.setDerivate(payload.data?.value);
       const newKeys = await Api.genKeys();
-      console.log('newKeys', newKeys);
+      const addresses = await Api.getAddressForSave(newKeys.addresses);
+      if(addresses.length > 0){
+        const re = await reConnectSession();
+        if(re){
+          return;
+        }
+        await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+      }
       return {derivate: Api.derivate, keys: newKeys};
     });
 
     onMessage(STATUS_DERIVATION, async () => {
       console.log('STATUS_DERIVATION:', Api.derivate);
       const newKeys = await Api.genKeys();
-      console.log('newKeys', newKeys);
+      const addresses = await Api.getAddressForSave(newKeys.addresses);
+      if(addresses.length > 0){
+        const re = await reConnectSession();
+        if(re){
+          return;
+        }
+        await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+      }
       return {derivate: Api.derivate, keys: newKeys};
     });
 
@@ -846,10 +861,10 @@ async function newAddress(){
           return;
         }
         console.log('GET_ALL_ADDRESSES: payload.data.addresses:', payload.data.addresses);
-        let allAddresses = Api.getAddressForSave();
+        let allAddresses = await Api.getAddressForSave();
         console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...allAddresses]);
         Api.all_addresses = Api.prepareAddressToPlugin(payload.data.addresses); // used to determine addresses stored on the server
-        const allAddressesSaved = Api.hasAllLocalAddressesIn(payload.data.addresses);
+        const allAddressesSaved = await Api.hasAllLocalAddressesIn(payload.data.addresses);
         console.debug('Api.hasAllLocalAddressesIn payload.data.addresses: ', allAddressesSaved);
         if(!allAddressesSaved){
           setTimeout(async () => {
