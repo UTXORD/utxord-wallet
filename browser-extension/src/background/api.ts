@@ -329,6 +329,7 @@ class Api {
       } catch(e) {
         this.sentry(e);
         console.log('constructor->error:',e);
+        this.removePublicKeyToWebPage();
         chrome.runtime.reload();
       }
     })();
@@ -828,7 +829,7 @@ getChallengeFromAddress(address: striong){
     this.inscriptions = [];
     this.connect = false;
     this.sync = false;
-
+    await this.removePublicKeyToWebPage();
     await chrome.storage.local.clear();
     chrome.runtime.reload()
     const lastErr = chrome.runtime.lastError;
@@ -1471,6 +1472,83 @@ hasAddressKeyRegistry(address: string){
       path: "",
     });
   }
+  async removePublicKeyToWebPage(tabId: number | undefined = undefined): Promise<void> {
+    const myself = this;
+    let tabs: Tab[];
+    if (tabId != null) {
+      tabs = [await chrome.tabs.get(tabId)]
+    } else {
+      tabs = await chrome.tabs.query({
+        windowType: 'normal',
+        url: BASE_URL_PATTERN,
+      });
+    }
+    if (1 < tabs.length) {
+      console.warn(`----- removePublicKeyToWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
+    }
+    for (let tab of tabs) {
+      if(tab?.id) {
+        const [{result}] = await chrome.scripting.executeScript({
+          target: { tabId: tab?.id },
+          func: () =>window.localStorage.removeItem('publickey'),
+          args: [],
+        });
+        if(result) return result;
+      }
+    }
+  }
+
+  async getPublicKeyFromWebPage(tabId: number | undefined = undefined): Promise<void> {
+    const myself = this;
+    let tabs: Tab[];
+    if (tabId != null) {
+      tabs = [await chrome.tabs.get(tabId)]
+    } else {
+      tabs = await chrome.tabs.query({
+        windowType: 'normal',
+        url: BASE_URL_PATTERN,
+      });
+    }
+    if (1 < tabs.length) {
+      console.warn(`----- getPublicKeyFromWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
+    }
+    for (let tab of tabs) {
+      if(tab?.id) {
+        const [{result}] = await chrome.scripting.executeScript({
+          target: { tabId: tab?.id },
+          func: () =>window.localStorage.getItem('publickey'),
+          args: [],
+        });
+        if(result) return result;
+      }
+    }
+  }
+
+  async setPublicKeyToWebPage(tabId: number | undefined = undefined): Promise<void> {
+    const myself = this;
+    let tabs: Tab[];
+    if (tabId != null) {
+      tabs = [await chrome.tabs.get(tabId)]
+    } else {
+      tabs = await chrome.tabs.query({
+        windowType: 'normal',
+        url: BASE_URL_PATTERN,
+      });
+    }
+    if (1 < tabs.length) {
+      console.warn(`----- setPublicKeyToWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
+    }
+    for (let tab of tabs) {
+      if(tab?.id) {
+        const [{result}] = await chrome.scripting.executeScript({
+          target: { tabId: tab?.id },
+          func: (a) =>window.localStorage.setItem('publickey', a),
+          args: [myself.wallet.auth.key?.PubKey()],
+        });
+        if(result) return result;
+      }
+    }
+  }
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
@@ -1518,6 +1596,7 @@ hasAddressKeyRegistry(address: string){
 
   signToChallenge(challenge, tabId: number | undefined = undefined): boolean {
     const myself = this;
+    myself.removePublicKeyToWebPage(tabId);
     if (myself.wallet.auth.key) {
       const signature = myself.wallet.auth.key.SignSchnorr(challenge);
       console.log("SignSchnorr::challengeResult:", signature);
@@ -1526,6 +1605,7 @@ hasAddressKeyRegistry(address: string){
         challenge: challenge,
         signature: signature
       }, tabId);
+    myself.setPublicKeyToWebPage(tabId);
     myself.connect = true;
     myself.sync = false;
     } else {

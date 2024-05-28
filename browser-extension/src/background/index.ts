@@ -218,6 +218,26 @@ interface ICollectionTransferResult {
       }
     }
 
+    async function reConnectSession(unload = false){
+      const pubkey = await Api.getPublicKeyFromWebPage();
+      const user = await Api.wallet?.auth?.key?.PubKey();
+      if(pubkey !== user || !pubkey){
+        if(unload){
+          if(!pubkey){await Api.removePublicKeyToWebPage();}
+          await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
+          await Api.setPublicKeyToWebPage();
+          setTimeout(async () => {
+              await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user);
+              await Api.sendMessageToWebPage(CONNECT_TO_SITE, true);
+              await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+          }, 2000);
+          return false;
+        }
+        return true;
+      }
+      return false;
+    }
+
     chrome.runtime.onConnect.addListener(async (port) => {
       if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
 
@@ -250,12 +270,14 @@ interface ICollectionTransferResult {
     });
 
     onMessage(CONNECT_TO_SITE, async (payload) => {
+      await reConnectSession(true);
       const success = await Api.checkSeed();
       console.log('checkSeed', success)
       if(success){
 
         await Api.sendMessageToWebPage(CONNECT_TO_SITE, success);
         setTimeout(async () => {
+
           await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
         }, 1000);
       }
@@ -310,6 +332,10 @@ interface ICollectionTransferResult {
     });
 
     async function refreshBalanceAndAdressed(tabId: number | undefined = undefined) {
+      const re = await reConnectSession();
+        if(re){
+          return;
+        }
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success, tabId);
         await Api.sendMessageToWebPage(GET_CONNECT_STATUS, {}, tabId);
@@ -347,6 +373,10 @@ async function newAddress(){
   const newKeys = await Api.genKeys();
   const addresses = await Api.getAddressForSave();
   if(addresses.length > 0){
+    const re = await reConnectSession();
+    if(re){
+      return;
+    }
     await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
     await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
     return newKeys;
@@ -357,6 +387,10 @@ async function newAddress(){
     onMessage(NEW_FUND_ADDRESS, async () => {
       let addresses = newAddress()
       if(addresses.length > 0){
+        const re = await reConnectSession();
+        if(re){
+          return;
+        }
         await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
@@ -371,6 +405,10 @@ async function newAddress(){
       console.log('newKeys', newKeys);
       const addresses = await Api.getAddressForSave();
       if(addresses.length > 0){
+        const re = await reConnectSession();
+        if(re){
+          return;
+        }
         await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
@@ -773,7 +811,12 @@ async function newAddress(){
         }
       }
 
+
       if (payload.type === SEND_BALANCES) {
+        const re = await reConnectSession();
+        if(re){
+          return;
+        }
         console.log('SEND_BALANCES:',payload.data)
         if (payload.data?.addresses) {
           Api.balances = Api.prepareAddressToPlugin(payload.data);
@@ -798,6 +841,10 @@ async function newAddress(){
       }
 
       if (payload.type === GET_ALL_ADDRESSES) {
+        const re = await reConnectSession();
+        if(re) {
+          return;
+        }
         console.log('GET_ALL_ADDRESSES: payload.data.addresses:', payload.data.addresses);
         let allAddresses = Api.getAddressForSave();
         console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...allAddresses]);
@@ -1036,7 +1083,6 @@ async function newAddress(){
     async function sendhello(tabId: number | undefined = undefined) {
       // const [tab] = await chrome.tabs.query({ active: true });
       // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) return;
-
       console.log(PLUGIN_ID, chrome.runtime.id);
       console.log(PLUGIN_PUBLIC_KEY, Api.wallet.auth);
       await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id, tabId);
