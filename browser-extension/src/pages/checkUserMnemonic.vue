@@ -64,7 +64,11 @@
           </tbody>
         </table>
         </div>
-
+        <Button
+          v-show="checkEnvironment"
+          class="w-full"
+          @click="skip"
+        >skip</Button>
       </div>
       <div class="flex w-full mt-auto">
         <Button
@@ -92,6 +96,8 @@ import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
 import { isASCII, isLength, isMnemonicValid, getRandom} from '~/helpers/index'
+import { BASE_URL_PATTERN, PROD_URL_PATTERN } from '~/config/index'
+
 const { back, push } = useRouter()
 
 const { getFundAddress, getBalance } = useWallet()
@@ -120,9 +126,15 @@ const isDisabled = computed(() => {
   return false
 })
 
+const checkEnvironment = computed(() => {
+  if(BASE_URL_PATTERN === PROD_URL_PATTERN) return false
+  return true
+});
+
 function inputWords(e){
   if(isEmpty()) return false
 }
+
 
 function removeTempDataFromLocalStorage() {
   localStorage.removeItem(MNEMONIC_KEY)
@@ -139,7 +151,23 @@ function isEmpty(){
   return false
 }
 
-
+async function skip(){
+  const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
+  const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
+  const success = await sendMessage(
+    SAVE_GENERATED_SEED,
+    {
+      seed: tempMnemonic,
+      passphrase: tempPassphrase
+    },
+    'background')
+  if (success === true) {
+    const fundAddress = await getFundAddress()
+    getBalance(fundAddress)
+    removeTempDataFromLocalStorage()
+    return push('/wallet-created')
+  }
+}
 
 function userChallenge(){
   const mnemonic = localStorage?.getItem(MNEMONIC_KEY)?.trim()?.split(' ') || []
