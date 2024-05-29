@@ -234,6 +234,7 @@ function goToBack(){
 onBeforeMount(async() => {
   const network = await getNetWork()
   checkEnvironment.value = (network !== ' ')
+})
 </script>
 
 <style lang="scss" scoped>
