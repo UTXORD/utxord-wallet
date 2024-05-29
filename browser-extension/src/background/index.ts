@@ -225,11 +225,13 @@ interface ICollectionTransferResult {
         if(unload){
           if(!pubkey){await Api.removePublicKeyToWebPage();}
           await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
-          await Api.setPublicKeyToWebPage();
+
           setTimeout(async () => {
-              await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user);
+              await Api.setPublicKeyToWebPage();
               await Api.sendMessageToWebPage(CONNECT_TO_SITE, true);
-              await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+              await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user);
+              const addresses = await Api.getAddressForSave();
+              await Api.sendMessageToWebPage(GET_BALANCES, addresses);
           }, 2000);
           return false;
         }
@@ -274,11 +276,10 @@ interface ICollectionTransferResult {
       const success = await Api.checkSeed();
       console.log('checkSeed', success)
       if(success){
-
         await Api.sendMessageToWebPage(CONNECT_TO_SITE, success);
         setTimeout(async () => {
-
-          await Api.sendMessageToWebPage(GET_BALANCES, Api.addresses);
+          const addresses = await Api.getAddressForSave();
+          await Api.sendMessageToWebPage(GET_BALANCES, addresses);
         }, 1000);
       }
       Api.sentry();
@@ -332,7 +333,7 @@ interface ICollectionTransferResult {
     });
 
     async function refreshBalanceAndAdressed(tabId: number | undefined = undefined) {
-      const re = await reConnectSession();
+      const re = await reConnectSession(true);
         if(re){
           return;
         }
@@ -435,7 +436,7 @@ async function newAddress(){
       const newKeys = await Api.genKeys();
       const addresses = await Api.getAddressForSave(newKeys.addresses);
       if(addresses.length > 0){
-        const re = await reConnectSession();
+        const re = await reConnectSession(true);
         if(re){
           return;
         }
@@ -828,7 +829,7 @@ async function newAddress(){
 
 
       if (payload.type === SEND_BALANCES) {
-        const re = await reConnectSession();
+        const re = await reConnectSession(true);
         if(re){
           return;
         }
@@ -856,7 +857,7 @@ async function newAddress(){
       }
 
       if (payload.type === GET_ALL_ADDRESSES) {
-        const re = await reConnectSession();
+        const re = await reConnectSession(true);
         if(re) {
           return;
         }
