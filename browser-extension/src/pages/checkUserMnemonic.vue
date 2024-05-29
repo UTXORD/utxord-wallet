@@ -96,11 +96,21 @@ import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
 import { isASCII, isLength, isMnemonicValid, getRandom} from '~/helpers/index'
-import { BASE_URL_PATTERN, PROD_URL_PATTERN } from '~/config/index'
+import {
+  BASE_URL_PATTERN,
+  PROD_URL_PATTERN,
+  STAGE_URL_PATTERN,
+  ETWOE_URL_PATTERN,
+  LOCAL_URL_PATTERN,
+  NETWORK,
+  TESTNET,
+  REGTEST,
+  MAINNET
+ } from '~/config/index';
 
 const { back, push } = useRouter()
 
-const { getFundAddress, getBalance } = useWallet()
+const { getFundAddress, getBalance, getNetWork } = useWallet()
 
 const MNEMONIC_KEY = 'temp-mnemonic'
 const PASSPHRASE_LENGTH_KEY = 'temp-passphrase-length'
@@ -126,10 +136,7 @@ const isDisabled = computed(() => {
   return false
 })
 
-const checkEnvironment = computed(() => {
-  if(BASE_URL_PATTERN === PROD_URL_PATTERN) return false
-  return true
-});
+const checkEnvironment = ref(false);
 
 function inputWords(e){
   if(isEmpty()) return false
@@ -224,6 +231,10 @@ function goToBack(){
   }
   return back()
 }
+onBeforeMount(async() => {
+  const network = await getNetWork()
+  checkEnvironment.value = (network !== ' ')
+})
 </script>
 
 <style lang="scss" scoped>
