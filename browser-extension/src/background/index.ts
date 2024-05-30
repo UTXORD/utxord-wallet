@@ -223,12 +223,14 @@ interface ICollectionTransferResult {
       const user = await Api.wallet?.auth?.key?.PubKey();
       if(pubkey !== user || !pubkey){
         if(unload){
-          if(pubkey){
-            await Api.removePublicKeyToWebPage();
+          if(pubkey !== user && pubkey !== undefined){
+              await Api.removePublicKeyToWebPage();
+              await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
           }
-          await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
           setTimeout(async () => {
-              await Api.setPublicKeyToWebPage();
+              if(!pubkey){
+                await Api.setPublicKeyToWebPage();
+              }
               await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user);
               await Api.sendMessageToWebPage(CONNECT_TO_SITE, true);
               const addresses = await Api.getAddressForSave();
