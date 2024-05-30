@@ -127,16 +127,19 @@ function goToBack() {
 }
 
 async function onConfirm() {
-  const setuped = await sendMessage(
-    SET_UP_PASSWORD,
-    {
-      password: password.value,
-    },
-    'background'
-  )
-  if (setuped) {
-    localStorage?.setItem(SET_UP_PASSWORD, true)
-    push(`/${page.value}`)
+  try{
+    const setuped = await sendMessage(
+      SET_UP_PASSWORD, {
+        password: password.value,
+      },
+      'background'
+      )
+    if (setuped) {
+      localStorage?.setItem(SET_UP_PASSWORD, true)
+      push(`/${page.value}`)
+    }
+  }catch(e){
+    console.log('CreatePasswordPage->onConfirm():',e);
   }
 }
 
@@ -155,7 +158,6 @@ async function getPassword() {
     password.value = tempPassword
     confirmPassword.value = tempConfirmPassword
   }
-
 }
 
 onBeforeMount(() => {
