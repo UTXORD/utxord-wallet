@@ -223,13 +223,14 @@ interface ICollectionTransferResult {
       const user = await Api.wallet?.auth?.key?.PubKey();
       if(pubkey !== user || !pubkey){
         if(unload){
-          if(!pubkey){await Api.removePublicKeyToWebPage();}
+          if(pubkey){
+            await Api.removePublicKeyToWebPage();
+          }
           await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
-
           setTimeout(async () => {
               await Api.setPublicKeyToWebPage();
-              await Api.sendMessageToWebPage(CONNECT_TO_SITE, true);
               await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user);
+              await Api.sendMessageToWebPage(CONNECT_TO_SITE, true);
               const addresses = await Api.getAddressForSave();
               await Api.sendMessageToWebPage(GET_BALANCES, addresses);
           }, 2000);
@@ -327,16 +328,14 @@ interface ICollectionTransferResult {
 
 
     onMessage(UNLOAD_SEED, async () => {
-      Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
+      await Api.removePublicKeyToWebPage();
+      await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
       const success = await Api.unload();
       return success;
     });
 
     async function refreshBalanceAndAdressed(tabId: number | undefined = undefined) {
-      const re = await reConnectSession(true);
-        if(re){
-          return;
-        }
+        await reConnectSession(true);
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success, tabId);
         await Api.sendMessageToWebPage(GET_CONNECT_STATUS, {}, tabId);
@@ -373,11 +372,10 @@ async function newAddress(){
   await Api.generateNewIndex('fund');
   const newKeys = await Api.genKeys();
   const addresses = await Api.getAddressForSave(newKeys.addresses);
+  console.log('newKeys.addresses:',newKeys.addresses)
+  console.log('ADDRESSES_TO_SAVE:', addresses);
   if(addresses.length > 0){
-    const re = await reConnectSession();
-    if(re){
-      return;
-    }
+    await reConnectSession(true);
     await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
     await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
     return newKeys;
@@ -388,10 +386,6 @@ async function newAddress(){
     onMessage(NEW_FUND_ADDRESS, async () => {
       let addresses = newAddress()
       if(addresses.length > 0){
-        const re = await reConnectSession();
-        if(re){
-          return;
-        }
         await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
@@ -405,10 +399,7 @@ async function newAddress(){
       const newKeys = await Api.genKeys();
       const addresses = await Api.getAddressForSave(newKeys.addresses);
       if(addresses.length > 0){
-        const re = await reConnectSession();
-        if(re){
-          return;
-        }
+        await reConnectSession(true);
         await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
@@ -421,10 +412,7 @@ async function newAddress(){
       const newKeys = await Api.genKeys();
       const addresses = await Api.getAddressForSave(newKeys.addresses);
       if(addresses.length > 0){
-        const re = await reConnectSession();
-        if(re){
-          return;
-        }
+        await reConnectSession(true);
         await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
@@ -436,10 +424,7 @@ async function newAddress(){
       const newKeys = await Api.genKeys();
       const addresses = await Api.getAddressForSave(newKeys.addresses);
       if(addresses.length > 0){
-        const re = await reConnectSession(true);
-        if(re){
-          return;
-        }
+        await reConnectSession(true);
         await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
@@ -818,21 +803,16 @@ async function newAddress(){
       }
 
       if (payload.type === CONNECT_TO_PLUGIN) {
-        let success = Api.signToChallenge(payload.data, tabId);
+        let success = await Api.signToChallenge(payload.data, tabId);
         if (success) {
-          postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: true});
-          setTimeout(async () => {
-            await refreshBalanceAndAdressed(tabId);
-          }, 1000);
+          await postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: true});
+          await refreshBalanceAndAdressed(tabId);
         }
       }
 
 
       if (payload.type === SEND_BALANCES) {
-        const re = await reConnectSession(true);
-        if(re){
-          return;
-        }
+        await reConnectSession(true);
         console.log('SEND_BALANCES:',payload.data)
         if (payload.data?.addresses) {
           Api.balances = Api.prepareAddressToPlugin(payload.data);
@@ -857,27 +837,24 @@ async function newAddress(){
       }
 
       if (payload.type === GET_ALL_ADDRESSES) {
-        const re = await reConnectSession(true);
-        if(re) {
-          return;
-        }
+        await reConnectSession(true);
         console.log('GET_ALL_ADDRESSES: payload.data.addresses:', payload.data.addresses);
-        let allAddresses = await Api.getAddressForSave();
-        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...allAddresses]);
+        const newKeys = await Api.genKeys();
+        let allAddresses = await Api.getAddressForSave(newKeys.addresses);
         Api.all_addresses = Api.prepareAddressToPlugin(payload.data.addresses); // used to determine addresses stored on the server
         const allAddressesSaved = await Api.hasAllLocalAddressesIn(payload.data.addresses);
-        console.debug('Api.hasAllLocalAddressesIn payload.data.addresses: ', allAddressesSaved);
         if(!allAddressesSaved){
           setTimeout(async () => {
                   allAddresses = await Api.getAddressForSave();
-                  if(!allAddresses.length) return;
-                  console.debug('ADDRESSES_TO_SAVE:', [...allAddresses]);
-                  await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, allAddresses, tabId);
+                  if(allAddresses.length>0){
+
+                    await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, allAddresses, tabId);
+                  }
           }, 100);
         }
         // console.log('Api.restoreAllTypeIndexes:',payload.data.addresses);
         await Api.restoreAllTypeIndexes(payload.data.addresses);
-        console.debug('GET_ALL_ADDRESSES: Api.addresses:', [...allAddresses]);
+        console.debug('GET_ALL_ADDRESSES-: Api.addresses:', [...allAddresses]);
       }
 
       if (payload.type === GET_INSCRIPTION_CONTRACT || payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION) {

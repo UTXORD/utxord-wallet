@@ -500,20 +500,14 @@ getKey(type: string, typeAddress: number | undefined = undefined, index: number 
     if (!this.checkSeed()) return false;
     this.genRootKey();
     const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
-    if(!typeAddress) typeAddress = this.wallet[type].typeAddress
+    if(typeAddress===undefined){ typeAddress = this.wallet[type].typeAddress;}
     return this.wallet.root.key.Derive(this.path(type, typeAddress, index), for_script);
   }
 
   getAddress(type: string, key: object | undefined = undefined, typeAddress: number | undefined = undefined){
-    if(!key) key = this.wallet[type].key;
-    if(!typeAddress) typeAddress = this.wallet[type].typeAddress;
-    if(!key?.GetP2TRAddress || !key?.GetP2WPKHAddress){
-      console.log('Error->Key:',key); //!!!
-      return;
-    }
-    return typeAddress === 1
-        ? key.GetP2WPKHAddress(this.network)
-        : key.GetP2TRAddress(this.network);
+    if(key===undefined){ key = this.wallet[type].key;}
+    if(typeAddress===undefined){ typeAddress = this.wallet[type].typeAddress;}
+    return (typeAddress === 1)? key.GetP2WPKHAddress(this.network) : key.GetP2TRAddress(this.network);
   }
 
 getChallengeFromType(type: string, typeAddress: number | undefined = undefined ){
@@ -553,17 +547,19 @@ getChallengeFromAddress(address: striong){
 
  getAddressForSave(addresses: object[] | undefined = undefined, all_addresses: object[] | undefined = undefined){
     const list = [];
-    if(!addresses) {addresses = this.addresses; }
-    if(!all_addresses) {all_addresses = this.all_addresses; }
+    if(addresses === undefined) {addresses = this.addresses; }
+    if(all_addresses === undefined) {all_addresses = this.all_addresses; }
     for(let item of addresses){
       //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
       if(!this.hasAddress(item?.address, all_addresses)){
+        if((!this.hasAddress(item?.address, list) && this.derivate) || !this.derivate){
           let ch = this.getChallengeFromAddress(item?.address);
           if(ch){
             // console.log('item:',item,'|ch:',ch); //!!!
             item = {...item,...ch};
             list.push(item);
           }
+        }
       }
     }
     return list;
@@ -596,7 +592,7 @@ getChallengeFromAddress(address: striong){
     if (!this.checkSeed()) return false;
     if (type === 'ext') return false;
     //m / purpose' / coin_type' / account' / change / index
-    if(!typeAddress) typeAddress = this.wallet[type].typeAddress
+    if(typeAddress===undefined){ typeAddress = this.wallet[type].typeAddress;}
     const ignore = ['uns', 'intsk', 'intsk2', 'scrsk', 'auth'];
     const t = (this.network === this.utxord.MAINNET && type !== 'auth') ? 0 : this.wallet[type].coin_type;
     const a = (this.derivate || ignore.includes(type)) ? this.wallet[type].account : 0 ;
@@ -651,7 +647,7 @@ getChallengeFromAddress(address: striong){
     if(type==='ext') return false;
     this.wallet[type].index += 1;
     await this.setIndexToStorage(type, this.wallet[type].index);
-    this.setIndexRange(this.wallet[type].index);
+    await this.setIndexRange(this.wallet[type].index);
     return true;
   }
 
@@ -693,7 +689,7 @@ getChallengeFromAddress(address: striong){
   }
 
   hasPublicKey(public_key: string, addresses: object[] | undefined = undefined) {
-    if (!addresses) {
+    if (addresses === undefined) {
       addresses = this.addresses;
     }
     for (const item of addresses) {
@@ -705,7 +701,7 @@ getChallengeFromAddress(address: striong){
   }
 
   hasAddress(address: string, addresses: object[] | undefined = undefined) {
-    if (!addresses) {
+    if (addresses === undefined) {
       addresses = this.addresses;
     }
     for (const item of addresses) {
@@ -717,7 +713,7 @@ getChallengeFromAddress(address: striong){
   }
 
   hasAddressType(type: string, addresses: object[] | undefined = undefined) {
-    if (!addresses) {
+    if (addresses === undefined) {
       addresses = this.addresses;
     }
     for (const item of addresses) {
@@ -729,7 +725,7 @@ getChallengeFromAddress(address: striong){
   }
 
   hasAddressFields(address: string, type: string, typeAddress: number, addresses: object[] | undefined = undefined) {
-    if (!addresses) {
+    if (addresses === undefined) {
       addresses = this.addresses;
     }
     for (const item of addresses) {
@@ -870,9 +866,8 @@ getChallengeFromAddress(address: striong){
     if (lastErr) {
       console.error(lastErr)
       return false
-    } else {
-      return true
     }
+   return true
   }
 
   genRootKey() {
@@ -935,12 +930,15 @@ getChallengeFromAddress(address: striong){
     return this.wallet.ext.keys;
   }
 
-  genKey(type: string, typeAddress: number | undefined = undefined) {
+  genKey(type: string, typeAddress: number | undefined = undefined, index: number | undefined = undefined) {
    if (!this.wallet_types.includes(type)) return false;
    if (!this.checkSeed()) return false;
-   if(!typeAddress) typeAddress = this.wallet[type].typeAddress
-   this.wallet[type].key = this.getKey(type, typeAddress);
+   if(typeAddress === undefined){
+     typeAddress = this.wallet[type].typeAddress;
+   }
+   this.wallet[type].key = this.getKey(type, typeAddress, index);
    this.wallet[type].address = this.getAddress(type, this.wallet[type].key, typeAddress);
+
    return true;
  }
 
@@ -1071,28 +1069,47 @@ hasAddressKeyRegistry(address: string){
     this.addPopAddresses(); // add popular addresses
     const publicKeys = [];
     for (const type of this.wallet_types) {
-      if (this.genKey(type, this.wallet[type].typeAddress)) {
-        if (type !== 'auth' && type !== 'ext') {
-          if (!this.hasAddress(this.wallet[type].address)) {
-              if (!this.hasAddressType(type)) {
-                let ch = this.getChallengeFromAddress(this.wallet[type].address);
-                const newAddress = {
-                  address: this.wallet[type].address,
-                  type: type,
-                  typeAddress: this.wallet[type].typeAddress,
-                  index: this.path(type, this.wallet[type].typeAddress),
-                  ...ch
-                };
-                console.debug(`genKeys(): push new "${type}" addresses:`, newAddress);
-                this.addresses.push(newAddress);
-                publicKeys.push({
-                  pubKeyStr: this.wallet[type].key.PubKey(),
-                  type: type,
-                });
-            }
-          }
+
+      const key_0 = this.getKey(type, 0);
+      const address_0 = this.getAddress(type, key_0, 0);
+      const key_1 = this.getKey(type, 1);
+      const address_1 = this.getAddress(type, key_1, 1);
+
+      switch (this.wallet[type].typeAddress) {
+        case 0:
+          this.wallet[type].key = key_0;
+          this.wallet[type].address = address_0;
+        break;
+        case 1:
+          this.wallet[type].key = key_1;
+          this.wallet[type].address = address_1;
+        break;
+      }
+      if(type !== 'auth' && type !== 'ext'){
+        if (!this.hasAddress(address_0) || !this.hasAddress(address_1)) {
+          this.addresses.push({
+              stype: 0,
+              address: address_0,
+              type: type,
+              typeAddress: 0,
+              index: this.path(type, 0),
+              ...this.getChallengeFromAddress(address_0)
+          });
+          this.addresses.push({
+              stype: 1,
+              address: address_1,
+              type: type,
+              typeAddress: 1,
+              index: this.path(type, 1),
+              ...this.getChallengeFromAddress(address_1)
+          });
+          publicKeys.push({ pubKeyStr: key_0.PubKey(), type: type});
+          publicKeys.push({ pubKeyStr: key_1.PubKey(), type: type});
+          console.debug(`genKeys(): push new "${type}" and typeAddress: Taproot addresses:`, address_0);
+          console.debug(`genKeys(): push new "${type}" and typeAddress: SegWit  addresses:`, address_1);
         }
       }
+
     }
     return {addresses: this.addresses, publicKeys};
   }
