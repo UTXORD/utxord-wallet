@@ -398,7 +398,7 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
             if (m_rune_stone) contract.pushKV(name_rune_stone, m_rune_stone->MakeJson());
         }
         else {
-            contract.pushKV(name_ord_amount, FormatAmount(m_ord_destination->Amount()));
+            contract.pushKV(name_ord_amount, m_ord_destination->Amount());
             contract.pushKV(name_destination_addr, m_ord_destination->Address());
         }
 
