@@ -47,7 +47,11 @@ using namespace l15;
         SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
     }
     begin = PyBytes_AsString($input);
-    param.assign(begin, begin+PyBytes_Size($input));
+    try {
+        param.assign(begin, begin+PyBytes_Size($input));
+    } catch (...) {
+        SWIG_exception_fail(SWIG_TypeError, "cannot convert bytes argument");
+    }
     $1 = &param;
 }
 
@@ -56,7 +60,11 @@ using namespace l15;
         SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
     }
     begin = PyBytes_AsString($input);
-    param.assign(begin, begin+PyBytes_Size($input));
+    try {
+        param.assign(begin, begin+PyBytes_Size($input));
+    } catch (...) {
+         SWIG_exception_fail(SWIG_TypeError, "cannot convert bytes argument");
+    }
     $1 = param;
 }
 
