@@ -350,7 +350,7 @@ TEST_CASE("inscribe")
                 CMutableTransaction tx;
                 CHECK(DecodeHexTx(tx, rawtx));
 
-                LogTx(tx);
+                //LogTx(tx);
             }
 
             CHECK_NOTHROW(builder.SignCommit(master_key, "fund"));
@@ -367,8 +367,22 @@ TEST_CASE("inscribe")
             if (condition.return_collection) {
                 CHECK_NOTHROW(fin_builder.OverrideCollectionAddress(return_addr));
             }
-            CHECK_NOTHROW(fin_builder.MarketSignInscription(master_key, "inscribe"));
-            CHECK_NOTHROW(fin_builder.SignCollection(master_key, "ord"));
+
+            std::string service_contract;
+            REQUIRE_NOTHROW(service_contract = fin_builder.Serialize(8, LASY_INSCRIPTION_SIGNATURE));
+            //std::clog << "Lazy sig w/collection:\n" << service_contract << std::endl;
+
+            CreateInscriptionBuilder service_builder(bech->GetChainMode(), LASY_INSCRIPTION);
+            REQUIRE_NOTHROW(service_builder.Deserialize(service_contract, LASY_INSCRIPTION_SIGNATURE));
+
+            REQUIRE_NOTHROW(service_builder.SignCollection(master_key, "ord"));
+
+            REQUIRE_NOTHROW(contract = service_builder.Serialize(8, LASY_INSCRIPTION_SIGNATURE));
+            //std::clog << "Colletion sig:\n" << contract << std::endl;
+
+            REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LASY_INSCRIPTION_SIGNATURE));
+
+            REQUIRE_NOTHROW(fin_builder.MarketSignInscription(master_key, "inscribe"));
 
             REQUIRE_NOTHROW(rawtxs = fin_builder.RawTransactions());
 
@@ -399,12 +413,12 @@ TEST_CASE("inscribe")
         REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
         REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
 
-        std::clog << condition.comment << " ^^^" << '\n';
-        std::clog << "Funding TX fee: " << CalculateTxFee(ParseAmount(fee_rate), commitTx) << " ============================================================" << '\n';
-        LogTx(commitTx);
-        std::clog << "Genesis TX fee: " << CalculateTxFee(ParseAmount(fee_rate), revealTx) << " ============================================================" << '\n';
-        LogTx(revealTx);
-        std::clog << "=======================================================================" << '\n';
+        // std::clog << condition.comment << " ^^^" << '\n';
+        // std::clog << "Funding TX fee: " << CalculateTxFee(ParseAmount(fee_rate), commitTx) << " ============================================================" << '\n';
+        // LogTx(commitTx);
+        // std::clog << "Genesis TX fee: " << CalculateTxFee(ParseAmount(fee_rate), revealTx) << " ============================================================" << '\n';
+        // LogTx(revealTx);
+        // std::clog << "=======================================================================" << '\n';
 
         if (condition.has_change && condition.has_parent) {
             CHECK(commitTx.vout.size() == 3);

@@ -57,11 +57,11 @@ class SwapInscriptionBuilder : public utxord::ContractBuilder<utxord::SwapPhase>
     mutable std::optional<CMutableTransaction> mSwapTpl;
     mutable std::optional<CMutableTransaction> mOrdPayoffTpl;
 
-    mutable std::optional<CMutableTransaction> mFundsCommitTx;
-    mutable std::optional<CMutableTransaction> mFundsPaybackTx;
+    mutable std::optional<CTransaction> mFundsCommitTx;
+    mutable std::optional<CTransaction> mFundsPaybackTx;
 
-    mutable std::optional<CMutableTransaction> mSwapTx;
-    mutable std::optional<CMutableTransaction> mOrdPayoffTx;
+    mutable std::optional<CTransaction> mSwapTx;
+    mutable std::optional<CTransaction> mOrdPayoffTx;
 
     std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> FundsCommitTapRoot() const;
 
@@ -86,10 +86,10 @@ public:
 
     CMutableTransaction GetFundsCommitTxTemplate(bool segwit_in = true) const;
     CMutableTransaction MakeFundsCommitTx() const;
-    const CMutableTransaction& GetFundsCommitTx() const;
+    const CTransaction& GetFundsCommitTx() const;
 
-    const CMutableTransaction& GetSwapTx() const;
-    const CMutableTransaction& GetPayoffTx() const;
+    const CTransaction& GetSwapTx() const;
+    const CTransaction& GetPayoffTx() const;
 
     static const std::string name_ord_price;
 
