@@ -1,5 +1,5 @@
 <template>
-  <div class="alert-mnemonic-screen flex flex-col h-full">
+  <div class="alert-mnemonic-screen flex flex-col h-full" data-testid="alert-mnemonic-page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="alert-mnemonic-screen_content h-full flex flex-col items-start px-5">
@@ -18,6 +18,7 @@
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
           @click="goToBack"
+          data-testid="go-back"
         >
           <ArrowLeftIcon />
         </Button>
@@ -25,6 +26,7 @@
           enter
           class="w-full"
           @click="GotIt"
+          data-testid="got-it"
         >Got it</Button>
       </div>
     </div>

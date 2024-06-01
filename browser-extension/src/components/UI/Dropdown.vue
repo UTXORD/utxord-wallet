@@ -1,5 +1,5 @@
 <template>
-  <div class="dropdown relative w-full" v-click-outside="close">
+  <div class="dropdown relative w-full" v-click-outside="close" data-testid="dropdown">
     <button
       class="w-full min-w-[160px] min-h-[44px] text-[var(--text-color)] bg-[var(--bg-color)] text-left rounded-[10px] text-sm px-4 py-2.5 justify-between inline-flex items-center"
       type="button"
@@ -14,6 +14,7 @@
     <div
       v-if="options?.length && opened"
       class="w-full z-10 bg-[var(--bg-color)] divide-y divide-gray-100 rounded-[10px] shadow absolute top-12 left-0"
+      v-bind="$attrs"
     >
       <ul
         class="p-1 text-sm text-left text-gray-700 dark:text-gray-200"

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div data-testid="modal">
     <slot name="button" :onClick="open" />
     <div
       v-if="opened"

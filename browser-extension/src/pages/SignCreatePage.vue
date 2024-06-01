@@ -1,5 +1,5 @@
 <template>
-  <SignWrapper>
+  <SignWrapper data-testid="sign-create-page">
     <!-- To address -->
 <!--
     <div
@@ -35,6 +35,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="purchase-price"
       />
     </div>
 
@@ -49,6 +50,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="mining-fee"
       />
     </div>
 
@@ -60,6 +62,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="inscribing-on"
         />
       </div>
 
@@ -75,6 +78,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="platform-fee"
         />
       </div>
 
@@ -89,6 +93,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="total-needed"
         />
       </div>
     </div>
@@ -104,6 +109,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="available"
       />
     </div>
 
@@ -119,6 +125,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="unconfirmed"
       />
     </div>
 

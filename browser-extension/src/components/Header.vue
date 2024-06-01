@@ -1,5 +1,5 @@
 <template>
-  <div class="header bg-[var(--primary)] w-full flex items-center px-5 py-2">
+  <div class="header bg-[var(--primary)] w-full flex items-center px-5 py-2" data-testid="header">
     <span
       @click="copyToClipboard(fundAddress)"
       class="cursor-pointer text-black"

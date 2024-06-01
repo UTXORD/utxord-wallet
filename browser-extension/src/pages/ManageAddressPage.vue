@@ -1,5 +1,5 @@
 <template>
-  <div class="manage-address-screen flex flex-col h-full">
+  <div class="manage-address-screen flex flex-col h-full" data-testid="manage-address-page">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
@@ -9,7 +9,7 @@
 
       <!-- Radio buttons -->
       <div class="flex flex-col gap-3 mb-7">
-        <RadioBox v-model="typeAddress" :value="TAPROOT_VALUE" @update:model-value="onChangeTypeAddress">
+        <RadioBox v-model="typeAddress" :value="TAPROOT_VALUE" @update:model-value="onChangeTypeAddress" data-testid="type-taproot">
           <span
             class="text-[var(--text-grey-color)] text-[15px]"
             :class="{
@@ -19,7 +19,7 @@
             Taproot
           </span>
         </RadioBox>
-        <RadioBox v-model="typeAddress" :value="SEGWIT_VALUE" @update:model-value="onChangeTypeAddress">
+        <RadioBox v-model="typeAddress" :value="SEGWIT_VALUE" @update:model-value="onChangeTypeAddress" data-testid="type-segwit">
           <span
             class="text-[var(--text-grey-color)] text-[15px]"
             :class="{
@@ -31,7 +31,7 @@
         </RadioBox>
       </div>
 
-      <div @click="openedAdvanced = !openedAdvanced" class="flex items-center gap-2 mb-3 cursor-pointer w-full">
+      <div @click="openedAdvanced = !openedAdvanced" class="flex items-center gap-2 mb-3 cursor-pointer w-full" data-testid="advanced-options">
         <ChevronIcon class="w-[20px]" :class="{ 'transform rotate-180': openedAdvanced }" />
         <span class="text-[15px] text-[var(--text-color)]">Advanced Options</span>
       </div>
@@ -50,6 +50,7 @@
                 :value="adv.value"
                 class="w-full"
                 @update:model-value="onChangeUseDerivation"
+                :data-testid="adv.testId"
             >
               <template #left>
                 <div class="flex flex-col w-full">
@@ -78,6 +79,7 @@
           second
           class="w-full px-0 flex items-center justify-center gap-2"
           @click="back"
+          data-testid="go-back"
         >
           Go Back
         </Button>
@@ -103,13 +105,15 @@ const ADVANCED_LIST = [
     label: 'No Derivation',
     value: false,
     description: 'Generate one static address',
-    tooltip: 'More compatible with other ordinal wallets. Pseudo–anonymously discloses what you own, better stats for community. Bitcoin phased it out (2012-19) but will support forever.'
+    tooltip: 'More compatible with other ordinal wallets. Pseudo–anonymously discloses what you own, better stats for community. Bitcoin phased it out (2012-19) but will support forever.',
+    testId: 'no-derivation'
   },
   {
     label: 'Use Derivation',
     value: true,
     description: 'Autogenerate one-time addresses',
-    tooltip: 'Bitcoin recommended. Some ordinal wallets do not support it. No one will tell if any two of your inscriptions belong to the same owner.  See BIP-32.'
+    tooltip: 'Bitcoin recommended. Some ordinal wallets do not support it. No one will tell if any two of your inscriptions belong to the same owner.  See BIP-32.',
+    testId: 'use-derivation'
   }
 ]
 

@@ -3,6 +3,7 @@
     class="checkbox flex items-center gap-2 cursor-pointer"
     :class="{ 'checkbox--checked': selected }"
     @click="toggle"
+    v-bind="$attrs"
   >
     <div class="checkbox_figure bg-slate-100/1 flex items-center justify-center rounded border-1 border-[#AAABAD] w-[24px] min-w-[24px] h-[24px]">
       <CheckIcon />

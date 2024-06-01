@@ -1,6 +1,9 @@
 <template>
   <NotificationGroup group="error">
-    <div class="fixed top-30 left-0 w-full flex items-start justify-end px-4">
+    <div
+        class="fixed top-30 left-0 w-full flex items-start justify-end px-4"
+        data-testid="notify-error"
+    >
       <div class="w-full max-w-sm">
         <Notification
           v-slot="{ notifications, close }"
@@ -45,6 +48,7 @@
             <button
               @click="close(notification.id)"
               class="absolute top-[-2px] right-[-5px] px-4 py-3"
+              data-testid="button-close"
             >
               <svg
                 class="w-4 h-4 text-[var(--text-color)] fill-current"

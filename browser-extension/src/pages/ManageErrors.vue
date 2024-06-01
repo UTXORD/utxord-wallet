@@ -1,15 +1,15 @@
 <template>
-  <div class="manage-errors-screen flex flex-col h-full">
+  <div class="manage-errors-screen flex flex-col h-full" data-testid="manage-errors-page">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="manage-errors-screen_content h-full flex flex-col items-start px-5">
+    <div class="manage-errors-screen_content h-full flex flex-col items-start px-5" data-testid="error-report-submission">
 
       <h1 class="text-[var(--text-color)] text-[18px] mb-4">Errors Setup</h1>
 
       <!-- Radio buttons -->
       <div class="flex flex-col gap-3 mb-7">
-        <RadioBox v-model="errorReporting" :value="false" @update:model-value="onChangeErrorReporting">
+        <RadioBox v-model="errorReporting" :value="false" @update:model-value="onChangeErrorReporting" data-testid="false">
           <span
             class="text-[var(--text-grey-color)] text-[15px]"
             :class="{
@@ -19,7 +19,7 @@
             Disable error report submission
           </span>
         </RadioBox>
-        <RadioBox v-model="errorReporting" :value="true" @update:model-value="onChangeErrorReporting">
+        <RadioBox v-model="errorReporting" :value="true" @update:model-value="onChangeErrorReporting" data-testid="true">
           <span
             class="text-[var(--text-grey-color)] text-[15px]"
             :class="{
@@ -37,6 +37,7 @@
           second
           class="w-full px-0 flex items-center justify-center gap-2"
           @click="back"
+          data-testid="go-back"
         >
           Go Back
         </Button>

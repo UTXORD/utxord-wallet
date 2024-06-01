@@ -2,6 +2,7 @@
   <label
     class="radio flex items-center gap-2 cursor-pointer"
     :class="{ 'radio--checked': checked }"
+    v-bind="$attrs"
   >
     <input class="hidden" type="radio" :value="value" :checked="checked" @change="set" />
     <slot name="left" />

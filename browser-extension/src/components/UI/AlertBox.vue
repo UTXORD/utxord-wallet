@@ -2,6 +2,7 @@
   <div
     class="alert-box w-full text-left flex items-center gap-2 px-[10px] py-[8px] rounded-md mt-1"
     :class="{ 'alert-box--danger': danger }"
+    data-testid="alert-box"
   >
     <AlertIcon class="alert-box-icon" />
     <div class="alert-box-slot">

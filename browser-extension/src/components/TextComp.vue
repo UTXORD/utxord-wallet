@@ -2,6 +2,7 @@
   <div
     :style="{ fontSize }"
     class="text-comp text-[var(--text-color)] flex items-center gap-[5px]"
+    data-testid="text-comp"
   >
     <div class="flex items-center gap-[5px]">
       <LoaderIcon

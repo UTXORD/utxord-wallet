@@ -1,5 +1,5 @@
 <template>
-  <SignWrapper>
+  <SignWrapper data-testid="sign-commit-page">
 <!--
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
@@ -33,6 +33,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="purchase-price"
         />
       </div>
       <div class="flex items-center">
@@ -43,6 +44,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="platform-fee"
         />
       </div>
       <div class="flex items-center">
@@ -53,6 +55,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="mining-fee"
         />
       </div>
       <div
@@ -66,6 +69,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="total-needed"
         />
       </div>
     </div>
@@ -81,6 +85,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="available"
       />
     </div>
     <div
@@ -95,6 +100,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="unconfirmed"
       />
     </div>
     <NotifyInBody/>

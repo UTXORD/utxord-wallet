@@ -1,5 +1,5 @@
 <template>
-  <SignWrapper>
+  <SignWrapper data-testid="sign-sell-page">
     <div
       class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
     >
@@ -10,6 +10,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="available-balance"
       />
     </div>
     <!-- To address -->
@@ -24,6 +25,7 @@
           :value="formatAddress(fundAddress, 12, 12)"
           class="w-full"
           readonly
+          data-testid="fund-address"
         >
           <CopyIcon
             class="cursor-pointer"
@@ -45,6 +47,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="selling-for"
         />
       </div>
       <div class="flex items-center">
@@ -55,6 +58,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="platform-fee"
         />
       </div>
     </div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="manage-screen flex flex-col h-full">
+  <div class="manage-screen flex flex-col h-full" data-testid="manage-page">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
@@ -14,6 +14,7 @@
           @click="push(item.link)"
           class="cursor-pointer p-4 flex items-center justify-between items-center text-[15px] text-[var(--text-color)] hover:text-[var(--text-blue)]"
           :class="{ 'border-b-[1px] border-[var(--border-color)] dark:border-[#4e4e4e]': LINKS.length - 1 !== i }"
+          :data-testid="item.testId"
         >
           {{ item.label }}
           <ChevronIcon class="transform rotate-270 h-[15px]" />
@@ -26,6 +27,7 @@
           second
           class="w-full px-0 flex items-center justify-center gap-2"
           @click="back"
+          data-testid="go-back"
         >
           Go Back
         </Button>
@@ -40,15 +42,18 @@ import { useRouter } from 'vue-router'
 const LINKS = [
   {
     label: 'Manage Address',
-    link: '/manage-address'
+    link: '/manage-address',
+    testId: 'manage-address'
   },
   {
     label: 'Manage Password',
-    link: '/manage-password'
+    link: '/manage-password',
+    testId: 'manage-password'
   },
   {
     label: 'Manage Errors',
-    link: '/manage-errors'
+    link: '/manage-errors',
+    testId: 'manage-errors'
   }
 ]
 

@@ -1,6 +1,6 @@
 <template>
   <LoadingPage v-if="loading" />
-  <div v-else class="sign-screen h-full flex flex-col">
+  <div v-else class="sign-screen h-full flex flex-col" v-bind="$attrs">
     <Header />
     <Logo />
     <div class="w-full h-[1px] bg-[var(--border-color)]" />
@@ -11,7 +11,7 @@
 
       <!-- Buttons -->
       <div class="flex w-full gap-3 mt-auto">
-        <Button @click="cancel" outline class="w-2/4"> {{ !isInsufficientBalance?'Cancel':'Ok' }} </Button>
+        <Button @click="cancel" outline class="w-2/4" data-testid="cancel"> {{ !isInsufficientBalance?'Cancel':'Ok' }} </Button>
         <Modal
           @on-submit="onSign"
           @on-close="password = ''"
@@ -28,6 +28,7 @@
               :disabled="isDisabled"
               style="white-space: nowrap"
               @click="onClick"
+              data-testid="close"
               >{{ isDisabledMessage }}</Button
             >
           </template>
@@ -48,6 +49,7 @@
                     (val) =>
                       isASCII(val) || 'Please enter only Latin characters'
                   ]"
+                  data-testid="password"
                 />
               </div>
             </div>

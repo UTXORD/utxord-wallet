@@ -4,6 +4,7 @@
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     class="svg-icon"
+    data-testid="sun-icon"
   >
     <path d="M11 0H13V3H11V0Z" fill="#000" />
     <path d="M11 24V21H13V24H11Z" fill="#000" />
