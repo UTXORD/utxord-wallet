@@ -1,5 +1,5 @@
 <template>
-  <div class="create-password-screen flex flex-col h-full">
+  <div class="create-password-screen flex flex-col h-full" data-testid="create-password-page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div
@@ -31,6 +31,7 @@
               (val) => isLength(val) || 'Password must be minimum 9 characters',
               (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
+            data-testid="password"
           />
         </div>
         <div class="create-password-screen_form-input flex flex-col">
@@ -50,6 +51,7 @@
               (val) => isContains(val) ||
                 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
+            data-testid="confirm-password"
           />
         </div>
       </div>
@@ -60,10 +62,11 @@
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
           @click="goToBack"
+          data-testid="go-back"
         >
           <ArrowLeftIcon />
         </Button>
-        <Button @click="onConfirm" :disabled="isDisabled" enter class="w-full">
+        <Button @click="onConfirm" :disabled="isDisabled" enter class="w-full" data-testid="confirm">
           Confirm
         </Button>
       </div>

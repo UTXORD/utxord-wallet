@@ -3,6 +3,7 @@
 <div
   class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
   v-show="raws.length > 0"
+  data-testid="get-raw-tx-description"
 >
   <span><a @click="whatSigning" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>
   <span class="w-full text-[var(--text-grey-color)]"
@@ -14,6 +15,7 @@
 <div
   class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
   v-if="showContract"
+  data-testid="get-raw-tx-contract"
 >
   <div class="flex items-center mb-2">
     <span class="w-full text-[var(--text-grey-color)]"
@@ -25,7 +27,7 @@
     />
   </div>
   <span>
-  <a v-for="(item, index) in raws" @click="showRawTranscation(index)" :active="activeTab === index" style="float:left;" class="mr-2 text-[var(--text-color)]">#raw_transcation_{{ index+1 }}</a>
+  <a v-for="(item, index) in raws" @click="showRawTranscation(index)" :active="activeTab === index" style="float:left;" class="mr-2 text-[var(--text-color)]" data-testid="raw-tx-link">#raw_transcation_{{ index+1 }}</a>
   </span>
   <CustomInput
     type="textarea"
@@ -33,6 +35,7 @@
     rows="3"
     v-model="textarea"
     readonly
+    data-testid="raw-tx-dump"
   />
 </div>
 

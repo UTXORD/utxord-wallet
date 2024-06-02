@@ -2,6 +2,7 @@
   <div
     :style="{ fontSize }"
     class="price-comp text-[var(--text-color)] flex items-center gap-[5px]"
+    v-bind="$attrs"
   >
     <div class="flex items-center gap-[5px]">
       <LoaderIcon

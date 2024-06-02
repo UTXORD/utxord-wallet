@@ -1,5 +1,5 @@
 <template>
-  <div class="start-screen flex flex-col h-full">
+  <div class="start-screen flex flex-col h-full" data-testid="start-page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="start-screen_content h-full flex flex-col justify-between px-5 pb-5">
@@ -15,12 +15,14 @@
         <Button
           to="/create-password-screen#alert-mnemonic"
           class="w-full mb-3"
+          data-testid="create-new-wallet"
         >
           Create a new wallet
         </Button>
         <Button
           to="/create-password-screen#load"
           class="w-full !bg-[grey]"
+          data-testid="load-wallet"
           second
         >
           I already have a wallet

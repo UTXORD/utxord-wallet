@@ -4,6 +4,7 @@
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     class="svg-icon"
+    data-testid="moon-icon"
   >
     <path
       fill-rule="evenodd"

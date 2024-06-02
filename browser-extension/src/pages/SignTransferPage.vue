@@ -1,5 +1,5 @@
 <template>
-  <SignWrapper>
+  <SignWrapper data-testid="sign-transfer-page">
     <!-- To address -->
 <!--
     <div
@@ -34,6 +34,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="collection-title"
         />
       </div>
       <div class="flex items-center">
@@ -44,6 +45,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="lay-setup-fee"
         />
       </div>
       <div class="flex items-center">
@@ -54,6 +56,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="tx-mining-fee"
         />
       </div>
       <div
@@ -67,6 +70,7 @@
           :font-size-breakpoints="{
             1000000: '15px'
           }"
+          data-testid="total-needed"
         />
       </div>
     </div>
@@ -82,6 +86,7 @@
         :font-size-breakpoints="{
           1000000: '15px'
         }"
+        data-testid="available"
       />
     </div>
 

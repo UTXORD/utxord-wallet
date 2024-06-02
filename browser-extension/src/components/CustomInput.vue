@@ -2,6 +2,7 @@
   <div
     class="custom-input flex flex-col items-start relative"
     :class="{ 'pb-4': rules?.length && !errors?.length }"
+    data-testid="custom-input"
   >
     <textarea
       ref="customInput"
@@ -36,6 +37,7 @@
           @click="togglePassword"
           class="select-none rounded px-2 py-2 text-sm text-gray-600 font-mono cursor-pointer js-password-label"
           for="toggle"
+          data-testid="show-password-icon"
         >
           <EyeIcon :opened="showedPassword" class="opacity-70" />
         </label>

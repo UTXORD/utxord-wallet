@@ -1,6 +1,7 @@
 <template>
   <div v-show="isExistMessage"
       class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+      data-testid="notify-in-body"
   >
     <span class="mr-2 text-[var(--text-color)]" style="font-size: 20px;">{{ message }}</span>
 

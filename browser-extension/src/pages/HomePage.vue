@@ -1,5 +1,5 @@
 <template>
-  <div class="home-screen flex flex-col h-full">
+  <div class="home-screen flex flex-col h-full" data-testid="home-page">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
@@ -16,6 +16,7 @@
             :disabled="!isSynchronized"
             class="home-screen_balance-refresh absolute top-2 right-2 !min-h-[20px]"
             @click="refreshBalance"
+            data-testid="refresh-balance"
           >
             <RefreshIcon />
           </Button>
@@ -29,6 +30,7 @@
               10000000: '30px',
               1000000000: '20px'
             }"
+            data-testid="balance-confirmed"
           />
         </template>
         <span
@@ -41,7 +43,8 @@
           outline
           @click="connectToSite"
           class="min-w-[40px] px-3 py-1 mt-1 flex items-center justify-center bg-[var(--section)] text-[var(--text-color)]"
-          >Connect to site</Button>
+          data-testid="connect-to-site"
+        >Connect to site</Button>
         </template>
       </div>
 
@@ -59,6 +62,7 @@
             :font-size-breakpoints="{
               1000000: '15px'
             }"
+            data-testid="balance-available"
           />
         </div>
         <div class="flex items-center" v-if="balance?.unconfirmed > 0">
@@ -70,6 +74,7 @@
             :font-size-breakpoints="{
               1000000: '15px'
             }"
+            data-testid="balance-unconfirmed"
           />
         </div>
       </div>
@@ -90,6 +95,7 @@
             :font-size-breakpoints="{
               1000000: '15px'
             }"
+            data-testid="used-for-inscription"
           />
         </div>
         <div class="flex items-center">
@@ -129,11 +135,11 @@
 
       <!-- Buttons -->
       <div class="flex w-full gap-3 mt-auto hidden">
-        <Button disabled outline class="w-2/4">
-          <img src="/assets/arrow-down.svg" class="mr-3" alt="Recieve" />
-          <span>Recieve</span>
+        <Button disabled outline class="w-2/4" data-testid="receive">
+          <img src="/assets/arrow-down.svg" class="mr-3" alt="Receive" />
+          <span>Receive</span>
         </Button>
-        <Button disabled class="w-2/4">
+        <Button disabled class="w-2/4" data-testid="send">
           <img src="/assets/arrow-up.svg" class="mr-3" alt="Send" />
           <span>Send</span>
         </Button>

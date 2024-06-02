@@ -1,5 +1,5 @@
 <template>
-  <div class="password-screen flex flex-col h-full">
+  <div class="password-screen flex flex-col h-full" data-testid="manage-password-page">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
@@ -21,6 +21,7 @@
             :rules="[
               (val) => isASCII(val) || 'Please enter only Latin characters'
             ]"
+            data-testid="old-password"
           />
         </div>
         <div class="password-screen_form-input flex flex-col">
@@ -35,6 +36,7 @@
               (val) => isLength(val) || 'Password must be minimum 9 characters',
               (val) => isContains(val) || 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
+            data-testid="password"
           />
         </div>
         <div class="password-screen_form-input flex flex-col">
@@ -53,6 +55,7 @@
               (val) => isContains(val) ||
                 'Password contains atleast One Uppercase, One Lowercase, One Number and One Special Chacter'
             ]"
+            data-testid="confirm-password"
           />
         </div>
       </div>
@@ -63,10 +66,11 @@
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
           @click="back"
+          data-testid="go-back"
         >
           <ArrowLeftIcon />
         </Button>
-        <Button :disabled="isDisabled" enter class="w-full" @click="onStore">Store</Button>
+        <Button :disabled="isDisabled" enter class="w-full" @click="onStore" data-testid="store">Store</Button>
       </div>
     </div>
   </div>

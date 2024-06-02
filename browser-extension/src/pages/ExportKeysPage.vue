@@ -1,6 +1,6 @@
 <template>
   <LoadingPage v-if="loading" />
-  <div v-else class="start-screen flex flex-col h-full">
+  <div v-else class="start-screen flex flex-col h-full" data-testid="export-keys.page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div
@@ -20,7 +20,7 @@
       </div>
       <!-- Buttons -->
       <div class="flex w-full gap-3 mt-auto">
-        <Button @click="cancel" outline class="w-2/4"> Cancel </Button>
+        <Button @click="cancel" outline class="w-2/4" data-testid="cancel"> Cancel </Button>
         <Modal
           @on-submit="onExport"
           @on-close="password = ''"
@@ -37,6 +37,7 @@
               :disabled="isDisabled"
               style="white-space: nowrap"
               @click="onClick"
+              data-testid="export"
               >Export</Button
             >
           </template>
@@ -57,6 +58,7 @@
                     (val) =>
                       isASCII(val) || 'Please enter only Latin characters'
                   ]"
+                  data-testid="password"
                 />
               </div>
             </div>

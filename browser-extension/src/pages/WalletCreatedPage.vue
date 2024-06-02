@@ -1,6 +1,6 @@
 <template>
   <LoadingPage v-if="loading" />
-  <div v-else class="wallet-created-screen flex flex-col h-full">
+  <div v-else class="wallet-created-screen flex flex-col h-full" data-testid="wallet-create-page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="wallet-created-screen_content h-full flex flex-col justify-center items-center px-5 pb-5">
@@ -16,7 +16,7 @@
         </div>
       </div>
       <div class="flex w-full mt-auto">
-        <Button class="w-full" enter @click="goToHomePage">Start</Button>
+        <Button class="w-full" enter @click="goToHomePage" data-testid="start">Start</Button>
       </div>
     </div>
   </div>

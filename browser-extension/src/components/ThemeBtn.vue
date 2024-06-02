@@ -1,5 +1,5 @@
 <template>
-  <q-btn class="theme-btn cursor-pointer" dense outline @click="toggle">
+  <q-btn class="theme-btn cursor-pointer" dense outline @click="toggle" data-testid="theme-btn">
     <component class="theme-btn_icon" :is="comp" />
   </q-btn>
 </template>
