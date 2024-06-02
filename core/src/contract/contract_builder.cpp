@@ -33,7 +33,7 @@ UniValue WitnessStack::MakeJson() const
     return stack;
 }
 
-void WitnessStack::ReadJson(const UniValue &stack)
+void WitnessStack::ReadJson(const UniValue &stack, const std::function<std::string()> &lazy_name)
 {
     if (!stack.isArray()) {
         throw ContractTermWrongValue(std::string(TxInput::name_witness));
@@ -46,7 +46,7 @@ void WitnessStack::ReadJson(const UniValue &stack)
         }
 
         if (i < m_stack.size()) {
-            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch(move(((TxInput::name_witness + '[') += std::to_string(i)) += ']'));
+            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << ']').str());
         }
         else {
             m_stack.emplace_back(unhex<bytevector>(v.get_str()));
@@ -72,19 +72,19 @@ UniValue TxInput::MakeJson() const
     return json;
 }
 
-void TxInput::ReadJson(const UniValue &json)
+void TxInput::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
 {
     if (output) {
-        auto new_output = std::make_shared<UTXO>(chain, json);
-        if (new_output->TxID() != output->TxID() || new_output->NOut() != output->NOut()) throw ContractTermMismatch("tx input"/*move((name_swap_inputs + '[') += std::to_string(i) += ']')*/);
+        auto new_output = std::make_shared<UTXO>(chain, json, lazy_name);
+        if (new_output->TxID() != output->TxID() || new_output->NOut() != output->NOut()) throw ContractTermMismatch(lazy_name());
     }
     else {
-        output = std::make_shared<UTXO>(chain, json);
+        output = std::make_shared<UTXO>(chain, json, lazy_name);
     }
 
     {   const UniValue& val = json[name_witness];
         if (!val.isNull()) {
-            witness.ReadJson(val);
+            witness.ReadJson(val, [&](){ return (lazy_name() += ".") += name_witness; });
         }
     }
 }
@@ -115,9 +115,9 @@ std::vector<bytevector> TaprootSigner::Sign(const CMutableTransaction &tx, uint3
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-ZeroDestination::ZeroDestination(const UniValue &json)
+ZeroDestination::ZeroDestination(const UniValue &json, const std::function<std::string()>& lazy_name)
 {
-    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(name_amount));
+    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
 }
 
 UniValue ZeroDestination::MakeJson() const
@@ -127,19 +127,19 @@ UniValue ZeroDestination::MakeJson() const
     return res;
 }
 
-void ZeroDestination::ReadJson(const UniValue &json)
+void ZeroDestination::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
 {
-    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(std::string(name_amount));
+    if (json[name_amount].getInt<CAmount>() != 0) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 const char* P2Witness::type = "p2witness";
 
-P2Witness::P2Witness(ChainMode chain, const UniValue &json): mBech(chain)
+P2Witness::P2Witness(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): mBech(chain)
 {
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
-        throw ContractTermWrongValue(std::string(name_type));
+        throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
     }
     m_amount = json[name_amount].getInt<CAmount>();
     m_addr = json[name_addr].get_str();
@@ -155,20 +155,23 @@ UniValue P2Witness::MakeJson() const
     return res;
 }
 
-void P2Witness::ReadJson(const UniValue &json)
+void P2Witness::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
 {
-    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
-        throw ContractTermWrongValue(std::string(name_type));
-    }
-    if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(std::string(name_amount));
-    if (m_addr != json[name_addr].get_str())  throw ContractTermMismatch(std::string(name_addr));
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
+    if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
+    if (m_addr != json[name_addr].get_str())  throw ContractTermMismatch(move((lazy_name() += '.') += name_addr));
 }
 
 
-std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, const UniValue& json)
+std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
 {
-    P2Witness dest(chain, json);
-    return P2Witness::Construct(chain, dest.m_amount, dest.m_addr);
+    P2Witness dest(chain, json, lazy_name);
+    try {
+        return P2Witness::Construct(chain, dest.m_amount, dest.m_addr);
+    }
+    catch(...) {
+        std::throw_with_nested(ContractTermWrongValue(lazy_name()));
+    }
 }
 
 std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, CAmount amount, std::string addr)
@@ -178,12 +181,10 @@ std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, CAmo
     std::tie(witver, data) = Bech32(chain).Decode(addr);
     if (witver == 0) {
         return std::make_shared<P2WPKH>(chain, amount, move(addr));
-    }
-    else if (witver == 1){
+    } else if (witver == 1) {
         return std::make_shared<P2TR>(chain, amount, move(addr));
-    }
-    else {
-        throw std::invalid_argument("address with wrong witness program version: " + std::to_string(witver));
+    } else {
+        throw ContractTermWrongValue((std::ostringstream() << addr << " wrong witness ver: " << witver).str());
     }
 }
 
@@ -232,19 +233,19 @@ UniValue UTXO::MakeJson() const
     return res;
 }
 
-void UTXO::ReadJson(const UniValue &json)
+void UTXO::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
 {
-    if (!json[IJsonSerializable::name_type].isStr() || json[IJsonSerializable::name_type].get_str() != type) {
-        throw ContractTermWrongValue(std::string(IJsonSerializable::name_type));
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
+        throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
     }
     m_txid = json[name_txid].get_str();
     m_nout = json[name_nout].getInt<uint32_t >();
 
-    UniValue dest = json[name_destination];
-    if (dest.isNull())
-        throw ContractTermWrongValue(std::string(IJsonSerializable::name_type));
+    const UniValue& dest = json[name_destination];
 
-    m_destination = ContractDestinationFactory<P2Witness, ZeroDestination>::ReadJson(m_chain, dest);
+    if (dest.isNull()) throw ContractTermWrongValue(move((lazy_name() += '.') += name_destination));
+
+    m_destination = ContractDestinationFactory<P2Witness, ZeroDestination>::ReadJson(m_chain, dest, [&](){return (lazy_name() += '.') += name_destination; });
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -371,7 +372,7 @@ CAmount IContractBuilder::GetNewOutputMiningFee()
     return CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE);
 }
 
-void IContractBuilder::DeserializeContractAmount(const UniValue &val, std::optional<CAmount> &target, std::function<std::string()> lazy_name)
+void IContractBuilder::DeserializeContractAmount(const UniValue &val, std::optional<CAmount> &target, const std::function<std::string()> &lazy_name)
 {
     if (!val.isNull()) {
         CAmount amount;
@@ -398,7 +399,7 @@ void IContractBuilder::DeserializeContractAmount(const UniValue &val, std::optio
     }
 }
 
-void IContractBuilder::DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name)
+void IContractBuilder::DeserializeContractString(const UniValue& val, std::optional<std::string> &target, const std::function<std::string()> &lazy_name)
 {
     if (!val.isNull()) {
         std::string str;
@@ -418,7 +419,7 @@ void IContractBuilder::DeserializeContractString(const UniValue& val, std::optio
 }
 
 
-void IContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std::optional<xonly_pubkey> &pk, std::function<std::string()> lazy_name) {
+void IContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std::optional<xonly_pubkey> &pk, const std::function<std::string()> &lazy_name) {
     if (!val.isNull()) {
         xonly_pubkey new_pk;
         try {

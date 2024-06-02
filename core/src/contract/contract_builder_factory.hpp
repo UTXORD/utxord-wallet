@@ -9,13 +9,13 @@ struct ContractDestinationFactory
 {
     typedef DEST destination_type;
 
-    static std::shared_ptr<IContractDestination> ReadJson(ChainMode chain, const UniValue& json)
+    static std::shared_ptr<IContractDestination> ReadJson(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
     {
         if (destination_type::type == json[IJsonSerializable::name_type].getValStr()) {
-            return destination_type::Construct(chain, json);
+            return destination_type::Construct(chain, json, lazy_name);
         }
         else /*if (sizeof...(ARGS))*/ {
-            return ContractDestinationFactory<ARGS...>::ReadJson(chain, json);
+            return ContractDestinationFactory<ARGS...>::ReadJson(chain, json, lazy_name);
         }
     }
 };
@@ -25,9 +25,9 @@ struct ContractDestinationFactory<DEST>
 {
     typedef DEST destination_type;
 
-    static std::shared_ptr<IContractDestination> ReadJson(ChainMode chain, const UniValue& json, bool allow_zero_destination = false)
+    static std::shared_ptr<IContractDestination> ReadJson(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
     {
-        return destination_type::Construct(chain, json);
+        return destination_type::Construct(chain, json, lazy_name);
     }
 };
 
@@ -35,8 +35,8 @@ struct ContractDestinationFactory<DEST>
 template <>
 struct ContractDestinationFactory<ZeroDestination>
 {
-    static std::shared_ptr<IContractDestination> ReadJson(ChainMode chain, const UniValue& json)
-    { return std::make_shared<ZeroDestination>(json); }
+    static std::shared_ptr<IContractDestination> ReadJson(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
+    { return std::make_shared<ZeroDestination>(json, lazy_name); }
 };
 
 

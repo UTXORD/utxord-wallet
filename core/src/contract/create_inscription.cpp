@@ -454,9 +454,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
             if (!val.isObject()) throw ContractTermWrongFormat(std::string(name_market_fee));
 
             if (m_market_fee)
-                m_market_fee->ReadJson(val);
+                m_market_fee->ReadJson(val, [](){ return name_market_fee; });
             else
-                m_market_fee = DestinationFactory::ReadJson(chain(), val);
+                m_market_fee = DestinationFactory::ReadJson(chain(), val, [](){ return name_market_fee; });
 
         }
     }
@@ -465,9 +465,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
             if (!val.isObject()) throw ContractTermWrongFormat(name_author_fee.c_str());
 
             if (m_author_fee)
-                m_author_fee->ReadJson(val);
+                m_author_fee->ReadJson(val, [](){return name_author_fee;});
             else
-                m_author_fee = DestinationFactory::ReadJson(chain(), val);
+                m_author_fee = DestinationFactory::ReadJson(chain(), val, [](){ return name_author_fee; });
         }
     }
 
@@ -476,9 +476,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
             if (!val.isObject()) throw ContractTermWrongFormat(name_ord.c_str());
 
             if (m_ord_destination)
-                m_ord_destination->ReadJson(val);
+                m_ord_destination->ReadJson(val, [](){ return name_ord; });
             else
-                m_ord_destination = NoZeroDestinationFactory::ReadJson(chain(), val);
+                m_ord_destination = NoZeroDestinationFactory::ReadJson(chain(), val, [](){ return name_ord; });
         }
         else {
             std::optional<CAmount> amount;
@@ -492,10 +492,10 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
                 if (amount) ordVal.pushKV(IContractDestination::name_amount, *amount);
                 if (addr) ordVal.pushKV(IContractDestination::name_addr, *addr);
                 if (m_ord_destination) {
-                    m_ord_destination->ReadJson(ordVal);
+                    m_ord_destination->ReadJson(ordVal, [](){return name_ord;});
                 }
                 else {
-                    m_ord_destination = NoZeroDestinationFactory::ReadJson(chain(), ordVal);
+                    m_ord_destination = NoZeroDestinationFactory::ReadJson(chain(), ordVal, [](){return name_ord;});
                 }
             }
         }
@@ -506,7 +506,7 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
             if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
 
             for (const UniValue &input: val.getValues()) {
-                m_inputs.emplace_back(chain(), m_inputs.size(), input);
+                m_inputs.emplace_back(chain(), m_inputs.size(), input, [](){ return name_utxo; });
             }
         }
     }
@@ -514,9 +514,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
         if (!val.isNull()) {
             if (!val.isObject()) throw ContractTermWrongFormat(name_collection_destination.c_str());
             if (m_collection_destination)
-                m_collection_destination->ReadJson(val);
+                m_collection_destination->ReadJson(val, [](){ return name_collection_destination; });
             else
-                m_collection_destination = NoZeroDestinationFactory::ReadJson(chain(), val);
+                m_collection_destination = NoZeroDestinationFactory::ReadJson(chain(), val, [](){ return name_collection_destination; });
         }
     }
     {   const auto &val = contract[name_collection];
@@ -524,7 +524,7 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
             if (!val.isObject()) throw ContractTermWrongFormat(name_collection.c_str());
             DeserializeContractString(val[name_collection_id], m_parent_collection_id, [&]() { return move((name_collection + '.') += name_collection_id); });
             if (!m_parent_collection_id) throw ContractTermMissing(move((name_collection + '.') += name_collection_id));
-            m_collection_input.emplace(chain(), 1, val);
+            m_collection_input.emplace(chain(), 1, val, [](){ return name_collection; });
 
             if (version <= s_protocol_version_no_runes) {
                 m_collection_destination = m_collection_input->output->Destination();
@@ -546,9 +546,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
             if (!val.isObject()) throw ContractTermWrongFormat(name_rune_stone.c_str());
 
             if (m_rune_stone)
-                m_rune_stone->ReadJson(val);
+                m_rune_stone->ReadJson(val, [](){ return name_rune_stone; });
             else
-                m_rune_stone = std::make_shared<RuneStoneDestination>(bech32().GetChainMode(), val);
+                m_rune_stone = std::make_shared<RuneStoneDestination>(bech32().GetChainMode(), val, [](){ return name_rune_stone; });
         }
     }
 
@@ -569,9 +569,9 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
             if (!val.isObject()) throw ContractTermWrongFormat(name_fixed_change.c_str());
 
             if (m_fixed_change)
-                m_fixed_change->ReadJson(val);
+                m_fixed_change->ReadJson(val, [](){ return name_fixed_change; });
             else
-                m_fixed_change = NoZeroDestinationFactory::ReadJson(chain(), val);
+                m_fixed_change = NoZeroDestinationFactory::ReadJson(chain(), val, [](){ return name_fixed_change; });
         }
     }
 

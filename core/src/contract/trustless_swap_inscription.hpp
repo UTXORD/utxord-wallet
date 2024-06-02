@@ -136,7 +136,7 @@ public:
     std::string OrdSwapRawTransaction() const;
 
     uint32_t TransactionCount(TrustlessSwapPhase phase) const;
-    std::string RawTransaction(TrustlessSwapPhase phase, uint32_t n);
+    std::string RawTransaction(TrustlessSwapPhase phase, uint32_t n) const;
 
     CAmount CalculateWholeFee(const std::string& params) const override;
     CAmount GetMinFundingAmount(const std::string& params) const override;

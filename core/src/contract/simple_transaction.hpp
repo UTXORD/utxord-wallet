@@ -57,7 +57,7 @@ public:
     const std::vector<std::shared_ptr<IContractDestination>>& Outputs() const { return m_outputs; }
     std::vector<std::shared_ptr<IContractDestination>>& Outputs() { return m_outputs; }
 
-    void AddChangeOutput(const std::string& addr);
+    void AddChangeOutput(std::string addr);
     void DropChangeOutput();
 
     void Sign(const KeyRegistry& master_key, const std::string& key_filter_tag);
@@ -79,8 +79,8 @@ public:
     uint32_t CountDestinations() const override
     { return m_outputs.size(); }
 
-    std::vector<std::shared_ptr<IContractDestination>> Destinations() const override
-    { return std::vector<std::shared_ptr<IContractDestination>>(m_outputs.begin(), m_outputs.end()); }
+    const std::vector<std::shared_ptr<IContractDestination>>& Destinations() const override
+    { return m_outputs; }
 
     std::shared_ptr<IContractOutput> ChangeOutput() const
     {

@@ -57,7 +57,7 @@ public:
         bech32::DecodeResult bech_result = bech32::Decode(address);
         if(bech_result.hrp != hrptag)
         {
-            throw ContractTermWrongValue(std::string("Address prefix should be ") + hrptag + ". Address: " + address);
+            throw ContractTermWrongValue(std::string("Allowed prefix: ") + hrptag + ". Address: " + address);
         }
         if(bech_result.data.empty())
         {

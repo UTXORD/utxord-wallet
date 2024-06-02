@@ -61,8 +61,7 @@ struct IJsonSerializable
 
     virtual ~IJsonSerializable() = default;
     virtual UniValue MakeJson() const = 0;
-    virtual void ReadJson(const UniValue& json) = 0;
-
+    virtual void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) = 0;
 };
 
 class ISigner
@@ -116,7 +115,7 @@ struct IContractDestination: IJsonSerializable
 struct ZeroDestination: IContractDestination
 {
     ZeroDestination() = default;
-    explicit ZeroDestination(const UniValue &json);
+    explicit ZeroDestination(const UniValue &json, const std::function<std::string()>& lazy_name);
     CAmount Amount() const override { return 0; }
     void Amount(CAmount amount) override { if (amount) throw std::invalid_argument("Non zero amount cannot be assigned to zero destination"); }
     std::string Address() const override { return {}; }
@@ -125,7 +124,7 @@ struct ZeroDestination: IContractDestination
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::domain_error("zero destination cannot provide a signer"); }
     UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
 };
 
 
@@ -148,7 +147,7 @@ public:
 
     P2Witness(ChainMode chain, CAmount amount, std::string addr) : mBech(chain), m_amount(amount), m_addr(move(addr)) {}
 
-    explicit P2Witness(ChainMode chain, const UniValue& json);
+    explicit P2Witness(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
 
     ~P2Witness() override = default;
 
@@ -171,9 +170,9 @@ public:
     { throw ContractTermMissing("key"); }
 
     UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
 
-    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json);
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
     static std::shared_ptr<IContractDestination> Construct(ChainMode chain, CAmount amount, std::string addr);
 };
 
@@ -206,7 +205,7 @@ public:
 class IContractMultiOutput {
 public:
     virtual std::string TxID() const = 0;
-    virtual std::vector<std::shared_ptr<IContractDestination>> Destinations() const = 0;
+    virtual const std::vector<std::shared_ptr<IContractDestination>>& Destinations() const = 0;
     virtual uint32_t CountDestinations() const = 0;
 };
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -217,7 +216,7 @@ public:
     virtual uint32_t NOut() const = 0;
     virtual CAmount Amount() const { return Destination()->Amount(); }
     virtual std::string Address() const { return Destination()->Address(); }
-    virtual const std::shared_ptr<IContractDestination> Destination() const = 0;
+    virtual const std::shared_ptr<IContractDestination> & Destination() const = 0;
     virtual std::shared_ptr<IContractDestination> Destination() = 0;
 };
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -232,12 +231,12 @@ public:
 
     std::string TxID() const override { return m_contract->TxID(); }
     uint32_t NOut() const override { return m_nout; }
-    const std::shared_ptr<IContractDestination> Destination() const override { return m_contract->Destinations()[m_nout]; }
+    const std::shared_ptr<IContractDestination> & Destination() const override { return m_contract->Destinations()[m_nout]; }
     std::shared_ptr<IContractDestination> Destination() override { return m_contract->Destinations()[m_nout]; }
 };
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-class UTXO: public IContractOutput/*, public IJsonSerializable*/
+class UTXO: public IContractOutput, public IJsonSerializable
 {
 public:
     static const std::string name_txid;
@@ -264,8 +263,8 @@ public:
     UTXO(ChainMode chain, const IContractMultiOutput& out, uint32_t nout)
         : m_chain(chain), m_txid(out.TxID()), m_nout(nout), m_destination(out.Destinations()[nout]) {}
 
-    explicit UTXO(ChainMode chain, const UniValue& json) : m_chain(chain)
-    { UTXO::ReadJson(json); }
+    explicit UTXO(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name) : m_chain(chain)
+    { UTXO::ReadJson(json, lazy_name); }
 
     std::string TxID() const final
     { return m_txid; }
@@ -273,21 +272,21 @@ public:
     uint32_t NOut() const final
     { return  m_nout; }
 
-    const std::shared_ptr<IContractDestination> Destination() const final
+    const std::shared_ptr<IContractDestination> & Destination() const final
     { return m_destination; }
     std::shared_ptr<IContractDestination> Destination() final
     { return m_destination; }
 
-    UniValue MakeJson() const;
-    void ReadJson(const UniValue& json);
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json, const std::function<std::string()>& lazy_name) override;
 };
 
-class WitnessStack
+class WitnessStack: public IJsonSerializable
 {
     std::vector<bytevector> m_stack;
 public:
-    UniValue MakeJson() const;
-    void ReadJson(const UniValue& json);
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
     size_t size() const
     { return m_stack.size(); }
     const bytevector& operator[](size_t i) const
@@ -316,11 +315,11 @@ struct TxInput : public IJsonSerializable
     WitnessStack witness;
 
     explicit TxInput(Bech32 bech, uint32_t n, std::shared_ptr<IContractOutput> prevout) : chain(bech.GetChainMode()), nin(n), output(move(prevout)) {}
-    explicit TxInput(ChainMode ch, uint32_t n, const UniValue& json) : chain(ch), nin(n)
-    { TxInput::ReadJson(json); }
+    explicit TxInput(ChainMode ch, uint32_t n, const UniValue& json, const std::function<std::string()>& lazy_name) : chain(ch), nin(n)
+    { TxInput::ReadJson(json, lazy_name); }
 
     UniValue MakeJson() const override;
-    void ReadJson(const UniValue& data) override;
+    void ReadJson(const UniValue& data, const std::function<std::string()> &lazy_name) override;
 
     bool operator<(const TxInput& r) const { return nin < r.nin; }
 };
@@ -385,7 +384,7 @@ public:
     ChainMode chain() const
     { return m_chain; }
 
-    const Bech32 bech32() const
+    Bech32 bech32() const
     { return Bech32(m_chain); }
 
     void MarketFee(CAmount amount, std::string addr)
@@ -420,12 +419,12 @@ public:
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script);
     void VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const;
 
-    static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, std::function<std::string()> lazy_name);
-    static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, std::function<std::string()> lazy_name);
-    static void DeserializeContractScriptPubkey(const UniValue &val, std::optional<xonly_pubkey> &pk, std::function<std::string()> lazy_name);
+    static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, const std::function<std::string()> &lazy_name);
+    static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, const std::function<std::string()> &lazy_name);
+    static void DeserializeContractScriptPubkey(const UniValue &val, std::optional<xonly_pubkey> &pk, const std::function<std::string()> &lazy_name);
 
     template<typename HEX>
-    static void DeserializeContractHexData(const UniValue &val, std::optional<HEX> &target, std::function<std::string()> lazy_name)
+    static void DeserializeContractHexData(const UniValue &val, std::optional<HEX> &target, const std::function<std::string()>& lazy_name)
     {
         if (!val.isNull()) {
             HEX hexdata;

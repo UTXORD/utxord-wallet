@@ -717,6 +717,8 @@ void SwapInscriptionBuilder::ReadJson_v4(const UniValue& contract, SwapPhase pha
                                          std::string{}));
 
                     m_fund_inputs.back().witness.Set(0,unhex<signature>(sig_val.get_str()));
+
+//                    m_fund_inputs.emplace_back(chain(), i, val[i], [i]() { return (std::ostringstream() << name_funds << '[' << i << ']').str(); });
                 }
                 else {
                     // std::format("{}[{}].{}", name_funds, i, name_funds_txid)
@@ -734,6 +736,7 @@ void SwapInscriptionBuilder::ReadJson_v4(const UniValue& contract, SwapPhase pha
                             throw ContractTermMismatch((std::ostringstream() << name_funds << '[' << i << "]." << name_funds_commit_sig).str());
                     }
                     else utxo_it->witness.Set(0, unhex<signature>(sig_val.get_str()));
+//                    utxo_it->ReadJson(val[i], [i]() { return (std::ostringstream() << name_funds << '[' << i << ']').str(); });
                 }
                 ++utxo_it;
             }
@@ -759,10 +762,10 @@ void SwapInscriptionBuilder::ReadJson(const UniValue& contract, SwapPhase phase)
     {   const auto& val = contract[name_ord_input];
         if (!val.isNull()) {
             if (m_ord_input) {
-                m_ord_input->ReadJson(val);
+                m_ord_input->ReadJson(val, [](){ return name_ord_input; });
             }
             else {
-                m_ord_input.emplace(chain(), 0, val);
+                m_ord_input.emplace(chain(), 0, val, [](){ return name_ord_input; });
             }
             if (!m_ord_input->witness) throw ContractTermMissing(move((name_ord_input + '.') += TxInput::name_witness));
         }
@@ -774,9 +777,9 @@ void SwapInscriptionBuilder::ReadJson(const UniValue& contract, SwapPhase phase)
             if (!val.isObject()) throw ContractTermWrongFormat(std::string(name_market_fee));
 
             if (m_market_fee)
-                m_market_fee->ReadJson(val);
+                m_market_fee->ReadJson(val, [](){ return name_market_fee; });
             else
-                m_market_fee = DestinationFactory::ReadJson(chain(), val);
+                m_market_fee = DestinationFactory::ReadJson(chain(), val, [](){ return name_market_fee; });
 
         }
     }
@@ -794,15 +797,15 @@ void SwapInscriptionBuilder::ReadJson(const UniValue& contract, SwapPhase phase)
 
             for (size_t i = 0; i < val.size(); ++i) {
                 if (i == m_fund_inputs.size()) {
-                    std::optional<TxInput> input = TxInput(chain(), i, val[i]);
+                    std::optional<TxInput> input = TxInput(chain(), i, val[i], [i](){ return (std::ostringstream() << name_funds << '[' << i << ']').str(); });
 
-                    if (!input->witness) throw ContractTermMissing(move(((name_funds + '[') += std::to_string(i) += ']') += TxInput::name_witness));
+                    if (!input->witness) throw ContractTermMissing((std::ostringstream() << name_funds << '[' << i << "]." << TxInput::name_witness).str());
 
                     m_fund_inputs.emplace_back(move(*input));
                 }
                 else {
-                    m_fund_inputs[i].ReadJson(val[i]);
-                    if (!m_fund_inputs[i].witness) throw ContractTermMissing(move(((name_funds + '[') += std::to_string(i) += ']') += TxInput::name_witness));
+                    m_fund_inputs[i].ReadJson(val[i], [i](){ return (std::ostringstream() << name_funds << '[' << i << ']').str(); });
+                    if (!m_fund_inputs[i].witness) throw ContractTermMissing((std::ostringstream() << name_funds << '[' << i << "]." << TxInput::name_witness).str());
                 }
             }
         }
@@ -854,22 +857,13 @@ std::vector<std::pair<CAmount,CMutableTransaction>> SwapInscriptionBuilder::GetT
 
 void SwapInscriptionBuilder::OrdUTXO(string txid, uint32_t nout, CAmount amount, std::string addr)
 {
-    try {
-        m_ord_input.emplace(bech32(), 0, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
-    }
-    catch(...) {
-        std::throw_with_nested(ContractTermWrongValue(name_ord_input.c_str()));
-    }
+    m_ord_input.emplace(bech32(), 0, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
 }
 
 void SwapInscriptionBuilder::AddFundsUTXO(string txid, uint32_t nout, CAmount amount, std::string addr)
 {
-    try {
-        m_fund_inputs.emplace_back(bech32(), m_fund_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
-    }
-    catch(...) {
-        std::throw_with_nested(ContractTermWrongValue(name_funds + '[' + std::to_string(m_fund_inputs.size()) + ']'));
-    }
+    uint32_t i = m_fund_inputs.size();
+    m_fund_inputs.emplace_back(bech32(), m_fund_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
 }
 
 CMutableTransaction SwapInscriptionBuilder::CreatePayoffTxTemplate() const {
@@ -981,7 +975,7 @@ uint32_t SwapInscriptionBuilder::TransactionCount(SwapPhase phase) const
     }
 }
 
-std::string SwapInscriptionBuilder::RawTransaction(SwapPhase phase, uint32_t n)
+std::string SwapInscriptionBuilder::RawTransaction(SwapPhase phase, uint32_t n) const
 {
     switch (phase) {
     case ORD_SWAP_SIG:

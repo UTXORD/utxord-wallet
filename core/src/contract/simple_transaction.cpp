@@ -54,7 +54,7 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
     return tx;
 }
 
-void SimpleTransaction::AddChangeOutput(const std::string& addr)
+void SimpleTransaction::AddChangeOutput(std::string addr)
 {
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
 
@@ -67,10 +67,10 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     bytevector arg;
     std::tie(v, arg) = bech32().Decode(addr);
     if (v == 0) {
-        AddOutput(std::make_shared<P2WPKH>(bech32().GetChainMode(), 0, addr));
+        AddOutput(std::make_shared<P2WPKH>(bech32().GetChainMode(), 0, move(addr)));
     }
     else if (v == 1) {
-        AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, addr));
+        AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, move(addr)));
     }
     else {
         throw ContractTermWrongValue(name_change_addr.c_str());
@@ -173,10 +173,10 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 
         for (size_t i = 0; i < val.size(); ++i) {
             if (i == m_inputs.size()) {
-                m_inputs.emplace_back(chain(), m_inputs.size(), val[i]);
+                m_inputs.emplace_back(chain(), m_inputs.size(), val[i], [i](){ return (std::ostringstream() << name_utxo << '[' << i << ']').str();});
             }
             else {
-                m_inputs[i].ReadJson(val[i]);
+                m_inputs[i].ReadJson(val[i], [i](){ return (std::ostringstream() << name_utxo << '[' << i << ']').str();});
             }
         }
     }
@@ -188,10 +188,10 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 
         for (size_t i = 0; i < val.size(); ++i) {
             if (i == m_outputs.size()) {
-                m_outputs.emplace_back(NoZeroDestinationFactory::ReadJson(chain(), val[i]));
+                m_outputs.emplace_back(NoZeroDestinationFactory::ReadJson(chain(), val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();}));
             }
             else {
-                m_outputs[i]->ReadJson(val[i]);
+                m_outputs[i]->ReadJson(val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();});
             }
         }
     }

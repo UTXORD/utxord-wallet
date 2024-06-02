@@ -23,9 +23,6 @@ enum SwapPhase {
 
 class SwapInscriptionBuilder : public utxord::ContractBuilder<utxord::SwapPhase>
 {
-    CAmount m_whole_fee = 0;
-    CAmount m_last_fee_rate = 0;
-
     static const uint32_t s_protocol_version;
     static const char* s_versions;
     static const uint32_t s_protocol_version_pubkey_v4;
@@ -184,7 +181,7 @@ public:
     std::string OrdPayoffRawTransaction() const;
 
     uint32_t TransactionCount(SwapPhase phase) const;
-    std::string RawTransaction(SwapPhase phase, uint32_t n);
+    std::string RawTransaction(SwapPhase phase, uint32_t n) const;
 
     CAmount GetMinFundingAmount(const std::string& params) const override;
 

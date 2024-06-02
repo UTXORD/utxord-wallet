@@ -144,7 +144,7 @@ private:
     CAmount m_amount = 0;
 
 public:
-    RuneStoneDestination(ChainMode chain) : RuneStone(), m_chain(chain) {}
+    explicit RuneStoneDestination(ChainMode chain) : RuneStone(), m_chain(chain) {}
     RuneStoneDestination(ChainMode chain, RuneStone runeStone) : RuneStone(move(runeStone)), m_chain(chain) {}
     RuneStoneDestination(const RuneStoneDestination& ) = default;
     RuneStoneDestination(RuneStoneDestination&& ) noexcept = default;
@@ -152,8 +152,8 @@ public:
     RuneStoneDestination& operator= (const RuneStoneDestination& ) = default;
     RuneStoneDestination& operator= (RuneStoneDestination&& ) noexcept = default;
 
-    explicit RuneStoneDestination(ChainMode chain, const UniValue& json) : m_chain(chain)
-    { ReadJson(json); }
+    explicit RuneStoneDestination(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name) : m_chain(chain)
+    { ReadJson(json, lazy_name); }
 
     bytevector Commit() const;
 
@@ -167,9 +167,9 @@ public:
     { throw std::domain_error("rune stone destination cannot provide a signer"); }
 
     UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json) override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
 
-    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json);
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
 
 };
 
@@ -192,7 +192,7 @@ class Rune
 public:
     explicit Rune(const std::string &rune_text, const std::string &space, std::optional<wchar_t> symbol = {});
 
-    std::string RuneText(const std::string space = " ") const;
+    std::string RuneText(const std::string& space = " ") const;
 
     void Divisibility(auto v) { if (v <= MAX_DIVISIBILITY) m_divisibility = (uint8_t)v; }
     uint8_t Divisibility() const { return m_divisibility; }
