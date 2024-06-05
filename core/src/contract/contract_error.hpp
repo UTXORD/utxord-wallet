@@ -54,6 +54,16 @@ public:
     { return "ContractTermWrongFormat"; }
 };
 
+class ContractFormatError : public ContractError {
+public:
+    explicit ContractFormatError(std::string&& details) : ContractError(move(details)) {}
+    explicit ContractFormatError(const char* const details) : ContractError(details) {}
+    ~ContractFormatError() override = default;
+
+    const char* what() const noexcept override
+    { return "ContractFormatError"; }
+};
+
 class ContractStateError : public ContractError {
 public:
     explicit ContractStateError(std::string&& details) : ContractError(move(details)) {}

@@ -88,7 +88,7 @@ public:
     void RemoveKeyFromCache(l15::seckey sk)
     { m_keys_cache.remove_if([&](const auto& el){ return el == sk; }); }
 
-    KeyPair Derive(const char *path, bool for_script) const;
+    KeyPair Derive(const std::string& path, bool for_script) const;
 
     KeyPair Lookup(const l15::bytevector& keyid, const KeyLookupFilter& hint, std::function<bool(const l15::core::ChannelKeys&, const l15::bytevector&)>) const;
     KeyPair Lookup(const l15::xonly_pubkey& pk, const KeyLookupFilter& hint) const;

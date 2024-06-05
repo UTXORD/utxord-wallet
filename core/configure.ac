@@ -139,7 +139,7 @@ if test "$enable_wasm_binding" = "yes"; then
   fi
 
   CPPFLAGS="$DEBUG_CPPFLAGS $CPPFLAGS"
-  CXXFLAGS="$DEBUG_CXXFLAGS $CXXFLAGS -fexceptions -Wno-unqualified-std-cast-call"
+  CXXFLAGS="$DEBUG_CXXFLAGS $CXXFLAGS -fexceptions -Wno-unqualified-std-cast-call -sUSE_BOOST_HEADERS=1"
   LDFLAGS="$LDFLAGS -fexceptions -sEXPORT_EXCEPTION_HANDLING_HELPERS -sLLD_REPORT_UNDEFINED  -sEXPORTED_FUNCTIONS=['_malloc'] -sEXPORT_NAME='utxord' -sMODULARIZE=1 -sNO_FILESYSTEM=1"
 
   if test "$enable_debug" != "yes"; then
@@ -161,8 +161,9 @@ else
   AX_TBB
 fi
 
+AX_BOOST_BASE([1.70])
+
 if test "x$enable_build_tests" = "xyes"; then
-  AX_BOOST_BASE([1.70])
   AX_BOOST_FILESYSTEM
 fi
 
