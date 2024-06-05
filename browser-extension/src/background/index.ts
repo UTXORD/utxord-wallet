@@ -219,8 +219,12 @@ interface ICollectionTransferResult {
     }
 
     async function reConnectSession(unload = false){
+      await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
       const pubkey = await Api.getPublicKeyFromWebPage();
       const user = await Api.wallet?.auth?.key?.PubKey();
+      if(user){
+        await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user);
+      }
       if(pubkey !== user || !pubkey){
         if(unload){
           if(pubkey !== user && pubkey !== undefined){
@@ -229,8 +233,9 @@ interface ICollectionTransferResult {
           }
           setTimeout(async () => {
               if(!pubkey){
-                await Api.setPublicKeyToWebPage();
+                  await Api.setPublicKeyToWebPage();
               }
+              await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
               await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user);
               await Api.sendMessageToWebPage(CONNECT_TO_SITE, true);
               const addresses = await Api.getAddressForSave();
@@ -800,11 +805,13 @@ async function newAddress(){
       console.debug(`----- message from frontend(tabId:${tabId}): ${payload?.type}, data: `, {...payload?.data || {}});
 
       if (payload.type === SEND_CONNECT_STATUS) {
+        await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
         Api.connect = payload?.data?.connected;
         postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: Api.connect});
       }
 
       if (payload.type === CONNECT_TO_PLUGIN) {
+        await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
         let success = await Api.signToChallenge(payload.data, tabId);
         if (success) {
           await postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: true});
@@ -1094,6 +1101,7 @@ async function newAddress(){
     // });
     chrome.tabs.onCreated.addListener(async (tab) => {
       const url = tab.url || tab.pendingUrl;
+      console.log('url:',url,'|base_url:', base_url);
       if (url?.startsWith(base_url)) {
         await sendhello(tab.id);
       }
