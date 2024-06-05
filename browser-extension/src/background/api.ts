@@ -313,6 +313,8 @@ class Api {
         this.wallet_types = WALLET_TYPES;
         this.addresses = [];
         this.all_addresses = [];
+        this.keyCache = [];
+        this.skipAddresses = [];
         this.max_index_range = 1;
 
         this.balances = [];
@@ -1023,7 +1025,19 @@ getChallengeFromAddress(address: striong){
 
   }
 
+getKeyFromKeyCache(address: string){
+  if(!address) return;
+  if(!this.keyCache.length) return;
+  const out = this.keyCache?.find((item) =>item.address === address);
+  // console.log('getKeyFromKeyCache->key:',out?.key);
+  return out?.key;
+}
+
 getKeyFromKeyRegistry(address: string){
+  if(this.hasAddress(address, this.skipAddresses)){
+    console.log('skip address:',address);
+    return null;
+  }
   const filterDefault = {
         look_cache: true,
         key_type: "DEFAULT",
@@ -1040,19 +1054,38 @@ getKeyFromKeyRegistry(address: string){
       };
       let outDefault = null, outTapscript = null;
       try{
+        const key = this.getKeyFromKeyCache(address);
+        //console.log('getKeyFromKeyRegistry->key:',address,'| key:', key);
+        if(key?.ptr){
+          return key;
+        }
         const outDefault = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
         // console.log('outDefault:',outDefault);
         if(outDefault?.ptr) {
+          if(!this.hasAddress(address, this.keyCache)){
+            //console.log('getKeyFromKeyRegistry->push[0]:',address, '|len:',this.keyCache.length);
+            this.keyCache.push({address: address, key: outDefault});
+          }
           return outDefault;
         }
         const outTapscript = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
         // console.log('outTapscript',outTapscript);
         if(outTapscript?.ptr) {
-          return outTapscript;
+          if(!this.hasAddress(address, this.keyCache)){
+          //console.log('getKeyFromKeyRegistry->push[1]:',address, '|len:',this.keyCache.length);
+          this.keyCache.push({address: address, key: outTapscript});
+        }
+         return outTapscript;
+        }
+        if(!this.hasAddress(address, this.skipAddresses)){
+          this.skipAddresses.push({address: address});
         }
         return null;
           } catch(e){
             console.log('getKeyFromKeyRegistry:',this.getErrorMessage(e));
+            if(!this.hasAddress(address, this.skipAddresses)){
+              this.skipAddresses.push({address: address});
+            }
             return null;
         }
 }
