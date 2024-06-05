@@ -25,8 +25,6 @@ class SwapInscriptionBuilder : public utxord::ContractBuilder<utxord::SwapPhase>
 {
     static const uint32_t s_protocol_version;
     static const char* s_versions;
-    static const uint32_t s_protocol_version_pubkey_v4;
-    static const uint32_t s_protocol_version_old_v3;
 
     std::optional<CAmount> m_ord_price;
 
@@ -133,7 +131,6 @@ public:
     const std::string& GetContractName() const override;
     void CheckContractTerms(SwapPhase phase) const override;
     UniValue MakeJson(uint32_t version, SwapPhase phase) const override;
-    void ReadJson_v4(const UniValue& json, SwapPhase phase);
     void ReadJson(const UniValue& json, SwapPhase phase) override;
 
     static const char* SupportedVersions() { return s_versions; }

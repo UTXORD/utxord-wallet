@@ -157,7 +157,7 @@ UniValue P2Witness::MakeJson() const
 
 void P2Witness::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
 {
-    if (!json[name_type].isStr() || json[name_type].get_str() != type) throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) throw ContractTermMismatch(lazy_name());
     if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
     if (m_addr != json[name_addr].get_str())  throw ContractTermMismatch(move((lazy_name() += '.') += name_addr));
 }
