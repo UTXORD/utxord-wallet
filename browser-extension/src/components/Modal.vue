@@ -23,6 +23,7 @@
               type="button"
               class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
               @click="close"
+              data-testid="close-icon"
             >
               <svg
                 aria-hidden="true"
@@ -40,16 +41,16 @@
             </button>
           </div>
           <!-- Modal body -->
-          <div class="p-4 space-y-6">
+          <div class="p-4 space-y-6" data-testid="modal-body">
             <slot name="body" />
           </div>
           <!-- Modal footer -->
           <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
           <div class="flex items-center p-4 space-x-2 rounded-b">
-            <Button @click="close" outline class="w-2/4">
+            <Button @click="close" outline class="w-2/4" data-testid="close-button">
               {{ props.cancelText }}
             </Button>
-            <Button :disabled="props.disabled" @click="submit" class="w-2/4">{{
+            <Button :disabled="props.disabled" @click="submit" class="w-2/4" data-testid="submit-button">{{
               props.submitText
             }}</Button>
           </div>
