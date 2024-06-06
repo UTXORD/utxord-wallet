@@ -12,11 +12,16 @@
 #include "util/strencodings.h"
 
 #include "common.hpp"
+#include "utils.hpp"
 #include "contract_error.hpp"
 
 namespace utxord {
 
-enum ChainMode {MAINNET, TESTNET, REGTEST};
+//enum ChainMode {MAINNET, TESTNET, REGTEST};
+    using l15::ChainMode;
+    using l15::MAINNET;
+    using l15::TESTNET;
+    using l15::REGTEST;
 
 }
 
@@ -30,8 +35,8 @@ class Bech32
     const char* hrptag;
 public:
 
-    template <ChainMode M>
-    Bech32(Hrp<M>) : chainmode(M), hrptag(Hrp<M>::value) {}
+//    template <ChainMode M>
+//    Bech32(Hrp<M>) : chainmode(M), hrptag(Hrp<M>::value) {}
 
     explicit Bech32(ChainMode m)
         : chainmode(m), hrptag(m == MAINNET ? Hrp<MAINNET>::value : (m == TESTNET ? Hrp<TESTNET>::value : Hrp<REGTEST>::value)) {}

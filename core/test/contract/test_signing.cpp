@@ -53,7 +53,7 @@ TEST_CASE("KeyLookup")
 
     KeyPair derived = master.Derive("m/86'/1'/1'/0/0", false);
 
-    std::clog << "Derived addr: " << derived.GetP2TRAddress(Bech32(utxord::Hrp<TESTNET>())) << std::endl;
+    std::clog << "Derived addr: " << derived.GetP2TRAddress(Bech32(TESTNET)) << std::endl;
 
     KeyPair keypair;
     REQUIRE_NOTHROW(keypair = master.Lookup("tb1p673hxdtlaa07z46wc4pz2kewz0l37dta7j367dep3ytgk6nlxq6st04x8m", "fund"));

@@ -93,12 +93,12 @@ struct TestcaseWrapper
 
     void StartRegtestBitcoinNode()
     {
-        StartNode(l15::ChainMode::MODE_REGTEST, mBtcd, conf().Subcommand(l15::config::BITCOIND));
+        StartNode(l15::NodeChainMode::MODE_REGTEST, mBtcd, conf().Subcommand(l15::config::BITCOIND));
     }
 
     void StopRegtestBitcoinNode()
     {
-        StopNode(l15::ChainMode::MODE_REGTEST, mCli, conf().Subcommand(l15::config::BITCOIN));
+        StopNode(l15::NodeChainMode::MODE_REGTEST, mCli, conf().Subcommand(l15::config::BITCOIN));
     }
 
     std::string GetRunes()
