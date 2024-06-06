@@ -1,6 +1,6 @@
 <template>
   <LoadingPage v-if="loading" />
-  <div v-else class="wallet-created-screen flex flex-col h-full" data-testid="wallet-create-page">
+  <div v-else class="wallet-created-screen flex flex-col h-full" data-testid="wallet-created-page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="wallet-created-screen_content h-full flex flex-col justify-center items-center px-5 pb-5">

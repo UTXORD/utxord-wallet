@@ -1,5 +1,5 @@
 <template>
-  <div class="generate-screen h-full flex flex-col" data-testid="generate-screen">
+  <div class="generate-screen h-full flex flex-col" data-testid="generate-page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div

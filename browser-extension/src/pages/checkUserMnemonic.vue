@@ -1,5 +1,5 @@
 <template>
-  <div class="check-mnemonic-screen flex flex-col h-full">
+  <div class="check-mnemonic-screen flex flex-col h-full" data-testid="check-mnemonic-page">
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="check-mnemonic-screen_content overflow-y-auto overflow-x-hidden h-full flex flex-col items-start px-5 pb-5">
@@ -24,42 +24,42 @@
         <!-- for 12 words -->
           <tbody v-if="passphraseLength == 12" v-for="n in 4">
           <tr class="flex">
-            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td class="w-full"><input :disabled="disable[n+3]" :placeholder="n+4" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+3]"/></td>
-            <td class="w-full"><input :disabled="disable[n+7]" :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
+            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
+            <td class="w-full"><input :disabled="disable[n+3]" :placeholder="n+4" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+3]"/></td>
+            <td class="w-full"><input :disabled="disable[n+7]" :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+7]"/></td>
           </tr>
           </tbody>
           <!-- for 15 words -->
           <tbody v-if="passphraseLength == 15" v-for="n in 5">
           <tr class="flex">
-            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td class="w-full"><input :disabled="disable[n+4]" :placeholder="n+5" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+4]"/></td>
-            <td class="w-full"><input :disabled="disable[n+9]" :placeholder="n+10" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+9]"/></td>
+            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
+            <td class="w-full"><input :disabled="disable[n+4]" :placeholder="n+5" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+4]"/></td>
+            <td class="w-full"><input :disabled="disable[n+9]" :placeholder="n+10" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+9]"/></td>
           </tr>
           </tbody>
 
           <!-- for 18 words -->
           <tbody v-if="passphraseLength == 18" v-for="n in 6">
           <tr class="flex">
-            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td class="w-full"><input :disabled="disable[n+5]" :placeholder="n+6" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]"/></td>
-            <td class="w-full"><input :disabled="disable[n+11]" :placeholder="n+12" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]"/></td>
+            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
+            <td class="w-full"><input :disabled="disable[n+5]" :placeholder="n+6" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+5]"/></td>
+            <td class="w-full"><input :disabled="disable[n+11]" :placeholder="n+12" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+11]"/></td>
           </tr>
           </tbody>
           <!-- for 21 words -->
           <tbody v-if="passphraseLength == 21" v-for="n in 7">
           <tr class="flex">
-            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td class="w-full"><input :disabled="disable[n+6]" :placeholder="n+7" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]"/></td>
-            <td class="w-full"><input :disabled="disable[n+13]" :placeholder="n+14" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]"/></td>
+            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
+            <td class="w-full"><input :disabled="disable[n+6]" :placeholder="n+7" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+6]"/></td>
+            <td class="w-full"><input :disabled="disable[n+13]" :placeholder="n+14" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+13]"/></td>
           </tr>
           </tbody>
           <!-- for 24 words -->
           <tbody v-if="passphraseLength == 24" v-for="n in 8">
           <tr class="flex">
-            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]"/></td>
-            <td class="w-full"><input :disabled="disable[n+7]" :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]"/></td>
-            <td class="w-full"><input :disabled="disable[n+15]" :placeholder="n+16" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]"/></td>
+            <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
+            <td class="w-full"><input :disabled="disable[n+7]" :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+7]"/></td>
+            <td class="w-full"><input :disabled="disable[n+15]" :placeholder="n+16" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+15]"/></td>
           </tr>
           </tbody>
         </table>
@@ -75,6 +75,7 @@
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
           @click="goToBack"
+          data-testid="go-back"
         >
           <ArrowLeftIcon />
         </Button>
@@ -83,6 +84,7 @@
           class="w-full"
           @click="Check"
           :disabled="isDisabled"
+          data-testid="check"
         >Check mnemonic phrase</Button>
       </div>
     </div>
