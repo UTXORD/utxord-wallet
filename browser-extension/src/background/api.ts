@@ -888,7 +888,7 @@ getChallengeFromAddress(address: striong){
   }
 
   pubKeyStrToP2tr(publicKey) {
-    return this.bech.Encode(publicKey)?.c_str();
+    return this.bech.Encode(publicKey);
   }
 
   addToExternalKey(keyhex, pass) {
@@ -1538,33 +1538,40 @@ hasAddressKeyRegistry(address: string){
     }
   }
 
-  pushChangeToFunds(change) {
-    this.fundings.push({
-      address: change?.address,
-      txid: change?.txid,
-      nout: change?.nout,
-      amount: this.btcToSat(change?.amount || "0.0"),
-      is_inscription: false,
-      is_rune: false,
-      is_locked: false,
-      in_queue: true,
-      path: "",
-    });
+  pushChangeToFunds(arg) {
+    if (arg?.ptr) {
+      this.fundings.push({
+        address: arg?.Address(),
+        txid: arg?.TxID(),
+        nout: arg?.NOut(),
+        amount: this.btcToSat(arg?.Amount() || "0.0"),
+        is_inscription: false,
+        is_rune: false,
+        is_locked: false,
+        in_queue: true,
+        path: "",
+      });
+      this.destroy(arg);
+    }
   }
 
-  pushOrdToInscriptions(ord) {
-    this.inscriptions.push({
-      address: ord?.address,
-      txid: ord?.txid,
-      nout: ord?.nout,
-      amount: this.btcToSat(ord?.amount || "0.0"),
-      is_inscription: true,
-      is_rune: false,
-      is_locked: false,
-      in_queue: true,
-      path: "",
-    });
+  pushOrdToInscriptions(arg) {
+    if (arg?.ptr) {
+      this.inscriptions.push({
+        address: arg?.Address(),
+        txid: arg?.TxID(),
+        nout: arg?.NOut(),
+        amount: this.btcToSat(arg?.Amount() || "0.0"),
+        is_inscription: true,
+        is_rune: false,
+        is_locked: false,
+        in_queue: true,
+        path: "",
+      });
+      this.destroy(arg);
+    }
   }
+
   async removePublicKeyToWebPage(tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
     let tabs: Tab[];
@@ -1719,9 +1726,9 @@ hasAddressKeyRegistry(address: string){
     const raw = [];
     for(let i = 0; i < raw_size; i += 1) {
       if(phase!==undefined) {
-        raw.push(builderObject.RawTransaction(phase, i)?.c_str())
+        raw.push(builderObject.RawTransaction(phase, i))
       }else{
-        raw.push(builderObject.RawTransaction(i)?.c_str())
+        raw.push(builderObject.RawTransaction(i))
       }
     }
     return raw;
@@ -1880,7 +1887,7 @@ hasAddressKeyRegistry(address: string){
         if (changeOutput.ptr != 0) {
           const changeDestination = changeOutput.Destination();
           if (changeDestination.ptr != 0) {
-            outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
+            outData.change_amount = myself.btcToSat(changeDestination.Amount()) || null;
             myself.destroy(changeDestination);
           }
           myself.destroy(changeOutput);
@@ -1967,7 +1974,7 @@ hasAddressKeyRegistry(address: string){
 
       const newOrd = new myself.utxord.CreateInscriptionBuilder(
           myself.network,
-          is_lazy ? myself.utxord.LASY_INSCRIPTION : myself.utxord.INSCRIPTION
+          is_lazy ? myself.utxord.LAZY_INSCRIPTION : myself.utxord.INSCRIPTION
       );
       console.log('newOrd:', newOrd);
 
@@ -1996,9 +2003,11 @@ hasAddressKeyRegistry(address: string){
       }
       newOrd.Deserialize(
           JSON.stringify(contract),
-          is_lazy ? myself.utxord.LASY_INSCRIPTION_MARKET_TERMS : myself.utxord.MARKET_TERMS
+          is_lazy ? myself.utxord.LAZY_INSCRIPTION_MARKET_TERMS : myself.utxord.MARKET_TERMS
       );
-      newOrd.OrdAmount((myself.satToBtc(payload.expect_amount)).toFixed(8));
+
+      const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
+      await newOrd.OrdDestination((myself.satToBtc(payload.expect_amount)).toFixed(8), dst_address);
 
       // For now it's just a support for title and description
       if (payload.metadata) {
@@ -2044,14 +2053,13 @@ hasAddressKeyRegistry(address: string){
         outData.used_wallets.add('intsk2');
       }
 
-      const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
-      await newOrd.InscribeAddress(dst_address);
+
       await newOrd.ChangeAddress(myself.wallet.fund.address);
       outData.used_wallets.add('uns');
 
       const min_fund_amount = myself.btcToSat(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
-      )?.c_str());
+      ));
       outData.amount = min_fund_amount;
       if (!myself.fundings.length && !estimate) {
         // TODO: REWORK FUNDS EXCEPTION
@@ -2132,7 +2140,7 @@ hasAddressKeyRegistry(address: string){
       }
       const min_fund_amount_final_btc = Number(newOrd.GetMinFundingAmount(
           `${flagsFundingOptions}`
-      )?.c_str());
+      ));
 
       console.log('min_fund_amount_final_btc:', min_fund_amount_final_btc);
       const min_fund_amount_final = await myself.btcToSat(min_fund_amount_final_btc);
@@ -2149,7 +2157,7 @@ hasAddressKeyRegistry(address: string){
       // if (changeOutput.ptr != 0) {
       //   const changeDestination = changeOutput.Destination();
       //   if (changeDestination.ptr != 0) {
-      //     outData.change_amount = myself.btcToSat(changeDestination.Amount().c_str()) || null;
+      //     outData.change_amount = myself.btcToSat(changeDestination.Amount()) || null;
       //     myself.destroy(changeDestination);
       //   }
       //   myself.destroy(changeOutput);
@@ -2159,33 +2167,24 @@ hasAddressKeyRegistry(address: string){
       if (!estimate) {
         outData.data = await newOrd.Serialize(
             protocol_version,
-            is_lazy ? myself.utxord.LASY_INSCRIPTION_SIGNATURE : myself.utxord.INSCRIPTION_SIGNATURE
-        )?.c_str();
+            is_lazy ? myself.utxord.LAZY_INSCRIPTION_SIGNATURE : myself.utxord.INSCRIPTION_SIGNATURE
+        );
         outData.raw = await myself.getRawTransactions(newOrd);
       }
 
-      outData.total_mining_fee = myself.btcToSat(newOrd.GetTotalMiningFee("")?.c_str() || 0);
+      outData.total_mining_fee = myself.btcToSat(newOrd.GetTotalMiningFee("") || 0);
 
       if (!estimate) {
-        const sk = newOrd.GetIntermediateSecKey()?.c_str();
+        const sk = newOrd.GetIntermediateSecKey();
         myself.wallet.root.key.AddKeyToCache(sk);
-        // outData.sk = newOrd.GetIntermediateSecKey()?.c_str();  // TODO: use/create ticket for excluded sk (UT-???)
+        // outData.sk = newOrd.GetIntermediateSecKey();  // TODO: use/create ticket for excluded sk (UT-???)
         // TODOO: remove sk before > 2 conformations
         // or wait and check utxo this translation on balances
 
         outData.outputs = {
-          collection: is_lazy ? {} : {
-            ...JSON.parse(newOrd.GetCollectionLocation()?.c_str() || "{}"),
-            address: collection_addr
-          },
-          inscription: is_lazy ? {} : {
-            ...JSON.parse(newOrd.GetInscriptionLocation()?.c_str() || "{}"),
-            address: dst_address
-          },
-          change: {
-            ...JSON.parse(newOrd.GetChangeLocation()?.c_str() || "{}"),
-            address: myself.wallet.fund.address
-          },
+          collection: newOrd.CollectionOutput(),
+          inscription: newOrd.InscriptionOutput(),
+          change: newOrd.ChangeOutput(),
         };
       }
 
@@ -2257,7 +2256,7 @@ hasAddressKeyRegistry(address: string){
       const raw = await myself.getRawTransactions(sellOrd, myself.utxord.ORD_SWAP_SIG);
       return {
         raw: raw,
-        contract_data: sellOrd.Serialize(protocol_version, myself.utxord.ORD_SWAP_SIG)?.c_str()
+        contract_data: sellOrd.Serialize(protocol_version, myself.utxord.ORD_SWAP_SIG)
       };
     } catch (exception) {
       await this.sendExceptionMessage('SELL_SIGN_CONTRACT', exception)
@@ -2438,7 +2437,7 @@ hasAddressKeyRegistry(address: string){
       const swapSim = new myself.utxord.SwapInscriptionBuilder(myself.network);
       swapSim.Deserialize(JSON.stringify(payload.swap_ord_terms.contract), myself.utxord.FUNDS_TERMS);
 
-      const min_fund_amount = await myself.btcToSat(swapSim.GetMinFundingAmount("")?.c_str());
+      const min_fund_amount = await myself.btcToSat(swapSim.GetMinFundingAmount(""));
       const utxo_list = await myself.selectKeysByFunds(min_fund_amount + 682);
       const fund_sum = await myself.sumAllFunds(utxo_list);
       // console.log('fund_sum:',fund_sum,'|min_fund_amount:',min_fund_amount);
@@ -2486,7 +2485,7 @@ hasAddressKeyRegistry(address: string){
       const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
       buyOrd.OrdPayoffAddress(dst_address);
 
-      const min_fund_amount_final = myself.btcToSat(buyOrd.GetMinFundingAmount("")?.c_str());
+      const min_fund_amount_final = myself.btcToSat(buyOrd.GetMinFundingAmount(""));
 
       outData.min_fund_amount = min_fund_amount_final || min_fund_amount;
       outData.mining_fee = Number(min_fund_amount_final) - Number(payload.market_fee) - Number(payload.ord_price);
@@ -2509,7 +2508,7 @@ hasAddressKeyRegistry(address: string){
         return outData;
       }
       outData.raw = await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_COMMIT_SIG);
-      outData.data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_COMMIT_SIG)?.c_str();
+      outData.data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_COMMIT_SIG);
       return outData;
     } catch (exception) {
       const eout = await myself.sendExceptionMessage(COMMIT_BUY_INSCRIPTION, exception)
@@ -2547,7 +2546,7 @@ hasAddressKeyRegistry(address: string){
         'scrsk'
       );
       const raw = [];  // await myself.getRawTransactions(buyOrd, myself.utxord.FUNDS_SWAP_SIG);
-      const data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_SWAP_SIG)?.c_str();
+      const data = buyOrd.Serialize(protocol_version, myself.utxord.FUNDS_SWAP_SIG);
 
       await (async (data, payload) => {
         console.log("SIGN_BUY_INSCRIBE_RESULT:", data);
@@ -2688,7 +2687,7 @@ hasAddressKeyRegistry(address: string){
   }
 
   destroy(variable) {
-    if(variable) {
+    if(variable && variable?.ptr > 0) {
       this.utxord.destroy(variable);
       return true;
     }

@@ -531,30 +531,22 @@ async function newAddress(){
             parentInscription = {
               btc_owner_address: chunkData.parent?.btc_owner_address,
               genesis_txid: chunkData.parent?.genesis_txid,
-              owner_txid: contract.outputs?.collection?.txid,
-              owner_nout: contract.outputs?.collection?.nout,
+              owner_txid: contract.outputs?.collection?.TxID(),
+              owner_nout: contract.outputs?.collection?.NOut(),
             };
           }
+
           console.debug('createChunkInscription: parentInscription:', parentInscription);
 
           // mark all used utxo as spent
           Api.updateFundsByOutputs(contract.utxo_list, {is_locked: true});
 
           // add change utxo (if any) to funding
-          const change = contract.outputs?.change;
-          if (change?.txid) {
-            Api.pushChangeToFunds(change);
-          }
+          Api.pushChangeToFunds(contract.outputs?.change);
           // add ordinal utxo (if any) to inscriptions
-          const ordinal = contract.outputs?.inscription;
-          if (ordinal?.txid) {
-            Api.pushOrdToInscriptions(ordinal);
-          }
+          Api.pushOrdToInscriptions(contract.outputs?.inscription);
           // add collection new utxo (if any) to inscriptions
-          const collection = contract.outputs?.collection;
-          if (collection?.txid) {
-            Api.pushOrdToInscriptions(collection);
-          }
+          Api.pushOrdToInscriptions(contract.outputs?.collection);
           // console.debug("createChunkInscription: Api.fundings:", [...Api.fundings]);
 
           const contractResult = await Api.createInscriptionForChunk({
