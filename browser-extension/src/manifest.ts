@@ -36,7 +36,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
             'https://utxord.com/*',
             'https://qa.utxord.com/*',
             'http://10.1.10.100:8080/*',
-            'https://e2e.utxord.com/*',
+            'http://e2e.utxord.com:9000/*',
             'https://sntry.l15.co/*',
             'http://localhost/*',
             'http://127.0.0.1/*'
@@ -48,7 +48,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
         'https://utxord.com/*',
         'https://qa.utxord.com/*',
         'http://10.1.10.100:8080/*',
-        'https://e2e.utxord.com/*',
+        'http://e2e.utxord.com:9000/*',
         'https://sntry.l15.co/*',
         'http://localhost/*',
         'http://127.0.0.1/*'
