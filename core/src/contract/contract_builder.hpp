@@ -18,9 +18,8 @@
 #include "utils.hpp"
 #include "contract_error.hpp"
 #include "univalue.h"
-#include "keypair.hpp"
+#include "keyregistry.hpp"
 
-#include "address.hpp"
 #include "ecdsa.hpp"
 #include "common.hpp"
 
@@ -36,6 +35,17 @@ using l15::bytevector;
 using l15::seckey;
 using l15::xonly_pubkey;
 using l15::signature;
+
+using l15::ChainMode;
+using l15::BTC;
+using l15::MAINNET;
+using l15::TESTNET;
+using l15::REGTEST;
+using l15::Bech32;
+
+using l15::core::EcdsaKeyPair;
+using l15::core::KeyPair;
+using l15::core::KeyRegistry;
 
 #ifndef DEBUG
 using boost::multiprecision::uint128_t;
@@ -72,9 +82,9 @@ public:
 
 class P2WPKHSigner: public ISigner
 {
-    EcdsaKeypair m_keypair;
+    EcdsaKeyPair m_keypair;
 public:
-    explicit P2WPKHSigner(EcdsaKeypair keypair) : m_keypair(move(keypair)) {}
+    explicit P2WPKHSigner(EcdsaKeyPair keypair) : m_keypair(move(keypair)) {}
     P2WPKHSigner(const P2WPKHSigner&) = default;
     P2WPKHSigner(P2WPKHSigner&&) noexcept = default;
     P2WPKHSigner& operator=(const P2WPKHSigner&) = default;
@@ -85,9 +95,9 @@ public:
 
 class TaprootSigner: public ISigner
 {
-    l15::core::ChannelKeys m_keypair;
+    l15::core::SchnorrKeyPair m_keypair;
 public:
-    explicit TaprootSigner(l15::core::ChannelKeys keypair) : m_keypair(move(keypair)) {}
+    explicit TaprootSigner(l15::core::SchnorrKeyPair keypair) : m_keypair(move(keypair)) {}
     TaprootSigner(const TaprootSigner&) = default;
     TaprootSigner(TaprootSigner&&) noexcept = default;
     TaprootSigner& operator=(const TaprootSigner&) = default;
@@ -145,7 +155,7 @@ public:
     P2Witness(const P2Witness&) = default;
     P2Witness(P2Witness&&) noexcept = default;
 
-    P2Witness(ChainMode chain, CAmount amount, std::string addr) : mBech(chain), m_amount(amount), m_addr(move(addr)) {}
+    P2Witness(ChainMode chain, CAmount amount, std::string addr) : mBech(BTC, chain), m_amount(amount), m_addr(move(addr)) {}
 
     explicit P2Witness(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
 
@@ -182,7 +192,7 @@ public:
     P2WPKH() = delete;
     P2WPKH(const P2WPKH&) = default;
     P2WPKH(P2WPKH&&) noexcept = default;
-    P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2WPKH(Bech32(m), amount, move(addr)) {}
+    P2WPKH(ChainMode m, CAmount amount, std::string addr) : P2WPKH(Bech32(BTC, m), amount, move(addr)) {}
     P2WPKH(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech.GetChainMode(), amount, move(addr)) {}
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override
@@ -195,7 +205,7 @@ public:
     P2TR() = delete;
     P2TR(const P2TR &) = default;
     P2TR(P2TR &&) noexcept = default;
-    P2TR(ChainMode m, CAmount amount, std::string addr) : P2TR(Bech32(m), amount, move(addr)) {}
+    P2TR(ChainMode m, CAmount amount, std::string addr) : P2TR(Bech32(BTC, m), amount, move(addr)) {}
     P2TR(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech.GetChainMode(), amount, move(addr)) {}
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
@@ -385,7 +395,7 @@ public:
     { return m_chain; }
 
     Bech32 bech32() const
-    { return Bech32(m_chain); }
+    { return Bech32(BTC, m_chain); }
 
     void MarketFee(CAmount amount, std::string addr)
     {

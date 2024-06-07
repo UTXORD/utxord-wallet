@@ -123,15 +123,15 @@ TEST_CASE("Fee")
     CAmount double_vout_fee = CalculateTxFee(1000, tx);
     std::clog << "Taproot vout vsize: " << (double_vout_fee - double_vin_fee) << std::endl;
 
-    ChannelKeys key;
+    SchnorrKeyPair key;
     l15::ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { IContractBuilder::MakeMultiSigScript(xonly_pubkey(), xonly_pubkey()) });
-    auto tr = core::ChannelKeys::AddTapTweak(key.GetLocalPubKey(), tap_tree.CalculateRoot());
+    auto tr = core::SchnorrKeyPair::AddTapTweak(key.GetPubKey(), tap_tree.CalculateRoot());
 
     std::vector<uint256> scriptpath = tap_tree.CalculateScriptPath(tap_tree.GetScripts().front());
     bytevector control_block;
     control_block.reserve(1 + xonly_pubkey().size() + scriptpath.size() * uint256::size());
     control_block.emplace_back(static_cast<uint8_t>(0xc0 | get<1>(tr)));
-    control_block.insert(control_block.end(), key.GetLocalPubKey().begin(), key.GetLocalPubKey().end());
+    control_block.insert(control_block.end(), key.GetPubKey().begin(), key.GetPubKey().end());
 
     for (uint256 &branch_hash: scriptpath)
         control_block.insert(control_block.end(), branch_hash.begin(), branch_hash.end());

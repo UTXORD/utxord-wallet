@@ -160,39 +160,39 @@ TEST_CASE("inscribe")
     REQUIRE_NOTHROW(test_lazy_inscription.AuthorFee(1000, author_fee_addr));
     CAmount lazy_add_amount = test_lazy_inscription.GetMinFundingAmount("collection") - child_amount;
 
-//    EcdsaKeypair key1(master_key.Derive("m/84'/0'/0'/0/1").GetLocalPrivKey());
-//    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->bech32().Encode(l15::Hash160(key1.GetPubKey().as_vector()), bech32::Encoding::BECH32) }}, 0, false, true, false};
+//    EcdsaKeyPair key1(master_key.Derive("m/84'/0'/0'/0/1").GetLocalPrivKey());
+//    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->bech32().Encode(l15::Hash160(key1.GetPubKey()), bech32::Encoding::BECH32) }}, 0, false, true, false};
     KeyPair key1 = master_key.Derive("m/86'/1'/0'/0/1", false);
-    CreateCondition inscription {{{ inscription_amount, key1.GetP2TRAddress(Bech32(w->chain())) }}, 0, 0, false, true, false, false, 8, "inscription"};
+    CreateCondition inscription {{{ inscription_amount, key1.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, false, true, false, false, 8, "inscription"};
     KeyPair key2 = master_key.Derive("m/86'/1'/0'/0/2", false);
-    CreateCondition inscription_w_change {{{ 10000, key2.GetP2TRAddress(Bech32(w->chain())) }}, 0, 0, true, false, false, false, 8, "inscription_w_change"};
+    CreateCondition inscription_w_change {{{ 10000, key2.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, true, false, false, false, 8, "inscription_w_change"};
     KeyPair key3 = master_key.Derive("m/86'/1'/0'/0/3", false);
-    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, key3.GetP2TRAddress(Bech32(w->chain())) }}, 1000, 0, false, false, false, false, 8, "inscription_w_fee"};
+    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, key3.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, false, false, false, false, 8, "inscription_w_fee"};
     KeyPair key4 = master_key.Derive("m/86'/1'/0'/0/4", false);
     KeyPair key4a = master_key.Derive("m/86'/1'/0'/1/4", false);
-    CreateCondition inscription_w_change_fee {{{ 8000, key4.GetP2TRAddress(Bech32(w->chain())) }, { 20000, key4a.GetP2TRAddress(Bech32(w->chain())) }}, 1000, 0, true, false, false, false, 8, "inscription_w_change_fee"};
+    CreateCondition inscription_w_change_fee {{{ 8000, key4.GetP2TRAddress(Bech32(BTC, w->chain())) }, { 20000, key4a.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, true, false, false, false, 8, "inscription_w_change_fee"};
     KeyPair key5 = master_key.Derive("m/86'/1'/0'/0/5", false);
-    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, key5.GetP2TRAddress(Bech32(w->chain())) }}, 0, 1000, false, true, false, false, 9, "inscription_w_fix_change"};
+    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, key5.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 1000, false, true, false, false, 9, "inscription_w_fix_change"};
 
     KeyPair key6 = master_key.Derive("m/86'/1'/0'/0/6", false);
-    CreateCondition child {{{child_amount, key6.GetP2TRAddress(Bech32(w->chain())) }}, 0, 0, false, false, true, false, 8, "child"};
+    CreateCondition child {{{child_amount, key6.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, false, false, true, false, 8, "child"};
     KeyPair key7 = master_key.Derive("m/86'/1'/0'/0/7", false);
-    CreateCondition child_w_change {{{10000, key7.GetP2TRAddress(Bech32(w->chain())) }}, 0, 0, true, false, true, false, 8, "child_w_change"};
+    CreateCondition child_w_change {{{10000, key7.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, true, false, true, false, 8, "child_w_change"};
     KeyPair key8 = master_key.Derive("m/86'/1'/0'/0/8", false);
-    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, key8.GetP2TRAddress(Bech32(w->chain())) }}, 1000, 0, false, false, true, false, 8, "child_w_fee"};
+    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, key8.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, false, false, true, false, 8, "child_w_fee"};
     KeyPair key9 = master_key.Derive("m/86'/1'/0'/0/9", false);
-    CreateCondition child_w_change_fee {{{10000, key9.GetP2TRAddress(Bech32(w->chain())) }}, 1000, 0, true, false, true, false, 8, "child_w_change_fee"};
+    CreateCondition child_w_change_fee {{{10000, key9.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, true, false, true, false, 8, "child_w_change_fee"};
     KeyPair key10 = master_key.Derive("m/86'/1'/0'/0/10", false);
-    CreateCondition child_w_change_fixed_change {{{10000, key10.GetP2TRAddress(Bech32(w->chain())) }}, 0, 5000, true, false, true, false, 9, "child_w_change_fixed_change"};
+    CreateCondition child_w_change_fixed_change {{{10000, key10.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 5000, true, false, true, false, 9, "child_w_change_fixed_change"};
 
     KeyPair key11(master_key.Derive("m/84'/1'/0'/0/11", false));
-    CreateCondition segwit_child {{{ segwit_child_amount, key11.GetP2WPKHAddress(Bech32(w->chain())) }}, 0, 0, false, false, true, false, 8, "segwit_child"};
+    CreateCondition segwit_child {{{ segwit_child_amount, key11.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 0, 0, false, false, true, false, 8, "segwit_child"};
     KeyPair key12(master_key.Derive("m/84'/1'/0'/0/12", false));
-    CreateCondition segwit_child_w_change {{{10000, key12.GetP2WPKHAddress(Bech32(w->chain())) }}, 0, 0, true, false, true, false, 8, "segwit_child_w_change"};
+    CreateCondition segwit_child_w_change {{{10000, key12.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 0, 0, true, false, true, false, 8, "segwit_child_w_change"};
     KeyPair key13(master_key.Derive("m/84'/1'/0'/0/13", false));
-    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, key13.GetP2WPKHAddress(Bech32(w->chain())) }}, 1000, 0, false, false, true, false, 8, "segwit_child_w_fee"};
+    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, key13.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 1000, 0, false, false, true, false, 8, "segwit_child_w_fee"};
     KeyPair key14(master_key.Derive("m/84'/1'/0'/0/14", false));
-    CreateCondition segwit_child_w_change_fee {{{15000, key14.GetP2WPKHAddress(Bech32(w->chain())) }}, 1000, 0, true, false, true, true, 8, "segwit_child_w_change_fee"};
+    CreateCondition segwit_child_w_change_fee {{{15000, key14.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 1000, 0, true, false, true, true, 8, "segwit_child_w_change_fee"};
 
     auto version = GENERATE(8,9,10);
     auto condition = GENERATE_COPY(inscription,
@@ -222,7 +222,7 @@ TEST_CASE("inscribe")
             CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
             REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
-            CHECK_NOTHROW(builder.OrdDestination(546, condition.is_parent ? collection_key.GetP2TRAddress(Bech32(w->chain())) : destination_addr));
+            CHECK_NOTHROW(builder.OrdDestination(546, condition.is_parent ? collection_key.GetP2TRAddress(Bech32(BTC, w->chain())) : destination_addr));
             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
             //CHECK_NOTHROW(builder.AuthorFee(0, author_fee_addr));
             if (get<1>(content).empty())
@@ -308,7 +308,7 @@ TEST_CASE("inscribe")
                     CHECK_NOTHROW(builder.Delegate(delegate_id));
                 else
                     CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
-                CHECK_NOTHROW(builder.OrdDestination(546, condition.is_parent ? collection_key.GetP2TRAddress(Bech32(w->chain())) : destination_addr));
+                CHECK_NOTHROW(builder.OrdDestination(546, condition.is_parent ? collection_key.GetP2TRAddress(Bech32(BTC, w->chain())) : destination_addr));
                 CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
                 CHECK_NOTHROW(builder.InscribeInternalPubKey(int_key.PubKey()));
                 CHECK_NOTHROW(builder.InscribeScriptPubKey(script_key.PubKey()));
@@ -421,7 +421,7 @@ TEST_CASE("inscribe")
             if (condition.is_parent) {
                 collection_id = revealTx.GetHash().GetHex() + "i0";
                 collection_sk = collection_key.PrivKey();
-                collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, collection_key.GetP2TRAddress(Bech32(w->chain()))};
+                collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, collection_key.GetP2TRAddress(Bech32(BTC, w->chain()))};
             }
             else if (condition.has_parent) {
                 collection_utxo.m_txid = revealTx.GetHash().GetHex();
@@ -469,7 +469,7 @@ TEST_CASE("metadata")
     KeyPair int_key = master_key.Derive("m/86'/1'/4'/0/0", true);
     KeyPair inscribe_key = master_key.Derive("m/86'/1'/2'/0/0", false);;
 
-    string addr = utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string addr = utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
 
     fee_rate = 1000;
 
@@ -488,7 +488,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     const auto& condition = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
 
-    std::string destination_addr = condition.save_as_parent ? inscribe_key.GetP2TRAddress(Bech32(w->chain())) : w->btc().GetNewAddress();
+    std::string destination_addr = condition.save_as_parent ? inscribe_key.GetP2TRAddress(Bech32(BTC, w->chain())) : w->btc().GetNewAddress();
 
     CreateInscriptionBuilder builder_terms(w->chain(), INSCRIPTION);
     CHECK_NOTHROW(builder_terms.MarketFee(0, destination_addr));
@@ -567,7 +567,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     if (condition.save_as_parent) {
         collection_sk = inscribe_key.PrivKey();
         collection_id = revealTx.GetHash().GetHex() + "i0";
-        collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, inscribe_key.GetP2TRAddress(Bech32(w->chain()))};
+        collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, inscribe_key.GetP2TRAddress(Bech32(BTC, w->chain()))};
     }
 
     w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
@@ -604,7 +604,7 @@ TEST_CASE("etch")
     auto svg = std::tuple<std::string, bytevector>("image/svg+xml", bytevector(svg_text, svg_text + strlen(svg_text)));
 
     KeyPair destination_key = master_key.Derive("m/86'/1'/2'/0/1", false);
-    string destination_addr = destination_key.GetP2TRAddress(Bech32(w->chain()));
+    string destination_addr = destination_key.GetP2TRAddress(Bech32(BTC, w->chain()));
 
      auto condition = GENERATE(
          EtchParams{65535, 0},
@@ -661,7 +661,7 @@ TEST_CASE("etch")
     CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
     CHECK_NOTHROW(builder.Rune(std::make_shared<RuneStoneDestination>(w->chain(), runestone)));
 
-    string utxo_addr = key1.GetP2TRAddress(Bech32(w->chain()));
+    string utxo_addr = key1.GetP2TRAddress(Bech32(BTC, w->chain()));
     string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(inscription_amount));
     auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
     CHECK_NOTHROW(builder.AddUTXO(funds_txid, get<0>(prevout).n, inscription_amount, utxo_addr));
@@ -886,7 +886,7 @@ TEST_CASE("avatar")
     KeyPair script_key = master_key.Derive(w->DerivationPath(86, 0, 1, 0), true);
     KeyPair int_key = master_key.Derive(w->DerivationPath(86, 0, 0, 1), true);
 
-    std::string return_addr = ord_key.GetP2TRAddress(Bech32(w->chain()));
+    std::string return_addr = ord_key.GetP2TRAddress(Bech32(BTC, w->chain()));
 
     fee_rate = 3000;
 
@@ -924,7 +924,7 @@ TEST_CASE("avatar")
         REQUIRE_NOTHROW(builder.AddToCollection(collection_id, avatar_collection_utxo->m_txid, avatar_collection_utxo->m_nout, avatar_collection_utxo->m_amount, avatar_collection_utxo->m_addr));
     }
 
-    std::string utxo_addr = ord_key.GetP2TRAddress(Bech32(w->chain()));
+    std::string utxo_addr = ord_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     CAmount min_funding = builder.GetMinFundingAmount("");
     string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(min_funding));
     auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);

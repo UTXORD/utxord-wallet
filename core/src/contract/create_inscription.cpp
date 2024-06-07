@@ -112,7 +112,7 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { MakeInscriptionScript() });
 
-    return std::tuple_cat(core::ChannelKeys::AddTapTweak(*m_inscribe_int_pk, tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(*m_inscribe_int_pk, tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilder::FundMiningFeeTapRoot() const
@@ -121,8 +121,8 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
                               { MakeMultiSigScript(m_inscribe_script_pk.value_or(xonly_pubkey()),
                                                   m_inscribe_script_market_pk.value_or(xonly_pubkey())) });
 
-    return std::tuple_cat(core::ChannelKeys::AddTapTweak(m_fund_mining_fee_int_pk.value_or(xonly_pubkey()),
-                                                         tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(m_fund_mining_fee_int_pk.value_or(xonly_pubkey()),
+                                                            tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 
@@ -249,8 +249,8 @@ void CreateInscriptionBuilder::SignInscription(const KeyRegistry &master_key, co
     if (!m_inscribe_int_pk) throw ContractStateError(name_inscribe_int_pk + " not defined");
 
     auto inscribe_script_keypair = master_key.Lookup(*m_inscribe_script_pk, key_filter);
-    core::ChannelKeys script_keypair(inscribe_script_keypair.PrivKey());
-    if (*m_inscribe_script_pk != script_keypair.GetLocalPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_pk));
+    core::SchnorrKeyPair script_keypair(inscribe_script_keypair.PrivKey());
+    if (*m_inscribe_script_pk != script_keypair.GetPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_pk));
 
     CMutableTransaction genesis_tx = MakeGenesisTx();
 
@@ -275,8 +275,8 @@ void CreateInscriptionBuilder::MarketSignInscription(const KeyRegistry &master_k
     if (!m_inscribe_int_pk) throw ContractStateError(name_inscribe_int_pk + " not defined");
 
     auto inscribe_script_keypair = master_key.Lookup(*m_inscribe_script_market_pk, key_filter);
-    core::ChannelKeys script_keypair(inscribe_script_keypair.PrivKey());
-    if (*m_inscribe_script_market_pk != script_keypair.GetLocalPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_market_pk));
+    core::SchnorrKeyPair script_keypair(inscribe_script_keypair.PrivKey());
+    if (*m_inscribe_script_market_pk != script_keypair.GetPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_market_pk));
 
     CMutableTransaction genesis_tx = MakeGenesisTx();
 
@@ -421,7 +421,7 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
                 contract.pushKV(name_collection, move(collectionVal));
             }
             else {
-                TxInput fake_collection_input{Bech32(chain()), 1, std::make_shared<UTXO>(chain(), uint256(0).GetHex(), 0, m_collection_destination)};
+                TxInput fake_collection_input{Bech32(BTC, chain()), 1, std::make_shared<UTXO>(chain(), uint256(0).GetHex(), 0, m_collection_destination)};
                 UniValue collectionVal = fake_collection_input.MakeJson();
                 collectionVal.pushKV(name_collection_id, *m_parent_collection_id);
                 contract.pushKV(name_collection, move(collectionVal));

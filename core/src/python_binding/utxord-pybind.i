@@ -14,8 +14,10 @@
 
 #include "common.hpp"
 #include "transaction.hpp"
-#include "address.hpp"
+#include "schnorr.hpp"
+#include "ecdsa.hpp"
 #include "keypair.hpp"
+#include "keyregistry.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "trustless_swap_inscription.hpp"
@@ -25,6 +27,7 @@
 
 using namespace utxord;
 using namespace l15;
+using namespace l15::core;
 
 %}
 
@@ -153,8 +156,8 @@ using namespace l15;
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
-%include "address.hpp"
 %include "keypair.hpp"
+%include "keyregistry.hpp"
 %include "contract_builder.hpp"
 
 %template (CreateInscriptionBase) utxord::ContractBuilder<utxord::InscribePhase>;

@@ -33,9 +33,9 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
     if (m_inputs.empty()) {
         tx.vin.emplace_back(uint256(), 0);
         if (params.find("p2wpkh_utxo"))
-            tx.vin.back().scriptWitness.stack = P2WPKH(Bech32().GetChainMode(), 0, "").DummyWitness();
+            tx.vin.back().scriptWitness.stack = P2WPKH(chain(), 0, "").DummyWitness();
         else
-            tx.vin.back().scriptWitness.stack = P2TR(Bech32().GetChainMode(), 0, "").DummyWitness();
+            tx.vin.back().scriptWitness.stack = P2TR(chain(), 0, "").DummyWitness();
     }
     else {
         for (const auto &input: m_inputs) {

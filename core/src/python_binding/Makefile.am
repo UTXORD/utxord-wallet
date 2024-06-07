@@ -20,9 +20,10 @@ SWIG_SRC_INCLUDES = \
  $(top_srcdir)/src/contract/create_inscription.hpp \
  $(top_srcdir)/src/contract/swap_inscription.hpp \
  $(top_srcdir)/src/contract/simple_transaction.hpp \
- $(top_srcdir)/src/contract/ecdsa.hpp \
- $(top_srcdir)/src/contract/keypair.hpp \
- $(top_srcdir)/src/contract/address.hpp
+ $(top_srcdir)/l15/src/core/schnorr.hpp \
+ $(top_srcdir)/l15/src/core/ecdsa.hpp \
+ $(top_srcdir)/l15/src/core/keypair.hpp \
+ $(top_srcdir)/l15/src/core/keyregistry.hpp
 
 
 

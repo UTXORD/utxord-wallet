@@ -10,7 +10,7 @@
 #include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
-#include "channel_keys.hpp"
+#include "schnorr.hpp"
 #include "exechelper.hpp"
 #include "trustless_swap_inscription.hpp"
 #include "core_io.h"
@@ -125,15 +125,15 @@ TEST_CASE("Swap")
     CHECK_NOTHROW(builderMarket.MarketScriptPubKey(market_script_key.PubKey()));
 
     //Create ord utxo
-    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     string ord_txid = w->btc().SendToAddress(ord_addr, FormatAmount(ORD_AMOUNT));
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
     CHECK_NOTHROW(builderMarket.CommitOrdinal(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, get<1>(ord_prevout).nValue, ord_addr));
-    CHECK_NOTHROW(builderMarket.FundsPayoffAddress(funds_payoff_key.GetP2TRAddress(Bech32(w->chain()))));
+    CHECK_NOTHROW(builderMarket.FundsPayoffAddress(funds_payoff_key.GetP2TRAddress(Bech32(BTC, w->chain()))));
 
     //Create ord balance
-    string free_balance_addr = free_balance_key.GetP2TRAddress(Bech32(w->chain()));
+    string free_balance_addr = free_balance_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     string balance_txid = w->btc().SendToAddress(free_balance_addr, FormatAmount(30000));
     auto balance_prevout = w->btc().CheckOutput(balance_txid, free_balance_addr);
 
@@ -202,8 +202,8 @@ TEST_CASE("Swap")
 
     REQUIRE_NOTHROW(builderMarket.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(builderMarket.MarketFee(market_fee, market_fee_addr));
-    REQUIRE_NOTHROW(builderMarket.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(Bech32(w->chain()))));
-    REQUIRE_NOTHROW(builderMarket.ChangeAddress(change_key.GetP2TRAddress(Bech32(w->chain()))));
+    REQUIRE_NOTHROW(builderMarket.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(Bech32(BTC, w->chain()))));
+    REQUIRE_NOTHROW(builderMarket.ChangeAddress(change_key.GetP2TRAddress(Bech32(BTC, w->chain()))));
 
     TrustlessSwapInscriptionBuilder builderMarket1(w->chain());
 
@@ -237,7 +237,7 @@ TEST_CASE("Swap")
         );
 
         //Fund commitment
-        string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+        string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
         std::vector<CTxOut> spent_outs;
 
         for (CAmount amount: condition.funds) {
@@ -301,8 +301,8 @@ TEST_CASE("Swap")
 
         REQUIRE_NOTHROW(builderMarket1.MiningFeeRate(fee_rate));
         REQUIRE_NOTHROW(builderMarket1.MarketFee(market_fee, market_fee_addr));
-        REQUIRE_NOTHROW(builderMarket1.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(Bech32(w->chain()))));
-        REQUIRE_NOTHROW(builderMarket1.ChangeAddress(change_key.GetP2TRAddress(Bech32(w->chain()))));
+        REQUIRE_NOTHROW(builderMarket1.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(Bech32(BTC, w->chain()))));
+        REQUIRE_NOTHROW(builderMarket1.ChangeAddress(change_key.GetP2TRAddress(Bech32(BTC, w->chain()))));
 
         //Brick1 = Dust
         //----
@@ -312,7 +312,7 @@ TEST_CASE("Swap")
         //----
         //GetMinSwapFundingAmount()
 
-        string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+        string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
 
         const CAmount brick1_amount = DUST_AMOUNT;
         const CAmount brick2_amount = (market_fee >= DUST_AMOUNT * 2) ? (market_fee - DUST_AMOUNT) : 1000;

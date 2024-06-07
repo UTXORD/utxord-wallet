@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "common.hpp"
-#include "keypair.hpp"
+#include "keyregistry.hpp"
 #include "contract_builder.hpp"
 
 namespace utxord {

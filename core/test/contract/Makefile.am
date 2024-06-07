@@ -6,7 +6,7 @@ AM_CPPFLAGS += -DWASM
 endif
 
 AM_CPPFLAGS += \
- -I$(top_srcdir)/contrib/nlohmann_json \
+ -I$(top_srcdir)/l15/contrib/nlohmann_json \
  -I$(top_srcdir)/l15/contrib \
  -I$(top_srcdir)/l15/contrib/cex \
  -I$(top_srcdir)/l15/contrib/cli11 \
@@ -50,7 +50,6 @@ test_contract_builder \
 test_create_inscription \
 test_swap_inscription \
 test_trustless_swap_inscription \
-test_signing \
 test_inscription \
 test_simple_tx \
 test_runes
@@ -58,9 +57,6 @@ test_runes
 
 test_contract_builder_SOURCES = test_contract_builder.cpp
 test_contract_builder_LDADD = $(L15_LIBS)
-
-test_signing_SOURCES = test_signing.cpp
-test_signing_LDADD = $(L15_LIBS)
 
 test_create_inscription_SOURCES = test_create_inscription.cpp
 test_create_inscription_LDADD = $(L15_LIBS)

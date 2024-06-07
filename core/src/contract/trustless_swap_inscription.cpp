@@ -10,7 +10,7 @@
 
 namespace utxord {
 
-using l15::core::ChannelKeys;
+using l15::core::SchnorrKeyPair;
 using l15::ScriptMerkleTree;
 using l15::TreeBalanceType;
 using l15::ParseAmount;
@@ -61,7 +61,7 @@ std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> TrustlessSwapInscriptionBuil
     if (!m_ord_int_pk) throw ContractStateError(name_ord_int_pk + " not defined");
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { OrdSwapScript() });
-    return std::tuple_cat(ChannelKeys::AddTapTweak(m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 
@@ -192,7 +192,7 @@ void TrustlessSwapInscriptionBuilder::SignOrdSwap(const KeyRegistry &masterKey, 
     CheckContractTerms(TRUSTLESS_ORD_TERMS);
 
     KeyPair keypair = masterKey.Lookup(*m_ord_script_pk, key_filter);
-    ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
+    SchnorrKeyPair schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
 
     CMutableTransaction swap_tx(MakeSwapTx());
 
@@ -220,7 +220,7 @@ void TrustlessSwapInscriptionBuilder::SignMarketSwap(const KeyRegistry &masterKe
     if (m_swap_inputs.size() < 4) throw ContractStateError(name_swap_inputs + " has inconsistent size: " + std::to_string(m_swap_inputs.size()));
 
     KeyPair keypair = masterKey.Lookup(*m_market_script_pk, key_filter);
-    ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
+    SchnorrKeyPair schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
 
     CMutableTransaction swap_tx(MakeSwapTx());
 
