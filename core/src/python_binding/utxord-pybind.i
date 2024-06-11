@@ -18,6 +18,7 @@
 #include "keypair.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
+#include "trustless_swap_inscription.hpp"
 #include "common_error.hpp"
 #include "inscription.hpp"
 #include "simple_transaction.hpp"
@@ -43,11 +44,28 @@ using namespace l15;
 
 %typemap(in) const bytevector& (bytevector param, const char *begin) {
     if (!PyBytes_Check($input)) {
-        SWIG_exception_fail(SWIG_TypeError, "in method '" "GetAddress" "', argument " "1"" of type '" "bytes""'");
+        SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
     }
     begin = PyBytes_AsString($input);
-    param.assign(begin, begin+PyBytes_Size($input));
+    try {
+        param.assign(begin, begin+PyBytes_Size($input));
+    } catch (...) {
+        SWIG_exception_fail(SWIG_TypeError, "cannot convert bytes argument");
+    }
     $1 = &param;
+}
+
+%typemap(in) bytevector (bytevector param, const char *begin) {
+    if (!PyBytes_Check($input)) {
+        SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
+    }
+    begin = PyBytes_AsString($input);
+    try {
+        param.assign(begin, begin+PyBytes_Size($input));
+    } catch (...) {
+         SWIG_exception_fail(SWIG_TypeError, "cannot convert bytes argument");
+    }
+    $1 = param;
 }
 
 %typemap(out) const l15::bytevector& { $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size()); }
@@ -55,6 +73,8 @@ using namespace l15;
 
 %apply l15::bytevector { l15::xonly_pubkey };
 %apply l15::bytevector { l15::signature };
+%apply bytevector { xonly_pubkey };
+
 
 %typemap(out) CMutableTransaction (PyObject* obj)
 %{
@@ -139,10 +159,12 @@ using namespace l15;
 
 %template (CreateInscriptionBase) utxord::ContractBuilder<utxord::InscribePhase>;
 %template (SwapInscriptionBase) utxord::ContractBuilder<utxord::SwapPhase>;
+%template (TrustlessSwapInscriptionBase) utxord::ContractBuilder<utxord::TrustlessSwapPhase>;
 %template (SimpleTransactionBase) utxord::ContractBuilder<utxord::TxPhase>;
 
 %include "create_inscription.hpp"
 %include "swap_inscription.hpp"
+%include "trustless_swap_inscription.hpp"
 %include "simple_transaction.hpp"
 %include "transaction.hpp"
 %include "transaction.h"

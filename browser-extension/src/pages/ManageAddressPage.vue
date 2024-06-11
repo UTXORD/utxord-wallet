@@ -37,7 +37,7 @@
       </div>
 
       <div v-show="openedAdvanced" class="w-full flex flex-col bg-[var(--section)] rounded-xl px-3 py-3 mb-5">
-        <span class="mb-2 w-full text-[var(--text-grey-color)] text-left text-[14px]">Manage derevation</span>
+        <span class="mb-2 w-full text-[var(--text-grey-color)] text-left text-[14px]">Manage derivation</span>
         <div class="flex flex-col bg-[var(--bg-color)] rounded-xl px-4">
           <div
             v-for="(adv, i) in ADVANCED_LIST"

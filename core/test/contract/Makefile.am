@@ -13,6 +13,7 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/bitcoin/src/secp256k1/include \
  -I$(top_srcdir)/bitcoin/src \
  -I$(top_srcdir)/bitcoin/src/univalue/include \
+ -I$(top_srcdir)/bitcoin/src/policy \
  -I$(top_srcdir)/bitcoin/src/consensus \
  -I$(top_srcdir)/bitcoin/src/policy \
  -I$(top_srcdir)/bitcoin/src/script \
@@ -21,7 +22,7 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/l15/src/tools \
  -I$(top_srcdir)/l15/src/api \
  -I$(top_srcdir)/l15/src/core \
- -I$(top_srcdir)/l15/test \
+ -I$(top_srcdir)/test \
  -I$(top_srcdir)/src/contract
 
 
@@ -48,9 +49,11 @@ bin_PROGRAMS = \
 test_contract_builder \
 test_create_inscription \
 test_swap_inscription \
+test_trustless_swap_inscription \
 test_signing \
 test_inscription \
-test_simple_tx
+test_simple_tx \
+test_runes
 
 
 test_contract_builder_SOURCES = test_contract_builder.cpp
@@ -65,8 +68,14 @@ test_create_inscription_LDADD = $(L15_LIBS)
 test_swap_inscription_SOURCES = test_swap_inscription.cpp
 test_swap_inscription_LDADD = $(L15_LIBS)
 
+test_trustless_swap_inscription_SOURCES = test_trustless_swap_inscription.cpp
+test_trustless_swap_inscription_LDADD = $(L15_LIBS)
+
 test_inscription_SOURCES = test_inscription.cpp
 test_inscription_LDADD = $(L15_LIBS)
 
 test_simple_tx_SOURCES = test_simple_tx.cpp
 test_simple_tx_LDADD = $(L15_LIBS)
+
+test_runes_SOURCES = test_runes.cpp
+test_runes_LDADD = $(L15_LIBS)

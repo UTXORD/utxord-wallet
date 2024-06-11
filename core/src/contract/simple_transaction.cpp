@@ -1,14 +1,13 @@
 
 #include "univalue.h"
 
-#include "serialize.h"
-#include "interpreter.h"
-#include "core_io.h"
-#include "feerate.h"
 #include "policy.h"
+#include "core_io.h"
 
 #include "utils.hpp"
+
 #include "simple_transaction.hpp"
+#include "contract_builder_factory.hpp"
 
 namespace utxord {
 
@@ -55,9 +54,9 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
     return tx;
 }
 
-void SimpleTransaction::AddChangeOutput(const std::string& addr)
+void SimpleTransaction::AddChangeOutput(std::string addr)
 {
-    if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
+    if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
 
     if (m_change_nout) {
         m_outputs.erase(m_outputs.begin() + *m_change_nout);
@@ -68,23 +67,23 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     bytevector arg;
     std::tie(v, arg) = bech32().Decode(addr);
     if (v == 0) {
-        AddOutput(std::make_shared<P2WPKH>(bech32().GetChainMode(), 0, addr));
+        AddOutput(std::make_shared<P2WPKH>(bech32().GetChainMode(), 0, move(addr)));
     }
     else if (v == 1) {
-        AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, addr));
+        AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, move(addr)));
     }
     else {
-        throw ContractTermWrongValue("");
+        throw ContractTermWrongValue(name_change_addr.c_str());
     }
 
-    CAmount required = l15::ParseAmount(GetMinFundingAmount(""));
+    CAmount required = GetMinFundingAmount("");
 
     CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
-    if (required > total) throw ContractStateError("inputs too small");
+    //if (required > total) throw ContractStateError("inputs too small");
     CAmount change = total - required;
 
-    if (change > l15::Dust(DUST_RELAY_TX_FEE)) {
+    if (change >= l15::Dust(DUST_RELAY_TX_FEE)) {
         m_outputs.back()->Amount(change);
         m_change_nout = m_outputs.size() - 1;
     }
@@ -93,19 +92,28 @@ void SimpleTransaction::AddChangeOutput(const std::string& addr)
     }
 }
 
+void SimpleTransaction::DropChangeOutput()
+{
+    if (m_change_nout) {
+        m_outputs.erase(m_outputs.begin() + *m_change_nout);
+        m_change_nout.reset();
+    }
+}
+
+
 void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
     CMutableTransaction tx = MakeTx("");
 
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
-    for(auto& input: m_inputs) {
+    for(const auto& input: m_inputs) {
         const auto& dest = input.output->Destination();
         spent_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
     }
 
     for(auto& input: m_inputs) {
-        auto& dest = input.output->Destination();
+        auto dest = input.output->Destination();
         auto keypair = dest->LookupKey(master_key, key_filter_tag);
 
         std::vector<bytevector> stack = keypair->Sign(tx, input.nin, spent_outs, SIGHASH_ALL);
@@ -159,36 +167,63 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 
         if (val.isNull() || val.empty()) throw ContractTermMissing(std::string(name_utxo));
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
+        if (!m_inputs.empty() && m_inputs.size() != val.size()) throw ContractTermMismatch(std::string(name_utxo) + " size");
 
-        for (const UniValue &input: val.getValues()) {
-            m_inputs.emplace_back(bech32(), m_inputs.size(), input);
+        m_inputs.reserve(val.size());
+
+        for (size_t i = 0; i < val.size(); ++i) {
+            if (i == m_inputs.size()) {
+                m_inputs.emplace_back(chain(), m_inputs.size(), val[i], [i](){ return (std::ostringstream() << name_utxo << '[' << i << ']').str();});
+            }
+            else {
+                m_inputs[i].ReadJson(val[i], [i](){ return (std::ostringstream() << name_utxo << '[' << i << ']').str();});
+            }
         }
     }
 
     {   const auto &val = contract[name_outputs];
         if (val.isNull() || val.empty()) throw ContractTermMissing(std::string(name_outputs));
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_outputs));
+        if (!m_outputs.empty() && m_outputs.size() != val.size()) throw ContractTermMismatch(std::string(name_outputs) + " size");
 
-        for (const UniValue &out: val.getValues()) {
-            m_outputs.emplace_back(IContractDestination::ReadJson(bech32(), out));
+        for (size_t i = 0; i < val.size(); ++i) {
+            if (i == m_outputs.size()) {
+                m_outputs.emplace_back(NoZeroDestinationFactory::ReadJson(chain(), val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();}));
+            }
+            else {
+                m_outputs[i]->ReadJson(val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();});
+            }
         }
     }
 }
 
-std::string SimpleTransaction::GetMinFundingAmount(const std::string& params) const
+CAmount SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
-    return l15::FormatAmount(l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out);
+    return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out;
 }
 
 void SimpleTransaction::CheckContractTerms(TxPhase phase) const
 {
-
+    if (phase == TX_SIGNATURE)
+        CheckSig();
 }
 
 CAmount SimpleTransaction::CalculateWholeFee(const string &params) const
 {
     return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params));
+}
+
+void SimpleTransaction::CheckSig() const
+{
+    std::vector<CTxOut> spent_outs;
+    spent_outs.reserve(m_inputs.size());
+    std::transform(m_inputs.begin(), m_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()), [](const auto& txin){ return CTxOut(txin.output->Destination()->Amount(), txin.output->Destination()->PubKeyScript()); });
+
+    CMutableTransaction tx = MakeTx("");
+    for (const auto &input: m_inputs) {
+        VerifyTxSignature(input.output->Destination()->Address(), input.witness, tx, input.nin, spent_outs);
+    }
 }
 
 } // l15::utxord
