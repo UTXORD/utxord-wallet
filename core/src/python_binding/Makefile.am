@@ -1,12 +1,12 @@
 COMMON_INCLUDES = \
- -I$(top_srcdir)/bitcoin/src \
- -I$(top_srcdir)/bitcoin/src/secp256k1/include \
- -I$(top_srcdir)/bitcoin/src/univalue/include \
- -I$(top_srcdir)/bitcoin/src/consensus \
- -I$(top_srcdir)/bitcoin/src/policy \
- -I$(top_srcdir)/bitcoin/src/primitives \
- -I$(top_srcdir)/bitcoin/src/script \
- -I$(top_srcdir)/bitcoin/src/support \
+ -I$(top_srcdir)/l15/node/src \
+ -I$(top_srcdir)/l15/node/src/secp256k1/include \
+ -I$(top_srcdir)/l15/node/src/univalue/include \
+ -I$(top_srcdir)/l15/node/src/consensus \
+ -I$(top_srcdir)/l15/node/src/policy \
+ -I$(top_srcdir)/l15/node/src/primitives \
+ -I$(top_srcdir)/l15/node/src/script \
+ -I$(top_srcdir)/l15/node/src/support \
  -I$(top_srcdir)/l15/src/common \
  -I$(top_srcdir)/l15/src/core \
  -I$(top_srcdir)/l15/contrib/cex \
@@ -49,9 +49,9 @@ _libutxord_pybind_la_LDFLAGS = -shared -module -avoid-version $(PYTHON_LDFLAGS) 
 _libutxord_pybind_la_LIBADD = \
     $(top_builddir)/l15/src/core/libl15-core.la \
     $(top_builddir)/l15/src/common/libl15-common.la \
-    $(top_builddir)/bitcoin/src/secp256k1/libsecp256k1.la \
-    $(top_builddir)/bitcoin/src/libbitcoinconsensus.la \
-    $(top_builddir)/bitcoin/src/libunivalue.la \
+    $(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la \
+    $(top_builddir)/l15/node/src/libbitcoinconsensus.la \
+    $(top_builddir)/l15/node/src/libunivalue.la \
     $(top_builddir)/src/contract/libutxord-contract.la \
     $(PYTHON_LIBS)
 

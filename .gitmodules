@@ -1,6 +1,3 @@
-[submodule "core/bitcoin"]
-	path = core/bitcoin
-	url = git@github.com:layer1dot5/bitcoin.git
 [submodule "core/l15-core"]
 	path = core/l15
 	url = git@github.com:layer1dot5/l15-core.git

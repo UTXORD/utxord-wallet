@@ -104,7 +104,7 @@ TEST_CASE("Fee")
 
     std::clog << "Base tx vsize (no vin/vout): " << base_fee << std::endl;
 
-    tx.vin.emplace_back(uint256(), 0);
+    tx.vin.emplace_back(CTxIn());
     tx.vin.back().scriptWitness.stack.emplace_back(64);
     tx.vout.emplace_back(0, CScript() << 1 << xonly_pubkey());
 
@@ -112,7 +112,7 @@ TEST_CASE("Fee")
 
     std::clog << "Mininal taproot tx vsize: " << min_fee << std::endl;
 
-    tx.vin.emplace_back(uint256(), 0);
+    tx.vin.emplace_back(CTxIn());
     tx.vin.back().scriptWitness.stack.emplace_back(64);
 
     CAmount double_vin_fee = CalculateTxFee(1000, tx);
@@ -136,7 +136,7 @@ TEST_CASE("Fee")
     for (uint256 &branch_hash: scriptpath)
         control_block.insert(control_block.end(), branch_hash.begin(), branch_hash.end());
 
-    tx.vin.emplace_back(uint256(), 0);
+    tx.vin.emplace_back(CTxIn());
     tx.vin.back().scriptWitness.stack.emplace_back(signature());
     tx.vin.back().scriptWitness.stack.emplace_back(signature());
     tx.vin.back().scriptWitness.stack.emplace_back(tap_tree.GetScripts().front().begin(), tap_tree.GetScripts().front().end());
@@ -147,7 +147,7 @@ TEST_CASE("Fee")
 
 
     CMutableTransaction p2wpkhtx;
-    p2wpkhtx.vin.emplace_back(uint256(), 0);
+    p2wpkhtx.vin.emplace_back(CTxIn());
     p2wpkhtx.vin.back().scriptWitness.stack.emplace_back(unhex<bytevector>("30440220744cd353daa4c84042229bfdb5f95f4e374fe32f43f16c984f82ab11f0cfa5b1022018d50cdd78bc1cf9e9b8f6119188972934ace1bbf67b581bf9b64663dbd8e04201"));
     p2wpkhtx.vin.back().scriptWitness.stack.emplace_back(unhex<bytevector>("025d4d8d0b078bb360a50682e39bd6cca383f13f620262c90e4b329b41e92a283d"));
 

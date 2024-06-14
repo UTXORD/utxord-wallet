@@ -606,7 +606,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
     CAmount total_funds = 0;
     tx.vin.reserve(m_inputs.size());
     for(const auto& input: m_inputs) {
-        tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
+        tx.vin.emplace_back(Txid::FromUint256(uint256S(input.output->TxID())), input.output->NOut());
         tx.vin.back().scriptWitness.stack = input.witness;
         if (tx.vin.back().scriptWitness.stack.empty()) {
             tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
@@ -721,11 +721,11 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
 
     if (m_parent_collection_id) {
         if (m_collection_input) {
-            tx.vin.emplace_back(uint256S(m_collection_input->output->TxID()), m_collection_input->output->NOut());
+            tx.vin.emplace_back(Txid::FromUint256(uint256S(m_collection_input->output->TxID())), m_collection_input->output->NOut());
             tx.vin.back().scriptWitness.stack = m_collection_input->witness ? m_collection_input->witness : m_collection_input->output->Destination()->DummyWitness();
         }
         else {
-            tx.vin.emplace_back(uint256(), 0);
+            tx.vin.emplace_back(Txid(), 0);
         }
         tx.vin.emplace_back(tx.vin.front().prevout.hash, 1);
 
@@ -788,7 +788,7 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
 
     CMutableTransaction tx;
 
-    tx.vin = {{uint256(0), 0}};
+    tx.vin = {{Txid(), 0}};
 
     ScriptMerkleTree genesis_tap_tree(TreeBalanceType::WEIGHTED, { MakeInscriptionScript() });
     uint256 root = genesis_tap_tree.CalculateRoot();

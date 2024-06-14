@@ -5,7 +5,6 @@
 
 #include "transaction.h"
 #include "streams.h"
-#include "version.h"
 
 
 #include "inscription.hpp"
@@ -17,7 +16,7 @@ namespace utxord {
 
 namespace {
 
-opcodetype GetNextScriptData(const CScript &script, CScript::const_iterator &it, bytevector &data, const std::string errtag)
+opcodetype GetNextScriptData(const CScript &script, CScript::const_iterator &it, bytevector &data, const std::string& errtag)
 {
     opcodetype opcode;
     if (it < script.end()) {
@@ -76,8 +75,6 @@ Inscription::Inscription(std::string inscription_id, std::list<std::pair<bytevec
 std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& script, CScript::const_iterator& it) {
     std::list<std::pair<bytevector, bytevector>> res;
     bytevector content;
-
-    size_t i = 0;
 
     CScript::const_iterator end = script.end();
     opcodetype prev_opcode_2 = OP_INVALIDOPCODE;

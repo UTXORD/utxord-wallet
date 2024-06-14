@@ -71,7 +71,7 @@ CMutableTransaction TrustlessSwapInscriptionBuilder::MakeSwapTx() const
     swap_tx.vin.reserve(m_swap_inputs.size());
 
     for (const auto& input: m_swap_inputs) {
-        swap_tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
+        swap_tx.vin.emplace_back(Txid::FromUint256(uint256S(input.output->TxID())), input.output->NOut());
         if (input.witness)
             swap_tx.vin.back().scriptWitness.stack = input.witness;
         else
@@ -702,7 +702,7 @@ CAmount TrustlessSwapInscriptionBuilder::CalculateSwapTxFee(bool change) const
 {
     CAmount swap_vsize = TX_SWAP_BASE_VSIZE;
     if (m_market_fee->Amount() >= l15::Dust() && m_market_fee->Amount() < l15::Dust() * 2) swap_vsize += TAPROOT_VOUT_VSIZE;
-    if (m_swap_inputs.size() > 4) swap_vsize += (m_swap_inputs.size() - 4) * TAPROOT_KEYSPEND_VIN_VSIZE;
+    if (m_swap_inputs.size() > 4) swap_vsize += (m_swap_inputs.size() - 4u) * TAPROOT_KEYSPEND_VIN_VSIZE;
     if (change) swap_vsize += TAPROOT_VOUT_VSIZE;
     return CFeeRate(*m_mining_fee_rate).GetFee(swap_vsize);
 }

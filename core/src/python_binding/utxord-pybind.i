@@ -78,6 +78,7 @@ using namespace l15::core;
 %apply l15::bytevector { l15::signature };
 %apply bytevector { xonly_pubkey };
 
+%ignore TransactionSerParams;
 
 %typemap(out) CMutableTransaction (PyObject* obj)
 %{
@@ -170,6 +171,5 @@ using namespace l15::core;
 %include "trustless_swap_inscription.hpp"
 %include "simple_transaction.hpp"
 %include "transaction.hpp"
-%include "transaction.h"
 %include "inscription.hpp"
 

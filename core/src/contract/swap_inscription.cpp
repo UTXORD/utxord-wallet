@@ -138,7 +138,7 @@ CMutableTransaction SwapInscriptionBuilder::GetSwapTxTemplate() const {
             swapTpl.vout.emplace_back(m_market_fee->Amount(), m_market_fee->PubKeyScript());
         }
 
-        swapTpl.vin.emplace_back(COutPoint(uint256(), 0));
+        swapTpl.vin.emplace_back(COutPoint(Txid(), 0));
         swapTpl.vin.back().scriptWitness.stack.emplace_back(65);
 
         auto taproot = FundsCommitTemplateTapRoot();
@@ -154,7 +154,7 @@ CMutableTransaction SwapInscriptionBuilder::GetSwapTxTemplate() const {
         for (uint256 &branch_hash: funds_scriptpath)
             funds_control_block.insert(funds_control_block.end(), branch_hash.begin(), branch_hash.end());
 
-        swapTpl.vin.emplace_back(uint256(0), 0);
+        swapTpl.vin.emplace_back(Txid(), 0);
         swapTpl.vin.back().scriptWitness.stack.emplace_back(64);
         swapTpl.vin.back().scriptWitness.stack.emplace_back(64);
 
@@ -170,7 +170,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx(bool with_funds_in) const
 {
     CMutableTransaction swap_tx = GetSwapTxTemplate();
 
-    swap_tx.vin[0].prevout = COutPoint(uint256S(m_ord_input->output->TxID()), m_ord_input->output->NOut());
+    swap_tx.vin[0].prevout = COutPoint(Txid::FromUint256(uint256S(m_ord_input->output->TxID())), m_ord_input->output->NOut());
     if (m_ord_input->witness) {
         swap_tx.vin[0].scriptWitness.stack = m_ord_input->witness;
     }
@@ -234,7 +234,7 @@ CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit
     commitTpl.vin.reserve(m_fund_inputs.size());
 
     if (m_fund_inputs.empty()) {
-        commitTpl.vin.emplace_back(uint256(), 0);
+        commitTpl.vin.emplace_back(Txid(), 0);
         if (segwit_in) {
             commitTpl.vin.back().scriptWitness.stack.emplace_back(71);
             commitTpl.vin.back().scriptWitness.stack.emplace_back(33);
@@ -246,14 +246,14 @@ CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit
     else {
         for (const auto &utxo: m_fund_inputs) {
             if (commitTpl.vin.size() > utxo.nin) {
-                commitTpl.vin[utxo.nin].prevout = COutPoint(uint256S(utxo.output->TxID()), utxo.output->NOut());
+                commitTpl.vin[utxo.nin].prevout = COutPoint(Txid::FromUint256(uint256S(utxo.output->TxID())), utxo.output->NOut());
                 if (utxo.witness)
                     commitTpl.vin[utxo.nin].scriptWitness.stack = utxo.witness;
             }
             else {
                 if (utxo.nin > commitTpl.vin.size()) throw ContractError(name_funds + " are inconsistent");
 
-                commitTpl.vin.emplace_back(uint256S(utxo.output->TxID()), utxo.output->NOut());
+                commitTpl.vin.emplace_back(Txid::FromUint256(uint256S(utxo.output->TxID())), utxo.output->NOut());
 
                 if (utxo.witness)
                     commitTpl.vin[utxo.nin].scriptWitness.stack = utxo.witness;
@@ -714,7 +714,7 @@ void SwapInscriptionBuilder::AddFundsUTXO(string txid, uint32_t nout, CAmount am
 CMutableTransaction SwapInscriptionBuilder::CreatePayoffTxTemplate() const {
     CMutableTransaction result;
 
-    result.vin = {CTxIn(uint256(0), 0)};
+    result.vin = {{}};
     result.vin.front().scriptWitness.stack.push_back(signature());
     result.vout = {CTxOut(0, CScript() << 1 << xonly_pubkey())};
     result.vout.front().nValue = 0;

@@ -10,14 +10,14 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/l15/contrib \
  -I$(top_srcdir)/l15/contrib/cex \
  -I$(top_srcdir)/l15/contrib/cli11 \
- -I$(top_srcdir)/bitcoin/src/secp256k1/include \
- -I$(top_srcdir)/bitcoin/src \
- -I$(top_srcdir)/bitcoin/src/univalue/include \
- -I$(top_srcdir)/bitcoin/src/policy \
- -I$(top_srcdir)/bitcoin/src/consensus \
- -I$(top_srcdir)/bitcoin/src/policy \
- -I$(top_srcdir)/bitcoin/src/script \
- -I$(top_srcdir)/bitcoin/src/support \
+ -I$(top_srcdir)/l15/node/src/secp256k1/include \
+ -I$(top_srcdir)/l15/node/src \
+ -I$(top_srcdir)/l15/node/src/univalue/include \
+ -I$(top_srcdir)/l15/node/src/policy \
+ -I$(top_srcdir)/l15/node/src/consensus \
+ -I$(top_srcdir)/l15/node/src/policy \
+ -I$(top_srcdir)/l15/node/src/script \
+ -I$(top_srcdir)/l15/node/src/support \
  -I$(top_srcdir)/l15/src/common \
  -I$(top_srcdir)/l15/src/tools \
  -I$(top_srcdir)/l15/src/api \
@@ -33,16 +33,16 @@ $(top_builddir)/l15/src/core/libl15-core.la \
 $(top_builddir)/l15/src/tools/libl15-tools.la \
 $(top_builddir)/l15/src/common/libl15-common.la \
 -lbitcoin_common -lbitcoin_util -lbitcoin_consensus \
-$(top_builddir)/bitcoin/src/crypto/libbitcoin_crypto_base.la \
-$(top_builddir)/bitcoin/src/crypto/libbitcoin_crypto_avx2.la \
-$(top_builddir)/bitcoin/src/crypto/libbitcoin_crypto_x86_shani.la \
-$(top_builddir)/bitcoin/src/crypto/libbitcoin_crypto_sse41.la \
-$(top_builddir)/bitcoin/src/secp256k1/libsecp256k1.la \
-$(top_builddir)/bitcoin/src/libunivalue.la \
+$(top_builddir)/l15/node/src/crypto/libbitcoin_crypto_base.la \
+$(top_builddir)/l15/node/src/crypto/libbitcoin_crypto_avx2.la \
+$(top_builddir)/l15/node/src/crypto/libbitcoin_crypto_x86_shani.la \
+$(top_builddir)/l15/node/src/crypto/libbitcoin_crypto_sse41.la \
+$(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la \
+$(top_builddir)/l15/node/src/libunivalue.la \
 $(BOOST_FILESYSTEM_LIB)
 
 
-AM_LDFLAGS=-L$(top_builddir)/bitcoin/src
+AM_LDFLAGS=-L$(top_builddir)/l15/node/src
 
 
 bin_PROGRAMS = \
