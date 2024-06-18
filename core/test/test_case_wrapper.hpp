@@ -1,13 +1,12 @@
 #pragma once
 
-#include "common.hpp"
+#include "utils.hpp"
 #include "chain_api.hpp"
 #include "config.hpp"
 #include "exechelper.hpp"
-#include "keypair.hpp"
+#include "keyregistry.hpp"
 #include "nodehelper.hpp"
 
-#include "address.hpp"
 #include <chrono>
 #include <cstdio>
 #include <string>
@@ -39,7 +38,7 @@ struct TestcaseWrapper
 {
     TestConfigFactory mConfFactory;
     std::string mMode;
-    ChainMode m_chain;
+    l15::ChainMode m_chain;
     l15::core::ChainApi mBtc;
     l15::ExecHelper mCli;
     l15::ExecHelper mBtcd;
@@ -48,7 +47,7 @@ struct TestcaseWrapper
     explicit TestcaseWrapper(const std::string& configpath) :
             mConfFactory(configpath),
             mMode(mConfFactory.conf[l15::config::option::CHAINMODE].as<std::string>()),
-            m_chain((mMode == "mainnet") ? MAINNET : ((mMode == "testnet") ? TESTNET : REGTEST)),
+            m_chain((mMode == "mainnet") ? l15::MAINNET : ((mMode == "testnet") ? l15::TESTNET : l15::REGTEST)),
             mBtc(std::move(mConfFactory.conf.ChainValues(l15::config::BITCOIN))),
             mCli("bitcoin-cli", false),
             mBtcd("bitcoind", false),
@@ -84,7 +83,7 @@ struct TestcaseWrapper
 
     virtual ~TestcaseWrapper()
     {
-        if (m_chain == ChainMode::REGTEST) {
+        if (m_chain == l15::REGTEST) {
             StopRegtestBitcoinNode();
             std::filesystem::remove_all(mConfFactory.GetBitcoinDataDir() + "/regtest");
             std::filesystem::remove_all(mConfFactory.GetBitcoinDataDir() + "/../ord/regtest");
@@ -93,19 +92,19 @@ struct TestcaseWrapper
 
     void StartRegtestBitcoinNode()
     {
-        StartNode(l15::ChainMode::MODE_REGTEST, mBtcd, conf().Subcommand(l15::config::BITCOIND));
+        StartNode(l15::NodeChainMode::MODE_REGTEST, mBtcd, conf().Subcommand(l15::config::BITCOIND));
     }
 
     void StopRegtestBitcoinNode()
     {
-        StopNode(l15::ChainMode::MODE_REGTEST, mCli, conf().Subcommand(l15::config::BITCOIN));
+        StopNode(l15::NodeChainMode::MODE_REGTEST, mCli, conf().Subcommand(l15::config::BITCOIN));
     }
 
     std::string GetRunes()
     {
         mOrd.Arguments() = {"--data-dir", mConfFactory.GetBitcoinDataDir() + "/../ord", "--bitcoin-data-dir", mConfFactory.GetBitcoinDataDir(), "--index-runes"};
 
-        if (chain() == REGTEST) {
+        if (chain() == l15::REGTEST) {
             mOrd.Arguments().emplace_back("--regtest");
         }
 
@@ -132,7 +131,7 @@ struct TestcaseWrapper
     l15::core::ChainApi& btc()
     { return mBtc; }
 
-    ChainMode chain() const
+    l15::ChainMode chain() const
     { return m_chain; }
 
     void ResetRegtestMemPool()
@@ -146,7 +145,7 @@ struct TestcaseWrapper
 
     void WaitForConfirmations(uint32_t n)
     {
-        if (chain() == REGTEST) {
+        if (chain() == l15::REGTEST) {
             btc().GenerateToAddress(btc().GetNewAddress(), std::to_string(n));
         }
         else {
@@ -161,7 +160,7 @@ struct TestcaseWrapper
     std::string DerivationPath(uint32_t purpose, uint32_t account, uint32_t change, uint32_t index) const
     {
         char buf[32];
-        sprintf(buf, "m/%d'/%d'/%d'/%d/%d", purpose, chain() == MAINNET ? 0 : 1, account, change, index);
+        sprintf(buf, "m/%d'/%d'/%d'/%d/%d", purpose, chain() == l15::MAINNET ? 0 : 1, account, change, index);
         return {buf};
     }
 };

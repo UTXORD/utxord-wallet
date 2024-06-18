@@ -10,7 +10,7 @@
 
 namespace utxord {
 
-using l15::core::ChannelKeys;
+using l15::core::SchnorrKeyPair;
 using l15::ScriptMerkleTree;
 using l15::TreeBalanceType;
 using l15::ParseAmount;
@@ -61,7 +61,7 @@ std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> TrustlessSwapInscriptionBuil
     if (!m_ord_int_pk) throw ContractStateError(name_ord_int_pk + " not defined");
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { OrdSwapScript() });
-    return std::tuple_cat(ChannelKeys::AddTapTweak(m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 
@@ -71,7 +71,7 @@ CMutableTransaction TrustlessSwapInscriptionBuilder::MakeSwapTx() const
     swap_tx.vin.reserve(m_swap_inputs.size());
 
     for (const auto& input: m_swap_inputs) {
-        swap_tx.vin.emplace_back(uint256S(input.output->TxID()), input.output->NOut());
+        swap_tx.vin.emplace_back(Txid::FromUint256(uint256S(input.output->TxID())), input.output->NOut());
         if (input.witness)
             swap_tx.vin.back().scriptWitness.stack = input.witness;
         else
@@ -192,7 +192,7 @@ void TrustlessSwapInscriptionBuilder::SignOrdSwap(const KeyRegistry &masterKey, 
     CheckContractTerms(TRUSTLESS_ORD_TERMS);
 
     KeyPair keypair = masterKey.Lookup(*m_ord_script_pk, key_filter);
-    ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
+    SchnorrKeyPair schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
 
     CMutableTransaction swap_tx(MakeSwapTx());
 
@@ -220,7 +220,7 @@ void TrustlessSwapInscriptionBuilder::SignMarketSwap(const KeyRegistry &masterKe
     if (m_swap_inputs.size() < 4) throw ContractStateError(name_swap_inputs + " has inconsistent size: " + std::to_string(m_swap_inputs.size()));
 
     KeyPair keypair = masterKey.Lookup(*m_market_script_pk, key_filter);
-    ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
+    SchnorrKeyPair schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
 
     CMutableTransaction swap_tx(MakeSwapTx());
 
@@ -702,7 +702,7 @@ CAmount TrustlessSwapInscriptionBuilder::CalculateSwapTxFee(bool change) const
 {
     CAmount swap_vsize = TX_SWAP_BASE_VSIZE;
     if (m_market_fee->Amount() >= l15::Dust() && m_market_fee->Amount() < l15::Dust() * 2) swap_vsize += TAPROOT_VOUT_VSIZE;
-    if (m_swap_inputs.size() > 4) swap_vsize += (m_swap_inputs.size() - 4) * TAPROOT_KEYSPEND_VIN_VSIZE;
+    if (m_swap_inputs.size() > 4) swap_vsize += (m_swap_inputs.size() - 4u) * TAPROOT_KEYSPEND_VIN_VSIZE;
     if (change) swap_vsize += TAPROOT_VOUT_VSIZE;
     return CFeeRate(*m_mining_fee_rate).GetFee(swap_vsize);
 }

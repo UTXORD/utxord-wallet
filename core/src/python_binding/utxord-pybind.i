@@ -14,8 +14,10 @@
 
 #include "common.hpp"
 #include "transaction.hpp"
-#include "address.hpp"
+#include "schnorr.hpp"
+#include "ecdsa.hpp"
 #include "keypair.hpp"
+#include "keyregistry.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "trustless_swap_inscription.hpp"
@@ -25,6 +27,7 @@
 
 using namespace utxord;
 using namespace l15;
+using namespace l15::core;
 
 %}
 
@@ -75,6 +78,7 @@ using namespace l15;
 %apply l15::bytevector { l15::signature };
 %apply bytevector { xonly_pubkey };
 
+%ignore TransactionSerParams;
 
 %typemap(out) CMutableTransaction (PyObject* obj)
 %{
@@ -153,8 +157,8 @@ using namespace l15;
 
 %include "common_error.hpp"
 %include "contract_error.hpp"
-%include "address.hpp"
 %include "keypair.hpp"
+%include "keyregistry.hpp"
 %include "contract_builder.hpp"
 
 %template (CreateInscriptionBase) utxord::ContractBuilder<utxord::InscribePhase>;
@@ -167,6 +171,5 @@ using namespace l15;
 %include "trustless_swap_inscription.hpp"
 %include "simple_transaction.hpp"
 %include "transaction.hpp"
-%include "transaction.h"
 %include "inscription.hpp"
 

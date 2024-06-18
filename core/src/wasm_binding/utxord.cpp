@@ -2,9 +2,10 @@
 
 #include "random.h"
 
-#include "common.hpp"
-#include "address.hpp"
+#include "utils.hpp"
+#include "schnorr.hpp"
 #include "keypair.hpp"
+#include "keyregistry.hpp"
 #include "master_key.hpp"
 #include "contract_builder.hpp"
 #include "create_inscription.hpp"
@@ -58,10 +59,10 @@ enum Bech32Encoding
     BECH32M
 };
 
-class Bech32 : public utxord::Bech32
+class Bech32 : public l15::Bech32
 {
 public:
-    explicit Bech32(ChainMode mode) : utxord::Bech32(mode) {}
+    explicit Bech32(ChainMode mode) : utxord::Bech32(l15::BTC, mode) {}
     Bech32(const Bech32& another) = default;
     Bech32& operator=(const Bech32& another) = default;
     const char* Encode(std::string val, Bech32Encoding encoding)
@@ -73,85 +74,85 @@ public:
 };
 
 
-class KeyPair : private utxord::KeyPair
+class KeyPair : private l15::core::KeyPair
 {
 public:
     static void InitSecp256k1()
     { GetSecp256k1(); }
 
-    explicit KeyPair(const char* sk) : utxord::KeyPair(GetSecp256k1(), unhex<l15::seckey>(sk)) {}
+    explicit KeyPair(const char* sk) : l15::core::KeyPair(GetSecp256k1(), unhex<l15::seckey>(sk)) {}
 
     KeyPair(const KeyPair& ) = default;
     KeyPair(KeyPair&& ) noexcept = default;
 
-    KeyPair(const utxord::KeyPair& keypair) : utxord::KeyPair(keypair) {}
-    KeyPair(utxord::KeyPair&& keypair) noexcept : utxord::KeyPair(std::move(keypair)) {}
+    KeyPair(const l15::core::KeyPair& keypair) : l15::core::KeyPair(keypair) {}
+    KeyPair(l15::core::KeyPair&& keypair) noexcept : l15::core::KeyPair(std::move(keypair)) {}
 
     const char* PrivKey() const
     {
         static std::string cache;
-        cache = l15::hex(utxord::KeyPair::PrivKey());
+        cache = l15::hex(l15::core::KeyPair::PrivKey());
         return cache.c_str();
     }
 
     const char* PubKey() const
     {
         static std::string cache;
-        cache = l15::hex(utxord::KeyPair::PubKey());
+        cache = l15::hex(GetSchnorrKeyPair().GetPubKey());
         return cache.c_str();
     }
 
     const char* SignSchnorr(const char* m)
     {
         static std::string cache;
-        cache = l15::hex(utxord::KeyPair::SignSchnorr(m));
+        cache = l15::hex(GetSchnorrKeyPair().SignSchnorr(uint256S(m)));
         return cache.c_str();
     }
 
     const char* GetP2TRAddress(ChainMode mode)
     {
         static std::string cache;
-        cache = utxord::KeyPair::GetP2TRAddress(utxord::Bech32(mode));
+        cache = l15::core::KeyPair::GetP2TRAddress(l15::Bech32(l15::BTC, mode));
         return cache.c_str();
     }
 
     const char* GetP2WPKHAddress(ChainMode mode)
     {
         static std::string cache;
-        cache = utxord::KeyPair::GetP2WPKHAddress(utxord::Bech32(mode));
+        cache = l15::core::KeyPair::GetP2WPKHAddress(l15::Bech32(l15::BTC, mode));
         return cache.c_str();
     }
 };
 
 
-class KeyRegistry : private utxord::KeyRegistry
+class KeyRegistry : private l15::core::KeyRegistry
 {
 public:
-    explicit KeyRegistry(ChainMode mode, const char *seed) : utxord::KeyRegistry(GetSecp256k1(), utxord::Bech32(mode), unhex<bytevector>(seed))
+    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<bytevector>(seed))
     {}
 
     void AddKeyType(const char* name, const char* filter_json)
-    { utxord::KeyRegistry::AddKeyType(name, filter_json); }
+    { l15::core::KeyRegistry::AddKeyType(name, filter_json); }
 
     void RemoveKeyType(const char* name)
-    { utxord::KeyRegistry::RemoveKeyType(name); }
+    { l15::core::KeyRegistry::RemoveKeyType(name); }
 
-    using utxord::KeyRegistry::AddKeyToCache;
+    using l15::core::KeyRegistry::AddKeyToCache;
 
     void RemoveKeyFromCache(const char* sk)
-    { utxord::KeyRegistry::RemoveKeyFromCache(unhex<l15::seckey>(sk)); }
+    { l15::core::KeyRegistry::RemoveKeyFromCache(unhex<l15::seckey>(sk)); }
 
     void RemoveKeyFromCacheByAddress(const char* address)
-    { utxord::KeyRegistry::RemoveKeyFromCache(address); }
+    { l15::core::KeyRegistry::RemoveKeyFromCache(address); }
 
     KeyPair* Derive(const char *path, bool for_script) const
-    { return new KeyPair(utxord::KeyRegistry::Derive(path, for_script)); }
+    { return new KeyPair(l15::core::KeyRegistry::Derive(path, for_script)); }
 
     KeyPair* LookupPubKey(const char* pk, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), std::string(key_lookup_opt_json))); }
+    { return new KeyPair(l15::core::KeyRegistry::Lookup(unhex<l15::xonly_pubkey>(pk), std::string(key_lookup_opt_json))); }
 
     KeyPair* LookupAddress(const std::string& addr, const char* key_lookup_opt_json) const
-    { return new KeyPair(utxord::KeyRegistry::Lookup(addr, std::string(key_lookup_opt_json))); }
+    { return new KeyPair(l15::core::KeyRegistry::Lookup(addr, std::string(key_lookup_opt_json))); }
 
 };
 

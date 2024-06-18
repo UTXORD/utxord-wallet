@@ -7,7 +7,7 @@
 #include "interpreter.h"
 #include "feerate.h"
 #include "script_merkle_tree.hpp"
-#include "channel_keys.hpp"
+#include "schnorr.hpp"
 #include "contract_builder.hpp"
 #include "contract_builder_factory.hpp"
 #include "utils.hpp"
@@ -19,7 +19,7 @@ namespace utxord {
 using l15::FormatAmount;
 using l15::ParseAmount;
 using l15::SignatureError;
-using l15::core::ChannelKeys;
+using l15::core::SchnorrKeyPair;
 using l15::core::MasterKey;
 
 const std::string IJsonSerializable::name_type = "type";
@@ -136,7 +136,7 @@ void ZeroDestination::ReadJson(const UniValue &json, const std::function<std::st
 
 const char* P2Witness::type = "p2witness";
 
-P2Witness::P2Witness(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): mBech(chain)
+P2Witness::P2Witness(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): mBech(BTC, chain)
 {
     if (!json[name_type].isStr() || json[name_type].get_str() != type) {
         throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
@@ -178,7 +178,7 @@ std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, CAmo
 {
     unsigned witver;
     bytevector data;
-    std::tie(witver, data) = Bech32(chain).Decode(addr);
+    std::tie(witver, data) = Bech32(BTC, chain).Decode(addr);
     if (witver == 0) {
         return std::make_shared<P2WPKH>(chain, amount, move(addr));
     } else if (witver == 1) {
@@ -198,7 +198,7 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const s
     if (witver != 0) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
-    EcdsaKeypair ecdsa(masterKey.Secp256k1Context(), keypair.PrivKey());
+    EcdsaKeyPair ecdsa(masterKey.Secp256k1Context(), keypair.PrivKey());
     return std::make_shared<P2WPKHSigner>(move(ecdsa));
 }
 
@@ -210,7 +210,7 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std
     if (witver != 1) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
-    ChannelKeys schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
+    SchnorrKeyPair schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
     return std::make_shared<TaprootSigner>(move(schnorr));
 }
 
@@ -317,7 +317,7 @@ void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature
     if (!SignatureHashSchnorr(sighash, execdata, tx, nin, hashtype, sigversion, txdata, MissingDataBehavior::FAIL)) {
         throw SignatureError("sighash");
     }
-    if (!pk.verify(ChannelKeys::GetStaticSecp256k1Context(), sig, sighash)) {
+    if (!pk.verify(SchnorrKeyPair::GetStaticSecp256k1Context(), sig, sighash)) {
         throw SignatureError("sig");
     }
 }
@@ -353,9 +353,9 @@ void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vec
         secp256k1_pubkey pubkey;
         secp256k1_ecdsa_signature signature;
 
-        if (!secp256k1_ec_pubkey_parse(ChannelKeys::GetStaticSecp256k1Context(), &pubkey, witness[1].data(), 33)) throw SignatureError("pubkey");
-        if (!secp256k1_ecdsa_signature_parse_der(ChannelKeys::GetStaticSecp256k1Context(), &signature, witness[0].data(), witness[0].size()-1)) throw SignatureError("signature format");
-        if (!secp256k1_ecdsa_verify(ChannelKeys::GetStaticSecp256k1Context(), &signature, sighash.data(), &pubkey)) throw SignatureError("sig");
+        if (!secp256k1_ec_pubkey_parse(SchnorrKeyPair::GetStaticSecp256k1Context(), &pubkey, witness[1].data(), 33)) throw SignatureError("pubkey");
+        if (!secp256k1_ecdsa_signature_parse_der(SchnorrKeyPair::GetStaticSecp256k1Context(), &signature, witness[0].data(), witness[0].size() - 1)) throw SignatureError("signature format");
+        if (!secp256k1_ecdsa_verify(SchnorrKeyPair::GetStaticSecp256k1Context(), &signature, sighash.data(), &pubkey)) throw SignatureError("sig");
     }
     else {
         throw std::runtime_error("not implemented witver: " + std::to_string(witver));

@@ -10,7 +10,7 @@
 #include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
-#include "channel_keys.hpp"
+#include "schnorr.hpp"
 
 #include "exechelper.hpp"
 
@@ -85,8 +85,8 @@ TEST_CASE("singleinout")
 
     KeyPair p2wpkh_utxo_key = master_key.Derive("m/84'/1'/0'/0/10", false);
 
-    TestCondition p2tr_cond = {p2tr_utxo_key, p2tr_utxo_key.GetP2TRAddress(Bech32(w->chain()))};
-    TestCondition p2wpkh_cond = {p2wpkh_utxo_key, p2wpkh_utxo_key.GetP2WPKHAddress(Bech32(w->chain()))};
+    TestCondition p2tr_cond = {p2tr_utxo_key, p2tr_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()))};
+    TestCondition p2wpkh_cond = {p2wpkh_utxo_key, p2wpkh_utxo_key.GetP2WPKHAddress(Bech32(BTC, w->chain()))};
 
     auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond);
 
@@ -134,10 +134,10 @@ TEST_CASE("singleinout")
     CHECK(tx.vout.size() == 1);
 
     PrecomputedTransactionData txdata;
-    txdata.Init(tx, {CTxOut {10000, Bech32(w->chain()).PubKeyScript(cond.address)}}, /* force=*/ true);
+    txdata.Init(tx, {CTxOut {10000, Bech32(BTC, w->chain()).PubKeyScript(cond.address)}}, /* force=*/ true);
 
     MutableTransactionSignatureChecker TxOrdChecker(&tx, 0, 10000, txdata, MissingDataBehavior::FAIL);
-    bool ok = VerifyScript(CScript(), Bech32(w->chain()).PubKeyScript(cond.address), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
+    bool ok = VerifyScript(CScript(), Bech32(BTC, w->chain()).PubKeyScript(cond.address), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
     REQUIRE(ok);
 
 
@@ -145,7 +145,7 @@ TEST_CASE("singleinout")
 //
 //    CKey keypair;
 //    keypair.Set(p2wpkh_utxo_sk.begin(), p2wpkh_utxo_sk.end(), true);
-//    uint256 hash = SignatureHash(Bech32(w->chain()).PubKeyScript(cond.address), tx, 0, SIGHASH_ALL, 10000, SigVersion::WITNESS_V0);
+//    uint256 hash = SignatureHash(Bech32(BTC, w->chain()).PubKeyScript(cond.address), tx, 0, SIGHASH_ALL, 10000, SigVersion::WITNESS_V0);
 //
 //    std::clog << "Test sighash: " << hash.GetHex() << std::endl;
 //
@@ -170,11 +170,11 @@ TEST_CASE("2ins2outs")
     KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/0", false);
     KeyPair utxo_key1 = master_key.Derive("m/86'/1'/1'/0/1", false);
 
-    string addr = utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string addr = utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
     auto prevout = w->btc().CheckOutput(funds_txid, addr);
 
-    string addr1 = utxo_key1.GetP2TRAddress(Bech32(w->chain()));
+    string addr1 = utxo_key1.GetP2TRAddress(Bech32(BTC, w->chain()));
     string funds_txid1 = w->btc().SendToAddress(addr1, FormatAmount(546));
     auto prevout1 = w->btc().CheckOutput(funds_txid1, addr1);
 
@@ -194,8 +194,8 @@ TEST_CASE("2ins2outs")
     SimpleTransaction tx_contract(w->chain());
     tx_contract.MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_key.GetP2TRAddress(Bech32(w->chain())))));
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid1, get<0>(prevout1).n, 546, utxo_key1.GetP2TRAddress(Bech32(w->chain())))));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid1, get<0>(prevout1).n, 546, utxo_key1.GetP2TRAddress(Bech32(BTC, w->chain())))));
     REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(w->chain(), 546, destination_addr)));
     REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_addr1));
 
@@ -230,7 +230,7 @@ TEST_CASE("txchain")
     KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/100", false);
     KeyPair intermediate_key = master_key.Derive("m/86'/1'/1'/0/101", false);
 
-    string addr = utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string addr = utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
     auto prevout = w->btc().CheckOutput(funds_txid, addr);
 
@@ -253,7 +253,7 @@ TEST_CASE("txchain")
     tx1_contract->MiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, addr)));
-    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(w->chain(), 10000, intermediate_key.GetP2TRAddress(Bech32(w->chain())))));
+    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(w->chain(), 10000, intermediate_key.GetP2TRAddress(Bech32(BTC, w->chain())))));
 
     REQUIRE_NOTHROW(tx1_contract->AddInput(make_shared<ContractOutput>(tx_contract, 0)));
     REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(w->chain(), 546, destination_addr)));

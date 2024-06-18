@@ -9,7 +9,7 @@
 #include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
-#include "channel_keys.hpp"
+#include "schnorr.hpp"
 #include "exechelper.hpp"
 #include "swap_inscription.hpp"
 #include "core_io.h"
@@ -124,13 +124,13 @@ TEST_CASE("Swap")
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions, ORD_TERMS));
 
     //Create ord utxo
-    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     string ord_txid = w->btc().SendToAddress(ord_addr, FormatAmount(ORD_AMOUNT));
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
     //CHECK_NOTHROW(builderOrdSeller.OrdPrice(ORD_PRICE));
     CHECK_NOTHROW(builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, get<1>(ord_prevout).nValue, ord_addr));
-    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(Bech32(w->chain()))));
+    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(Bech32(BTC, w->chain()))));
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "ord"));
 
@@ -158,21 +158,21 @@ TEST_CASE("Swap")
     CAmount min_segwit_funding = builderOrdBuyer.GetMinFundingAmount("p2wpkh_utxo");
     CAmount dust = Dust(3000);
 
-    const SwapCondition fund_min_cond = {{{min_funding, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}}, false};
-    const SwapCondition fund_min_3000_cond = {{{min_funding + 3000, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}}, true};
-    const SwapCondition fund_min_dust_cond = {{{min_funding+dust, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}}, false};
-    const SwapCondition fund_min_dust_1_cond = {{{min_funding + dust + 43, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}}, true};
-    const SwapCondition fund_min_dust_100_cond = {{{min_funding + dust - 100, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}}, false};
-    const SwapCondition fund_min_50_cond = {{{min_funding + 50, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}}, false};
+    const SwapCondition fund_min_cond = {{{min_funding, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}}, false};
+    const SwapCondition fund_min_3000_cond = {{{min_funding + 3000, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}}, true};
+    const SwapCondition fund_min_dust_cond = {{{min_funding+dust, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}}, false};
+    const SwapCondition fund_min_dust_1_cond = {{{min_funding + dust + 43, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}}, true};
+    const SwapCondition fund_min_dust_100_cond = {{{min_funding + dust - 100, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}}, false};
+    const SwapCondition fund_min_50_cond = {{{min_funding + 50, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}}, false};
 
-    const SwapCondition fund_min_segwit_cond = {{{min_segwit_funding, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(w->chain())))}}, false};
-    const SwapCondition fund_min_3000_segwit_cond = {{{min_segwit_funding + 3000, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(w->chain())))}}, true};
-    const SwapCondition fund_min_dust_segwit_cond = {{{min_segwit_funding+dust, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(w->chain())))}}, false};
-    const SwapCondition fund_min_dust_1_segwit_cond = {{{min_segwit_funding + dust + 1, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(w->chain())))}}, true};
-    const SwapCondition fund_min_dust_100_segwit_cond = {{{min_segwit_funding + dust - 100, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(w->chain())))}}, false};
-    const SwapCondition fund_min_50_segwit_cond = {{{min_segwit_funding + 50, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(w->chain())))}}, false};
+    const SwapCondition fund_min_segwit_cond = {{{min_segwit_funding, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(BTC, w->chain())))}}, false};
+    const SwapCondition fund_min_3000_segwit_cond = {{{min_segwit_funding + 3000, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(BTC, w->chain())))}}, true};
+    const SwapCondition fund_min_dust_segwit_cond = {{{min_segwit_funding+dust, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(BTC, w->chain())))}}, false};
+    const SwapCondition fund_min_dust_1_segwit_cond = {{{min_segwit_funding + dust + 1, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(BTC, w->chain())))}}, true};
+    const SwapCondition fund_min_dust_100_segwit_cond = {{{min_segwit_funding + dust - 100, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(BTC, w->chain())))}}, false};
+    const SwapCondition fund_min_50_segwit_cond = {{{min_segwit_funding + 50, std::string(funds_utxo_segwit_key.GetP2WPKHAddress(Bech32(BTC, w->chain())))}}, false};
 
-    const SwapCondition fund_min_3000_cond_2 = {{{min_funding, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}, {3000, std::string(funds_utxo_key.GetP2TRAddress(Bech32(w->chain())))}}, true};
+    const SwapCondition fund_min_3000_cond_2 = {{{min_funding, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}, {3000, std::string(funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))}}, true};
 
     auto condition = GENERATE_REF(
                 fund_min_cond,
@@ -191,10 +191,10 @@ TEST_CASE("Swap")
             );
 
     builderOrdBuyer.SwapScriptPubKeyB(swap_script_key_B.PubKey());
-    builderOrdBuyer.ChangeAddress(change_key.GetP2TRAddress(Bech32(w->chain())));
+    builderOrdBuyer.ChangeAddress(change_key.GetP2TRAddress(Bech32(BTC, w->chain())));
 
     //Fund commitment
-//    string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+//    string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     std::vector<CTxOut> spent_outs;
 
     for (const auto& fund: condition.funds) {
@@ -224,7 +224,7 @@ TEST_CASE("Swap")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(builderOrdBuyer.GetFundsCommitTx())));
 
-    builderOrdBuyer.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(Bech32(w->chain())));
+    builderOrdBuyer.OrdPayoffAddress(ord_payoff_key.GetP2TRAddress(Bech32(BTC, w->chain())));
 
     string ordBuyerTerms;
     REQUIRE_NOTHROW(ordBuyerTerms = builderOrdBuyer.Serialize(5, FUNDS_COMMIT_SIG));
@@ -355,7 +355,7 @@ TEST_CASE("Swap")
             if (CalculateTxFee(fee_rate, ord_change_spend_tx) + Dust(3000) < funds_commit_tx.vout[1].nValue) {
                 ord_change_spend_tx.vout.front().nValue = CalculateOutputAmount(funds_commit_tx.vout[1].nValue, fee_rate, ord_change_spend_tx);
 
-                ChannelKeys changeKey(change_key.PrivKey());
+                SchnorrKeyPair changeKey(change_key.PrivKey());
                 REQUIRE_NOTHROW(ord_change_spend_tx.vin.front().scriptWitness.stack[0] = changeKey.SignTaprootTx(ord_change_spend_tx, 0, {funds_commit_tx.vout[1]}, {}));
                 REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(ord_change_spend_tx)));
             }
@@ -396,7 +396,7 @@ TEST_CASE("SwapNoFee")
 
     SwapInscriptionBuilder builderMarket(w->chain());
     builderMarket.OrdPrice(ORD_AMOUNT);
-    builderMarket.MarketFee(MARKET_FEE, Bech32(w->chain()).Encode(xonly_pubkey()));
+    builderMarket.MarketFee(MARKET_FEE, Bech32(BTC, w->chain()).Encode(xonly_pubkey()));
     builderMarket.SetOrdMiningFeeRate(fee_rate * 2);
     builderMarket.SetSwapScriptPubKeyM(swap_script_key_M.PubKey());
 
@@ -407,7 +407,7 @@ TEST_CASE("SwapNoFee")
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions, ORD_TERMS));
 
     //Create ord utxo
-    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     string ord_txid = w->btc().SendToAddress(ord_addr, FormatAmount(ORD_AMOUNT));
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
@@ -434,7 +434,7 @@ TEST_CASE("SwapNoFee")
     builderOrdBuyer.SwapScriptPubKeyB(swap_script_key_B.PubKey());
 
     //Fund commitment
-    string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     std::vector<CTxOut> spent_outs;
 
 
@@ -540,7 +540,7 @@ TEST_CASE("FundsNotEnough")
     //--------------------------------------------------------------------------
 
     SwapInscriptionBuilder builderMarket(w->chain());
-    builderMarket.MarketFee(MARKET_FEE, Bech32(w->chain()).Encode(swap_script_key_M.PubKey()));
+    builderMarket.MarketFee(MARKET_FEE, Bech32(BTC, w->chain()).Encode(swap_script_key_M.PubKey()));
     builderMarket.SetOrdMiningFeeRate(fee_rate * 2);
     builderMarket.SetSwapScriptPubKeyM(swap_script_key_M.PubKey());
 
@@ -550,13 +550,13 @@ TEST_CASE("FundsNotEnough")
     REQUIRE_NOTHROW(builderOrdSeller.Deserialize(marketOrdConditions, ORD_TERMS));
 
     //Create ord utxo
-    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    string ord_addr = ord_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     string ord_txid = w->btc().SendToAddress(ord_addr, "0.0001");
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
     builderOrdSeller.OrdPrice(ORD_PRICE);
     builderOrdSeller.OrdUTXO(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, 10000, ord_addr);
-    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(Bech32(w->chain()))));
+    CHECK_NOTHROW(builderOrdSeller.FundsPayoffAddress(swap_script_key_A.GetP2TRAddress(Bech32(BTC, w->chain()))));
 
     REQUIRE_NOTHROW(builderOrdSeller.SignOrdSwap(master_key, "ord"));
 
@@ -575,7 +575,7 @@ TEST_CASE("FundsNotEnough")
 
     //Create insufficient funds utxo
     CAmount funds_amount = builderOrdBuyer.GetMinFundingAmount("") - Dust(3000);
-    std::string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(w->chain()));
+    std::string funds_addr = funds_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
     std::string funds_txid = w->btc().SendToAddress(funds_addr, FormatAmount(funds_amount));
 
     auto funds_prevout = w->btc().CheckOutput(funds_txid, funds_addr);
@@ -597,7 +597,7 @@ TEST_CASE("FundsNotEnough")
 //    const std::string ORD_PRICE = "0.0001";
 //    const std::string MARKET_FEE = "0.00001";
 //
-//    KeyRegistry master_key(Bech32(w->chain()), seed);
+//    KeyRegistry master_key(Bech32(BTC, w->chain()), seed);
 //    master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
 //    master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
 //    master_key.AddKeyType("swap", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'"], "change":["0"], "index_range":"0-256"})");
@@ -676,7 +676,7 @@ TEST_CASE("FundsNotEnough")
 //    );
 //    std::string fee_rate = FormatAmount(1000);
 //
-//    SwapInscriptionBuilder builderMarket(Bech32(w->chain()));
+//    SwapInscriptionBuilder builderMarket(Bech32(BTC, w->chain()));
 //    CHECK_NOTHROW(builderMarket.MarketFee(MARKET_FEE, bech->Encode(swap_script_key_M.PubKey())));
 //    CHECK_NOTHROW(builderMarket.SetOrdMiningFeeRate(FormatAmount(ParseAmount(fee_rate) * 2)));
 //    CHECK_NOTHROW(builderMarket.SetSwapScriptPubKeyM(hex(swap_script_key_M.PubKey())));
@@ -684,7 +684,7 @@ TEST_CASE("FundsNotEnough")
 ////    std::clog << "ORD_TERMS: ===========================================\n"
 ////              << marketOrdConditions << std::endl;
 //
-//    SwapInscriptionBuilder builderOrdSeller(Bech32(w->chain()));
+//    SwapInscriptionBuilder builderOrdSeller(Bech32(BTC, w->chain()));
 //    REQUIRE_NOTHROW(builderOrdSeller.Deserialize(terms[0]));
 //    CHECK_NOTHROW(builderOrdSeller.CheckContractTerms(ORD_TERMS));
 //
@@ -703,7 +703,7 @@ TEST_CASE("FundsNotEnough")
 ////    std::clog << "FUNDS_TERMS: ===========================================\n"
 ////              << marketFundsConditions << std::endl;
 //
-//    SwapInscriptionBuilder builderOrdBuyer(Bech32(w->chain()));
+//    SwapInscriptionBuilder builderOrdBuyer(Bech32(BTC, w->chain()));
 //    REQUIRE_NOTHROW(builderOrdBuyer.Deserialize(terms[2]));
 //
 //
@@ -734,7 +734,7 @@ TEST_CASE("FundsNotEnough")
 ////
 ////    std::clog << "FUNDS_COMMIT_SIG: ===========================================\n"
 ////              << ordBuyerTerms << std::endl;
-//    SwapInscriptionBuilder builderMarket1(Bech32(w->chain()));
+//    SwapInscriptionBuilder builderMarket1(Bech32(BTC, w->chain()));
 //    REQUIRE_NOTHROW(builderMarket1.Deserialize(terms[1]));
 //    REQUIRE_NOTHROW(builderMarket1.CheckContractTerms(ORD_SWAP_SIG));
 //

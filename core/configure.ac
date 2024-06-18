@@ -236,7 +236,7 @@ AS_IF([test $enable_wasm_binding = yes], [build_plugin_api=--enable-plugin-api],
 )
 
 
-AX_SUBDIRS_CONFIGURE([l15], [--with-blockchain-node=../bitcoin, --with-secp256k1=node, --disable-shared, --disable-build-frost-signer, $build_tools, --disable-build-services, $build_apis, $build_plugin_api], [], [], [])
+AX_SUBDIRS_CONFIGURE([l15], [--with-secp256k1=node, --disable-shared, --disable-build-frost-signer, $build_tools, --disable-build-services, $build_apis, $build_plugin_api], [], [], [])
 
 
 AC_OUTPUT

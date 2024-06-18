@@ -9,7 +9,7 @@
 
 namespace utxord {
 
-using l15::core::ChannelKeys;
+using l15::core::SchnorrKeyPair;
 using l15::ScriptMerkleTree;
 using l15::TreeBalanceType;
 using l15::ParseAmount;
@@ -111,8 +111,8 @@ std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> SwapInscriptionBuilder::Fund
                               { MakeFundsSwapScript(m_swap_script_pk_B.value(), m_swap_script_pk_M.value()),
                                 MakeRelTimeLockScript(COMMIT_TIMEOUT, m_swap_script_pk_B.value())});
 
-    return std::tuple_cat(ChannelKeys::AddTapTweak(ChannelKeys::CreateUnspendablePubKey(m_funds_unspendable_key_factor.value()),
-                                                  tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(SchnorrKeyPair::CreateUnspendablePubKey(m_funds_unspendable_key_factor.value()),
+                                                      tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> SwapInscriptionBuilder::FundsCommitTemplateTapRoot() const
@@ -138,7 +138,7 @@ CMutableTransaction SwapInscriptionBuilder::GetSwapTxTemplate() const {
             swapTpl.vout.emplace_back(m_market_fee->Amount(), m_market_fee->PubKeyScript());
         }
 
-        swapTpl.vin.emplace_back(COutPoint(uint256(), 0));
+        swapTpl.vin.emplace_back(COutPoint(Txid(), 0));
         swapTpl.vin.back().scriptWitness.stack.emplace_back(65);
 
         auto taproot = FundsCommitTemplateTapRoot();
@@ -154,7 +154,7 @@ CMutableTransaction SwapInscriptionBuilder::GetSwapTxTemplate() const {
         for (uint256 &branch_hash: funds_scriptpath)
             funds_control_block.insert(funds_control_block.end(), branch_hash.begin(), branch_hash.end());
 
-        swapTpl.vin.emplace_back(uint256(0), 0);
+        swapTpl.vin.emplace_back(Txid(), 0);
         swapTpl.vin.back().scriptWitness.stack.emplace_back(64);
         swapTpl.vin.back().scriptWitness.stack.emplace_back(64);
 
@@ -170,7 +170,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx(bool with_funds_in) const
 {
     CMutableTransaction swap_tx = GetSwapTxTemplate();
 
-    swap_tx.vin[0].prevout = COutPoint(uint256S(m_ord_input->output->TxID()), m_ord_input->output->NOut());
+    swap_tx.vin[0].prevout = COutPoint(Txid::FromUint256(uint256S(m_ord_input->output->TxID())), m_ord_input->output->NOut());
     if (m_ord_input->witness) {
         swap_tx.vin[0].scriptWitness.stack = m_ord_input->witness;
     }
@@ -181,7 +181,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx(bool with_funds_in) const
     if (with_funds_in) {
         auto funds_commit_taproot = FundsCommitTapRoot();
 
-        xonly_pubkey funds_unspendable_key = ChannelKeys::CreateUnspendablePubKey(*m_funds_unspendable_key_factor);
+        xonly_pubkey funds_unspendable_key = SchnorrKeyPair::CreateUnspendablePubKey(*m_funds_unspendable_key_factor);
 
         CScript& funds_swap_script = get<2>(funds_commit_taproot).GetScripts()[0];
 
@@ -234,7 +234,7 @@ CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit
     commitTpl.vin.reserve(m_fund_inputs.size());
 
     if (m_fund_inputs.empty()) {
-        commitTpl.vin.emplace_back(uint256(), 0);
+        commitTpl.vin.emplace_back(Txid(), 0);
         if (segwit_in) {
             commitTpl.vin.back().scriptWitness.stack.emplace_back(71);
             commitTpl.vin.back().scriptWitness.stack.emplace_back(33);
@@ -246,14 +246,14 @@ CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit
     else {
         for (const auto &utxo: m_fund_inputs) {
             if (commitTpl.vin.size() > utxo.nin) {
-                commitTpl.vin[utxo.nin].prevout = COutPoint(uint256S(utxo.output->TxID()), utxo.output->NOut());
+                commitTpl.vin[utxo.nin].prevout = COutPoint(Txid::FromUint256(uint256S(utxo.output->TxID())), utxo.output->NOut());
                 if (utxo.witness)
                     commitTpl.vin[utxo.nin].scriptWitness.stack = utxo.witness;
             }
             else {
                 if (utxo.nin > commitTpl.vin.size()) throw ContractError(name_funds + " are inconsistent");
 
-                commitTpl.vin.emplace_back(uint256S(utxo.output->TxID()), utxo.output->NOut());
+                commitTpl.vin.emplace_back(Txid::FromUint256(uint256S(utxo.output->TxID())), utxo.output->NOut());
 
                 if (utxo.witness)
                     commitTpl.vin[utxo.nin].scriptWitness.stack = utxo.witness;
@@ -314,7 +314,7 @@ void SwapInscriptionBuilder::SignFundsCommitment(const KeyRegistry &master_key, 
 {
     CheckContractTerms(FUNDS_TERMS);
 
-    m_funds_unspendable_key_factor = ChannelKeys::GetStrongRandomKey(master_key.Secp256k1Context());
+    m_funds_unspendable_key_factor = SchnorrKeyPair::GetStrongRandomKey(master_key.Secp256k1Context());
 
     CMutableTransaction commit_tx = MakeFundsCommitTx();
 
@@ -341,7 +341,7 @@ void SwapInscriptionBuilder::SignFundsSwap(const KeyRegistry &master_key, const 
     const CMutableTransaction& funds_commit = GetFundsCommitTx();
     CMutableTransaction swap_tx(MakeSwapTx(true));
 
-    ChannelKeys key(keypair.PrivKey());
+    SchnorrKeyPair key(keypair.PrivKey());
     m_funds_swap_sig_B = key.SignTaprootTx(swap_tx, 1, {CTxOut(m_ord_input->output->Destination()->Amount(), m_ord_input->output->Destination()->PubKeyScript()), funds_commit.vout[0]}, MakeFundsSwapScript(*m_swap_script_pk_B, *m_swap_script_pk_M));
 }
 
@@ -352,13 +352,13 @@ void SwapInscriptionBuilder::SignFundsPayBack(const KeyRegistry &master_key, con
     const CMutableTransaction& funds_commit = GetFundsCommitTx(); // Request it here in order to force reuired fields check
 
     auto keypair = master_key.Lookup(*m_swap_script_pk_B, key_filter);
-    ChannelKeys key(keypair.PrivKey());
+    SchnorrKeyPair key(keypair.PrivKey());
 
     auto commit_taproot = FundsCommitTapRoot();
     //auto commit_pubkeyscript = CScript() << 1 << get<0>(commit_taproot);
     auto payoff_pubkeyscript = CScript() << 1 << *m_swap_script_pk_B;
 
-    xonly_pubkey internal_unspendable_key = ChannelKeys::CreateUnspendablePubKey(*m_funds_unspendable_key_factor);
+    xonly_pubkey internal_unspendable_key = SchnorrKeyPair::CreateUnspendablePubKey(*m_funds_unspendable_key_factor);
 
     CScript& payback_script = get<2>(commit_taproot).GetScripts()[1];
 
@@ -388,7 +388,7 @@ void SwapInscriptionBuilder::MarketSignOrdPayoffTx(const KeyRegistry &master_key
     CheckContractTerms(MARKET_PAYOFF_TERMS);
 
     auto keypair = master_key.Lookup(*m_swap_script_pk_M, key_filter);
-    ChannelKeys key(keypair.PrivKey());
+    SchnorrKeyPair key(keypair.PrivKey());
 
     CMutableTransaction swap_tx(MakeSwapTx(true));
 
@@ -412,7 +412,7 @@ void SwapInscriptionBuilder::MarketSignSwap(const KeyRegistry &master_key, const
     CheckContractTerms(FUNDS_SWAP_SIG);
 
     auto keypair = master_key.Lookup(*m_swap_script_pk_M, key_filter);
-    ChannelKeys key(keypair.PrivKey());
+    SchnorrKeyPair key(keypair.PrivKey());
 
     auto utxo_pubkeyscript = m_ord_input->output->Destination()->PubKeyScript();
 
@@ -714,7 +714,7 @@ void SwapInscriptionBuilder::AddFundsUTXO(string txid, uint32_t nout, CAmount am
 CMutableTransaction SwapInscriptionBuilder::CreatePayoffTxTemplate() const {
     CMutableTransaction result;
 
-    result.vin = {CTxIn(uint256(0), 0)};
+    result.vin = {{}};
     result.vin.front().scriptWitness.stack.push_back(signature());
     result.vout = {CTxOut(0, CScript() << 1 << xonly_pubkey())};
     result.vout.front().nValue = 0;
