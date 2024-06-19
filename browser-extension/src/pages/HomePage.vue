@@ -158,10 +158,11 @@ import { formatAddress, copyToClipboard } from '~/helpers/index'
 import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 
+
 const store = useStore()
 const { balance, fundAddress, typeAddress, useDerivation } = toRefs(store)
 
-const { getBalance, fetchUSDRate } = useWallet()
+const { getBalance, getFundAddress, fetchUSDRate } = useWallet()
 
 async function connectToSite() {
   await sendMessage(CONNECT_TO_SITE, {}, 'background')
@@ -206,6 +207,10 @@ const status_message = computed(() => {
   if (balance?.value?.confirmed > 0 || balance?.value?.sync)
     return 'Synchronized.'
 })
+onBeforeMount(async() => {
+  console.log('onBeforeMount')
+  await getFundAddress()
+  })
 </script>
 
 <style lang="scss" scoped>
