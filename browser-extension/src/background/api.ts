@@ -361,6 +361,7 @@ class Api {
       myself.genRootKey();
 
       if (myself.checkSeed() && myself.utxord && myself.bech && this.wallet.root.key) {
+        await myself.addPopAddresses();
         await myself.genKeys();
         await myself.initPassword();
         const fund = myself.wallet.fund.key?.PubKey();
@@ -522,10 +523,11 @@ getChallengeFromType(type: string, typeAddress: number | undefined = undefined )
     signature: key.SignSchnorr(dhash)
   };
 }
-getChallengeFromAddress(address: striong){
-  const key = this.getKeyFromKeyRegistry(address);
+
+getChallengeFromAddress(address: striong, type = undefined, path = undefined){
+  const key = this.getKeyFromKeyRegistry(address, type, path);
   if(!key?.ptr){
-    // console.log('getChallengeFromAddress->no ptr', key,'|address:',address,'|max_index_range:',this.max_index_range);
+     //console.log('getChallengeFromAddress->no ptr', key,'|address:',address,'|max_index_range:',this.max_index_range);
      return null;
   }
   const challenge = this.challenge();
@@ -537,11 +539,13 @@ getChallengeFromAddress(address: striong){
   };
 }
 
- prepareAddressToPlugin(addresses){
+ async prepareAddressToPlugin(addresses){
    const list = []
    if(addresses.length > 0){
      for(const item of addresses){
-       if(this.hasAddressKeyRegistry(item?.address)) list.push(item);
+       if(this.hasAddressKeyRegistry(item?.address, item?.type, item?.index)){
+          list.push(item);
+        }
      }
    }
   return list;
@@ -555,7 +559,7 @@ getChallengeFromAddress(address: striong){
       //console.log('item?.address:',item?.address, this.hasAddress(item?.address, this.all_addresses), this.all_addresses)
       if(!this.hasAddress(item?.address, all_addresses)){
         if((!this.hasAddress(item?.address, list) && this.derivate) || !this.derivate){
-          let ch = this.getChallengeFromAddress(item?.address);
+          let ch = this.getChallengeFromAddress(item?.address, item?.type, item?.index);
           if(ch){
             // console.log('item:',item,'|ch:',ch); //!!!
             item = {...item,...ch};
@@ -706,6 +710,7 @@ getChallengeFromAddress(address: striong){
     if (addresses === undefined) {
       addresses = this.addresses;
     }
+    if(!addresses.length){ return false;}
     for (const item of addresses) {
       if (item.address === address) {
         return true;
@@ -743,21 +748,23 @@ getChallengeFromAddress(address: striong){
     return true;
   }
 
-  async restoreAddressesFromIndex(type, index){ //!!!
+  async restoreAddressesFromIndex(type, index){
+    const myself = this;
     for(let i=0; i < index; i += 1 ){
       for(let x = 0; x < 2; x += 1){
         if (type !== 'auth' && type !== 'ext') {
-          let address = await this.getAddress(type, this.getKey(type, x, index), x);
-          if (!this.hasAddress(address)) {
-            if (!this.hasAddressType(type)) {
+          let address = await myself.getAddress(type, myself.getKey(type, x, index), x);
+          if (!myself.hasAddress(address)) {
+            if (!myself.hasAddressType(type)) {
+              const path = myself.path(type, x, index);
               const newAddress = {
                 address: address,
                 type: type,
                 typeAddress: x,
-                index: this.path(type, x, index),
-                ...this.getChallengeFromAddress(address)
+                index: path,
+                ...myself.getChallengeFromAddress(address, type, path)
               };
-              this.addresses.push(newAddress);
+              myself.addresses.push(newAddress);
             }
           }
         }
@@ -806,10 +813,9 @@ getChallengeFromAddress(address: striong){
 
   async restoreAllTypeIndexes(addresses) {
     for (const type of this.wallet_types) {
-      //console.log(`this.restoreTypeIndexFromServer(${type}, ${addresses})`)
+      console.log(`restoreTypeIndexFromServer(${type})`)
       await this.restoreTypeIndexFromServer(type, addresses)
     }
-    return await this.genKeys();
   }
 
   bytesToHexString(byteArray: Uint8Array) {
@@ -1029,122 +1035,168 @@ getKeyFromKeyCache(address: string){
   if(!address) return;
   if(!this.keyCache.length) return;
   const out = this.keyCache?.find((item) =>item.address === address);
-  // console.log('getKeyFromKeyCache->key:',out?.key);
   return out?.key;
 }
 
-getKeyFromKeyRegistry(address: string){
-  if(this.hasAddress(address, this.skipAddresses)){
-    console.log('skip address:',address);
-    return null;
+hasAddressFromKeyCache(address: string){
+  if(!address) return false;
+  if(!this.keyCache.length) return false;
+  const key = this.getKeyFromKeyCache(address);
+  if(key?.ptr > 0){
+    return true;
   }
-  const filterDefault = {
-        look_cache: true,
-        key_type: "DEFAULT",
-        accounts: ["0'", "1'", "2'"],
-        change: ["0"],
-        index_range: `0-${this.max_index_range+1}`
-      };
-  const filterTapscript = {
-        look_cache: true,
-        key_type: "TAPSCRIPT",
-        accounts: ["3'", "4'", "5'", "6'"],
-        change: ["0"],
-        index_range: `0-${this.max_index_range+1}`
-      };
-      let outDefault = null, outTapscript = null;
-      try{
-        const key = this.getKeyFromKeyCache(address);
-        //console.log('getKeyFromKeyRegistry->key:',address,'| key:', key);
-        if(key?.ptr){
-          return key;
-        }
-        const outDefault = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterDefault));
-        // console.log('outDefault:',outDefault);
-        if(outDefault?.ptr) {
-          if(!this.hasAddress(address, this.keyCache)){
-            //console.log('getKeyFromKeyRegistry->push[0]:',address, '|len:',this.keyCache.length);
-            this.keyCache.push({address: address, key: outDefault});
-          }
-          return outDefault;
-        }
-        const outTapscript = this.wallet.root.key.LookupAddress(address, JSON.stringify(filterTapscript));
-        // console.log('outTapscript',outTapscript);
-        if(outTapscript?.ptr) {
-          if(!this.hasAddress(address, this.keyCache)){
-          //console.log('getKeyFromKeyRegistry->push[1]:',address, '|len:',this.keyCache.length);
-          this.keyCache.push({address: address, key: outTapscript});
-        }
-         return outTapscript;
-        }
-        if(!this.hasAddress(address, this.skipAddresses)){
-          this.skipAddresses.push({address: address});
-        }
-        return null;
-          } catch(e){
-            console.log('getKeyFromKeyRegistry:',this.getErrorMessage(e));
-            if(!this.hasAddress(address, this.skipAddresses)){
-              this.skipAddresses.push({address: address});
-            }
-            return null;
-        }
+  return false;
 }
 
-hasAddressKeyRegistry(address: string){
-    const out = this.getKeyFromKeyRegistry(address);
-    if(out?.ptr) return true;
+checkAddressFromKeyRegistry(address, type = undefined, path = undefined){
+  const myself = this;
+  if(myself.hasAddressFromKeyCache(address) || myself.hasAddress(address, myself.skipAddresses)){
+    // console.log('checkAddressFromKeyRegistry->address:', address,' =>detect');
+    return;
+  }
+
+  // console.log('checkAddressFromKeyRegistry->address:', address, ' type:',type, ' path:',path)
+   return setTimeout(((address, type, path, myself) =>{
+     return ()=>{
+       try {
+  let min_index = 0;
+  let max_index_range = myself.max_index_range + 1;
+  let accounts = ["0'", "1'", "2'"];
+  let change = "0";
+  let key_type = "DEFAULT";
+  let out = null;
+
+  if(type){
+    const for_script = (type === 'uns' || type === 'intsk' || type === 'intsk2' || type === 'scrsk' || type === 'auth');
+    key_type = for_script? "TAPSCRIPT" : "DEFAULT";
+    accounts = for_script ? ["3'", "4'", "5'", "6'"] : ["0'", "1'", "2'"];
+  }
+
+  if(path){
+  const pres = path.replace('m/86\'/','').replace('m/84\'/','').split('/');
+    accounts = [pres[1]];
+    change = pres[2];
+    min_index = pres[3];
+    max_index_range = pres[3] + 1;
+    switch (pres[1]) {
+    case "0'": case "1'": case "2'": default: key_type = "DEFAULT"; break;
+    case "3'": case "4'": case "5'": case "6'": key_type = "TAPSCRIPT"; break;
+    }
+  }
+  out = myself.wallet.root.key.LookupAddress(address, JSON.stringify({
+        look_cache: true,
+        key_type: key_type,
+        accounts: accounts,
+        change: [change],
+        index_range: `${min_index}-${max_index_range}`
+      }));
+    if(out?.ptr > 0) {
+      if(!myself.hasAddress(address, myself.keyCache)){
+        myself.keyCache.push({address: address, key: out});
+      }
+      return out;
+    }
+
+    if(!type && !path){
+      key_type = "TAPSCRIPT";
+      accounts = ["3'", "4'", "5'", "6'"];
+      out = myself.wallet.root.key.LookupAddress(address, JSON.stringify({
+                look_cache: true,
+                key_type: key_type,
+                accounts: accounts,
+                change: [change],
+                index_range: `${min_index}-${max_index_range}`
+              }));
+              if(out?.ptr > 0) {
+                if(!myself.hasAddress(address, myself.keyCache)){
+                  myself.keyCache.push({address: address, key: out});
+                }
+                return out;
+              }
+    }
+    if(!myself.hasAddress(address, myself.skipAddresses)){
+      myself.skipAddresses.push({address: address});
+    }
+    return null;
+  } catch (e) {
+    console.log('checkAddressFromKeyRegistry:',myself.getErrorMessage(e));
+    if(!myself.hasAddress(address, myself.skipAddresses)){
+      myself.skipAddresses.push({address: address});
+    }
+    return null;
+  }
+     };
+   })(address,type, path, myself), 0);
+}
+
+getKeyFromKeyRegistry(address: string, type = undefined, path = undefined){
+  this.checkAddressFromKeyRegistry(address, type, path);
+  if(this.hasAddress(address, this.skipAddresses)){
+    return null;
+  }
+  const key = this.getKeyFromKeyCache(address);
+  if(key?.ptr){
+    return key;
+  }
+}
+
+hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
+    const out = this.getKeyFromKeyRegistry(address, type, path);
+    if(out?.ptr > 0){
+      return true;
+    }
     return false;
   }
 
 
-
   async genKeys() { //current keys
-    this.addPopAddresses(); // add popular addresses
-    const publicKeys = [];
-    for (const type of this.wallet_types) {
+    const myself = this;
+    myself.addPopAddresses();
+    for (const type of myself.wallet_types) {
+      //console.log('genKeys->',type);
+      // setTimeout(((type, myself, publicKeys) =>{
+      //   return ()=>{
+      const key_0 = myself.getKey(type, 0);
+      const address_0 = myself.getAddress(type, key_0, 0);
+      const key_1 = myself.getKey(type, 1);
+      const address_1 = myself.getAddress(type, key_1, 1);
 
-      const key_0 = this.getKey(type, 0);
-      const address_0 = this.getAddress(type, key_0, 0);
-      const key_1 = this.getKey(type, 1);
-      const address_1 = this.getAddress(type, key_1, 1);
-
-      switch (this.wallet[type].typeAddress) {
+      switch (myself.wallet[type].typeAddress) {
         case 0:
-          this.wallet[type].key = key_0;
-          this.wallet[type].address = address_0;
+          myself.wallet[type].key = key_0;
+          myself.wallet[type].address = address_0;
         break;
         case 1:
-          this.wallet[type].key = key_1;
-          this.wallet[type].address = address_1;
+          myself.wallet[type].key = key_1;
+          myself.wallet[type].address = address_1;
         break;
       }
       if(type !== 'auth' && type !== 'ext'){
-        if (!this.hasAddress(address_0) || !this.hasAddress(address_1)) {
-          this.addresses.push({
-              stype: 0,
+        if (!myself.hasAddress(address_0) || !myself.hasAddress(address_1)) {
+          const path_0 = myself.path(type, 0)
+          myself.addresses.push({
               address: address_0,
               type: type,
               typeAddress: 0,
-              index: this.path(type, 0),
-              ...this.getChallengeFromAddress(address_0)
+              index: path_0,
+              ...myself.getChallengeFromAddress(address_0, type, path_0)
           });
-          this.addresses.push({
-              stype: 1,
+          const path_1 = myself.path(type, 1)
+          myself.addresses.push({
               address: address_1,
               type: type,
               typeAddress: 1,
-              index: this.path(type, 1),
-              ...this.getChallengeFromAddress(address_1)
+              index: path_1,
+              ...myself.getChallengeFromAddress(address_1, type, path_1)
           });
-          publicKeys.push({ pubKeyStr: key_0.PubKey(), type: type});
-          publicKeys.push({ pubKeyStr: key_1.PubKey(), type: type});
           console.debug(`genKeys(): push new "${type}" and typeAddress: Taproot addresses:`, address_0);
           console.debug(`genKeys(): push new "${type}" and typeAddress: SegWit  addresses:`, address_1);
         }
       }
-
+  //   };
+  // })(type, myself, publicKeys), 0);
     }
-    return {addresses: this.addresses, publicKeys};
+    return {addresses: this.addresses};
   }
 
   async freeBalance(balance) {
@@ -1155,17 +1207,17 @@ hasAddressKeyRegistry(address: string){
   }
 
   async updateBalancesFrom(msgType: string, addresses: []) {
-    const list = this.prepareAddressToPlugin(addresses);
+    const list = await this.prepareAddressToPlugin(addresses);
     const balances = await this.prepareBalances(list);
     console.debug(`${msgType} balances:`, {...balances || {}});
     this.fundings = balances.funds;
     this.inscriptions = balances.inscriptions;
-    return balances;
+    return list;
   }
 
   async prepareBalances(balances) {
     const myself = this;
-    let list = this.balances?.addresses;
+    let list = this.balances;
     if (balances) {
       list = balances;
     }
@@ -1652,6 +1704,8 @@ hasAddressKeyRegistry(address: string){
 
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
+    const base_url = BASE_URL_PATTERN.replace('*', '');
+
     let tabs: Tab[];
     if (tabId != null) {
       tabs = [await chrome.tabs.get(tabId)]
@@ -1668,14 +1722,12 @@ hasAddressKeyRegistry(address: string){
     if (1 < tabs.length) {
       console.warn(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
     }
-
     for (let tab of tabs) {
-      // if (tab?.url?.startsWith('chrome://') || tab?.url?.startsWith('chrome://new-tab-page/')) {
-      //   setTimeout(async () => await myself.sendMessageToWebPage(type, args), 100);
-      //   return;
-      // }
-      if(tab?.id) {
-        // console.dir(tab);
+      const url = tab.url || tab.pendingUrl;
+      if(tab?.id &&
+         url?.startsWith(base_url) &&
+         !url?.startsWith('chrome-extension://') &&
+         !url?.startsWith('chrome://')) {
         await chrome.scripting.executeScript({
           target: { tabId: tab?.id },
           func: function (t, a) {
@@ -1684,11 +1736,6 @@ hasAddressKeyRegistry(address: string){
           args: [type, args],
         });
       }
-    }
-    if (bgSiteQueryIndex >= limitQuery) {
-      bgSiteQueryIndex = 0;
-      console.log('Limit...');
-      setTimeout(async () => await myself.sendMessageToWebPage(type, args, tabId), 1000);
     }
   }
 
