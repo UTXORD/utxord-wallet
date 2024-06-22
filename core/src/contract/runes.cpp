@@ -143,7 +143,7 @@ tag_map_t RuneStone::tag_map = {
         }
         else {
             if (v > std::numeric_limits<uint64_t>::max()) throw std::overflow_error("mint_rune_id.chain_height");
-            r.mint_rune_id.emplace(RuneId{static_cast<uint64_t>(v)});
+            r.mint_rune_id.emplace(static_cast<uint64_t>(v), 0);
         }
     }},
     {RuneTag::DIVISIBILITY, [](RuneStone& r, bytevector::const_iterator& p, bytevector::const_iterator end){
@@ -216,7 +216,7 @@ void RuneStone::Unpack(const bytevector& data)
 
                 id += {static_cast<uint32_t>(chain_height), static_cast<uint32_t>(tx_number)};
 
-                op_dictionary[id] = {amount, static_cast<uint32_t>(output)};
+                op_dictionary.emplace(id, std::make_tuple(amount, static_cast<uint32_t>(output)));
             }
             catch(...) {
                 std::throw_with_nested(ContractFormatError("RuneStone dictionary"));
@@ -380,17 +380,7 @@ UniValue RuneStoneDestination::MakeJson() const
     if (mint_rune_id) res.pushKV(name_mint_rune_id, mint_rune_id->MakeJson());
     if (default_output) res.pushKV(name_default_output, *default_output);
 
-    if (!op_dictionary.empty()) {
-        UniValue opsVal(UniValue::VARR);
-        for (const auto& op: op_dictionary) {
-            UniValue opVal = op.first.MakeJson();
-            opVal.pushKV(name_amount, (std::ostringstream() << get<0>(op.second)).view());
-            opVal.pushKV(IContractBuilder::name_nout, get<1>(op.second));
-
-            opsVal.push_back(move(opVal));
-        }
-        res.pushKV(name_op_dictionary, move(opsVal));
-    }
+    if (!op_dictionary.empty()) res.pushKV(name_op_dictionary, MakeOpDictionaryJson(op_dictionary));
 
     return res;
 }
@@ -534,32 +524,8 @@ void RuneStoneDestination::ReadJson(const UniValue &json, const std::function<st
         if (!val.isNull()) {
             if (!val.isArray()) throw ContractFormatError(name_op_dictionary);
             if (!op_dictionary.empty() && (op_dictionary.size() != val.size())) throw ContractTermMismatch(move((lazy_name() += '.') += name_op_dictionary));
-            bool dict_empty = op_dictionary.empty();
 
-            auto dictIt = op_dictionary.begin();
-            size_t i = 0;
-            for (const UniValue& opVal: val.getValues()) {
-                RuneId id;
-                id.ReadJson(opVal, [=]{return std::string(name_op_dictionary) + '[' + std::to_string(i) + ']';});
-
-                if (opVal[name_amount].isNull()) throw ContractTermMissing((std::ostringstream() << lazy_name() << '.' << name_op_dictionary << '[' << i << "]." << name_amount).str());
-                if (opVal[IContractBuilder::name_nout].isNull()) throw ContractTermMissing((std::ostringstream() << lazy_name() << '.' << name_op_dictionary << '[' << i << "]." << IContractBuilder::name_nout).str());
-
-                uint128_t amount;
-                std::istringstream(opVal[name_amount].getValStr()) >> amount;
-
-                if (dict_empty) {
-                    op_dictionary[id] = {move(amount), opVal[IContractBuilder::name_nout].getInt<uint32_t>()};
-                }
-                else {
-                    if (dictIt->first != id) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '.' << name_op_dictionary << '[' << i << "].rune_id").str());
-                    if (get<0>(dictIt->second) != amount) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '.' << name_op_dictionary << '[' << i << "]." << name_amount).str());
-                    if (get<1>(dictIt->second) != opVal[IContractBuilder::name_nout].getInt<uint32_t>()) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '.' << name_op_dictionary << '[' << i << "]." << IContractBuilder::name_nout).str());
-                    ++dictIt;
-                }
-
-                ++i;
-            }
+            ReadOpDictionaryJson(val, op_dictionary, [=]{ return (lazy_name() += '.') += name_op_dictionary; });
         }
     }
 }
@@ -567,6 +533,48 @@ void RuneStoneDestination::ReadJson(const UniValue &json, const std::function<st
 std::shared_ptr<IContractDestination> RuneStoneDestination::Construct(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name)
 {
     return std::make_shared<RuneStoneDestination>(chain, json, lazy_name);
+}
+
+UniValue RuneStoneDestination::MakeOpDictionaryJson(const std::multimap<RuneId, std::tuple<uint128_t, uint32_t>>& op_dictionary)
+{
+    UniValue opsVal(UniValue::VARR);
+    for (const auto& op: op_dictionary) {
+        UniValue opVal = op.first.MakeJson();
+        opVal.pushKV(name_amount, (std::ostringstream() << get<0>(op.second)).view());
+        opVal.pushKV(IContractBuilder::name_nout, get<1>(op.second));
+
+        opsVal.push_back(move(opVal));
+    }
+    return opsVal;
+}
+
+
+void RuneStoneDestination::ReadOpDictionaryJson(const UniValue &val, std::multimap<RuneId, std::tuple<uint128_t, uint32_t>>& op_dictionary, const std::function<std::string()> &lazy_name)
+{
+    bool dict_empty = op_dictionary.empty();
+    auto dictIt = op_dictionary.begin();
+    size_t i = 0;
+    for (const UniValue& opVal: val.getValues()) {
+        RuneId id;
+        id.ReadJson(opVal, [=]{return std::string(name_op_dictionary) + '[' + std::to_string(i) + ']';});
+
+        if (opVal[name_amount].isNull()) throw ContractTermMissing((std::ostringstream() << lazy_name()  << '[' << i << "]." << name_amount).str());
+        if (opVal[IContractBuilder::name_nout].isNull()) throw ContractTermMissing((std::ostringstream() << lazy_name() << '[' << i << "]." << IContractBuilder::name_nout).str());
+
+        uint128_t amount;
+        std::istringstream(opVal[name_amount].getValStr()) >> amount;
+
+        if (dict_empty) {
+            op_dictionary.emplace(id, std::make_tuple(move(amount), opVal[IContractBuilder::name_nout].getInt<uint32_t>()));
+        }
+        else {
+            if (dictIt->first != id) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << "].rune_id").str());
+            if (get<0>(dictIt->second) != amount) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << "]." << name_amount).str());
+            if (get<1>(dictIt->second) != opVal[IContractBuilder::name_nout].getInt<uint32_t>()) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << "]." << IContractBuilder::name_nout).str());
+            ++dictIt;
+        }
+        ++i;
+    }
 }
 
 std::optional<RuneStone> ParseRuneStone(const string &hex_tx, ChainMode chain)
@@ -686,7 +694,7 @@ UniValue RuneId::MakeJson() const
     return res;
 }
 
-RuneId& RuneId::ReadJson(const UniValue &json, std::function<std::string()> lazy_name)
+void RuneId::ReadJson(const UniValue &json, const std::function<std::string()>& lazy_name)
 {
     if (!json.isObject()) throw ContractTermWrongValue(lazy_name());
 
@@ -700,8 +708,13 @@ RuneId& RuneId::ReadJson(const UniValue &json, std::function<std::string()> lazy
 
     chain_height = chainHeightVal.getInt<uint32_t>();
     tx_index = txIndexVal.getInt<uint32_t>();
+}
 
-    return *this;
+RuneId::operator std::string() const
+{
+    std::ostringstream buf;
+    buf << "RuneId[" << chain_height << ':' << tx_index << ']';
+    return buf.str();
 }
 
 RuneStone Rune::Etch() const

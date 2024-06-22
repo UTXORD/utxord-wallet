@@ -1,7 +1,7 @@
 #pragma once
 
 #include "contract_builder.hpp"
-#include "simple_transaction.hpp"
+//#include "simple_transaction.hpp"
 
 #include <optional>
 #include <tuple>
@@ -53,13 +53,20 @@ enum class RuneAction: uint8_t
     BURN = 127
 };
 
-struct RuneId
+struct RuneId: IJsonSerializable
 {
     static const char* name_chain_height;
     static const char* name_tx_index;
 
     uint64_t chain_height = 0;
     uint32_t tx_index = 0;
+
+    RuneId() = default;
+    RuneId(const uint64_t& h, uint32_t tx) : chain_height(h), tx_index(tx) {}
+    RuneId(const RuneId& ) = default;
+    RuneId(RuneId&&) noexcept = default;
+    RuneId& operator=(const RuneId&) = default;
+    RuneId& operator=(RuneId&&) = default;
     bool operator<(const RuneId& r) const
     { return (chain_height == r.chain_height) ? (tx_index < r.tx_index) : (chain_height < r.chain_height); }
     bool operator==(const RuneId& r) const
@@ -78,10 +85,10 @@ struct RuneId
         }
         return *this;
     }
+    operator std::string () const;
 
-    UniValue MakeJson() const;
-    RuneId& ReadJson(const UniValue& json, std::function<std::string()> lazy_name);
-
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json, const std::function<std::string()>& lazy_name) override;
 };
 
 
@@ -107,7 +114,7 @@ struct RuneStone
 
     std::optional<uint32_t> default_output;
 
-    std::map<RuneId, std::tuple<uint128_t, uint32_t>> op_dictionary; // rune_id -> {rune_amount, nout}
+    std::multimap<RuneId, std::tuple<uint128_t, uint32_t>> op_dictionary; // rune_id -> {rune_amount, nout}
 
     void AddAction(RuneAction action) { action_flags |= (uint128_t(1) << (uint8_t)action); }
 
@@ -168,6 +175,9 @@ public:
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
+
+    static UniValue MakeOpDictionaryJson(const std::multimap<RuneId, std::tuple<uint128_t, uint32_t>>&);
+    static void ReadOpDictionaryJson(const UniValue& json, std::multimap<RuneId, std::tuple<uint128_t, uint32_t>>& op_dictinary, const std::function<std::string()> &lazy_name);
 
     static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
 

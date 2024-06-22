@@ -145,9 +145,11 @@ interface CreateInscriptionBuilder
 {
     void CreateInscriptionBuilder(ChainMode mode, InscribeType type);
     void MarketFee([Const] DOMString amount, [Const] DOMString addr);
-    void OrdDestination([Const] DOMString amount, [Const] DOMString inscriptionAddr);
+    void OrdOutput([Const] DOMString amount, [Const] DOMString inscriptionAddr);
+    void OrdOutputDestination([Const] IContractDestination dest);
     void MiningFeeRate([Const] DOMString rate);
     void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void AddInput([Const] IContractOutput prevout);
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
     void Delegate([Const] DOMString inscriptionId);
     void MetaData([Const] DOMString hexCborData);
@@ -321,10 +323,17 @@ interface SimpleTransaction
     [Const] DOMString GetNewOutputMiningFee();
 
     void AddInput([Const] IContractOutput prevout);
-    void AddOutput([Const] IContractDestination out);
+    void AddUTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void AddOutput([Const] DOMString amount, [Const] DOMString addr);
+    void AddOutputDestination([Const] IContractDestination out);
+
+    void AddRuneOutput([Const] DOMString amount, [Const] DOMString addr, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+    void AddRuneOutputDestination([Const] IContractDestination out, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+
     void AddChangeOutput([Const] DOMString pk);
 
     void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);
+    void PartialSign([Const] KeyRegistry master, [Const] DOMString key_filter, unsigned long nin);
 
     [Const] DOMString Serialize(unsigned long ver, TxPhase phase);
     void Deserialize([Const] DOMString data, TxPhase phase);

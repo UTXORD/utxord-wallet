@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <string>
 #include <thread>
+#include <optional>
 
 
 namespace utxord {
@@ -38,6 +39,7 @@ struct TestcaseWrapper
 {
     TestConfigFactory mConfFactory;
     std::string mMode;
+    std::optional<l15::core::KeyRegistry> mKeyRegistry;
     l15::ChainMode m_chain;
     l15::core::ChainApi mBtc;
     l15::ExecHelper mCli;
@@ -134,6 +136,9 @@ struct TestcaseWrapper
     l15::ChainMode chain() const
     { return m_chain; }
 
+    l15::core::KeyRegistry& keyreg()
+    { return *mKeyRegistry; }
+
     void ResetRegtestMemPool()
     {
         StartRegtestBitcoinNode();
@@ -157,12 +162,24 @@ struct TestcaseWrapper
         }
     }
 
-    std::string DerivationPath(uint32_t purpose, uint32_t account, uint32_t change, uint32_t index) const
+    void InitKeyRegistry(const std::string& seedhex)
+    { mKeyRegistry.emplace(chain(), seedhex); }
+
+    std::string keypath(uint32_t purpose, uint32_t account, uint32_t change, uint32_t index) const
     {
         char buf[32];
         sprintf(buf, "m/%d'/%d'/%d'/%d/%d", purpose, chain() == l15::MAINNET ? 0 : 1, account, change, index);
         return {buf};
     }
+
+    l15::core::KeyPair derive(uint32_t purpose, uint32_t account, uint32_t change, uint32_t index, bool for_script = true)
+    { return keyreg().Derive(keypath(purpose, account, change, index), for_script); }
+
+    std::string p2tr(uint32_t account, uint32_t change, uint32_t index)
+    { return keyreg().Derive(keypath(86, account, change, index), false).GetP2TRAddress(l15::Bech32(l15::BTC, chain())); }
+
+    std::string p2wpkh(uint32_t account, uint32_t change, uint32_t index)
+    { return keyreg().Derive(keypath(84, account, change, index), false).GetP2WPKHAddress(l15::Bech32(l15::BTC, chain())); }
 };
 
 }

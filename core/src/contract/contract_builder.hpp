@@ -67,8 +67,6 @@ struct IJsonSerializable
 {
     static const std::string name_type;
 
-    mutable std::string buf;
-
     virtual ~IJsonSerializable() = default;
     virtual UniValue MakeJson() const = 0;
     virtual void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) = 0;
@@ -345,7 +343,7 @@ public:
     static const std::string name_mining_fee_rate;
     static const std::string name_market_fee;
 
-    static const char* name_utxo;
+    static const std::string name_utxo;
     static const std::string name_txid;
     static const std::string name_nout;
     static const std::string name_pk;

@@ -10,10 +10,9 @@
 #include "util/translation.h"
 #include "core_io.h"
 
-#include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
-#include "exechelper.hpp"
+#include "simple_transaction.hpp"
 #include "create_inscription.hpp"
 #include "runes.hpp"
 #include "inscription.hpp"
@@ -66,12 +65,14 @@ int main(int argc, char* argv[])
     }
 
     w = std::make_unique<TestcaseWrapper>(configpath);
+    w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+    w->keyreg().AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
+    w->keyreg().AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
+    w->keyreg().AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'","4'"], "change":["0" , "1"], "index_range":"0-256"})");
 
     return session.run();
 }
 
-static const bytevector seed = unhex<bytevector>(
-        "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
 
 struct Transfer
 {
@@ -112,17 +113,6 @@ static const auto svg = std::tuple<std::string, bytevector>("image/svg+xml", svg
 
 TEST_CASE("inscribe")
 {
-    KeyRegistry master_key(w->chain(), hex(seed));
-    master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
-    master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
-    master_key.AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'","4'"], "change":["0"], "index_range":"0-256"})");
-
-    KeyPair market_script_key = master_key.Derive("m/86'/1'/3'/0/0", true);
-    KeyPair script_key = master_key.Derive("m/86'/1'/3'/0/1", true);
-    KeyPair int_key = master_key.Derive("m/86'/1'/4'/0/0", true);
-    KeyPair fund_mining_fee_int_key = master_key.Derive("m/86'/1'/4'/0/1", true);
-    KeyPair collection_key = master_key.Derive("m/86'/1'/2'/0/1", false);
-
     std::string destination_addr = w->btc().GetNewAddress();
     std::string market_fee_addr = w->btc().GetNewAddress();
     std::string author_fee_addr = w->btc().GetNewAddress();
@@ -136,7 +126,7 @@ TEST_CASE("inscribe")
 
     CreateInscriptionBuilder test_inscription(w->chain(), INSCRIPTION);
 
-    REQUIRE_NOTHROW(test_inscription.OrdDestination(546, destination_addr));
+    REQUIRE_NOTHROW(test_inscription.OrdOutput(546, destination_addr));
     REQUIRE_NOTHROW(test_inscription.MarketFee(0, market_fee_addr));
     REQUIRE_NOTHROW(test_inscription.AuthorFee(0, author_fee_addr));
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
@@ -150,7 +140,7 @@ TEST_CASE("inscribe")
 
     CreateInscriptionBuilder test_lazy_inscription(w->chain(), LAZY_INSCRIPTION);
 
-    REQUIRE_NOTHROW(test_lazy_inscription.OrdDestination(546, destination_addr));
+    REQUIRE_NOTHROW(test_lazy_inscription.OrdOutput(546, destination_addr));
     REQUIRE_NOTHROW(test_lazy_inscription.MarketFee(0, market_fee_addr));
     REQUIRE_NOTHROW(test_lazy_inscription.MiningFeeRate(fee_rate));
     if (get<1>(content).empty())
@@ -160,39 +150,23 @@ TEST_CASE("inscribe")
     REQUIRE_NOTHROW(test_lazy_inscription.AuthorFee(1000, author_fee_addr));
     CAmount lazy_add_amount = test_lazy_inscription.GetMinFundingAmount("collection") - child_amount;
 
-//    EcdsaKeyPair key1(master_key.Derive("m/84'/0'/0'/0/1").GetLocalPrivKey());
-//    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->bech32().Encode(l15::Hash160(key1.GetPubKey()), bech32::Encoding::BECH32) }}, 0, false, true, false};
-    KeyPair key1 = master_key.Derive("m/86'/1'/0'/0/1", false);
-    CreateCondition inscription {{{ inscription_amount, key1.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, false, true, false, false, 8, "inscription"};
-    KeyPair key2 = master_key.Derive("m/86'/1'/0'/0/2", false);
-    CreateCondition inscription_w_change {{{ 10000, key2.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, true, false, false, false, 8, "inscription_w_change"};
-    KeyPair key3 = master_key.Derive("m/86'/1'/0'/0/3", false);
-    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, key3.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, false, false, false, false, 8, "inscription_w_fee"};
-    KeyPair key4 = master_key.Derive("m/86'/1'/0'/0/4", false);
-    KeyPair key4a = master_key.Derive("m/86'/1'/0'/1/4", false);
-    CreateCondition inscription_w_change_fee {{{ 8000, key4.GetP2TRAddress(Bech32(BTC, w->chain())) }, { 20000, key4a.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, true, false, false, false, 8, "inscription_w_change_fee"};
-    KeyPair key5 = master_key.Derive("m/86'/1'/0'/0/5", false);
-    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, key5.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 1000, false, true, false, false, 9, "inscription_w_fix_change"};
+//    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->p2wpkh(0,0,1) }}, 0, false, true, false};
+    CreateCondition inscription {{{ inscription_amount, w->p2tr(0,0,1) }}, 0, 0, false, true, false, false, 8, "inscription"};
+    CreateCondition inscription_w_change {{{ 10000, w->p2tr(0,0,2) }}, 0, 0, true, false, false, false, 8, "inscription_w_change"};
+    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,3) }}, 1000, 0, false, false, false, false, 8, "inscription_w_fee"};
+    CreateCondition inscription_w_change_fee {{{ 8000, w->p2tr(0, 0, 4) }, { 20000, w->p2tr(0, 1, 4) }}, 1000, 0, true, false, false, false, 8, "inscription_w_change_fee"};
+    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, w->p2tr(0, 0,5) }}, 0, 1000, false, true, false, false, 9, "inscription_w_fix_change"};
 
-    KeyPair key6 = master_key.Derive("m/86'/1'/0'/0/6", false);
-    CreateCondition child {{{child_amount, key6.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, false, false, true, false, 8, "child"};
-    KeyPair key7 = master_key.Derive("m/86'/1'/0'/0/7", false);
-    CreateCondition child_w_change {{{10000, key7.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 0, true, false, true, false, 8, "child_w_change"};
-    KeyPair key8 = master_key.Derive("m/86'/1'/0'/0/8", false);
-    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, key8.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, false, false, true, false, 8, "child_w_fee"};
-    KeyPair key9 = master_key.Derive("m/86'/1'/0'/0/9", false);
-    CreateCondition child_w_change_fee {{{10000, key9.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 1000, 0, true, false, true, false, 8, "child_w_change_fee"};
-    KeyPair key10 = master_key.Derive("m/86'/1'/0'/0/10", false);
-    CreateCondition child_w_change_fixed_change {{{10000, key10.GetP2TRAddress(Bech32(BTC, w->chain())) }}, 0, 5000, true, false, true, false, 9, "child_w_change_fixed_change"};
+    CreateCondition child {{{child_amount, w->p2tr(0, 0, 6) }}, 0, 0, false, false, true, false, 8, "child"};
+    CreateCondition child_w_change {{{10000, w->p2tr(0, 0, 7) }}, 0, 0, true, false, true, false, 8, "child_w_change"};
+    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0, 0, 8) }}, 1000, 0, false, false, true, false, 8, "child_w_fee"};
+    CreateCondition child_w_change_fee {{{10000, w->p2tr(0, 0, 9) }}, 1000, 0, true, false, true, false, 8, "child_w_change_fee"};
+    CreateCondition child_w_change_fixed_change {{{10000, w->p2tr(0, 0, 10) }}, 0, 5000, true, false, true, false, 9, "child_w_change_fixed_change"};
 
-    KeyPair key11(master_key.Derive("m/84'/1'/0'/0/11", false));
-    CreateCondition segwit_child {{{ segwit_child_amount, key11.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 0, 0, false, false, true, false, 8, "segwit_child"};
-    KeyPair key12(master_key.Derive("m/84'/1'/0'/0/12", false));
-    CreateCondition segwit_child_w_change {{{10000, key12.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 0, 0, true, false, true, false, 8, "segwit_child_w_change"};
-    KeyPair key13(master_key.Derive("m/84'/1'/0'/0/13", false));
-    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, key13.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 1000, 0, false, false, true, false, 8, "segwit_child_w_fee"};
-    KeyPair key14(master_key.Derive("m/84'/1'/0'/0/14", false));
-    CreateCondition segwit_child_w_change_fee {{{15000, key14.GetP2WPKHAddress(Bech32(BTC, w->chain())) }}, 1000, 0, true, false, true, true, 8, "segwit_child_w_change_fee"};
+    CreateCondition segwit_child {{{ segwit_child_amount, w->p2wpkh(0,0,11) }}, 0, 0, false, false, true, false, 8, "segwit_child"};
+    CreateCondition segwit_child_w_change {{{10000, w->p2wpkh(0,0,12) }}, 0, 0, true, false, true, false, 8, "segwit_child_w_change"};
+    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, w->p2wpkh(0,0,13) }}, 1000, 0, false, false, true, false, 8, "segwit_child_w_fee"};
+    CreateCondition segwit_child_w_change_fee {{{15000, w->p2wpkh(0,0,14) }}, 1000, 0, true, false, true, true, 8, "segwit_child_w_change_fee"};
 
     auto version = GENERATE(8,9,10);
     auto condition = GENERATE_COPY(inscription,
@@ -222,15 +196,15 @@ TEST_CASE("inscribe")
             CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
             REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
-            CHECK_NOTHROW(builder.OrdDestination(546, condition.is_parent ? collection_key.GetP2TRAddress(Bech32(BTC, w->chain())) : destination_addr));
+            CHECK_NOTHROW(builder.OrdOutput(546, condition.is_parent ? w->p2tr(2,0,1) : destination_addr));
             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
             //CHECK_NOTHROW(builder.AuthorFee(0, author_fee_addr));
             if (get<1>(content).empty())
                 CHECK_NOTHROW(builder.Delegate(delegate_id));
             else
                 CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
-            CHECK_NOTHROW(builder.InscribeScriptPubKey(script_key.PubKey()));
-            CHECK_NOTHROW(builder.InscribeInternalPubKey(int_key.PubKey()));
+            CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
+            CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
             if (condition.fixed_change != 0) {
                 CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
             }
@@ -247,10 +221,10 @@ TEST_CASE("inscribe")
                                                       collection_utxo.m_addr));
             }
 
-            CHECK_NOTHROW(builder.SignCommit(master_key, "fund"));
-            CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
+            CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+            CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
             if (condition.has_parent) {
-                CHECK_NOTHROW(builder.SignCollection(master_key, "ord"));
+                CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "ord"));
             }
 
             std::string contract;
@@ -294,7 +268,7 @@ TEST_CASE("inscribe")
                 CreateInscriptionBuilder builder_terms(w->chain(), LAZY_INSCRIPTION);
                 CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
                 CHECK_NOTHROW(builder_terms.AuthorFee(1000, author_fee_addr));
-                CHECK_NOTHROW(builder_terms.MarketInscribeScriptPubKey(market_script_key.PubKey()));
+                CHECK_NOTHROW(builder_terms.MarketInscribeScriptPubKey(w->derive(86, 3, 0, 0).GetSchnorrKeyPair().GetPubKey()));
                 CHECK_NOTHROW(builder_terms.Collection(collection_id, collection_utxo.m_amount, collection_utxo.m_addr));
                 std::string market_terms;
                 REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(version, LAZY_INSCRIPTION_MARKET_TERMS));
@@ -308,11 +282,11 @@ TEST_CASE("inscribe")
                     CHECK_NOTHROW(builder.Delegate(delegate_id));
                 else
                     CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
-                CHECK_NOTHROW(builder.OrdDestination(546, condition.is_parent ? collection_key.GetP2TRAddress(Bech32(BTC, w->chain())) : destination_addr));
+                CHECK_NOTHROW(builder.OrdOutput(546, condition.is_parent ? w->p2tr(2,0,1) : destination_addr));
                 CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-                CHECK_NOTHROW(builder.InscribeInternalPubKey(int_key.PubKey()));
-                CHECK_NOTHROW(builder.InscribeScriptPubKey(script_key.PubKey()));
-                CHECK_NOTHROW(builder.FundMiningFeeInternalPubKey(fund_mining_fee_int_key.PubKey()));
+                CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
+                CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
+                CHECK_NOTHROW(builder.FundMiningFeeInternalPubKey(w->derive(86,4,0,1).GetSchnorrKeyPair().GetPubKey()));
                 if (condition.fixed_change != 0) {
                     CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
                 }
@@ -336,8 +310,8 @@ TEST_CASE("inscribe")
                     //LogTx(tx);
                 }
 
-                CHECK_NOTHROW(builder.SignCommit(master_key, "fund"));
-                CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
+                CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+                CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
 
                 std::string contract;
                 REQUIRE_NOTHROW(contract = builder.Serialize(version, LAZY_INSCRIPTION_SIGNATURE));
@@ -350,8 +324,8 @@ TEST_CASE("inscribe")
                 if (condition.return_collection) {
                     CHECK_NOTHROW(fin_builder.OverrideCollectionAddress(return_addr));
                 }
-                CHECK_NOTHROW(fin_builder.MarketSignInscription(master_key, "inscribe"));
-                CHECK_NOTHROW(fin_builder.SignCollection(master_key, "ord"));
+                CHECK_NOTHROW(fin_builder.MarketSignInscription(w->keyreg(), "inscribe"));
+                CHECK_NOTHROW(fin_builder.SignCollection(w->keyreg(), "ord"));
 
                 REQUIRE_NOTHROW(rawtxs = fin_builder.RawTransactions());
 
@@ -389,14 +363,6 @@ TEST_CASE("inscribe")
             LogTx(revealTx);
             std::clog << "=======================================================================" << '\n';
 
-//        if (condition.has_change && condition.has_parent) {
-//            CHECK(commitTx.vout.size() == 3);
-//        } else if (condition.has_change || condition.has_parent) {
-//            CHECK(commitTx.vout.size() == 2);
-//        } else {
-//            CHECK(commitTx.vout.size() == 1);
-//        }
-
             if (condition.has_parent) {
                 CHECK(revealTx.vin.size() == 3);
                 CHECK(revealTx.vout[1].nValue == 546);
@@ -420,8 +386,8 @@ TEST_CASE("inscribe")
 
             if (condition.is_parent) {
                 collection_id = revealTx.GetHash().GetHex() + "i0";
-                collection_sk = collection_key.PrivKey();
-                collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, collection_key.GetP2TRAddress(Bech32(BTC, w->chain()))};
+                collection_sk = w->derive(86,2,0,1,false).PrivKey();
+                collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, w->p2tr(2,0,1)};
             }
             else if (condition.has_parent) {
                 collection_utxo.m_txid = revealTx.GetHash().GetHex();
@@ -459,17 +425,7 @@ const InscribeWithMetadataCondition long_metadata = {
 
 TEST_CASE("metadata")
 {
-    KeyRegistry master_key(w->chain(), hex(seed));
-    master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
-    master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
-    master_key.AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'","4'"], "change":["0"], "index_range":"0-256"})");
-
-    KeyPair utxo_key = master_key.Derive("m/86'/1'/0'/0/1", false);
-    KeyPair script_key = master_key.Derive("m/86'/1'/3'/0/0", true);
-    KeyPair int_key = master_key.Derive("m/86'/1'/4'/0/0", true);
-    KeyPair inscribe_key = master_key.Derive("m/86'/1'/2'/0/0", false);;
-
-    string addr = utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
+    string addr = w->p2tr(0,0,1);
 
     fee_rate = 1000;
 
@@ -488,7 +444,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     const auto& condition = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
 
-    std::string destination_addr = condition.save_as_parent ? inscribe_key.GetP2TRAddress(Bech32(BTC, w->chain())) : w->btc().GetNewAddress();
+    std::string destination_addr = condition.save_as_parent ? w->p2tr(2, 0, 0) : w->btc().GetNewAddress();
 
     CreateInscriptionBuilder builder_terms(w->chain(), INSCRIPTION);
     CHECK_NOTHROW(builder_terms.MarketFee(0, destination_addr));
@@ -499,13 +455,13 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
     REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
-    REQUIRE_NOTHROW(builder.OrdDestination(546, destination_addr));
+    REQUIRE_NOTHROW(builder.OrdOutput(546, destination_addr));
     REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(builder.Data(content_type, content));
     REQUIRE_NOTHROW(builder.MetaData(condition.metadata));
     CHECK_NOTHROW(builder.AuthorFee(0, destination_addr));
-    CHECK_NOTHROW(builder.InscribeInternalPubKey(int_key.PubKey()));
-    CHECK_NOTHROW(builder.InscribeScriptPubKey(script_key.PubKey()));
+    CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86, 4, 0, 0).GetSchnorrKeyPair().GetPubKey()));
+    CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86, 3, 0, 0).GetSchnorrKeyPair().GetPubKey()));
 
     CAmount min_fund = builder.GetMinFundingAmount(condition.has_parent ? "collection" : "");
     string funds_txid = w->btc().SendToAddress(addr, FormatAmount(min_fund));
@@ -531,10 +487,10 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     LogTx(revealTx0);
     std::clog << "========================" << std::endl;
 
-    REQUIRE_NOTHROW(builder.SignCommit(master_key, "fund"));
-    REQUIRE_NOTHROW(builder.SignInscription(master_key, "inscribe"));
+    REQUIRE_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+    REQUIRE_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
     if (condition.has_parent) {
-        CHECK_NOTHROW(builder.SignCollection(master_key, "ord"));
+        CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "ord"));
     }
 
     std::string contract = builder.Serialize(9, INSCRIPTION_SIGNATURE);
@@ -565,9 +521,9 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
     if (condition.save_as_parent) {
-        collection_sk = inscribe_key.PrivKey();
+        collection_sk = w->derive(86, 2, 0, 0, false).PrivKey();
         collection_id = revealTx.GetHash().GetHex() + "i0";
-        collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, inscribe_key.GetP2TRAddress(Bech32(BTC, w->chain()))};
+        collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, w->p2tr(2, 0, 0)};
     }
 
     w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
@@ -581,17 +537,6 @@ struct EtchParams
 
 TEST_CASE("etch")
 {
-    KeyRegistry master_key(w->chain(), hex(seed));
-    master_key.AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
-    master_key.AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
-    master_key.AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'","4'"], "change":["0"], "index_range":"0-256"})");
-
-    KeyPair market_script_key = master_key.Derive("m/86'/1'/3'/0/0", true);
-    KeyPair script_key = master_key.Derive("m/86'/1'/3'/0/1", true);
-    KeyPair int_key = master_key.Derive("m/86'/1'/4'/0/0", true);
-    KeyPair fund_mining_fee_int_key = master_key.Derive("m/86'/1'/4'/0/1", true);
-    KeyPair collection_key = master_key.Derive("m/86'/1'/2'/0/1", false);
-
     std::string market_fee_addr = w->btc().GetNewAddress();
     std::string author_fee_addr = w->btc().GetNewAddress();
     std::string return_addr = w->btc().GetNewAddress();
@@ -602,9 +547,6 @@ TEST_CASE("etch")
 
     const char* svg_text = "<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">sample collection</text></g></g></svg>";
     auto svg = std::tuple<std::string, bytevector>("image/svg+xml", bytevector(svg_text, svg_text + strlen(svg_text)));
-
-    KeyPair destination_key = master_key.Derive("m/86'/1'/2'/0/1", false);
-    string destination_addr = destination_key.GetP2TRAddress(Bech32(BTC, w->chain()));
 
      auto condition = GENERATE(
          EtchParams{65535, 0},
@@ -629,15 +571,13 @@ TEST_CASE("etch")
 
     CreateInscriptionBuilder test_inscription(w->chain(), INSCRIPTION);
 
-    REQUIRE_NOTHROW(test_inscription.OrdDestination(10000, destination_addr));
+    REQUIRE_NOTHROW(test_inscription.OrdOutput(10000, w->p2tr(2, 0, 1)));
     REQUIRE_NOTHROW(test_inscription.MarketFee(0, market_fee_addr));
     REQUIRE_NOTHROW(test_inscription.AuthorFee(0, author_fee_addr));
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(test_inscription.Data(get<0>(content), get<1>(content)));
     REQUIRE_NOTHROW(test_inscription.Rune(std::make_shared<RuneStoneDestination>(w->chain(), runestone)));
     CAmount inscription_amount = test_inscription.GetMinFundingAmount("");
-
-    KeyPair key1 = master_key.Derive("m/86'/1'/0'/0/1", false);
 
     stringvector rawtxs;
 
@@ -652,22 +592,22 @@ TEST_CASE("etch")
     CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
     REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
-    CHECK_NOTHROW(builder.OrdDestination(10000, destination_addr));
+    CHECK_NOTHROW(builder.OrdOutput(10000, w->p2tr(2, 0, 1)));
     CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
     CHECK_NOTHROW(builder.AuthorFee(0, author_fee_addr));
     CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
-    CHECK_NOTHROW(builder.InscribeScriptPubKey(script_key.PubKey()));
-    CHECK_NOTHROW(builder.InscribeInternalPubKey(int_key.PubKey()));
-    CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
+    CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86, 3, 0, 1).GetSchnorrKeyPair().GetPubKey()));
+    CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86, 4, 0, 0).GetSchnorrKeyPair().GetPubKey()));
+    CHECK_NOTHROW(builder.ChangeAddress(w->btc().GetNewAddress()));
     CHECK_NOTHROW(builder.Rune(std::make_shared<RuneStoneDestination>(w->chain(), runestone)));
 
-    string utxo_addr = key1.GetP2TRAddress(Bech32(BTC, w->chain()));
+    string utxo_addr = w->p2tr(0, 0, 0);
     string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(inscription_amount));
     auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
     CHECK_NOTHROW(builder.AddUTXO(funds_txid, get<0>(prevout).n, inscription_amount, utxo_addr));
 
-    CHECK_NOTHROW(builder.SignCommit(master_key, "fund"));
-    CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
+    CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+    CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
 
     std::string contract;
      REQUIRE_NOTHROW(contract = builder.Serialize(10, INSCRIPTION_SIGNATURE));
@@ -700,7 +640,7 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
-    w->btc().GenerateToAddress(destination_addr, "1");
+    w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
 
     std::string runes_json = w->GetRunes();
     std::clog << runes_json << std::endl;
@@ -723,18 +663,16 @@ TEST_CASE("etch")
             string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(10000));
             auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
 
-            std::string destination_addr = w->btc().GetNewAddress();
-
             SimpleTransaction mintBuilder(w->chain());
             mintBuilder.MiningFeeRate(fee_rate);
 
             REQUIRE_NOTHROW(mintBuilder.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_addr)));
 
-            RuneStone runestone = rune.Mint(1);
+            RuneStone mintrunestone = rune.Mint(1);
 
-            REQUIRE_NOTHROW(mintBuilder.AddOutput(std::make_shared<RuneStoneDestination>(w->chain(), move(runestone))));
-            REQUIRE_NOTHROW(mintBuilder.AddChangeOutput(destination_addr));
-            REQUIRE_NOTHROW(mintBuilder.Sign(master_key, "fund"));
+            REQUIRE_NOTHROW(mintBuilder.AddOutputDestination(std::make_shared<RuneStoneDestination>(w->chain(), move(mintrunestone))));
+            REQUIRE_NOTHROW(mintBuilder.AddChangeOutput(w->btc().GetNewAddress()));
+            REQUIRE_NOTHROW(mintBuilder.Sign(w->keyreg(), "fund"));
 
             std::string mint_contract;
             REQUIRE_NOTHROW(mint_contract = mintBuilder.Serialize(2, TX_SIGNATURE));
@@ -755,7 +693,7 @@ TEST_CASE("etch")
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(mintTx)));
 
-            w->btc().GenerateToAddress(destination_addr, "1");
+            w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
 
             std::string runes_json = w->GetRunes();
             std::clog << runes_json << std::endl;
@@ -770,7 +708,12 @@ TEST_CASE("etch")
             uint128_t final_supply = condition.pre_mint + condition.amount_per_mint;
 
             CHECK(final_supply.str() == supply_text);
+
+        SECTION("transfer") {
+
+        }
     }
+
 }
 
 struct AvatarCondition
@@ -878,16 +821,6 @@ std::optional<Transfer> avatar_collection_utxo;
 
 TEST_CASE("avatar")
 {
-    KeyRegistry master_key(w->chain(), hex(seed));
-    master_key.AddKeyType("funds", R"({"look_cache":false, "key_type":"DEFAULT", "accounts":["0'"], "change":["0"], "index_range":"0-10"})");
-    master_key.AddKeyType("inscribe", R"({"look_cache":false, "key_type":"TAPSCRIPT", "accounts":["0'"], "change":["0", "1"], "index_range":"0-10"})");
-
-    KeyPair ord_key = master_key.Derive(w->DerivationPath(86, 0, 0, 0), false);
-    KeyPair script_key = master_key.Derive(w->DerivationPath(86, 0, 1, 0), true);
-    KeyPair int_key = master_key.Derive(w->DerivationPath(86, 0, 0, 1), true);
-
-    std::string return_addr = ord_key.GetP2TRAddress(Bech32(BTC, w->chain()));
-
     fee_rate = 3000;
 
     auto &condition = GENERATE_REF(
@@ -901,7 +834,7 @@ TEST_CASE("avatar")
     REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(builder.MarketFee(0, ""));
     REQUIRE_NOTHROW(builder.AuthorFee(0, ""));
-    REQUIRE_NOTHROW(builder.OrdDestination(546, return_addr));
+    REQUIRE_NOTHROW(builder.OrdOutput(546, w->p2tr(0, 0, 0)));
 
     std::string content = condition.content;
     if (avatar_collection_utxo) {
@@ -924,22 +857,20 @@ TEST_CASE("avatar")
         REQUIRE_NOTHROW(builder.AddToCollection(collection_id, avatar_collection_utxo->m_txid, avatar_collection_utxo->m_nout, avatar_collection_utxo->m_amount, avatar_collection_utxo->m_addr));
     }
 
-    std::string utxo_addr = ord_key.GetP2TRAddress(Bech32(BTC, w->chain()));
+    std::string utxo_addr = w->p2tr(0, 0, 0);
     CAmount min_funding = builder.GetMinFundingAmount("");
     string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(min_funding));
     auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
 
-    std::string destination_addr = w->btc().GetNewAddress();
-
     REQUIRE_NOTHROW(builder.AddUTXO(funds_txid, get<0>(prevout).n, min_funding, utxo_addr));
 
-    REQUIRE_NOTHROW(builder.InscribeScriptPubKey(script_key.PubKey()));
-    REQUIRE_NOTHROW(builder.InscribeInternalPubKey(int_key.PubKey()));
+    REQUIRE_NOTHROW(builder.InscribeScriptPubKey(w->derive(86, 0, 1, 0).GetSchnorrKeyPair().GetPubKey()));
+    REQUIRE_NOTHROW(builder.InscribeInternalPubKey(w->derive(86, 0, 0, 1).GetSchnorrKeyPair().GetPubKey()));
 
-    CHECK_NOTHROW(builder.SignCommit(master_key, "funds"));
-    CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
+    CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "funds"));
+    CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
     if (avatar_collection_utxo) {
-        CHECK_NOTHROW(builder.SignCollection(master_key, "funds"));
+        CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "funds"));
     }
 
     std::string terms = builder.Serialize(8, INSCRIPTION_SIGNATURE);
@@ -966,7 +897,7 @@ TEST_CASE("avatar")
 
     if (condition.is_parent) {
         collection_id = revealTx.GetHash().GetHex() + "i0";
-        avatar_collection_utxo = Transfer{revealTx.GetHash().GetHex(), 0, 546, return_addr};
+        avatar_collection_utxo = Transfer{revealTx.GetHash().GetHex(), 0, 546, w->p2tr(0, 0, 0)};
     }
     else {
         avatar_collection_utxo = Transfer{revealTx.GetHash().GetHex(), 1, 546, avatar_collection_utxo->m_addr};

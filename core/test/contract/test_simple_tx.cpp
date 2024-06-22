@@ -7,12 +7,9 @@
 
 #include "util/translation.h"
 #include "core_io.h"
-#include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
 #include "schnorr.hpp"
-
-#include "exechelper.hpp"
 
 #include "test_case_wrapper.hpp"
 #include "simple_transaction.hpp"
@@ -61,6 +58,8 @@ int main(int argc, char* argv[])
     }
 
     w = std::make_unique<TestcaseWrapper>(configpath);
+    w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+    w->keyreg().AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
 
     return session.run();
 }
@@ -76,17 +75,8 @@ struct TestCondition {
 
 TEST_CASE("singleinout")
 {
-    KeyRegistry master_key(w->chain(), hex(seed));
-    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
-
-    KeyPair p2tr_utxo_key = master_key.Derive("m/86'/1'/0'/0/255", false);
-
-    std::clog << "P2TR UTXO pubkey: " << hex(p2tr_utxo_key.PubKey()) << std::endl;
-
-    KeyPair p2wpkh_utxo_key = master_key.Derive("m/84'/1'/0'/0/10", false);
-
-    TestCondition p2tr_cond = {p2tr_utxo_key, p2tr_utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()))};
-    TestCondition p2wpkh_cond = {p2wpkh_utxo_key, p2wpkh_utxo_key.GetP2WPKHAddress(Bech32(BTC, w->chain()))};
+    TestCondition p2tr_cond = {w->derive(86, 0, 0, 255, false), w->p2tr(0, 0, 255)};
+    TestCondition p2wpkh_cond = {w->derive(84, 0, 0, 10), w->p2wpkh(0, 0, 10)};
 
     auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond);
 
@@ -109,9 +99,9 @@ TEST_CASE("singleinout")
     tx_contract.MiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, cond.address)));
-    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(w->chain(), 7000, destination_addr)));
+    REQUIRE_NOTHROW(tx_contract.AddOutput(7000, destination_addr));
 
-    REQUIRE_NOTHROW(tx_contract.Sign(master_key, "funds"));
+    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
 
     std::string data;
     REQUIRE_NOTHROW(data = tx_contract.Serialize(2, TX_SIGNATURE));
@@ -165,16 +155,11 @@ TEST_CASE("singleinout")
 
 TEST_CASE("2ins2outs")
 {
-    KeyRegistry master_key(w->chain(), hex(seed));
-    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
-    KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/0", false);
-    KeyPair utxo_key1 = master_key.Derive("m/86'/1'/1'/0/1", false);
-
-    string addr = utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
+    string addr = w->p2tr(1, 0 , 0);
     string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
     auto prevout = w->btc().CheckOutput(funds_txid, addr);
 
-    string addr1 = utxo_key1.GetP2TRAddress(Bech32(BTC, w->chain()));
+    string addr1 = w->p2tr(1, 0, 1);
     string funds_txid1 = w->btc().SendToAddress(addr1, FormatAmount(546));
     auto prevout1 = w->btc().CheckOutput(funds_txid1, addr1);
 
@@ -194,12 +179,12 @@ TEST_CASE("2ins2outs")
     SimpleTransaction tx_contract(w->chain());
     tx_contract.MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_key.GetP2TRAddress(Bech32(BTC, w->chain())))));
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid1, get<0>(prevout1).n, 546, utxo_key1.GetP2TRAddress(Bech32(BTC, w->chain())))));
-    REQUIRE_NOTHROW(tx_contract.AddOutput(std::make_shared<P2TR>(w->chain(), 546, destination_addr)));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, addr)));
+    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid1, get<0>(prevout1).n, 546, addr1)));
+    REQUIRE_NOTHROW(tx_contract.AddOutput(546, destination_addr));
     REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_addr1));
 
-    REQUIRE_NOTHROW(tx_contract.Sign(master_key, "funds"));
+    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
 
     std::string data;
     REQUIRE_NOTHROW(data = tx_contract.Serialize(2, TX_SIGNATURE));
@@ -225,12 +210,7 @@ TEST_CASE("2ins2outs")
 
 TEST_CASE("txchain")
 {
-    KeyRegistry master_key(w->chain(), hex(seed));
-    master_key.AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
-    KeyPair utxo_key = master_key.Derive("m/86'/1'/1'/0/100", false);
-    KeyPair intermediate_key = master_key.Derive("m/86'/1'/1'/0/101", false);
-
-    string addr = utxo_key.GetP2TRAddress(Bech32(BTC, w->chain()));
+    string addr = w->p2tr(1, 0, 100);
     string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
     auto prevout = w->btc().CheckOutput(funds_txid, addr);
 
@@ -253,16 +233,16 @@ TEST_CASE("txchain")
     tx1_contract->MiningFeeRate(fee_rate);
 
     REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, addr)));
-    REQUIRE_NOTHROW(tx_contract->AddOutput(std::make_shared<P2TR>(w->chain(), 10000, intermediate_key.GetP2TRAddress(Bech32(BTC, w->chain())))));
+    REQUIRE_NOTHROW(tx_contract->AddOutput(10000, w->p2tr(1, 0, 101)));
 
     REQUIRE_NOTHROW(tx1_contract->AddInput(make_shared<ContractOutput>(tx_contract, 0)));
-    REQUIRE_NOTHROW(tx1_contract->AddOutput(std::make_shared<P2TR>(w->chain(), 546, destination_addr)));
+    REQUIRE_NOTHROW(tx1_contract->AddOutput(546, destination_addr));
 
     REQUIRE_NOTHROW(tx_contract->Outputs().back()->Amount(tx1_contract->GetMinFundingAmount("")));
     REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_addr));
 
-    REQUIRE_NOTHROW(tx_contract->Sign(master_key, "funds"));
-    REQUIRE_NOTHROW(tx1_contract->Sign(master_key, "funds"));
+    REQUIRE_NOTHROW(tx_contract->Sign(w->keyreg(), "funds"));
+    REQUIRE_NOTHROW(tx1_contract->Sign(w->keyreg(), "funds"));
 
     std::string data, data1;
     REQUIRE_NOTHROW(data = tx_contract->Serialize(2, TX_SIGNATURE));

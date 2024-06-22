@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "keyregistry.hpp"
 #include "contract_builder.hpp"
+#include "runes.hpp"
 
 namespace utxord {
 
@@ -16,13 +17,18 @@ class SimpleTransaction: public utxord::ContractBuilder<utxord::TxPhase>, public
 {
 public:
     static const std::string name_outputs;
+    static const std::string name_rune_inputs;
 private:
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_rune_transfer;
     static const char* s_versions;
 
     std::vector<TxInput> m_inputs;
     std::vector<std::shared_ptr<IContractDestination>> m_outputs;
     std::optional<uint32_t> m_change_nout;
+    std::optional<uint32_t> m_runestone_nout;
+
+    std::multimap<RuneId, std::tuple<uint128_t, uint32_t>> m_rune_inputs; // rune_id -> {rune_amount, nin}
 
 public:
     explicit SimpleTransaction(ChainMode chain) : ContractBuilder(chain) {}
@@ -49,8 +55,20 @@ public:
     void AddInput(std::shared_ptr<IContractOutput> prevout)
     { m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout)); }
 
-    void AddOutput(std::shared_ptr<IContractDestination> destination)
+    void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
+    { AddInput(std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr))); }
+
+    void AddRuneInput(std::shared_ptr<IContractOutput> prevout, RuneId runeid, uint128_t rune_amount);
+    void AddRuneUTXO(std::string txid, uint32_t nout, CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount);
+
+    void AddOutput(CAmount amount, std::string addr)
+    { AddOutputDestination(P2Witness::Construct(chain(), amount, addr)); }
+
+    void AddOutputDestination(std::shared_ptr<IContractDestination> destination)
     { m_outputs.emplace_back(move(destination)); }
+
+    void AddRuneOutputDestination(std::shared_ptr<IContractDestination> destination, RuneId runeid, uint128_t rune_amount);
+    void AddRuneOutput(CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount);
 
     const std::vector<TxInput>& Inputs() const { return m_inputs; }
     std::vector<TxInput>& Inputs() { return m_inputs; }
@@ -61,6 +79,7 @@ public:
     void DropChangeOutput();
 
     void Sign(const KeyRegistry& master_key, const std::string& key_filter_tag);
+    void PartialSign(const KeyRegistry& master_key, const std::string& key_filter_tag, uint32_t nin);
 
     void CheckSig() const;
 

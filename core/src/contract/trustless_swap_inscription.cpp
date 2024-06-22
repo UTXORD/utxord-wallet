@@ -510,7 +510,7 @@ void TrustlessSwapInscriptionBuilder::FundCommitOrdinal(std::string txid, uint32
     if (mOrdCommitBuilder->Outputs().size() > 2) {
         mOrdCommitBuilder->Outputs().pop_back();
     }
-    mOrdCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, move(change_addr)));
+    mOrdCommitBuilder->AddOutput(0, move(change_addr));
 //    mOrdCommitBuilder->AddChangeOutput(change_addr);
 }
 
@@ -526,13 +526,13 @@ void TrustlessSwapInscriptionBuilder::CommitFunds(std::string txid, uint32_t nou
         mCommitBuilder = std::make_shared<SimpleTransaction>(chain());
         mCommitBuilder->MiningFeeRate(GetMiningFeeRate());
 
-        mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32(), dust, addr));
+        mCommitBuilder->AddOutput(dust, addr);
 
         if (m_market_fee->Amount() >= dust * 2) {
-            mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32(), m_market_fee->Amount() - dust, addr));
+            mCommitBuilder->AddOutput(m_market_fee->Amount() - dust, addr);
         }
         else {
-            mCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32(), dust, addr));
+            mCommitBuilder->AddOutput(dust, addr);
         }
     }
 
@@ -591,7 +591,7 @@ void TrustlessSwapInscriptionBuilder::BuildOrdCommit()
         controlblock.insert(controlblock.end(), branchhash.begin(), branchhash.end());
     });
 
-    mOrdCommitBuilder->AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), mOrdCommitBuilder->Inputs().front().output->Destination()->Amount(), bech32().Encode(get<0>(ordSwapTapRoot))));
+    mOrdCommitBuilder->AddOutput(mOrdCommitBuilder->Inputs().front().output->Destination()->Amount(), bech32().Encode(get<0>(ordSwapTapRoot)));
     mOrdCommitBuilder->AddChangeOutput(change_addr);
 
     m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<ContractOutput>(mOrdCommitBuilder, 0));
