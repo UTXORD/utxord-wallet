@@ -2222,8 +2222,8 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       outData.total_mining_fee = myself.btcToSat(newOrd.GetTotalMiningFee("") || 0);
 
       if (!estimate) {
-        const sk = newOrd.GetIntermediateSecKey();
-        myself.wallet.root.key.AddKeyToCache(sk);
+        //const sk = newOrd.GetIntermediateSecKey();
+        //myself.wallet.root.key.AddKeyToCache(sk);
         // outData.sk = newOrd.GetIntermediateSecKey();  // TODO: use/create ticket for excluded sk (UT-???)
         // TODOO: remove sk before > 2 conformations
         // or wait and check utxo this translation on balances
