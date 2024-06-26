@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 RUN ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && echo "Etc/UTC" > /etc/timezone
 RUN apt update && apt upgrade -y && \
     apt install -y ca-certificates \
-                   libboost-all-dev \
+                   libboost-dev \
                    git \
                    make \
                    cmake \
@@ -14,39 +14,22 @@ RUN apt update && apt upgrade -y && \
                    libtool \
                    g++-12 \
                    libtbb-dev \
-                   libzmq5-dev \
                    bison \
                    flex \
                    python3.10 \
                    python3.10-dev \
+                   python3-distutils-extra \
                    libpcre2-dev \
-                   python-is-python3 \
-                   libdb-dev \
-                   libdb++-dev \
-                   libsqlite3-dev
+                   python-is-python3
 
 WORKDIR /utxord-wallet
-RUN cd /utxord-wallet && git clone https://github.com/zeromq/libzmq.git
-RUN cd libzmq/ && \
-      ./autogen.sh && \
-      CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ./configure --without-docs --enable-drafts && \
-      make -j8 && \
-      make install && \
-      cd /utxord-wallet
 
 RUN git clone https://github.com/swig/swig.git && \
       cd swig && \
+      git fetch --tag && \
+      git checkout v4.2.0 && \
       ./autogen.sh && \
       CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ./configure && \
-      make -j8 && \
-      make install && \
-      cd /utxord-wallet
-
-RUN git clone https://github.com/zeromq/cppzmq.git && \
-      cd cppzmq && \
-      mkdir build && \
-      cd build && \
-      CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 cmake .. && \
       make -j8 && \
       make install && \
       cd /utxord-wallet
