@@ -41,6 +41,7 @@ import {
   SAVE_DATA_FOR_SIGN,
   SAVE_GENERATED_SEED,
   SELL_INSCRIPTION,
+  BUY_PRODUCT,
   SEND_BALANCES,
   SUBMIT_SIGN,
   UNLOAD,
@@ -64,6 +65,7 @@ import {
   PURCHASE_LAZY_INSCRIPTION,
   PURCHASE_LAZY_INSCRIPTION_RESULT,
   CREATE_INSCRIBE_RESULT,
+  BUY_PRODUCT_RESULT,
   SELL_INSCRIBE_RESULT,
   COMMIT_BUY_INSCRIBE_RESULT,
 } from '~/config/events';
@@ -750,6 +752,27 @@ async function newAddress(){
         return false;
       }
 
+      if (signData?.type === BUY_PRODUCT) {
+        const res = await Api.decryptedWallet(payload.data.password);
+        if(res){
+          const payload_data = payload.data.data;
+
+          let success = true;
+          if(payload_data?.costs) {
+            success = await sendResult(
+                signData?.type,
+                BUY_PRODUCT_RESULT,
+                payload_data?.costs,
+                "",
+                payload_data?._tabId
+            );
+          }
+
+          await Api.encryptedWallet(payload.data.password);
+          return success;
+        }
+        return false;
+      }
       if (signData?.type === SELL_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
@@ -1068,6 +1091,30 @@ async function newAddress(){
                 //     'There are too few coins left after creation and they will become part of the inscription balance'
                 //   );
                 // }
+                await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+              }, 1000);
+            });
+          }
+
+          if (payload.type === BUY_PRODUCT) {
+            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+
+            const costs = await Api.BuyProductContract(payload.data);
+
+            payload.data.errorMessage = payload.data?.costs?.errorMessage;
+            if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
+
+            payload.data.costs = costs;
+            console.log(BUY_PRODUCT+':',payload.data);
+            winManager.openWindow('sign-buy-product', async (id) => {
+              setTimeout(async  () => {
+                const changeAmount = payload.data.costs.change_amount
+                if (changeAmount !== null  && changeAmount < 546) {
+                  Api.sendNotificationMessage(
+                    'BUY_PRODUCT',
+                    'There are too few coins left after creation and they will become part of the inscription balance'
+                  );
+                }
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
             });
