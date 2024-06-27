@@ -44,6 +44,14 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/sign-buy-product',
+    name: 'SignBuyProductPage',
+    component: () => import('~/pages/SignBuyProductPage.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
     path: '/sign-sell',
     name: 'SignSellPage',
     component: () => import('~/pages/SignSellPage.vue'),

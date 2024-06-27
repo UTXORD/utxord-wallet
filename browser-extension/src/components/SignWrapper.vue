@@ -67,6 +67,7 @@ import WinHelpers from '~/helpers/winHelpers'
 import { useStore } from '~/popup/store/index'
 import {
   SELL_INSCRIPTION,
+  BUY_PRODUCT,
   CREATE_INSCRIPTION,
   SUBMIT_SIGN,
   BALANCE_CHANGE_PRESUMED,
@@ -88,7 +89,12 @@ const total = computed(() => {
   let out = 0
   if (dataForSign.value?.type === CREATE_INSCRIPTION || dataForSign.value?.type === CREATE_CHUNK_INSCRIPTION) {
     out += dataForSign.value?.data?.costs?.amount || 0
-  } else {
+  } else if(dataForSign.value?.type === BUY_PRODUCT){
+    out += dataForSign.value?.data?.owner_fee || 0
+    out += dataForSign.value?.data?.market_fee || 0
+    out += dataForSign.value?.data?.expect_amount || 0
+    out += dataForSign.value?.data?.market_fee || 0
+  }else {
     out += dataForSign.value?.data?.ord_price || 0
     out += dataForSign.value?.data?.market_fee || 0
     out += dataForSign.value?.data?.expect_amount || 0
