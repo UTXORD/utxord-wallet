@@ -154,7 +154,8 @@ using namespace l15::core;
     $result = SWIG_Python_AppendOutput($result, obj);
 %}
 
-
+%include "utils.hpp"
+%include "bech32.hpp"
 %include "common_error.hpp"
 %include "contract_error.hpp"
 %include "keypair.hpp"

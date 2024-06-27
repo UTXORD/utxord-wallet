@@ -15,7 +15,6 @@ AM_CPPFLAGS = -DWASM -DWASM_MODULE \
 
 
 AM_LDFLAGS=-L$(top_builddir)/l15/node/src -L$(top_builddir)/l15/node/src/crypto --post-js contract.js
-AM_LDFLAGS=-L$(top_builddir)/l15/node/src -L$(top_builddir)/l15/node/src/crypto --post-js contract.js
 
 
 L15_LIBS = \

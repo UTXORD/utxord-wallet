@@ -14,6 +14,8 @@ COMMON_INCLUDES = \
 
 SWIG_SRC_INCLUDES = \
  $(top_srcdir)/l15/src/common/common_error.hpp \
+ $(top_srcdir)/l15/src/common/bech32.hpp \
+ $(top_srcdir)/l15/src/common/utils.hpp \
  $(top_srcdir)/l15/src/core/transaction.hpp \
  $(top_srcdir)/src/contract/contract_error.hpp \
  $(top_srcdir)/src/contract/contract_builder.hpp \

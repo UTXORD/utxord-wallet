@@ -2,7 +2,7 @@
 
 #include "random.h"
 
-#include "utils.hpp"
+#include "bech32.hpp"
 #include "schnorr.hpp"
 #include "keypair.hpp"
 #include "keyregistry.hpp"

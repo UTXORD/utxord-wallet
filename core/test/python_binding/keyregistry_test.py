@@ -11,15 +11,15 @@ key_registry.AddKeyType("market", '{"look_cache":true, "key_type":"TAPROOT", "ac
 
 keypair = key_registry.Derive("m/86'/1'/0'/0/300", False)
 
-addr = keypair.GetP2TRAddress(Bech32(TESTNET))
+addr = keypair.GetP2TRAddress(Bech32(BTC, TESTNET))
 
 print("address", addr)
 
-key_registry.AddKeyToCache(hexlify(keypair.PrivKey()))
+key_registry.AddKeyToCache(keypair)
 
 keypair1 = key_registry.Lookup(addr, "market")
 
-addr1 = keypair1.GetP2TRAddress(Bech32(TESTNET))
+addr1 = keypair1.GetP2TRAddress(Bech32(BTC, TESTNET))
 
 print("address 1", addr1)
 print("Done")
