@@ -1,4 +1,4 @@
-import {MAINNET, NETWORK, TESTNET, BASE_URL_PATTERN} from '~/config/index';
+import {MAINNET, NETWORK, TESTNET, SIGNET, BASE_URL_PATTERN} from '~/config/index';
 import {onMessage, sendMessage} from 'webext-bridge'
 import '~/background/api'
 import WinManager from '~/background/winManager';
@@ -285,7 +285,7 @@ async function helloSite(tabId: number | undefined = undefined){
       });
     });
 
-    if(NETWORK === TESTNET){
+    if(NETWORK === SIGNET){
       self.api = Api; // for debuging in devtols
     }
     const winManager = new WinManager();

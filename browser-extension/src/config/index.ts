@@ -8,18 +8,18 @@ export const REGTEST = 'r';
 export const SIGNET = 's';
 export const LABELS = {
   '_utxord': '',
-  '_qa': 'testnet',
+  '_qa': 'signet',
   '_e2e': 'regtest'
 };
 export const NETWORKS = {
   '_utxord': MAINNET,
-  '_qa': TESTNET,
+  '_qa': SIGNET,
   '_e2e': REGTEST
 };
 export const BACKEND_URL = STAGE_URL;
 
 // NOTE: Configure it before build
-export const NETWORK = TESTNET;
+export const NETWORK = SIGNET;
 
 export const PROD_URL_PATTERN = 'https://utxord.com/*';
 export const STAGE_URL_PATTERN = 'https://qa.utxord.com/*';
