@@ -15,6 +15,10 @@ addr = keypair.GetP2TRAddress(Bech32(BTC, TESTNET))
 
 print("address", addr)
 
+pk = keypair.PubKey()
+
+print(pk)
+
 key_registry.AddKeyToCache(keypair)
 
 keypair1 = key_registry.Lookup(addr, "market")

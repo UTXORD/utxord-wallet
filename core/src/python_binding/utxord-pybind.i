@@ -72,11 +72,14 @@ using namespace l15::core;
 }
 
 %typemap(out) const l15::bytevector& { $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size()); }
+%typemap(out) const bytevector& { $result = PyBytes_FromStringAndSize((const char*)($1->data()), $1->size()); }
 %typemap(out) l15::bytevector { $result = PyBytes_FromStringAndSize((const char*)($1.data()), $1.size()); }
+%typemap(out) bytevector { $result = PyBytes_FromStringAndSize((const char*)($1.data()), $1.size()); }
 
 %apply l15::bytevector { l15::xonly_pubkey };
 %apply l15::bytevector { l15::signature };
 %apply bytevector { xonly_pubkey };
+%apply bytevector { signature };
 
 %ignore TransactionSerParams;
 
