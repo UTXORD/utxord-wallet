@@ -107,6 +107,7 @@ import {
   NETWORK,
   TESTNET,
   REGTEST,
+  SIGNET,
   MAINNET
  } from '~/config/index';
 

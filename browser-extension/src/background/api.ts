@@ -304,6 +304,9 @@ class Api {
         this.WinHelpers = new winHelpers();
         this.Rest = new rest();
         this.utxord = await utxord();
+        if(!this.utxord.SIGNET){
+           this.utxord.SIGNET = 1;
+        }
         this.network = this.setUpNetWork(network);
         this.bech = new this.utxord.Bech32(this.network);
 
@@ -356,6 +359,9 @@ class Api {
       }
 
       await myself.rememberIndexes();
+
+
+      console.log('NETWORK:',myself.utxord.SIGNET)
       await myself.upgradeProps(myself.utxord, 'utxord'); // add wrapper
       console.log('init...');
       myself.genRootKey();
@@ -1394,6 +1400,8 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
   getCurrentNetWorkText() {
     if (!this.network) { return 'mainnet'; }
     switch (this.network) {
+      case this.utxord.SIGNET:
+        return 'signet';
       case this.utxord.TESTNET:
         return 'testnet';
       case this.utxord.REGTEST:
@@ -1407,6 +1415,8 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
   getCurrentNetWorkLabel() {
     if (!this.network) { return ' '; }
     switch (this.network) {
+      case this.utxord.SIGNET:
+          return 'SigNet';
       case this.utxord.TESTNET:
         return 'TestNet';
       case this.utxord.REGTEST:
@@ -1420,6 +1430,8 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
 
   getNetWork(network) {
     switch (network) {
+      case this.utxord.SIGNET:
+        return 's'; //signet
       case this.utxord.TESTNET:
         return 't'; //testnet
       case this.utxord.MAINNET:
@@ -1427,7 +1439,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       case this.utxord.REGTEST:
         return 'r';  //regtest
       default:
-        return 't'; //testnet
+        return 's'; //testnet
     }
   }
 
@@ -1435,6 +1447,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     //        this.utxord.MAINNET;
     //        this.utxord.TESTNET;
     //        this.utxord.REGTEST;
+    //        this.utxord.SIGNET;
     switch (type) {
       case 't':
         return this.utxord.TESTNET;
@@ -1442,6 +1455,8 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         return this.utxord.MAINNET;
       case 'r':
         return this.utxord.REGTEST;
+      case 's':
+        return this.utxord.SIGNET;
       default:
         return this.utxord.TESTNET;
     }

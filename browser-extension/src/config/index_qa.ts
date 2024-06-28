@@ -10,7 +10,7 @@ export const SIGNET = 's';
 export const BACKEND_URL = TEMP_STAGE_URL;
 
 // NOTE: Configure it before build
-export const NETWORK = TESTNET;
+export const NETWORK = SIGNET;
 
 export const PROD_URL_PATTERN = 'https://utxord.com/*';
 export const STAGE_URL_PATTERN = 'https://qa.utxord.com/*';

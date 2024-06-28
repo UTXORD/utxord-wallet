@@ -19,6 +19,7 @@ import {
   LOCAL_URL_PATTERN,
   NETWORK,
   TESTNET,
+  SIGNET,
   REGTEST,
   MAINNET
  } from '~/config/index';
@@ -42,6 +43,7 @@ Sentry.init({
   },
   network: () => {
     switch (NETWORK) {
+      case SIGNET: return 'signet'
       case TESTNET: return 'testnet'
       case REGTEST: return 'regtest'
       case MAINNET: return 'mainnet'
