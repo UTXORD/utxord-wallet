@@ -14,16 +14,15 @@ const useWallet = () => {
 
   async function getFundAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
-    console.log('getFundAddress->list:',list)
     if(list?.addresses?.length === 0) return
     const addresses = {};
     for(const item of list.addresses){
-      console.log('add:',item.type)
-      addresses[item.type] = item;
+      if(store.typeAddress === item.typeAddress){
+        addresses[item.type] = item;
+      }
     }
     if (addresses?.fund) {
       store.setFundAddress(addresses?.fund?.address)
-      store.setTypeAddress(addresses?.fund?.typeAddress)
       return addresses?.fund?.address
     }
   }
