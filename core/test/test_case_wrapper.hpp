@@ -7,6 +7,10 @@
 #include "keyregistry.hpp"
 #include "nodehelper.hpp"
 
+#include "contract_builder.hpp"
+
+#include "nlohmann/json.hpp"
+
 #include <chrono>
 #include <cstdio>
 #include <string>
@@ -102,7 +106,7 @@ struct TestcaseWrapper
         StopNode(l15::NodeChainMode::MODE_REGTEST, mCli, conf().Subcommand(l15::config::BITCOIN));
     }
 
-    std::string GetRunes()
+    nlohmann::json rune(std::string_view rune_text)
     {
         mOrd.Arguments() = {"--data-dir", mConfFactory.GetBitcoinDataDir() + "/../ord", "--bitcoin-data-dir", mConfFactory.GetBitcoinDataDir(), "--index-runes"};
 
@@ -124,7 +128,33 @@ struct TestcaseWrapper
 
         mOrd.Arguments().emplace_back("runes");
 
-        return mOrd.Run();
+        nlohmann::json output_json = nlohmann::json::parse(mOrd.Run());
+        return output_json["runes"][rune_text];
+    }
+
+    nlohmann::json rune_balances(std::string_view rune_text) {
+        mOrd.Arguments() = {"--data-dir", mConfFactory.GetBitcoinDataDir() + "/../ord", "--bitcoin-data-dir", mConfFactory.GetBitcoinDataDir(), "--index-runes"};
+
+        if (chain() == l15::REGTEST) {
+            mOrd.Arguments().emplace_back("--regtest");
+        }
+
+        std::string host, port;
+
+        for(const auto opt: conf().Subcommand(l15::config::BITCOIN).get_options(
+                    [](const CLI::Option* o){ return o && o->check_name(l15::config::option::RPCHOST); }))
+            host = opt->as<std::string>();
+        for(const auto opt: conf().Subcommand(l15::config::BITCOIN).get_options(
+                    [](const CLI::Option* o){ return o && o->check_name(l15::config::option::RPCPORT); }))
+            port = opt->as<std::string>();
+
+        mOrd.Arguments().emplace_back("--bitcoin-rpc-url");
+        mOrd.Arguments().emplace_back(host + ":" + port);
+
+        mOrd.Arguments().emplace_back("balances");
+
+        nlohmann::json output_json = nlohmann::json::parse(mOrd.Run());
+        return output_json["runes"][rune_text];
     }
 
     l15::Config& conf()
@@ -148,7 +178,7 @@ struct TestcaseWrapper
         StopRegtestBitcoinNode();
     }
 
-    void WaitForConfirmations(uint32_t n)
+    void confirm(uint32_t n)
     {
         if (chain() == l15::REGTEST) {
             btc().GenerateToAddress(btc().GetNewAddress(), std::to_string(n));
@@ -180,6 +210,14 @@ struct TestcaseWrapper
 
     std::string p2wpkh(uint32_t account, uint32_t change, uint32_t index)
     { return keyreg().Derive(keypath(84, account, change, index), false).GetP2WPKHAddress(l15::Bech32(l15::BTC, chain())); }
+
+    std::shared_ptr<IContractOutput> fund(CAmount amount, std::string addr)
+    {
+        std::string txid = btc().SendToAddress(addr, l15::FormatAmount(amount));
+        auto prevout = btc().CheckOutput(txid, addr);
+
+        return std::make_shared<UTXO>(chain(), txid, get<0>(prevout).n, amount, move(addr));
+    }
 };
 
 }

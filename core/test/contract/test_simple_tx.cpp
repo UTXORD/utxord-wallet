@@ -90,15 +90,12 @@ TEST_CASE("singleinout")
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
 
-    string funds_txid = w->btc().SendToAddress(cond.address, FormatAmount(10000));
-    auto prevout = w->btc().CheckOutput(funds_txid, cond.address);
-
     std::string destination_addr = w->btc().GetNewAddress();
 
     SimpleTransaction tx_contract(w->chain());
     tx_contract.MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, cond.address)));
+    REQUIRE_NOTHROW(tx_contract.AddInput(w->fund(10000, cond.address)));
     REQUIRE_NOTHROW(tx_contract.AddOutput(7000, destination_addr));
 
     REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
@@ -155,14 +152,6 @@ TEST_CASE("singleinout")
 
 TEST_CASE("2ins2outs")
 {
-    string addr = w->p2tr(1, 0 , 0);
-    string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
-    auto prevout = w->btc().CheckOutput(funds_txid, addr);
-
-    string addr1 = w->p2tr(1, 0, 1);
-    string funds_txid1 = w->btc().SendToAddress(addr1, FormatAmount(546));
-    auto prevout1 = w->btc().CheckOutput(funds_txid1, addr1);
-
     std::string destination_addr = w->btc().GetNewAddress();
     std::string destination_addr1 = w->btc().GetNewAddress();
 
@@ -179,8 +168,8 @@ TEST_CASE("2ins2outs")
     SimpleTransaction tx_contract(w->chain());
     tx_contract.MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, addr)));
-    REQUIRE_NOTHROW(tx_contract.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid1, get<0>(prevout1).n, 546, addr1)));
+    REQUIRE_NOTHROW(tx_contract.AddInput(w->fund(10000, w->p2tr(1, 0 , 0))));
+    REQUIRE_NOTHROW(tx_contract.AddInput(w->fund(546, w->p2tr(1, 0, 1))));
     REQUIRE_NOTHROW(tx_contract.AddOutput(546, destination_addr));
     REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_addr1));
 
@@ -210,10 +199,6 @@ TEST_CASE("2ins2outs")
 
 TEST_CASE("txchain")
 {
-    string addr = w->p2tr(1, 0, 100);
-    string funds_txid = w->btc().SendToAddress(addr, FormatAmount(10000));
-    auto prevout = w->btc().CheckOutput(funds_txid, addr);
-
     std::string destination_addr = w->btc().GetNewAddress();
     std::string change_addr = w->btc().GetNewAddress();
 
@@ -232,7 +217,7 @@ TEST_CASE("txchain")
     tx_contract->MiningFeeRate(fee_rate);
     tx1_contract->MiningFeeRate(fee_rate);
 
-    REQUIRE_NOTHROW(tx_contract->AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, addr)));
+    REQUIRE_NOTHROW(tx_contract->AddInput(w->fund(10000, w->p2tr(1, 0, 100))));
     REQUIRE_NOTHROW(tx_contract->AddOutput(10000, w->p2tr(1, 0, 101)));
 
     REQUIRE_NOTHROW(tx1_contract->AddInput(make_shared<ContractOutput>(tx_contract, 0)));

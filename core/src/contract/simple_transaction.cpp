@@ -61,8 +61,8 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
 
 void SimpleTransaction::AddRuneInput(std::shared_ptr<IContractOutput> prevout, RuneId runeid, uint128_t rune_amount)
 {
-    m_rune_inputs.emplace(move(runeid), std::make_tuple(move(rune_amount), m_inputs.size()));
     AddInput(move(prevout));
+    m_rune_inputs.emplace(move(runeid), std::make_tuple(move(rune_amount), m_inputs.size()));
 }
 
 void SimpleTransaction::AddRuneUTXO(std::string txid, uint32_t nout, CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount)
@@ -77,6 +77,10 @@ void SimpleTransaction::AddRuneOutput(CAmount btc_amount, std::string addr, Rune
 
 void SimpleTransaction::AddRuneOutputDestination(std::shared_ptr<IContractDestination> destination, RuneId runeid, uint128_t rune_amount)
 {
+    AddOutputDestination(move(destination));
+
+    uint32_t transfer_nout = m_outputs.size() -1;
+
     std::shared_ptr<RuneStoneDestination> rune_stone;
     if (m_runestone_nout) {
         rune_stone = std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs[*m_runestone_nout]);
@@ -88,8 +92,7 @@ void SimpleTransaction::AddRuneOutputDestination(std::shared_ptr<IContractDestin
         m_runestone_nout = m_outputs.size() - 1;
     }
 
-    AddOutputDestination(move(destination));
-    rune_stone->op_dictionary.emplace(move(runeid), std::make_tuple(move(rune_amount), m_outputs.size() - 1));
+    rune_stone->op_dictionary.emplace(move(runeid), std::make_tuple(move(rune_amount), transfer_nout));
 }
 
 void SimpleTransaction::AddChangeOutput(std::string addr)
@@ -267,6 +270,7 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
         for (size_t i = 0; i < val.size(); ++i) {
             if (i == m_outputs.size()) {
                 m_outputs.emplace_back(NoZeroDestinationFactory::ReadJson(chain(), val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();}));
+                if (std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs.back())) m_runestone_nout = m_outputs.size() - 1;
             }
             else {
                 m_outputs[i]->ReadJson(val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();});

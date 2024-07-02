@@ -190,7 +190,7 @@ class Rune
     std::optional<wchar_t> m_symbol; // unicode index
     uint8_t m_divisibility;
 
-    std::optional<RuneId> m_rune_id; // block height of etching tx and rune stone index in the block
+    std::optional<utxord::RuneId> m_rune_id; // block height of etching tx and rune stone index in the block
 
     //Mint terms
     std::optional<uint128_t> m_mint_cap;
@@ -207,8 +207,11 @@ public:
     void Divisibility(auto v) { if (v <= MAX_DIVISIBILITY) m_divisibility = (uint8_t)v; }
     uint8_t Divisibility() const { return m_divisibility; }
 
-    void SetRuneId(uint64_t chain_h, uint32_t tx_index)
+    void RuneId(uint64_t chain_h, uint32_t tx_index)
     { m_rune_id.emplace(chain_h, tx_index); }
+
+    const auto& RuneId() const
+    { return m_rune_id; }
 
     const std::optional<uint128_t>& MintCap() const { return m_mint_cap; }
     std::optional<uint128_t>& MintCap() { return m_mint_cap; }

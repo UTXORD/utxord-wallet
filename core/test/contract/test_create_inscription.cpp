@@ -10,7 +10,6 @@
 #include "util/translation.h"
 #include "core_io.h"
 
-#include "nodehelper.hpp"
 #include "chain_api.hpp"
 #include "simple_transaction.hpp"
 #include "create_inscription.hpp"
@@ -97,7 +96,6 @@ struct CreateCondition
 
 std::string collection_id;
 std::string delegate_id;
-seckey collection_sk;
 Transfer collection_utxo;
 CAmount fee_rate;
 
@@ -211,9 +209,7 @@ TEST_CASE("inscribe")
             CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
 
             for (const auto &utxo: condition.utxo) {
-                string funds_txid = w->btc().SendToAddress(get<1>(utxo), FormatAmount(get<0>(utxo)));
-                auto prevout = w->btc().CheckOutput(funds_txid, get<1>(utxo));
-                CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, get<0>(utxo), get<1>(utxo)));
+                CHECK_NOTHROW(builder.AddInput(w->fund(get<0>(utxo), get<1>(utxo))));
             }
 
             if (condition.has_parent) {
@@ -294,9 +290,7 @@ TEST_CASE("inscribe")
 
                 get<0>(condition.utxo.back()) += lazy_add_amount;
                 for (const auto &utxo: condition.utxo) {
-                    string funds_txid = w->btc().SendToAddress(get<1>(utxo), FormatAmount(get<0>(utxo)));
-                    auto prevout = w->btc().CheckOutput(funds_txid, get<1>(utxo));
-                    CHECK_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, get<0>(utxo), get<1>(utxo)));
+                    CHECK_NOTHROW(builder.AddInput(w->fund(get<0>(utxo), get<1>(utxo))));
                 }
 
                 uint32_t txcount = builder.TransactionCount(LAZY_INSCRIPTION_SIGNATURE);
@@ -386,7 +380,6 @@ TEST_CASE("inscribe")
 
             if (condition.is_parent) {
                 collection_id = revealTx.GetHash().GetHex() + "i0";
-                collection_sk = w->derive(86,2,0,1,false).PrivKey();
                 collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, w->p2tr(2,0,1)};
             }
             else if (condition.has_parent) {
@@ -399,7 +392,7 @@ TEST_CASE("inscribe")
                 delegate_id = collection_id;
             }
 
-            w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+            w->confirm(1);
         }
     }
 }
@@ -464,10 +457,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86, 3, 0, 0).GetSchnorrKeyPair().GetPubKey()));
 
     CAmount min_fund = builder.GetMinFundingAmount(condition.has_parent ? "collection" : "");
-    string funds_txid = w->btc().SendToAddress(addr, FormatAmount(min_fund));
-    auto prevout = w->btc().CheckOutput(funds_txid, addr);
-
-    REQUIRE_NOTHROW(builder.AddUTXO(get<0>(prevout).hash.GetHex(), get<0>(prevout).n, min_fund, addr));
+    REQUIRE_NOTHROW(builder.AddInput(w->fund(min_fund, addr)));
 
     if (condition.has_parent) {
         CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
@@ -521,12 +511,11 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
     if (condition.save_as_parent) {
-        collection_sk = w->derive(86, 2, 0, 0, false).PrivKey();
         collection_id = revealTx.GetHash().GetHex() + "i0";
         collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, w->p2tr(2, 0, 0)};
     }
 
-    w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+    w->confirm(1);
 }
 
 struct EtchParams
@@ -577,9 +566,6 @@ TEST_CASE("etch")
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
     REQUIRE_NOTHROW(test_inscription.Data(get<0>(content), get<1>(content)));
     REQUIRE_NOTHROW(test_inscription.Rune(std::make_shared<RuneStoneDestination>(w->chain(), runestone)));
-    CAmount inscription_amount = test_inscription.GetMinFundingAmount("");
-
-    stringvector rawtxs;
 
     CreateInscriptionBuilder builder_terms(w->chain(), INSCRIPTION);
     CHECK_NOTHROW(builder_terms.MarketFee(0, market_fee_addr));
@@ -601,10 +587,7 @@ TEST_CASE("etch")
     CHECK_NOTHROW(builder.ChangeAddress(w->btc().GetNewAddress()));
     CHECK_NOTHROW(builder.Rune(std::make_shared<RuneStoneDestination>(w->chain(), runestone)));
 
-    string utxo_addr = w->p2tr(0, 0, 0);
-    string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(inscription_amount));
-    auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
-    CHECK_NOTHROW(builder.AddUTXO(funds_txid, get<0>(prevout).n, inscription_amount, utxo_addr));
+    CHECK_NOTHROW(builder.AddInput(w->fund(test_inscription.GetMinFundingAmount(""), w->p2tr(0, 0, 0))));
 
     CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
     CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
@@ -616,6 +599,7 @@ TEST_CASE("etch")
     CreateInscriptionBuilder fin_builder(w->chain(), INSCRIPTION);
     REQUIRE_NOTHROW(fin_builder.Deserialize(contract, INSCRIPTION_SIGNATURE));
 
+    stringvector rawtxs;
     REQUIRE_NOTHROW(rawtxs = fin_builder.RawTransactions());
 
     CMutableTransaction commitTx, revealTx;
@@ -626,13 +610,11 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
 
-    w->btc().GenerateToAddress(return_addr, "4");
-
-    LogTx(revealTx);
+    w->confirm(4);
 
     REQUIRE_THROWS(w->btc().SpendTx(CTransaction(revealTx)));
 
-    w->btc().GenerateToAddress(return_addr, "1");
+    w->confirm(1);
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
@@ -640,38 +622,27 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
-    w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+    w->confirm(1);
 
-    std::string runes_json = w->GetRunes();
-    std::clog << runes_json << std::endl;
+    auto rune_obj = w->rune(rune.RuneText(""));
 
-    UniValue resp;
-    resp.read(runes_json);
+    std::clog << rune_obj << std::endl;
 
-    UniValue rune_obj = resp["runes"][rune.RuneText("")];
+    CHECK(condition.pre_mint == rune_obj["supply"].get<uint64_t>());
 
-    std::string supply_text = rune_obj["supply"].getValStr();
-
-    CHECK(condition.pre_mint.str() == supply_text);
+    rune.RuneId(w->btc().GetChainHeight(), 1);
 
     SECTION("mint")
     {
-            uint64_t chain_height = w->btc().GetChainHeight();
-
-            rune.SetRuneId(chain_height, 1);
-
-            string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(10000));
-            auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
-
             SimpleTransaction mintBuilder(w->chain());
             mintBuilder.MiningFeeRate(fee_rate);
 
-            REQUIRE_NOTHROW(mintBuilder.AddInput(std::make_shared<UTXO>(w->chain(), funds_txid, get<0>(prevout).n, 10000, utxo_addr)));
+            REQUIRE_NOTHROW(mintBuilder.AddInput(w->fund(10000, w->p2tr(0, 0, 0))));
 
             RuneStone mintrunestone = rune.Mint(1);
 
             REQUIRE_NOTHROW(mintBuilder.AddOutputDestination(std::make_shared<RuneStoneDestination>(w->chain(), move(mintrunestone))));
-            REQUIRE_NOTHROW(mintBuilder.AddChangeOutput(w->btc().GetNewAddress()));
+            REQUIRE_NOTHROW(mintBuilder.AddChangeOutput(w->p2tr(0, 1, 1)));
             REQUIRE_NOTHROW(mintBuilder.Sign(w->keyreg(), "fund"));
 
             std::string mint_contract;
@@ -693,27 +664,54 @@ TEST_CASE("etch")
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(mintTx)));
 
-            w->btc().GenerateToAddress(w->btc().GetNewAddress(), "1");
+        w->confirm(1);
 
-            std::string runes_json = w->GetRunes();
-            std::clog << runes_json << std::endl;
+        auto rune_json = w->rune(rune.RuneText(""));
+        std::clog << rune_json << std::endl;
 
-            UniValue resp;
-            resp.read(runes_json);
+        uint128_t final_supply = condition.pre_mint + condition.amount_per_mint;
 
-            UniValue rune_obj = resp["runes"][rune.RuneText("")];
+        CHECK(final_supply == rune_json["supply"].get<uint64_t>());
 
-            std::string supply_text = rune_obj["supply"].getValStr();
+        SECTION("transfer")
+        {
+            SimpleTransaction transferBuilder(w->chain());
+            transferBuilder.MiningFeeRate(fee_rate);
 
-            uint128_t final_supply = condition.pre_mint + condition.amount_per_mint;
+            REQUIRE_NOTHROW(transferBuilder.AddRuneInput(mintBuilder.ChangeOutput(), *rune.RuneId(), condition.amount_per_mint));
+            REQUIRE_NOTHROW(transferBuilder.AddInput(w->fund(10000, w->p2tr(0, 0, 1))));
+            REQUIRE_NOTHROW(transferBuilder.AddRuneOutput(546, w->btc().GetNewAddress(), *rune.RuneId(), condition.amount_per_mint));
+            REQUIRE_NOTHROW(transferBuilder.AddChangeOutput(w->btc().GetNewAddress()));
 
-            CHECK(final_supply.str() == supply_text);
+            REQUIRE_NOTHROW(transferBuilder.PartialSign(w->keyreg(), "fund", 0));
 
-        SECTION("transfer") {
+            std::string transfer_contract;
+            REQUIRE_NOTHROW(transfer_contract = transferBuilder.Serialize(3, TX_TERMS));
 
+            std::clog << "Rune transfer terms:\n" << transfer_contract << std::endl;
+
+            SimpleTransaction transferBuilder1(w->chain());
+
+            transferBuilder1.Deserialize(transfer_contract, TX_TERMS);
+
+            REQUIRE_NOTHROW(transferBuilder1.PartialSign(w->keyreg(), "fund", 1));
+
+            auto transfer_raw_tx = transferBuilder1.RawTransactions();
+            CMutableTransaction transferTx;
+            REQUIRE(DecodeHexTx(transferTx, transfer_raw_tx[0]));
+
+            LogTx(transferTx);
+
+            REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(transferTx)));
+
+            w->confirm(1);
+
+            auto rune_balance_json = w->rune_balances(rune.RuneText("•"));
+            std::clog << rune_balance_json << std::endl;
+
+            CHECK(condition.amount_per_mint == (rune_balance_json[transferTx.GetHash().GetHex() + ":0"]["amount"].get<uint64_t>()));
         }
     }
-
 }
 
 struct AvatarCondition
@@ -857,20 +855,15 @@ TEST_CASE("avatar")
         REQUIRE_NOTHROW(builder.AddToCollection(collection_id, avatar_collection_utxo->m_txid, avatar_collection_utxo->m_nout, avatar_collection_utxo->m_amount, avatar_collection_utxo->m_addr));
     }
 
-    std::string utxo_addr = w->p2tr(0, 0, 0);
-    CAmount min_funding = builder.GetMinFundingAmount("");
-    string funds_txid = w->btc().SendToAddress(utxo_addr, FormatAmount(min_funding));
-    auto prevout = w->btc().CheckOutput(funds_txid, utxo_addr);
+    REQUIRE_NOTHROW(builder.AddInput(w->fund(builder.GetMinFundingAmount(""), w->p2tr(0, 0, 0))));
 
-    REQUIRE_NOTHROW(builder.AddUTXO(funds_txid, get<0>(prevout).n, min_funding, utxo_addr));
+    REQUIRE_NOTHROW(builder.InscribeScriptPubKey(w->derive(86, 3, 1, 0).GetSchnorrKeyPair().GetPubKey()));
+    REQUIRE_NOTHROW(builder.InscribeInternalPubKey(w->derive(86, 4, 0, 1).GetSchnorrKeyPair().GetPubKey()));
 
-    REQUIRE_NOTHROW(builder.InscribeScriptPubKey(w->derive(86, 0, 1, 0).GetSchnorrKeyPair().GetPubKey()));
-    REQUIRE_NOTHROW(builder.InscribeInternalPubKey(w->derive(86, 0, 0, 1).GetSchnorrKeyPair().GetPubKey()));
-
-    CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "funds"));
+    CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
     CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
     if (avatar_collection_utxo) {
-        CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "funds"));
+        CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "fund"));
     }
 
     std::string terms = builder.Serialize(8, INSCRIPTION_SIGNATURE);
@@ -889,11 +882,11 @@ TEST_CASE("avatar")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
 
-    w->WaitForConfirmations(5);
+    w->confirm(5);
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
-    w->WaitForConfirmations(1);
+    w->confirm(1);
 
     if (condition.is_parent) {
         collection_id = revealTx.GetHash().GetHex() + "i0";

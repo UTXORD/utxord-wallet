@@ -53,7 +53,10 @@ public:
     CAmount GetMinFundingAmount(const std::string& params) const override;
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
-    { m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout)); }
+    {
+        if (!prevout) throw ContractTermWrongValue(name_utxo + '[' + std::to_string(m_inputs.size()) + ']');
+        m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout));
+    }
 
     void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
     { AddInput(std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr))); }
@@ -65,7 +68,10 @@ public:
     { AddOutputDestination(P2Witness::Construct(chain(), amount, addr)); }
 
     void AddOutputDestination(std::shared_ptr<IContractDestination> destination)
-    { m_outputs.emplace_back(move(destination)); }
+    {
+        if (!destination) throw ContractTermWrongValue(name_outputs + '[' + std::to_string(m_outputs.size()) + ']');
+        m_outputs.emplace_back(move(destination));
+    }
 
     void AddRuneOutputDestination(std::shared_ptr<IContractDestination> destination, RuneId runeid, uint128_t rune_amount);
     void AddRuneOutput(CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount);
