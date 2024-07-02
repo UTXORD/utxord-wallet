@@ -127,10 +127,18 @@ public:
     std::string GetContent() const { return m_content ? l15::hex(m_content.value()) : std::string(); }
     std::string GetInscribeAddress() const { return m_ord_destination->Address(); }
 
-    void OrdDestination(CAmount amount, std::string addr)
+    void OrdOutput(CAmount amount, std::string addr)
     { m_ord_destination = P2Witness::Construct(chain(), amount, move(addr)); }
 
-    void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void OrdOutputDestination(std::shared_ptr<IContractDestination> destination)
+    { m_ord_destination = move(destination); }
+
+    void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
+    { m_inputs.emplace_back(bech32(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr))); }
+
+    void AddInput(std::shared_ptr<IContractOutput> prevout)
+    { m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout)); }
+
     void Data(std::string content_type, bytevector data)
     {
         m_content_type = move(content_type);

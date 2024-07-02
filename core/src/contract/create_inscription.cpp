@@ -126,11 +126,6 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
 }
 
 
-void CreateInscriptionBuilder::AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
-{
-    m_inputs.emplace_back(bech32(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
-}
-
 void CreateInscriptionBuilder::AddToCollection(std::string collection_id,
                                                std::string utxo_txid, uint32_t utxo_nout, CAmount amount,
                                                std::string collection_addr)
