@@ -541,6 +541,36 @@ public:
     void AddUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
     { m_ptr->AddUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
 
+    void AddRuneInput(const IContractOutput *prevout, const std::string& rune_id_json, const std::string rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+
+        m_ptr->AddRuneInput(prevout->Share(), move(runeid), move(amount));
+    }
+
+    void AddRuneUTXO(std::string txid, uint32_t nout, const std::string& btc_amount, std::string addr, const std::string& rune_id_json, const std::string rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+
+        m_ptr->AddRuneUTXO(move(txid), nout, ParseAmount(btc_amount), move(addr), move(runeid), move(amount));
+    }
+
     void AddOutput(const std::string& amount, std::string addr)
     { m_ptr->AddOutput(ParseAmount(amount), move(addr)); }
 

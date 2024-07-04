@@ -72,8 +72,8 @@ const char *RUNE_HEADER = "RUNE";
 
 }
 
-const char* RuneId::name_chain_height = "chain_height";
-const char* RuneId::name_tx_index = "tx_index";
+const char* RuneId::name_chain_height = "block";
+const char* RuneId::name_tx_index = "tx";
 
 const char* RuneStoneDestination::type = "RuneStone";
 

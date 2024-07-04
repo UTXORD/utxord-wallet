@@ -327,6 +327,8 @@ interface SimpleTransaction
     void AddOutput([Const] DOMString amount, [Const] DOMString addr);
     void AddOutputDestination([Const] IContractDestination out);
 
+    void AddRuneInput([Const] IContractOutput prevout, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+    void AddRuneUTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString addr, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
     void AddRuneOutput([Const] DOMString amount, [Const] DOMString addr, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
     void AddRuneOutputDestination([Const] IContractDestination out, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
 
