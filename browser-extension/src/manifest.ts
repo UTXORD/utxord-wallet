@@ -39,6 +39,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
             'http://e2e.utxord.com:9000/*',
             'https://sntry.l15.co/*',
             'http://localhost/*',
+            'http://worldclockapi.com/*', //time server api
             'http://127.0.0.1/*'
         ],
         js: ['./content/index.global.js']
@@ -51,6 +52,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
         'http://e2e.utxord.com:9000/*',
         'https://sntry.l15.co/*',
         'http://localhost/*',
+        'http://worldclockapi.com/*', //time server api
         'http://127.0.0.1/*'
     ],
     web_accessible_resources: [{
