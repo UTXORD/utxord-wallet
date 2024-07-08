@@ -204,7 +204,7 @@ interface ICollectionTransferResult {
       }
     }
 
-    async function checkPossibleTabsConflict() {
+    async function checkPossibleTabsAndTimeConflict() {
       const tabs = await chrome.tabs.query({
         windowType: 'normal',
         url: BASE_URL_PATTERN,
@@ -217,6 +217,13 @@ interface ICollectionTransferResult {
             false
         );
         console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with BASE_URL_PATTERN: ${BASE_URL_PATTERN}`);
+      }
+      if(!await Api.fetchTimeSystem()){
+        await Api.sendWarningMessage(
+            'TIMEERROR',
+            "Enable automatic date and time setting for your device",
+            false
+        );
       }
     }
 
@@ -276,7 +283,7 @@ async function helloSite(tabId: number | undefined = undefined){
 
       port.onMessage.addListener(async (payload) => {
         if ('POPUP_MESSAGING_CHANNEL_OPEN' != payload?.id) return;
-          await checkPossibleTabsConflict();
+          await checkPossibleTabsAndTimeConflict();
           const connect = await Api.connect;
           postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: connect });
           Scheduler.getInstance().action = async () => {
@@ -378,6 +385,7 @@ async function helloSite(tabId: number | undefined = undefined){
         await Api.sendMessageToWebPage(GET_CONNECT_STATUS, {}, tabId);
         const addresses = await Api.getAddressForSave();
         if(addresses.length > 0){
+          Api.timeSync = false;
           await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses, tabId);
           await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses, tabId);
         }
@@ -429,6 +437,7 @@ async function newAddress(){
       console.log('NEW_FUND_ADDRESS->run')
       let addresses = newAddress()
       if(addresses.length > 0){
+        Api.timeSync = false;
         await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
         await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
       }
@@ -616,7 +625,7 @@ async function newAddress(){
       console.debug('createChunkInscription: usedAddressesMap:', usedAddressesMap);
 
       const usedAddresses = await Api.getAddressForSave(Object.values(usedAddressesMap));
-
+      Api.timeSync = false;
       if(usedAddresses.length > 0) await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE,usedAddresses, chunkData?._tabId);
       await Api.sendMessageToWebPage(CREATE_CHUNK_INSCRIPTION_RESULT, chunkResults, chunkData?._tabId);
       const updatedAddresses = await Api.getAddressForSave();
@@ -648,6 +657,7 @@ async function newAddress(){
             await Api.genKeys();
             const addresses = await Api.getAddressForSave();
             if(addresses.length > 0){
+              Api.timeSync = false;
               await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses, tabId);
             }
 
@@ -922,6 +932,7 @@ async function newAddress(){
                 if(!allAddressesSaved){
                   allAddresses = await Api.getAddressForSave();
                   if(allAddresses.length>0){
+                      Api.timeSync = false;
                       await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, allAddresses, tabId);
                   }
                 }
@@ -1214,6 +1225,7 @@ async function newAddress(){
           const addresses = await Api.getAddressForSave();
           await Api.sendMessageToWebPage(GET_BALANCES, addresses);
           if(addresses.length > 0){
+            Api.timeSync = false;
             await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
             await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
           }

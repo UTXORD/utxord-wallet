@@ -328,6 +328,7 @@ class Api {
         this.sync = false;
         this.derivate = false;
         this.error_reporting = true;
+        this.timeSync = false;
 
         await this.init(this);
         await this.sentry();
@@ -1546,6 +1547,45 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     return response;
   }
 
+  async fetchTimeSystem(){
+    if(this.timeSync){
+      return true;
+    }
+    const timeserver = await this.Rest.getTimeServer();
+    if(!timeserver){
+      return true;
+    }
+    const d = new Date(timeserver);
+    // console.log('d:',d);
+    const serverYear = d.getUTCFullYear()
+    const serverMonth = this.zeroPad((d.getUTCMonth()+1), 2)
+    const serverDay = this.zeroPad(d.getUTCDate(), 2)
+    const serverHour = this.zeroPad(d.getUTCHours(), 2)
+    const serverMinute = this.zeroPad(d.getUTCMinutes(), 2)
+    const serverSecond = this.zeroPad(d.getUTCSeconds(), 2)
+
+    const sd = new Date();
+    // console.log('sd:',sd);
+    const sysYear = sd.getUTCFullYear()
+    const sysMonth = this.zeroPad((sd.getUTCMonth()+1), 2)
+    const sysDay = this.zeroPad(sd.getUTCDate(), 2)
+    const sysHour = this.zeroPad(sd.getUTCHours(), 2)
+    const sysMinute = this.zeroPad(sd.getUTCMinutes(), 2)
+    const sysSecond = this.zeroPad(sd.getUTCSeconds(), 2)
+    if(serverYear !== sysYear ||
+      serverMonth !== sysMonth ||
+      serverDay !== sysDay ||
+      serverHour !== sysHour ||
+      serverMinute !== sysMinute ||
+      Math.abs(serverSecond-sysSecond) > 5
+    ){
+      console.log('serverSecond',serverSecond,'| sysSecond:',sysSecond)
+      console.log('Enable automatic date and time setting for your device'); return false;
+    }
+    this.timeSync = true;
+    return true;
+  }
+
   async fetchExternalAddresses() {
     if(this.wallet.ext.keys.length<1) return;
 
@@ -1737,6 +1777,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
     if (1 < tabs.length) {
       console.warn(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
+    }
+    if(!await this.fetchTimeSystem()){
+      return null;
     }
     for (let tab of tabs) {
       const url = tab.url || tab.pendingUrl;

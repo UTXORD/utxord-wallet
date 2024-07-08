@@ -23,6 +23,29 @@ class Rest {
       console.log(`Rest::get->error: ${e.message}`, e.stack);
     }
   }
+
+  async getTimeServer(headers = {}) {
+    try{
+      const fullPath = 'https://worldtimeapi.org/api/timezone/Etc/UTC.json';
+      //'http://worldclockapi.com/api/json/utc/now';
+      if(fetch){
+        const response = await fetch(fullPath, {
+          method: 'GET',
+          headers,
+          });
+        if(response?.ok){
+          const json = await response?.json();
+          return json?.datetime;
+        }
+        console.log('error connect:', response.status);
+        return;
+      }
+    }catch(e){
+      console.log(`Rest::get->error: ${e.message}`, e.stack);
+      return;
+    }
+  }
+
 }
 
 export default Rest;
