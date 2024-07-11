@@ -33,7 +33,9 @@ const useWallet = () => {
     if(list?.addresses?.length === 0) return
     const addresses = {};
     for(const item of list.addresses){
-      addresses[item.type] = item;
+      if(store.typeAddress === item.typeAddress){
+        addresses[item.type] = item;
+      }
     }
     if (addresses?.ord) {
       store.setOrdAddress(addresses?.ord?.address)

@@ -1064,8 +1064,8 @@ checkAddressFromKeyRegistry(address, type = undefined, path = undefined){
   }
 
   // console.log('checkAddressFromKeyRegistry->address:', address, ' type:',type, ' path:',path)
-   return setTimeout(((address, type, path, myself) =>{
-     return ()=>{
+   // return setTimeout(((address, type, path, myself) =>{
+   //   return ()=>{
        try {
   let min_index = 0;
   let max_index_range = myself.max_index_range + 1;
@@ -1133,8 +1133,8 @@ checkAddressFromKeyRegistry(address, type = undefined, path = undefined){
     }
     return null;
   }
-     };
-   })(address,type, path, myself), 0);
+   //   };
+   // })(address,type, path, myself), 0);
 }
 
 getKeyFromKeyRegistry(address: string, type = undefined, path = undefined){

@@ -1,7 +1,7 @@
 <template>
   <SignWrapper data-testid="sign-buy-page">
     <!-- To address -->
-    <!--
+    <!--  
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
     >
@@ -10,6 +10,7 @@
           >My ordinal address:</span
         >
         <CustomInput
+        type="text"
           :value="formatAddress(fundAddress, 12, 12)"
           class="w-full"
           readonly

@@ -340,7 +340,7 @@ function goToBack(){
 
 onBeforeMount(() => {
   console.log('onBeforeMount')
-  if(list.value.length > 0) inputWords({
+  if(list.value?.length > 0) inputWords({
     target:{
       value: list.value.join(' ')
     }

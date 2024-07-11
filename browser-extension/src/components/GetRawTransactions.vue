@@ -2,7 +2,7 @@
 <!-- Total -->
 <div
   class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
-  v-show="raws.length > 0"
+  v-show="raws?.length > 0"
   data-testid="get-raw-tx-description"
 >
   <span><a @click="whatSigning" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>

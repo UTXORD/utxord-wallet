@@ -25,13 +25,13 @@ export function showError(title: string, text: string, duration: number = 10000)
 }
 
 export function formatAddress(address: string, start?: number, end?: number) {
-  if (address) {
+  if (address?.length) {
     return (
       address.substring(0, (start || 3)) +
       '...' +
       address.substring(
-        address.length - (end || 3),
-        address.length
+        address?.length - (end || 3),
+        address?.length
       )
     );
   }
@@ -80,7 +80,7 @@ export function getRandom(mins:number = 0, maxs:number = 2147483647): number{
 }
 
 export function isLength(str: string) {
-  return (str.length > 8);
+  return (str?.length > 8);
 }
 
 export function convertSatsToUSD(sats: number, usdRate: number): number {
