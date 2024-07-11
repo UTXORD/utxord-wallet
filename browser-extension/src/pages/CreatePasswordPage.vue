@@ -104,7 +104,7 @@ function upDatePasswordFromLocalStorage(){
 }
 
 const isDisabled = computed(() => {
-  if (!password.value.length || !confirmPassword.value.length) return true
+  if (!password.value?.length || !confirmPassword.value?.length) return true
   if (password.value !== confirmPassword.value) return true
   if (!isASCII(password.value) || !isASCII(confirmPassword.value)) return true
   if (!isLength(password.value) || !isLength(confirmPassword.value)) return true

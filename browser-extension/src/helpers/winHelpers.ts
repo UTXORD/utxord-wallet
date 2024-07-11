@@ -60,7 +60,7 @@ class WinHelpers implements IWinHelpers {
 
     const versionParts = version.split('.');
     if (versionName) {
-      if (versionParts.length < 4) {
+      if (versionParts?.length < 4) {
         throw new Error(`Version missing build number: '${version}'`);
       }
       // On Chrome, a more descriptive representation of the version is stored in the
@@ -70,7 +70,7 @@ class WinHelpers implements IWinHelpers {
       // yet Chrome does not allow letters in the `version` field.
       return versionName;
       // A fourth version part is sometimes present for "rollback" Chrome builds
-    } else if (![3, 4].includes(versionParts.length)) {
+    } else if (![3, 4].includes(versionParts?.length)) {
       throw new Error(`Invalid version: ${version}`);
     } else if (versionParts[2].match(/[^\d]/u)) {
       // On Firefox, the build type and build version are in the third part of the version.
