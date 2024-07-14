@@ -119,9 +119,12 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
+  let authenticated = false;
+  try {
+    authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
+  } catch(e) {}
   const currentPage = await localStorage?.getItem(CURRENT_PAGE)
-  const pageMatched = await to.matched.some(record => record.meta.requiresAuth)
+  const pageMatched = to.matched.some(record => record.meta.requiresAuth)
   console.log('authenticated:', authenticated, ' to.path:', to.path);
   if (!authenticated && pageMatched) {
     if(!currentPage) next({ path: START_ROUTE.path });
