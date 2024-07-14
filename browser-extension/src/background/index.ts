@@ -227,18 +227,18 @@ interface ICollectionTransferResult {
       }
     }
 
-async function helloSite(tabId: number | undefined = undefined){
-  console.log('helloSite->run')
-  await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id, tabId);
-  const user = await Api.wallet?.auth?.key?.PubKey();
-  if(user){
-    await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user, tabId);
-  }
-  // const success = await Api.checkSeed();
-  // if(success){
-  //   await Api.sendMessageToWebPage(CONNECT_TO_SITE, true, tabId);
-  // }
-}
+    async function helloSite(tabId: number | undefined = undefined){
+      console.log('helloSite->run')
+      await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id, tabId);
+      const user = await Api.wallet?.auth?.key?.PubKey();
+      if(user){
+        await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user, tabId);
+      }
+      // const success = await Api.checkSeed();
+      // if(success){
+      //   await Api.sendMessageToWebPage(CONNECT_TO_SITE, true, tabId);
+      // }
+    }
 
     async function reConnectSession(unload = false){
       console.log('reConnectSession->run')
@@ -417,21 +417,21 @@ async function helloSite(tabId: number | undefined = undefined){
       return addresses;
     });
 
-async function newAddress(){
-  await Api.setDerivate(1);
-  await Api.generateNewIndex('fund');
-  const newKeys = await Api.genKeys();
-  const addresses = await Api.getAddressForSave(newKeys.addresses);
-  console.log('newKeys.addresses:',newKeys.addresses)
-  console.log('ADDRESSES_TO_SAVE:', addresses);
-  if(addresses.length > 0){
-    await reConnectSession(true);
-    await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
-    await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
-    return newKeys;
-  }
-  return newKeys;
-}
+    async function newAddress(){
+      await Api.setDerivate(1);
+      await Api.generateNewIndex('fund');
+      const newKeys = await Api.genKeys();
+      const addresses = await Api.getAddressForSave(newKeys.addresses);
+      console.log('newKeys.addresses:',newKeys.addresses)
+      console.log('ADDRESSES_TO_SAVE:', addresses);
+      if(addresses.length > 0){
+        await reConnectSession(true);
+        await Api.sendMessageToWebPage(ADDRESSES_TO_SAVE, addresses);
+        await Api.sendMessageToWebPage(GET_ALL_ADDRESSES, addresses);
+        return newKeys;
+      }
+      return newKeys;
+    }
 
     onMessage(NEW_FUND_ADDRESS, async () => {
       console.log('NEW_FUND_ADDRESS->run')
