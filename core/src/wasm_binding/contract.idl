@@ -159,8 +159,10 @@ interface CreateInscriptionBuilder
     void InscribeInternalPubKey([Const] DOMString pk);
     void FundMiningFeeInternalPubKey([Const] DOMString pk);
 
-    void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, unsigned long nout, [Const] DOMString amount,
-                                                   [Const] DOMString collectionAddr);
+    void AddCollectionUTXO([Const] DOMString collectionId, [Const] DOMString txid, unsigned long nout,
+                           [Const] DOMString amount, [Const] DOMString collectionAddr);
+    void AddCollectionInput([Const] DOMString collectionId, [Const] IContractOutput prevout);
+
     void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
     void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);

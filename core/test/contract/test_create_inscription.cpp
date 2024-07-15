@@ -213,7 +213,7 @@ TEST_CASE("inscribe")
             }
 
             if (condition.has_parent) {
-                CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount,
+                CHECK_NOTHROW(builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount,
                                                       collection_utxo.m_addr));
             }
 
@@ -314,7 +314,7 @@ TEST_CASE("inscribe")
                 CreateInscriptionBuilder fin_builder(w->chain(), LAZY_INSCRIPTION);
                 REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LAZY_INSCRIPTION_SIGNATURE));
 
-                CHECK_NOTHROW(fin_builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
+                CHECK_NOTHROW(fin_builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
                 if (condition.return_collection) {
                     CHECK_NOTHROW(fin_builder.OverrideCollectionAddress(return_addr));
                 }
@@ -392,7 +392,7 @@ TEST_CASE("inscribe")
                 delegate_id = collection_id;
             }
 
-            w->confirm(1);
+            w->confirm(1, revealTx.GetHash().GetHex());
         }
     }
 }
@@ -460,7 +460,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     REQUIRE_NOTHROW(builder.AddInput(w->fund(min_fund, addr)));
 
     if (condition.has_parent) {
-        CHECK_NOTHROW(builder.AddToCollection(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
+        CHECK_NOTHROW(builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
     }
 
     stringvector rawtxs0;
@@ -515,7 +515,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
         collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, w->p2tr(2, 0, 0)};
     }
 
-    w->confirm(1);
+    w->confirm(1, revealTx.GetHash().GetHex());
 }
 
 struct EtchParams
@@ -610,11 +610,11 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
 
-    w->confirm(4);
+    w->confirm(4, commitTx.GetHash().GetHex());
 
     REQUIRE_THROWS(w->btc().SpendTx(CTransaction(revealTx)));
 
-    w->confirm(1);
+    w->confirm(5, commitTx.GetHash().GetHex());
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
@@ -622,7 +622,7 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
-    w->confirm(1);
+    auto confirm = w->confirm(1, revealTx.GetHash().GetHex());
 
     auto rune_obj = w->rune(rune.RuneText(""));
 
@@ -630,7 +630,7 @@ TEST_CASE("etch")
 
     CHECK(condition.pre_mint == rune_obj["supply"].get<uint64_t>());
 
-    rune.RuneId(w->btc().GetChainHeight(), 1);
+    rune.RuneId(get<0>(confirm), get<1>(confirm));
 
     SECTION("mint")
     {
@@ -664,7 +664,7 @@ TEST_CASE("etch")
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(mintTx)));
 
-        w->confirm(1);
+        w->confirm(1, mintTx.GetHash().GetHex());
 
         auto rune_json = w->rune(rune.RuneText(""));
         std::clog << rune_json << std::endl;
@@ -704,7 +704,7 @@ TEST_CASE("etch")
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(transferTx)));
 
-            w->confirm(1);
+            w->confirm(1, transferTx.GetHash().GetHex());
 
             auto rune_balance_json = w->rune_balances(rune.RuneText("•"));
             std::clog << rune_balance_json << std::endl;
@@ -852,7 +852,7 @@ TEST_CASE("avatar")
 
     }
     if (avatar_collection_utxo) {
-        REQUIRE_NOTHROW(builder.AddToCollection(collection_id, avatar_collection_utxo->m_txid, avatar_collection_utxo->m_nout, avatar_collection_utxo->m_amount, avatar_collection_utxo->m_addr));
+        REQUIRE_NOTHROW(builder.AddCollectionUTXO(collection_id, avatar_collection_utxo->m_txid, avatar_collection_utxo->m_nout, avatar_collection_utxo->m_amount, avatar_collection_utxo->m_addr));
     }
 
     REQUIRE_NOTHROW(builder.AddInput(w->fund(builder.GetMinFundingAmount(""), w->p2tr(0, 0, 0))));
@@ -881,12 +881,9 @@ TEST_CASE("avatar")
     REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
-
-    w->confirm(5);
-
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
-    w->confirm(1);
+    w->confirm(1, revealTx.GetHash().GetHex());
 
     if (condition.is_parent) {
         collection_id = revealTx.GetHash().GetHex() + "i0";

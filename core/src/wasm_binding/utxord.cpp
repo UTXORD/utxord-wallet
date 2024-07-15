@@ -692,9 +692,11 @@ public:
     void FundMiningFeeInternalPubKey(const std::string& pk)
     { m_ptr->FundMiningFeeInternalPubKey(unhex<xonly_pubkey>(pk)); }
 
-    void AddToCollection(std::string collection_id, std::string txid, uint32_t nout, const std::string& amount, std::string collection_addr)
-    { m_ptr->AddToCollection(move(collection_id), move(txid), nout, ParseAmount(amount), move(collection_addr)); }
+    void AddCollectionUTXO(std::string collection_id, std::string txid, uint32_t nout, const std::string& amount, std::string collection_addr)
+    { m_ptr->AddCollectionUTXO(move(collection_id), move(txid), nout, ParseAmount(amount), move(collection_addr)); }
 
+    void AddCollectionInput(std::string collection_id, const IContractOutput* prevout)
+    { m_ptr->AddCollectionInput(move(collection_id), prevout->Share()); }
 
     void SignCommit(const KeyRegistry* keyRegistry, const std::string& key_filter)
     { m_ptr->SignCommit(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }

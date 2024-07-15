@@ -126,14 +126,6 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
 }
 
 
-void CreateInscriptionBuilder::AddToCollection(std::string collection_id,
-                                               std::string utxo_txid, uint32_t utxo_nout, CAmount amount,
-                                               std::string collection_addr)
-{
-    Collection(move(collection_id), amount, collection_addr);
-    m_collection_input.emplace(bech32(), 1, std::make_shared<UTXO>(chain(), move(utxo_txid), utxo_nout, amount, move(collection_addr)));
-}
-
 void CreateInscriptionBuilder::Collection(std::string collection_id, CAmount amount, std::string collection_addr)
 {
     if (m_parent_collection_id) {

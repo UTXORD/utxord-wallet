@@ -178,18 +178,47 @@ struct TestcaseWrapper
         StopRegtestBitcoinNode();
     }
 
-    void confirm(uint32_t n)
+    std::tuple<uint64_t, uint32_t> confirm(uint32_t n, const std::string& txid)
     {
-        if (chain() == l15::REGTEST) {
-            btc().GenerateToAddress(btc().GetNewAddress(), std::to_string(n));
-        }
-        else {
-            uint32_t target_height = btc().GetChainHeight() + n;
-            do {
-                std::this_thread::sleep_for(std::chrono::seconds(10));
+        uint32_t confirmations = 0;
+        uint32_t height = 0;
+        std::string blockhash;
+        do {
+            if (chain() == l15::REGTEST) {
+                btc().GenerateToAddress(btc().GetNewAddress(), "1");
             }
-            while (target_height < btc().GetChainHeight());
+            else {
+                std::this_thread::sleep_for(std::chrono::seconds(45));
+            }
+
+            std::string strTx = btc().GetTxOut(txid, "0");
+            if(strTx.empty()) continue;
+
+            nlohmann::json tx_json = nlohmann::json::parse(strTx);
+            confirmations = tx_json["confirmations"].get<uint32_t>();
+            blockhash = tx_json["bestblock"].get<std::string>();
+
         }
+        while (confirmations < n);
+
+        nlohmann::json block_json;
+        do {
+            std::string strBlock = btc().GetBlock(blockhash, "1");
+            block_json = nlohmann::json::parse(strBlock);
+            height = block_json["height"].get<uint32_t>();
+            blockhash = block_json["previousblockhash"].get<std::string>();
+            --confirmations;
+        }
+        while (confirmations > 0);
+
+        const auto& txs = block_json["tx"];
+        uint32_t i;
+        uint32_t cnt = block_json["nTx"].get<uint32_t>();
+        for (i = 0; i < cnt; ++i) {
+            std::string tx = txs[i].get<std::string>();
+            if (tx == txid) return {height, i};
+        }
+        throw std::runtime_error("Tx is not found: " + txid);
     }
 
     void InitKeyRegistry(const std::string& seedhex)

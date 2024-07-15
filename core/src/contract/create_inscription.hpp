@@ -174,8 +174,14 @@ public:
     void FixedChange(CAmount amount, std::string addr)
     { m_fixed_change = P2Witness::Construct(chain(), amount, move(addr)); }
 
-    void AddToCollection(std::string collection_id,
-                         std::string utxo_txid, uint32_t utxo_nout, CAmount amount, std::string collection_addr);
+    void AddCollectionInput(std::string collection_id, std::shared_ptr<IContractOutput> prevout)
+    {
+        Collection(move(collection_id), prevout->Amount(), prevout->Address());
+        m_collection_input.emplace(bech32(), 1, move(prevout));
+    }
+
+    void AddCollectionUTXO(std::string collection_id, std::string utxo_txid, uint32_t utxo_nout, CAmount amount, std::string collection_addr)
+    { AddCollectionInput(move(collection_id), std::make_shared<UTXO>(chain(), move(utxo_txid), utxo_nout, amount, move(collection_addr))); }
 
     void Collection(std::string collection_id, CAmount amount, std::string collection_addr);
 

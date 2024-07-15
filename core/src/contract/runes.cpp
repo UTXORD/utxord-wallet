@@ -65,8 +65,6 @@ using int136_t = number<cpp_int_backend<128, 136, signed_magnitude, unchecked, v
 using int136_t = number<debug_adaptor<cpp_int_backend<128, 136, signed_magnitude, unchecked, void>>>;
 #endif
 
-const int136_t MAX_RUNE = static_cast<int136_t>(std::numeric_limits<uint128_t>::max());
-
 const char *RUNE_TEST_HEADER = "RUNE_TEST";
 const char *RUNE_HEADER = "RUNE";
 
@@ -612,6 +610,8 @@ std::optional<RuneStone> ParseRuneStone(const string &hex_tx, ChainMode chain)
 
 uint128_t EncodeRune(const std::string &text_rune)
 {
+    static const int136_t MAX_RUNE = std::numeric_limits<uint128_t>::max();
+
     if (text_rune.empty()) throw ContractFormatError("cannot encode empty string as Rune");
 
     int136_t n = -1;
