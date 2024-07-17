@@ -34,12 +34,11 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
       {
         matches: [
             'https://utxord.com/*',
+            'https://api.utxord.com/*',
             'https://qa.utxord.com/*',
-            'http://10.1.10.100:8080/*',
-            'http://e2e.utxord.com:9000/*',
+            'https://api.qa.utxord.com/*',
             'https://sntry.l15.co/*',
             'http://localhost/*',
-            'http://worldclockapi.com/*', //time server api
             'http://127.0.0.1/*'
         ],
         js: ['./content/index.global.js']
@@ -47,12 +46,11 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     ],
     host_permissions: [
         'https://utxord.com/*',
+        'https://api.utxord.com/*',
         'https://qa.utxord.com/*',
-        'http://10.1.10.100:8080/*',
-        'http://e2e.utxord.com:9000/*',
+        'https://api.qa.utxord.com/*',
         'https://sntry.l15.co/*',
         'http://localhost/*',
-        'http://worldclockapi.com/*', //time server api
         'http://127.0.0.1/*'
     ],
     web_accessible_resources: [{
@@ -75,6 +73,11 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     manifest.content_security_policy = {
       extension_pages: `script-src 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; script-src-elem 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
     }
+  }
+  if (TARGET !== '_utxord') {
+    const e2eUrl = 'http://e2e.utxord.com:9000/*';
+    manifest.content_scripts[0].matches.push(e2eUrl);
+    manifest.host_permissions.push(e2eUrl);
   }
 
   return manifest

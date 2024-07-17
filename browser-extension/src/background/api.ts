@@ -1551,12 +1551,14 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     if(this.timeSync){
       return true;
     }
-    const timeserver = await this.Rest.getTimeServer();
-    if(!timeserver){
+    const datetime_server_resp = await this.Rest.get('/api/datetime');
+    const datetime_from_server = datetime_server_resp?.data?.datetime;
+    if(!datetime_from_server){
       return true;
     }
-    const d = new Date(timeserver);
-    // console.log('d:',d);
+    const d = new Date(datetime_from_server);
+
+    console.debug('datetime from server:', d);
     const serverYear = d.getUTCFullYear()
     const serverMonth = this.zeroPad((d.getUTCMonth()+1), 2)
     const serverDay = this.zeroPad(d.getUTCDate(), 2)
