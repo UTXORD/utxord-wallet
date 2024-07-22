@@ -67,8 +67,6 @@ struct IJsonSerializable
 {
     static const std::string name_type;
 
-    mutable std::string buf;
-
     virtual ~IJsonSerializable() = default;
     virtual UniValue MakeJson() const = 0;
     virtual void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) = 0;
@@ -210,6 +208,45 @@ public:
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
 };
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+class OpReturnDestination final: public IContractDestination
+{
+    CAmount m_amount = 0;
+    bytevector m_data {};
+public:
+    static const char* type;
+
+    static const char* name_data;
+
+    OpReturnDestination() = default;
+    OpReturnDestination(const OpReturnDestination&) = default;
+    OpReturnDestination(OpReturnDestination&&) noexcept = default;
+
+    explicit OpReturnDestination(bytevector data, CAmount amount=0) : m_amount(amount), m_data(move(data)) {}
+
+    explicit OpReturnDestination(const UniValue& json, const std::function<std::string()>& lazy_name);
+
+    void Amount(CAmount amount) override { m_amount = amount; }
+    CAmount Amount() const final { return m_amount; }
+
+    void Data(bytevector data);
+    const bytevector& Data() const { return m_data; }
+
+    std::string Address() const override { return {}; }
+    CScript PubKeyScript() const override;
+    std::vector<bytevector> DummyWitness() const override { throw std::domain_error("OP_RETURN destination cannot have a witness"); }
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
+    { throw std::domain_error("OP_RETURN destination cannot provide a signer"); }
+
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
+
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
+
+};
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 class IContractMultiOutput {
@@ -345,7 +382,7 @@ public:
     static const std::string name_mining_fee_rate;
     static const std::string name_market_fee;
 
-    static const char* name_utxo;
+    static const std::string name_utxo;
     static const std::string name_txid;
     static const std::string name_nout;
     static const std::string name_pk;

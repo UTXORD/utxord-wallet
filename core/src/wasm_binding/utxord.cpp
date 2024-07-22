@@ -538,14 +538,98 @@ public:
     void AddInput(const IContractOutput *prevout)
     { m_ptr->AddInput(prevout->Share()); }
 
-    void AddOutput(const IContractDestination *out)
-    { m_ptr->AddOutput(out->Share()); }
+    void AddUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
+    { m_ptr->AddUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void AddRuneInput(const IContractOutput *prevout, const std::string& rune_id_json, const std::string rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+
+        m_ptr->AddRuneInput(prevout->Share(), move(runeid), move(amount));
+    }
+
+    void AddRuneUTXO(std::string txid, uint32_t nout, const std::string& btc_amount, std::string addr, const std::string& rune_id_json, const std::string rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+
+        m_ptr->AddRuneUTXO(move(txid), nout, ParseAmount(btc_amount), move(addr), move(runeid), move(amount));
+    }
+
+    void AddOutput(const std::string& amount, std::string addr)
+    { m_ptr->AddOutput(ParseAmount(amount), move(addr)); }
+
+    void AddOutputDestination(const IContractDestination *out)
+    { m_ptr->AddOutputDestination(out->Share()); }
+
+    void AddRuneOutput(const std::string& btc_amount, std::string addr, const std::string& rune_id_json, const std::string rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+        
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+        
+        m_ptr->AddRuneOutput(ParseAmount(btc_amount), move(addr), move(runeid), move(amount));
+    }
+    
+    void AddRuneOutputDestination(const IContractDestination *out, const std::string& rune_id_json, const std::string& rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+        
+        m_ptr->AddRuneOutputDestination(out->Share(), move(runeid), move(amount));
+    }
+
+    void BurnRune(const std::string& rune_id_json, const std::string rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+
+        m_ptr->BurnRune(move(runeid), move(amount));
+    }
 
     void AddChangeOutput(const std::string &pk)
     { m_ptr->AddChangeOutput(pk); }
 
     void Sign(const KeyRegistry *master, const std::string key_filter_tag)
-    { m_ptr->Sign(*reinterpret_cast<const utxord::KeyRegistry *>(master), key_filter_tag); }
+    { m_ptr->Sign(*reinterpret_cast<const l15::core::KeyRegistry *>(master), key_filter_tag); }
+
+    void PartialSign(const KeyRegistry *master, const std::string key_filter_tag, uint32_t nin)
+    { m_ptr->PartialSign(*reinterpret_cast<const l15::core::KeyRegistry *>(master), key_filter_tag, nin); }
 
     const char *Serialize(uint32_t version, TxPhase phase)
     {
@@ -578,6 +662,12 @@ public:
         auto out = m_ptr->ChangeOutput();
         return out ? new ContractOutputWrapper(out) : nullptr;
     }
+
+    const IContractOutput* RuneStoneOutput() const
+    {
+        auto out = m_ptr->RuneStoneOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
 };
 
 class CreateInscriptionBuilder : public ContractBuilder<utxord::CreateInscriptionBuilder>
@@ -587,11 +677,17 @@ public:
     : ContractBuilder(std::make_shared<utxord::CreateInscriptionBuilder>(mode, type))
     {}
 
-    void OrdDestination(const std::string& amount, std::string addr)
-    { m_ptr->OrdDestination(ParseAmount(amount), move(addr)); }
+    void OrdOutput(const std::string& amount, std::string addr)
+    { m_ptr->OrdOutput(ParseAmount(amount), move(addr)); }
+
+    void OrdOutputDestination(const IContractDestination *out)
+    { m_ptr->OrdOutputDestination(out->Share()); }
 
     void AddUTXO(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
     { m_ptr->AddUTXO(move(txid), nout, ParseAmount(amount), move(addr)); }
+
+    void AddInput(const IContractOutput* prevout)
+    { m_ptr->AddInput(prevout->Share()); }
 
     void Data(std::string content_type, const std::string& hex_data)
     { m_ptr->Data(move(content_type), unhex<bytevector>(hex_data)); }
@@ -617,18 +713,20 @@ public:
     void FundMiningFeeInternalPubKey(const std::string& pk)
     { m_ptr->FundMiningFeeInternalPubKey(unhex<xonly_pubkey>(pk)); }
 
-    void AddToCollection(std::string collection_id, std::string txid, uint32_t nout, const std::string& amount, std::string collection_addr)
-    { m_ptr->AddToCollection(move(collection_id), move(txid), nout, ParseAmount(amount), move(collection_addr)); }
+    void AddCollectionUTXO(std::string collection_id, std::string txid, uint32_t nout, const std::string& amount, std::string collection_addr)
+    { m_ptr->AddCollectionUTXO(move(collection_id), move(txid), nout, ParseAmount(amount), move(collection_addr)); }
 
+    void AddCollectionInput(std::string collection_id, const IContractOutput* prevout)
+    { m_ptr->AddCollectionInput(move(collection_id), prevout->Share()); }
 
     void SignCommit(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignCommit(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignCommit(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignInscription(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignInscription(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignInscription(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignCollection(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignCollection(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignCollection(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     const char* Serialize(uint32_t version, InscribePhase phase) const
     {
@@ -709,16 +807,16 @@ public:
     { m_ptr->SwapScriptPubKeyB(unhex<xonly_pubkey>(pk)); }
 
     void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignOrdSwap(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsCommitment(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsSwap(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsPayBack(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignFundsPayBack(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsPayBack(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     const char* Serialize(uint32_t version, SwapPhase phase) const
     {
@@ -797,16 +895,16 @@ public:
     { m_ptr->OrdIntPubKey(unhex<xonly_pubkey>(pk)); }
 
     void SignOrdSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignOrdSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignOrdSwap(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignOrdCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignOrdCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignOrdCommitment(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsCommitment(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignFundsCommitment(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsCommitment(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     void SignFundsSwap(const KeyRegistry* keyRegistry, const std::string& key_filter)
-    { m_ptr->SignFundsSwap(*reinterpret_cast<const utxord::KeyRegistry *>(keyRegistry), key_filter); }
+    { m_ptr->SignFundsSwap(*reinterpret_cast<const l15::core::KeyRegistry *>(keyRegistry), key_filter); }
 
     const char* Serialize(uint32_t version, TrustlessSwapPhase phase) const
     {
