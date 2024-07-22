@@ -178,7 +178,7 @@ struct TestcaseWrapper
         StopRegtestBitcoinNode();
     }
 
-    std::tuple<uint64_t, uint32_t> confirm(uint32_t n, const std::string& txid)
+    std::tuple<uint64_t, uint32_t> confirm(uint32_t n, const std::string& txid, uint32_t nout = 0)
     {
         uint32_t confirmations = 0;
         uint32_t height = 0;
@@ -191,7 +191,7 @@ struct TestcaseWrapper
                 std::this_thread::sleep_for(std::chrono::seconds(45));
             }
 
-            std::string strTx = btc().GetTxOut(txid, "0");
+            std::string strTx = btc().GetTxOut(txid, std::to_string(nout));
             if(strTx.empty()) continue;
 
             nlohmann::json tx_json = nlohmann::json::parse(strTx);

@@ -52,7 +52,8 @@ test_swap_inscription \
 test_trustless_swap_inscription \
 test_inscription \
 test_simple_tx \
-test_runes
+test_runes \
+test_create_collection_with_runes
 
 
 test_contract_builder_SOURCES = test_contract_builder.cpp
@@ -75,3 +76,7 @@ test_simple_tx_LDADD = $(L15_LIBS)
 
 test_runes_SOURCES = test_runes.cpp
 test_runes_LDADD = $(L15_LIBS)
+
+test_create_collection_with_runes_SOURCES = test_create_collection_with_runes.cpp
+test_create_collection_with_runes_LDADD = $(L15_LIBS)
+

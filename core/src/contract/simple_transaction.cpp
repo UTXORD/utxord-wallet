@@ -95,6 +95,22 @@ void SimpleTransaction::AddRuneOutputDestination(std::shared_ptr<IContractDestin
     rune_stone->op_dictionary.emplace(move(runeid), std::make_tuple(move(rune_amount), transfer_nout));
 }
 
+void SimpleTransaction::BurnRune(RuneId runeid, uint128_t rune_amount)
+{
+    std::shared_ptr<RuneStoneDestination> rune_stone;
+    if (m_runestone_nout) {
+        rune_stone = std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs[*m_runestone_nout]);
+        if (!rune_stone) throw ContractStateError("Not a RuneStone output: " + std::to_string(*m_runestone_nout));
+    }
+    else {
+        rune_stone = std::make_shared<RuneStoneDestination>(chain());
+        m_outputs.push_back(rune_stone);
+        m_runestone_nout = m_outputs.size() - 1;
+    }
+
+    rune_stone->op_dictionary.emplace(move(runeid), std::make_tuple(move(rune_amount), *m_runestone_nout));
+}
+
 void SimpleTransaction::AddChangeOutput(std::string addr)
 {
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
@@ -195,7 +211,7 @@ std::vector<std::string> SimpleTransaction::RawTransactions() const
 
 UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 {
-    if (version != s_protocol_version && version != s_protocol_version_no_rune_transfer) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
+    if (version != s_protocol_version && version != s_protocol_version_no_rune_transfer) throw ContractProtocolError("Wrong contract version: " + std::to_string(version) + ". Allowed are " + s_versions);
 
     UniValue contract(UniValue::VOBJ);
     contract.pushKV(name_version, (int)s_protocol_version);
@@ -297,9 +313,9 @@ void SimpleTransaction::CheckContractTerms(TxPhase phase) const
         std::shared_ptr<RuneStoneDestination> rune_stone;
         if (m_runestone_nout) {
             rune_stone = std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs[*m_runestone_nout]);
-            if (!rune_stone) throw ContractTermMismatch("Not RuneStone output: " + std::to_string(*m_runestone_nout));
+            if (!rune_stone) throw ContractStateError("Not RuneStone output: " + std::to_string(*m_runestone_nout));
         }
-        else throw ContractTermMissing("RuneStone");
+        else throw ContractStateError("RuneStone");
 
         std::map<RuneId, int136_t> balances;
 

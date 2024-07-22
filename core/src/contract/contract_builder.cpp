@@ -36,22 +36,27 @@ UniValue WitnessStack::MakeJson() const
 void WitnessStack::ReadJson(const UniValue &stack, const std::function<std::string()> &lazy_name)
 {
     if (!stack.isArray()) {
-        throw ContractTermWrongValue(std::string(TxInput::name_witness));
+        throw ContractTermWrongFormat(std::string(TxInput::name_witness));
     }
 
     size_t i = 0;
-    for (const auto& v: stack.getValues()) {
-        if (!v.isStr()) {
-            throw ContractTermWrongValue("witness[" + std::to_string(i) + ']');
-        }
+    try {
+        for (const auto& v: stack.getValues()) {
+            if (!v.isStr()) {
+                throw ContractTermWrongFormat("witness[" + std::to_string(i) + ']');
+            }
 
-        if (i < m_stack.size()) {
-            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << ']').str());
+            if (i < m_stack.size()) {
+                if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << ']').str());
+            }
+            else {
+                m_stack.emplace_back(unhex<bytevector>(v.get_str()));
+            }
+            ++i;
         }
-        else {
-            m_stack.emplace_back(unhex<bytevector>(v.get_str()));
-        }
-        ++i;
+    }
+    catch(std::logic_error& e) {
+        std::throw_with_nested(ContractTermWrongFormat("witness[" + std::to_string(i) + ']'));
     }
 }
 
@@ -186,6 +191,76 @@ std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, CAmo
     } else {
         throw ContractTermWrongValue((std::ostringstream() << addr << " wrong witness ver: " << witver).str());
     }
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+const char* OpReturnDestination::type = "op_return";
+const char* OpReturnDestination::name_data = "data";
+
+OpReturnDestination::OpReturnDestination(const UniValue &json, const std::function<std::string()> &lazy_name)
+{
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
+        throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
+    }
+
+    if (!json.exists(name_amount)) throw ContractTermMissing(lazy_name() + '.' + name_amount);
+    if (!json[name_amount].isNum()) throw ContractTermWrongFormat(lazy_name() + '.' + name_amount);
+
+    if (json.exists(name_data)) {
+        if(!json[name_data].isStr()) throw ContractTermWrongFormat(lazy_name() + '.' + name_data);
+        try {
+            m_data = unhex<bytevector>(json[name_data].getValStr());
+        } catch(std::logic_error& e) {
+            std::throw_with_nested(ContractTermWrongFormat(lazy_name() + '.' + name_data));
+        }
+        if (m_data.size() > 80)
+            throw ContractTermWrongValue(lazy_name() + '.' + name_data + " is too large: " + std::to_string(m_data.size()));
+    }
+
+    m_amount = json[name_amount].getInt<CAmount>();
+}
+
+void OpReturnDestination::Data(bytevector data)
+{
+    if (data.size() > 80) {
+        std::ostringstream buf;
+        buf << type << "." << name_data << " is too large: " << m_data.size();
+        throw ContractTermWrongValue(buf.str());
+    }
+    m_data = move(data);
+}
+
+CScript OpReturnDestination::PubKeyScript() const
+{
+    CScript pubKeyScript {OP_RETURN};
+
+    if (!m_data.empty())
+        pubKeyScript << m_data;
+
+    return pubKeyScript;
+}
+
+UniValue OpReturnDestination::MakeJson() const
+{
+    UniValue res(UniValue::VOBJ);
+    res.pushKV(name_type, type);
+    res.pushKV(name_amount, m_amount);
+    res.pushKV(name_data, hex(m_data));
+
+    return res;
+}
+
+void OpReturnDestination::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
+{
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) throw ContractTermMismatch(lazy_name());
+    if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
+    if (hex(m_data) != json[name_data].getValStr())  throw ContractTermMismatch(move((lazy_name() += '.') += name_data));
+}
+
+std::shared_ptr<IContractDestination> OpReturnDestination::Construct(ChainMode chain, const UniValue &json, const std::function<std::string()> &lazy_name)
+{
+    return std::make_shared<OpReturnDestination>(json, lazy_name);
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -425,8 +500,8 @@ void IContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std:
         try {
             new_pk = unhex<xonly_pubkey>(val.get_str());
         }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(lazy_name()));
+        catch (std::logic_error& e) {
+            std::throw_with_nested(ContractTermWrongFormat(lazy_name()));
         }
 
         if (pk) {

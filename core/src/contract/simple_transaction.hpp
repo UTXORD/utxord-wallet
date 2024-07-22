@@ -21,6 +21,7 @@ public:
 private:
     static const uint32_t s_protocol_version;
     static const uint32_t s_protocol_version_no_rune_transfer;
+    static const uint32_t s_protocol_version_no_opreturn;
     static const char* s_versions;
 
     std::vector<TxInput> m_inputs;
@@ -75,6 +76,7 @@ public:
 
     void AddRuneOutputDestination(std::shared_ptr<IContractDestination> destination, RuneId runeid, uint128_t rune_amount);
     void AddRuneOutput(CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount);
+    void BurnRune(RuneId runeid, uint128_t rune_amount);
 
     const std::vector<TxInput>& Inputs() const { return m_inputs; }
     std::vector<TxInput>& Inputs() { return m_inputs; }
@@ -113,6 +115,14 @@ public:
             ? std::make_shared<UTXO>(chain(), TxID(), *m_change_nout, m_outputs[*m_change_nout])
             : std::shared_ptr<IContractOutput>();
     }
+
+    std::shared_ptr<IContractOutput> RuneStoneOutput() const
+    {
+        return m_runestone_nout
+            ? std::make_shared<UTXO>(chain(), TxID(), *m_runestone_nout, m_outputs[*m_runestone_nout])
+            : std::shared_ptr<IContractOutput>();
+    }
+
 };
 
 } // l15::utxord

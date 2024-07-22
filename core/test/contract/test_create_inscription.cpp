@@ -59,9 +59,7 @@ int main(int argc, char* argv[])
 
     std::filesystem::path p(configpath);
     if(p.is_relative())
-    {
         configpath = (std::filesystem::current_path() / p).string();
-    }
 
     w = std::make_unique<TestcaseWrapper>(configpath);
     w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
@@ -69,7 +67,11 @@ int main(int argc, char* argv[])
     w->keyreg().AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
     w->keyreg().AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'","4'"], "change":["0" , "1"], "index_range":"0-256"})");
 
-    return session.run();
+    int res = session.run();
+
+    w.reset();
+
+    return res;
 }
 
 
@@ -522,6 +524,8 @@ struct EtchParams
 {
     uint128_t amount_per_mint;
     uint128_t pre_mint;
+    uint128_t transfer;
+    uint128_t burn;
 };
 
 TEST_CASE("etch")
@@ -538,9 +542,9 @@ TEST_CASE("etch")
     auto svg = std::tuple<std::string, bytevector>("image/svg+xml", bytevector(svg_text, svg_text + strlen(svg_text)));
 
      auto condition = GENERATE(
-         EtchParams{65535, 0},
-         EtchParams{65535, 65535},
-         EtchParams{32767, 65535}
+         EtchParams{65535, 0, 65535, 0},
+         EtchParams{65535, 65535, 60000, 5535},
+         EtchParams{32767, 65535, 5000, 2767}
      );
 
     std::random_device dev;
@@ -664,14 +668,14 @@ TEST_CASE("etch")
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(mintTx)));
 
-        w->confirm(1, mintTx.GetHash().GetHex());
+        w->confirm(1, mintTx.GetHash().GetHex(), 1);
 
         auto rune_json = w->rune(rune.RuneText(""));
         std::clog << rune_json << std::endl;
 
-        uint128_t final_supply = condition.pre_mint + condition.amount_per_mint;
+        uint128_t supply = condition.pre_mint + condition.amount_per_mint;
 
-        CHECK(final_supply == rune_json["supply"].get<uint64_t>());
+        CHECK(supply == rune_json["supply"].get<uint64_t>());
 
         SECTION("transfer")
         {
@@ -680,7 +684,13 @@ TEST_CASE("etch")
 
             REQUIRE_NOTHROW(transferBuilder.AddRuneInput(mintBuilder.ChangeOutput(), *rune.RuneId(), condition.amount_per_mint));
             REQUIRE_NOTHROW(transferBuilder.AddInput(w->fund(10000, w->p2tr(0, 0, 1))));
-            REQUIRE_NOTHROW(transferBuilder.AddRuneOutput(546, w->btc().GetNewAddress(), *rune.RuneId(), condition.amount_per_mint));
+            REQUIRE_NOTHROW(transferBuilder.AddRuneOutput(546, w->btc().GetNewAddress(), *rune.RuneId(), condition.transfer));
+            if ((condition.transfer + condition.burn) < condition.amount_per_mint) {
+                REQUIRE_NOTHROW(transferBuilder.AddRuneOutput(546, w->btc().GetNewAddress(), *rune.RuneId(), condition.amount_per_mint - condition.transfer - condition.burn));
+            }
+            if (condition.burn > 0) {
+                REQUIRE_NOTHROW(transferBuilder.BurnRune(*rune.RuneId(), condition.burn));
+            }
             REQUIRE_NOTHROW(transferBuilder.AddChangeOutput(w->btc().GetNewAddress()));
 
             REQUIRE_NOTHROW(transferBuilder.PartialSign(w->keyreg(), "fund", 0));
@@ -709,7 +719,14 @@ TEST_CASE("etch")
             auto rune_balance_json = w->rune_balances(rune.RuneText("•"));
             std::clog << rune_balance_json << std::endl;
 
-            CHECK(condition.amount_per_mint == (rune_balance_json[transferTx.GetHash().GetHex() + ":0"]["amount"].get<uint64_t>()));
+            CHECK(condition.transfer == (rune_balance_json[transferTx.GetHash().GetHex() + ":0"]["amount"].get<uint64_t>()));
+            if ((condition.transfer + condition.burn) < condition.amount_per_mint) {
+                CHECK((condition.amount_per_mint - condition.transfer - condition.burn) == (rune_balance_json[transferTx.GetHash().GetHex() + ":2"]["amount"].get<uint64_t>()));
+            }
+
+            auto rune_json = w->rune(rune.RuneText(""));
+
+            CHECK(condition.burn == rune_json["burned"].get<uint64_t>());
         }
     }
 }

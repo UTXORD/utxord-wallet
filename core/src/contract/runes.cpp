@@ -310,16 +310,35 @@ bytevector RuneStone::Pack() const
         res.insert(res.end(), buf.begin(), buf.end());
     }
 
+    uint128_t max_amount = 0;
+    uint32_t max_amount_nout = 0;
     if (default_output) {
         buf = write_varint(*default_output);
         res.push_back((uint8_t)RuneTag::POINTER);
         res.insert(res.end(), buf.begin(), buf.end());
     }
+    else {
+        for (const auto& entry: op_dictionary) {
+            if (get<0>(entry.second) > max_amount) {
+                max_amount = get<0>(entry.second);
+                max_amount_nout = get<1>(entry.second);
+            }
+        }
+        if (max_amount > 0) {
+            buf = write_varint(max_amount_nout);
+            res.push_back((uint8_t)RuneTag::POINTER);
+            res.insert(res.end(), buf.begin(), buf.end());
+        }
+    }
 
-    if (!op_dictionary.empty()) {
+    if ((!op_dictionary.empty()) && (default_output || op_dictionary.size() > 1)) { // Skip the dictionary with single entry in favor of the default output
         RuneId id;
         res.push_back((uint8_t)RuneTag::BODY);
         for (const auto& entry: op_dictionary) {
+
+            if (max_amount > 0 && max_amount_nout == get<1>(entry.second)) // Skip the entry in favor of the default_output
+                continue;
+
             id = entry.first - id;
             buf = write_varint(id.chain_height);
             res.insert(res.end(), buf.begin(), buf.end());
@@ -332,7 +351,15 @@ bytevector RuneStone::Pack() const
 
             buf = write_varint(get<1>(entry.second));
             res.insert(res.end(), buf.begin(), buf.end());
+
+            id = entry.first;
         }
+    }
+
+    if (res.size() > 80) {
+        std::ostringstream errbuf;
+        errbuf << RuneStoneDestination::type << " is too large: " + res.size();
+        throw ContractTermWrongValue(errbuf.str());
     }
 
     return res;
@@ -351,9 +378,7 @@ CScript RuneStoneDestination::PubKeyScript() const
 {
     CScript pubKeyScript {OP_RETURN};
     pubKeyScript << OP_13;
-    //pubKeyScript << ((m_chain == MAINNET) ? bytevector(RUNE_HEADER, RUNE_HEADER+4) : bytevector(RUNE_TEST_HEADER, RUNE_TEST_HEADER + 9));
     pubKeyScript << Pack();
-
     return pubKeyScript;
 }
 

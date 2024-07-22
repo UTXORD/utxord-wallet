@@ -592,7 +592,7 @@ public:
         m_ptr->AddRuneOutput(ParseAmount(btc_amount), move(addr), move(runeid), move(amount));
     }
     
-    void AddRuneOutputDestination(const IContractDestination *out, const std::string& rune_id_json, const std::string rune_amount)
+    void AddRuneOutputDestination(const IContractDestination *out, const std::string& rune_id_json, const std::string& rune_amount)
     {
         UniValue runeIdVal;
         if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
@@ -605,6 +605,21 @@ public:
         buf >> amount;
         
         m_ptr->AddRuneOutputDestination(out->Share(), move(runeid), move(amount));
+    }
+
+    void BurnRune(const std::string& rune_id_json, const std::string rune_amount)
+    {
+        UniValue runeIdVal;
+        if (!runeIdVal.read(rune_id_json)) throw std::invalid_argument("Wrong RuneId JSON");
+        RuneId runeid;
+        runeid.ReadJson(runeIdVal, []{ return "rune_id_json"; });
+
+        uint128_t amount;
+        std::istringstream buf;
+        buf.str(rune_amount);
+        buf >> amount;
+
+        m_ptr->BurnRune(move(runeid), move(amount));
     }
 
     void AddChangeOutput(const std::string &pk)
@@ -645,6 +660,12 @@ public:
     const IContractOutput* ChangeOutput() const
     {
         auto out = m_ptr->ChangeOutput();
+        return out ? new ContractOutputWrapper(out) : nullptr;
+    }
+
+    const IContractOutput* RuneStoneOutput() const
+    {
+        auto out = m_ptr->RuneStoneOutput();
         return out ? new ContractOutputWrapper(out) : nullptr;
     }
 };

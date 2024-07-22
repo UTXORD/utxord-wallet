@@ -333,6 +333,7 @@ interface SimpleTransaction
     void AddRuneUTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString addr, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
     void AddRuneOutput([Const] DOMString amount, [Const] DOMString addr, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
     void AddRuneOutputDestination([Const] IContractDestination out, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+    void BurnRune([Const] DOMString rune_id_json, [Const] DOMString rune_amount);
 
     void AddChangeOutput([Const] DOMString pk);
 
@@ -347,4 +348,5 @@ interface SimpleTransaction
 
     [Const] static DOMString SupportedVersions();
     [Const] IContractOutput ChangeOutput();
+    [Const] IContractOutput RuneStoneOutput();
 };
