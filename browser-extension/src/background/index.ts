@@ -68,6 +68,8 @@ import {
   BUY_PRODUCT_RESULT,
   SELL_INSCRIBE_RESULT,
   COMMIT_BUY_INSCRIBE_RESULT,
+  SIGN_SIMPLE_TRANSACTION,
+  CREATE_SIMPLE_TRANSACTION
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
 import Port = chrome.runtime.Port;
@@ -350,6 +352,77 @@ interface ICollectionTransferResult {
     onMessage(CHECK_PASSWORD, async (payload) => {
       console.log('CHECK_PASSWORD->run')
       return await Api.checkPassword(payload.data.password);
+    });
+
+    onMessage(SIGN_SIMPLE_TRANSACTION, async (payload) => {
+      console.log('SIGN_SIMPLE_TRANSACTION->run');
+      console.log('payload:',payload);
+      return {};
+    });
+
+    onMessage(CREATE_SIMPLE_TRANSACTION, async (payload) => {
+      console.log('CREATE_SIMPLE_TRANSACTION->run');
+      console.log('payload:',payload);
+      const outData = {
+        data: null,
+        type: SIGN_SIMPLE_TRANSACTION,
+        amount: 0,
+        change_amount: null,
+        inputs_sum: 0,
+        utxo_list: [],
+        fee_rate: payload.fee_rate || 1000,
+        fee: payload.fee || 1000,
+        fund: Api.wallet.fund,
+        raw: [],
+        total_mining_fee: 0,
+        errorMessage: null as string | null
+      };
+      let tx = new Api.utxord.SimpleTransaction(Api.network);
+      tx.MiningFeeRate(Api.satToBtc(outData.fee_rate).toFixed(8));
+
+      let min_fund_amount = Api.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
+      min_fund_amount += Api.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
+      outData.amount = min_fund_amount;
+
+      const input_mining_fee = Api.btcToSat(tx.GetNewInputMiningFee());
+      const utxo_list = await Api.smartSelectFundsByAmount(min_fund_amount, input_mining_fee);
+      outData.utxo_list = utxo_list;
+
+      console.log("min_fund_amount:", min_fund_amount);
+      console.log("utxo_list:", utxo_list);
+
+      if (utxo_list?.length < 1) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        return outData;
+      }
+
+      outData.inputs_sum = await Api.sumAllFunds(utxo_list);
+
+      for(const fund of utxo_list) {
+        const utxo = new Api.utxord.UTXO(Api.network,
+            fund.txid,
+            fund.nout,
+            Api.satToBtc(fund.amount).toFixed(8),
+            fund.address
+        );
+        tx.AddInput(utxo);
+        Api.utxord.destroy(utxo);
+      }
+
+      tx.AddChangeOutput(Api.wallet.fund.address);  // should be last in/out definition
+
+
+
+      tx.Sign(Api.wallet.root.key, "fund");
+      outData.raw = await Api.getRawTransactions(tx);
+      const SIMPLE_TX_PROTOCOL_VERSION = 2;
+      outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, Api.utxord.TX_SIGNATURE);
+
+      const contractData = JSON.parse(outData.data);
+      console.debug(' contractData:', contractData);
+      outData.mining_fee = Api.btcToSat(tx.GetTotalMiningFee(""));
+      Api.utxord.destroy(tx);
+      return outData;
     });
 
     onMessage(CHECK_AUTH, async() => {

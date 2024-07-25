@@ -76,6 +76,14 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/sign-simple',
+    name: 'SignSimplePage',
+    component: () => import('~/pages/SignSimplePage.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
     path: '/create-password-screen',
     name: 'CreatePasswordPage',
     component: () => import('~/pages/CreatePasswordPage.vue')
