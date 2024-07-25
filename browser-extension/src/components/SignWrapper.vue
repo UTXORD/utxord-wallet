@@ -63,6 +63,7 @@
 <script setup lang="ts">
 import { sendMessage } from 'webext-bridge'
 import { ref, toRefs, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import WinHelpers from '~/helpers/winHelpers'
 import { useStore } from '~/popup/store/index'
 import {
@@ -71,7 +72,8 @@ import {
   CREATE_INSCRIPTION,
   SUBMIT_SIGN,
   BALANCE_CHANGE_PRESUMED,
-  CREATE_CHUNK_INSCRIPTION
+  CREATE_CHUNK_INSCRIPTION,
+  SIGN_SIMPLE_TRANSACTION
 } from '~/config/events'
 import LoadingPage from '~/pages/LoadingPage.vue'
 import CustomInput from '~/components/CustomInput.vue'
@@ -83,10 +85,15 @@ const { balance, dataForSign } = toRefs(store)
 const loading = ref(true)
 const password = ref('')
 
+const { back, push } = useRouter()
 const winHelpers = new WinHelpers()
 
 const total = computed(() => {
   let out = 0
+  if(dataForSign.value?.type === SIGN_SIMPLE_TRANSACTION) {
+    out += dataForSign.value?.data?.market_fee || 0
+    return out;
+  }
   if (dataForSign.value?.type === CREATE_INSCRIPTION || dataForSign.value?.type === CREATE_CHUNK_INSCRIPTION) {
     out += dataForSign.value?.data?.costs?.amount || 0
   } else if(dataForSign.value?.type === BUY_PRODUCT){
@@ -136,12 +143,19 @@ const isDisabledPass = computed(() => {
 })
 
 async function onSign() {
+  if(dataForSign.value?.type === SIGN_SIMPLE_TRANSACTION){
+    return
+  }
   dataForSign.value = { ...dataForSign.value, password: password.value }
   await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
   await sendMessage(SUBMIT_SIGN, dataForSign.value, 'background')
 }
 
 function cancel() {
+  if(dataForSign.value?.type === SIGN_SIMPLE_TRANSACTION){
+    back()
+    return
+  }
   winHelpers.closeCurrentWindow()
 }
 

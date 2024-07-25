@@ -54,6 +54,11 @@ const LINKS = [
     label: 'Manage Errors',
     link: '/manage-errors',
     testId: 'manage-errors'
+  },
+  {
+    label: 'Sign a simple transaction',
+    link: '/sign-simple',
+    testId: 'sign-simple'
   }
 ]
 
