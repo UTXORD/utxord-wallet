@@ -36,6 +36,22 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/send-to',
+    name: 'SendPage',
+    component: () => import('~/pages/SendPage.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/confirm-send-to',
+    name: 'ConfirmSendPage',
+    component: () => import('~/pages/ConfirmSendPage.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
     path: '/sign-create-inscription',
     name: 'SignCreatePage',
     component: () => import('~/pages/SignCreatePage.vue'),
