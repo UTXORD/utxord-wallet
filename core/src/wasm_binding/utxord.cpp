@@ -1,7 +1,10 @@
 #include <memory>
 
+#include "nlohmann/json.hpp"
+
 #include "random.h"
 
+#include "mnemonic.hpp"
 #include "bech32.hpp"
 #include "schnorr.hpp"
 #include "keypair.hpp"
@@ -52,6 +55,78 @@ using l15::FormatAmount;
 using l15::ParseAmount;
 using l15::hex;
 using l15::unhex;
+
+class MnemonicParser : private l15::core::MnemonicParser
+{
+    static l15::stringvector ConvertJsonList(std::string json_list)
+    {
+        auto word_list = nlohmann::json::parse(move(json_list));
+        if (!word_list.is_array()) throw l15::core::MnemonicDictionaryError("dictionary JSON is not an array");
+        if (word_list.size() != 2048) throw l15::core::MnemonicDictionaryError("wrong size: " + std::to_string(word_list.size()));
+
+        l15::stringvector dictionary;
+        dictionary.reserve(word_list.size());
+
+        for (const auto&[i, word]: std::ranges::zip_view(std::ranges::iota_view(0), word_list)) {
+            if (!word.is_string()) throw l15::core::MnemonicDictionaryError("item is not a string: " + std::to_string(i));
+            dictionary.emplace_back(word.get<std::string>());
+        }
+        return dictionary;
+    }
+
+    static l15::stringvector to_vec(const std::string& str)
+    {
+        std::string curword;
+        l15::stringvector vec;
+        vec.reserve(24);
+
+        std::istringstream buf(str);
+        while (getline (buf, curword, ' ')) {
+            vec.emplace_back(move(curword));
+        }
+        return vec;
+    }
+public:
+    explicit MnemonicParser(std::string word_list_json) : l15::core::MnemonicParser(ConvertJsonList(word_list_json)) {}
+
+    const char* DecodeEntropy(const std::string& phrase) const
+    {
+        static std::string cache;
+
+        cache = hex(l15::core::MnemonicParser::DecodeEntropy(to_vec(phrase)));
+        return cache.c_str();
+    }
+
+    const char* EncodeEntropy(const std::string entropy_hex) const
+    {
+        static std::string cache;
+
+        auto phrase_vec = l15::core::MnemonicParser::EncodeEntropy(unhex<l15::core::MnemonicParser::entropy_type>(entropy_hex));
+
+        std::ostringstream buf;
+        bool insert_space = false;
+        for (const auto& w: phrase_vec) {
+            if (insert_space)
+                buf << ' ';
+            else
+                insert_space = true;
+            buf << w;
+        }
+
+        cache = buf.str();
+        return cache.c_str();
+    }
+
+    const char* MakeSeed(const std::string& phrase, const std::string& passphrase) const
+    {
+        static std::string cache;
+
+        cache = hex(l15::core::MnemonicParser::MakeSeed(to_vec(phrase), passphrase));
+        return cache.c_str();
+    }
+
+};
+
 
 enum Bech32Encoding
 {

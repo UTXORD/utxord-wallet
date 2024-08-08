@@ -3,6 +3,7 @@ AM_CPPFLAGS = -DWASM -DWASM_MODULE \
  -I$(top_srcdir)/l15/src/common \
  -I$(top_srcdir)/l15/src/core \
  -I$(top_srcdir)/src/contract \
+ -I$(top_srcdir)/l15/contrib/nlohmann_json \
  -I$(top_srcdir)/l15/contrib/cli11 \
  -I$(top_srcdir)/l15/contrib/cex \
  -I$(top_srcdir)/l15/node/src \
