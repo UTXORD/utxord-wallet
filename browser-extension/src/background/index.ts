@@ -29,6 +29,8 @@ import {
   CHANGE_TYPE_FUND_ADDRESS,
   CHANGE_USE_DERIVATION,
   STATUS_DERIVATION,
+  CHANGE_VIEW_MODE,
+  STATUS_VIEW_MODE,
   STATUS_ERROR_REPORTING,
   CHANGE_ERROR_REPORTING,
   OPEN_EXPORT_KEY_PAIR_SCREEN,
@@ -470,6 +472,18 @@ interface ICollectionTransferResult {
       }
       return {derivate: Api.derivate, keys: newKeys};
     });
+
+    onMessage(CHANGE_VIEW_MODE, async (payload: any) => {
+      console.log('CHANGE_VIEW_MODE:',payload.data?.value);
+      await Api.setViewMode(payload.data?.value);
+      return {viewMode: Api.viewMode};
+    });
+
+    onMessage(STATUS_VIEW_MODE, async () => {
+      console.log('STATUS_VIEW_MODE:', Api.viewMode);
+      return {viewMode: Api.viewMode};
+    });
+
 
     onMessage(STATUS_DERIVATION, async () => {
       console.log('STATUS_DERIVATION:', Api.derivate);

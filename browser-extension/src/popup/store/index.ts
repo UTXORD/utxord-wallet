@@ -21,6 +21,7 @@ interface IStore {
   usdRate: number
   useDerivation: boolean
   errorReporting: boolean
+  viewMode: boolean
 }
 
 export const useStore = defineStore('store', {
@@ -37,6 +38,7 @@ export const useStore = defineStore('store', {
     refreshingBalance: false,
     useDerivation: false,
     errorReporting: false,
+    viewMode: false,
     fundAddress: null,
     ordAddress: null,
     typeAddress: 0,
@@ -67,6 +69,9 @@ export const useStore = defineStore('store', {
     },
     setErrorReporting(val: boolean){
       this.errorReporting = Boolean(val)
+    },
+    setViewMode(val: boolean){
+      this.viewMode = Boolean(val)
     },
     setTypeAddress(type: number){
       this.typeAddress = Number(type)
@@ -109,6 +114,7 @@ export const useStore = defineStore('store', {
       this.errorMessage = null
       this.useDerivation = false
       this.errorReporting = false
+      this.viewMode = false
     }
   },
   persist: true,
