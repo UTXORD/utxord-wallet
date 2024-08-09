@@ -61,7 +61,7 @@
           :class="my-2"
           data-testid="mnemonic-checksum-error"
         >
-          <span v-if="!valid" class="text-red-300 text-left">Invalid checksum menemonic</span>
+          <span v-if="!valid" class="text-red-300 text-left">Invalid checksum mnemonic</span>
         </div>
         <NotifyInBody/>
         <table style="width: 100%;" v-if="picked == 'list'">
