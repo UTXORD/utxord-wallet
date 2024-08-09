@@ -2429,10 +2429,12 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         // or wait and check utxo this translation on balances
 
         outData.outputs = {
-          collection: newOrd.CollectionOutput(),
-          inscription: newOrd.InscriptionOutput(),
           change: newOrd.ChangeOutput(),
         };
+        if(!is_lazy){
+          outData.outputs.collection= newOrd.CollectionOutput();
+          outData.outputs.inscription= newOrd.InscriptionOutput();
+        }
       }
 
       return outData;
