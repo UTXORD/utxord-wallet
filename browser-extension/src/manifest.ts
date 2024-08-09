@@ -13,6 +13,9 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     name: `${(pkg.displayName || pkg.name)} ${LABELS[TARGET]}`,
     version: pkg.version,
     description: pkg.description,
+    side_panel: {
+      default_path: "./popup/index.html"
+    },
     action: {
       default_icon: `./assets/${NETWORKS[TARGET]}-128x128.png`,
       default_popup: './popup/index.html'
@@ -61,7 +64,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
       matches: ['<all_urls>']
     },
     // permissions: ['contextMenus', 'background', 'storage', 'nativeMessaging', 'declarativeContent', 'activeTab', 'tabs', 'scripting', 'alarms', 'unlimitedStorage'],
-    permissions: ['alarms', 'scripting', 'storage', 'unlimitedStorage', 'tabs', 'activeTab'],
+    permissions: ['alarms', 'scripting', 'storage', 'unlimitedStorage', 'tabs', 'activeTab','sidePanel'],
     optional_permissions: [],
     content_security_policy: {
       extension_pages: `script-src 'self' 'wasm-unsafe-eval'; object-src 'self' 'wasm-unsafe-eval'; worker-src 'self' 'wasm-unsafe-eval' http://localhost:* http://127.0.0.1:*; script-src-elem 'self' 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; frame-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,

@@ -33,6 +33,14 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
       requiresAuth: true
     }
   },
+  {
+    path: '/view-mode',
+    name: 'ManageViewMode',
+    component: () => import('~/pages/ManageViewMode.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
 ];
 
 const routes: Array<RouteRecordRaw> = [

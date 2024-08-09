@@ -329,6 +329,10 @@ class Api {
         this.derivate = false;
         this.error_reporting = true;
         this.timeSync = false;
+        this.viewMode = false;
+        // view mode true = sidePanel enabled
+        // view mode false = popup enabled
+
 
         await this.init(this);
         await this.sentry();
@@ -627,6 +631,14 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     this.derivate = Boolean(value);
     setTimeout(() => {
       chrome.storage.local.set({derivate: this.derivate});
+    }, 2000);
+    return true;
+  }
+
+  async setViewMode(value){
+    this.viewMode = Boolean(value);
+    setTimeout(() => {
+      chrome.storage.local.set({viewMode: this.viewMode});
     }, 2000);
     return true;
   }

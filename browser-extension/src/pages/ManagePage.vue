@@ -41,6 +41,11 @@ import { useRouter } from 'vue-router'
 
 const LINKS = [
   {
+    label: 'Panel Setup',
+    link: '/view-mode',
+    testId: 'view-mode'
+  },
+  {
     label: 'Manage Address',
     link: '/manage-address',
     testId: 'manage-address'
