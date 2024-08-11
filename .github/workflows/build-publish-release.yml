@@ -49,8 +49,17 @@ jobs:
           file: "./docker-compose.yml"
           service: build-wallet-utxord
       -
+        name: debug Archive action
+        uses: thedoctor0/zip-release@0.7.6
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./"
+          type: 'zip'
+          command: 'bash -c "pwd ; ls -al . ; ls -al ./browser-extension ; ls -al ./browser-extension/extension"'
+          filename: utxord-wallet-${{ steps.vars.outputs.tag }}-build-debug.zip
+      -
         name: Archive versioned release
-        uses: thedoctor0/zip-release@0.7.1
+        uses: thedoctor0/zip-release@0.7.6
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
@@ -58,7 +67,7 @@ jobs:
           filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}.zip
       -
         name: Archive non-versioned release
-        uses: thedoctor0/zip-release@0.7.1
+        uses: thedoctor0/zip-release@0.7.6
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
@@ -73,7 +82,7 @@ jobs:
           service: build-wallet-qa
       -
         name: Archive versioned release
-        uses: thedoctor0/zip-release@0.7.1
+        uses: thedoctor0/zip-release@0.7.6
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
@@ -81,7 +90,7 @@ jobs:
           filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-qa.zip
       -
         name: Archive non-versioned release
-        uses: thedoctor0/zip-release@0.7.1
+        uses: thedoctor0/zip-release@0.7.6
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
@@ -96,7 +105,7 @@ jobs:
           service: build-wallet-e2e
       -
         name: Archive versioned release
-        uses: thedoctor0/zip-release@0.7.1
+        uses: thedoctor0/zip-release@0.7.6
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
@@ -104,7 +113,7 @@ jobs:
           filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-e2e.zip
       -
         name: Archive non-versioned release
-        uses: thedoctor0/zip-release@0.7.1
+        uses: thedoctor0/zip-release@0.7.6
         if: startsWith(github.ref, 'refs/tags/')
         with:
           directory: "./browser-extension/extension/prod"
