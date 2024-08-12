@@ -16,7 +16,7 @@ services:
       - YARN_CACHE_FOLDER=/tmp/yarn_cache
       - NODE_OPTIONS=--max-old-space-size=4096
     volumes:
-      - "/github/workspace:/src"
+      - ".:/src"
 
   toolchain-shell:
     profiles: ["donotstart"]
