@@ -39,7 +39,8 @@ jobs:
         name: Build wallet core
         uses: sudo-bot/action-docker-compose@latest
         with:
-          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-wasm-core"
+#          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-wasm-core"
+          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-debug"
 
       -
         name: Build UTXORD wallet

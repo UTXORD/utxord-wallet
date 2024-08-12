@@ -23,6 +23,11 @@ services:
     <<: *common_config
     command: "bash"
 
+  build-debug:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "bash -c 'pwd ; ls -al'"
+
   build-wasm-core:
     profiles: ["donotstart"]
     <<: *common_config
