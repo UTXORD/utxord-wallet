@@ -44,7 +44,7 @@ jobs:
         name: Debug build
         uses: sudo-bot/action-docker-compose@latest
         with:
-          cli-args: "--project-dir ${{ github.workspace }} run build-debug"
+          cli-args: "--project-directory ${{ github.workspace }} run build-debug"
 
 #      -
 #        name: Build UTXORD wallet
