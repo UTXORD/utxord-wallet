@@ -1,4 +1,4 @@
-# https://github.com/marketplace/actions/action-docker-compose
+# https://github.com/marketplace/actions/docker-compose-run-action
 # https://github.com/marketplace/actions/zip-release
 # https://github.com/marketplace/actions/gh-release
 # https://github.com/marketplace/actions/publish-chrome-extension-to-chrome-web-store
@@ -35,34 +35,23 @@ jobs:
         # run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
         # accessible as $RELEASE_VERSION or ${{ env.RELEASE_VERSION }}
 
-#      -
-#        name: Build wallet core
-#        uses: sudo-bot/action-docker-compose@latest
-#        with:
-#          cli-args: "run build-wasm-core"
       -
-        name: Debug build
-        uses: sudo-bot/action-docker-compose@latest
+      -
+        name: Build wallet core
+        uses: adrielcodeco/docker-compose-run-action@v1
         with:
-          cli-args: "--project-directory ${{ github.workspace }} run build-debug"
+          compose-file: "./docker-compose.yml"
+          service: build-wasm-core
 
 #      -
 #        name: Build UTXORD wallet
-#        uses: sudo-bot/action-docker-compose@latest
+#        uses: adrielcodeco/docker-compose-run-action@v1
 #        with:
-#          cli-args: "run build-wallet-utxord"
-#      -
-#        name: debug Archive action
-#        uses: thedoctor0/zip-release@0.7.6
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          directory: "./"
-#          type: 'zip'
-#          command: 'bash -c "pwd ; ls -al . ; ls -al ./browser-extension ; ls -al ./browser-extension/extension"'
-#          filename: utxord-wallet-${{ steps.vars.outputs.tag }}-build-debug.zip
+#          compose-file: "./docker-compose.yml"
+#          service: build-wallet-utxord
 #      -
 #        name: Archive versioned release
-#        uses: thedoctor0/zip-release@0.7.6
+#        uses: thedoctor0/zip-release@0.7.1
 #        if: startsWith(github.ref, 'refs/tags/')
 #        with:
 #          directory: "./browser-extension/extension/prod"
@@ -70,7 +59,7 @@ jobs:
 #          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}.zip
 #      -
 #        name: Archive non-versioned release
-#        uses: thedoctor0/zip-release@0.7.6
+#        uses: thedoctor0/zip-release@0.7.1
 #        if: startsWith(github.ref, 'refs/tags/')
 #        with:
 #          directory: "./browser-extension/extension/prod"
@@ -79,12 +68,13 @@ jobs:
 #
 #      -
 #        name: Build QA wallet
-#        uses: sudo-bot/action-docker-compose@latest
+#        uses: adrielcodeco/docker-compose-run-action@v1
 #        with:
-#          cli-args: "run build-wallet-qa"
+#          compose-file: "./docker-compose.yml"
+#          service: build-wallet-qa
 #      -
 #        name: Archive versioned release
-#        uses: thedoctor0/zip-release@0.7.6
+#        uses: thedoctor0/zip-release@0.7.1
 #        if: startsWith(github.ref, 'refs/tags/')
 #        with:
 #          directory: "./browser-extension/extension/prod"
@@ -92,7 +82,7 @@ jobs:
 #          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-qa.zip
 #      -
 #        name: Archive non-versioned release
-#        uses: thedoctor0/zip-release@0.7.6
+#        uses: thedoctor0/zip-release@0.7.1
 #        if: startsWith(github.ref, 'refs/tags/')
 #        with:
 #          directory: "./browser-extension/extension/prod"
@@ -101,12 +91,13 @@ jobs:
 #
 #      -
 #        name: Build E2E wallet
-#        uses: sudo-bot/action-docker-compose@latest
+#        uses: adrielcodeco/docker-compose-run-action@v1
 #        with:
-#          cli-args: "run build-wallet-e2e"
+#          compose-file: "./docker-compose.yml"
+#          service: build-wallet-e2e
 #      -
 #        name: Archive versioned release
-#        uses: thedoctor0/zip-release@0.7.6
+#        uses: thedoctor0/zip-release@0.7.1
 #        if: startsWith(github.ref, 'refs/tags/')
 #        with:
 #          directory: "./browser-extension/extension/prod"
@@ -114,7 +105,7 @@ jobs:
 #          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-e2e.zip
 #      -
 #        name: Archive non-versioned release
-#        uses: thedoctor0/zip-release@0.7.6
+#        uses: thedoctor0/zip-release@0.7.1
 #        if: startsWith(github.ref, 'refs/tags/')
 #        with:
 #          directory: "./browser-extension/extension/prod"
