@@ -26,7 +26,7 @@ services:
   build-wasm-core:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "make clean core"
+    command: "make clean ext-core-lib"
 
   build-wallet-qa:
     profiles: ["donotstart"]
