@@ -1,4 +1,4 @@
-# https://github.com/marketplace/actions/docker-compose-run-action
+# https://github.com/marketplace/actions/action-docker-compose
 # https://github.com/marketplace/actions/zip-release
 # https://github.com/marketplace/actions/gh-release
 # https://github.com/marketplace/actions/publish-chrome-extension-to-chrome-web-store
@@ -37,17 +37,15 @@ jobs:
 
       -
         name: Build wallet core
-        uses: cloudposse/github-action-docker-compose-test-run@main
+        uses: sudo-bot/action-docker-compose@latest
         with:
-          file: "./docker-compose.yml"
-          service: build-wasm-core
+          cli-args: "-f ./docker-compose.yml run build-wasm-core"
 
       -
         name: Build UTXORD wallet
-        uses: cloudposse/github-action-docker-compose-test-run@main
+        uses: sudo-bot/action-docker-compose@latest
         with:
-          file: "./docker-compose.yml"
-          service: build-wallet-utxord
+          cli-args: "-f ./docker-compose.yml run build-wallet-utxord"
       -
         name: debug Archive action
         uses: thedoctor0/zip-release@0.7.6
@@ -76,10 +74,9 @@ jobs:
 
       -
         name: Build QA wallet
-        uses: cloudposse/github-action-docker-compose-test-run@main
+        uses: sudo-bot/action-docker-compose@latest
         with:
-          file: "./docker-compose.yml"
-          service: build-wallet-qa
+          cli-args: "-f ./docker-compose.yml run build-wallet-qa"
       -
         name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.6
@@ -99,10 +96,9 @@ jobs:
 
       -
         name: Build E2E wallet
-        uses: cloudposse/github-action-docker-compose-test-run@main
+        uses: sudo-bot/action-docker-compose@latest
         with:
-          file: "./docker-compose.yml"
-          service: build-wallet-e2e
+          cli-args: "-f ./docker-compose.yml run build-wallet-e2e"
       -
         name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.6
