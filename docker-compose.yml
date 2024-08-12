@@ -26,7 +26,8 @@ services:
   build-debug:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "bash -c 'pwd ; ls -al ; ls -al / ; ls -al /github ; set'"
+#    command: "bash -c 'pwd ; ls -al ; ls -al / ; ls -al /github ; set ; mount'"
+    command: "find / -type f -name Makefile"
 
   build-wasm-core:
     profiles: ["donotstart"]
