@@ -26,7 +26,7 @@ services:
   build-debug:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "bash -c 'pwd ; ls -al ; ls -al / ; ls -al /github'"
+    command: "bash -c 'pwd ; ls -al ; ls -al / ; ls -al /github ; set'"
 
   build-wasm-core:
     profiles: ["donotstart"]
