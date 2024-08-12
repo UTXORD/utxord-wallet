@@ -39,14 +39,14 @@ jobs:
         name: Build wallet core
         uses: sudo-bot/action-docker-compose@latest
         with:
-#          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-wasm-core"
-          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-debug"
+#          cli-args: "-f ./docker-compose.yml run build-wasm-core"
+          cli-args: "-f ./docker-compose.yml run build-debug"
 
       -
         name: Build UTXORD wallet
         uses: sudo-bot/action-docker-compose@latest
         with:
-          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-wallet-utxord"
+          cli-args: "-f ./docker-compose.yml run build-wallet-utxord"
       -
         name: debug Archive action
         uses: thedoctor0/zip-release@0.7.6
@@ -77,7 +77,7 @@ jobs:
         name: Build QA wallet
         uses: sudo-bot/action-docker-compose@latest
         with:
-          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-wallet-qa"
+          cli-args: "-f ./docker-compose.yml run build-wallet-qa"
       -
         name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.6
@@ -99,7 +99,7 @@ jobs:
         name: Build E2E wallet
         uses: sudo-bot/action-docker-compose@latest
         with:
-          cli-args: "--project-directory /github/workspace -f ./docker-compose.yml run build-wallet-e2e"
+          cli-args: "-f ./docker-compose.yml run build-wallet-e2e"
       -
         name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.6
