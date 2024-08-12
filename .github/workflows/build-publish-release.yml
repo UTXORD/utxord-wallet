@@ -36,7 +36,6 @@ jobs:
         # accessible as $RELEASE_VERSION or ${{ env.RELEASE_VERSION }}
 
       -
-      -
         name: Build wallet core
         uses: adrielcodeco/docker-compose-run-action@v1
         with:
