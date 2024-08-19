@@ -919,6 +919,7 @@ interface ICollectionTransferResult {
                   Api.connect = true; // FIXME: However it's working for some reason in v1.1.5.
                                       // FIXME: Probably due to high balance refresh frequency.
                   const balance = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+                  Api.expects = Api.parseExpectsData(payload.type, payload?.data?.expects?.data);
                   Api.balances = balance;
 
                   // const balance = await Api.fetchBalance("UNUSED_VALUE");  // FIXME: currently address is still unused
@@ -1164,9 +1165,10 @@ interface ICollectionTransferResult {
             payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
             payload.data.errorMessage = payload.data?.costs?.errorMessage;
             if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
+            payload.data.expects = Api.expects;
             console.log(COMMIT_BUY_INSCRIPTION+':',payload);
             //update balances before openWindow
-            winManager.openWindow('sign-commit-buy', async (id) => {
+            winManager.openWindow('estimate-fee', async (id) => {
               setTimeout(async () => {
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);

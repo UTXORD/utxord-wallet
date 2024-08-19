@@ -60,6 +60,14 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/estimate-fee',
+    name: 'EstimateFeePage',
+    component: () => import('~/pages/EstimateFeePage.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
     path: '/sign-commit-buy',
     name: 'SignCommitPage',
     component: () => import('~/pages/SignCommitPage.vue'),
@@ -78,8 +86,9 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/create-password-screen',
     name: 'CreatePasswordPage',
-    component: () => import('~/pages/CreatePasswordPage.vue')
-  },
+    // component: () => import('~/pages/CreatePasswordPage.vue')
+    component: () => import('~/pages/EstimateFeePage.vue'),
+},
   {
     path: '/generate',
     name: 'GeneratePage',
