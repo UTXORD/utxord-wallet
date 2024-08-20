@@ -1033,7 +1033,7 @@ interface ICollectionTransferResult {
                 setTimeout(async () => {
                   await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
                 }, 1000);
-              });
+              }, Api.viewMode);
               return true;
             } else {
               const res = await Api.decryptedWallet(password);
@@ -1085,7 +1085,7 @@ interface ICollectionTransferResult {
                 }
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
-            });
+            }, Api.viewMode);
           }
 
           if (payload.type === CREATE_INSCRIPTION || payload.type === PURCHASE_LAZY_INSCRIPTION) {
@@ -1119,7 +1119,7 @@ interface ICollectionTransferResult {
                 // }
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
-            });
+            }, Api.viewMode);
           }
 
           if (payload.type === BUY_PRODUCT) {
@@ -1143,7 +1143,7 @@ interface ICollectionTransferResult {
                 }
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
-            });
+            }, Api.viewMode);
           }
 
           if (payload.type === SELL_INSCRIPTION) {
@@ -1156,7 +1156,7 @@ interface ICollectionTransferResult {
               setTimeout(async  () => {
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
-            });
+            }, Api.viewMode);
           }
 
           if (payload.type === COMMIT_BUY_INSCRIPTION) {
@@ -1172,7 +1172,7 @@ interface ICollectionTransferResult {
               setTimeout(async () => {
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
-            });
+            }, Api.viewMode);
           }
 
           if (payload.type === OPEN_EXPORT_KEY_PAIR_SCREEN) {
@@ -1180,7 +1180,7 @@ interface ICollectionTransferResult {
               setTimeout(async () => {
                 await sendMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, payload.data, `popup@${id}`);
               }, 1000);
-            });
+            }, Api.viewMode);
           }
 
           if (payload.type === 'OPEN_SIGN_BUY_INSCRIBE_PAGE') { // hidden mode
@@ -1195,7 +1195,7 @@ interface ICollectionTransferResult {
 
           if (payload.type === OPEN_START_PAGE) {
             console.log('OPEN_START_PAGE->run')
-            winManager.openWindow('start');
+            winManager.openWindow('start',null, Api.viewMode);
           }
 
     });

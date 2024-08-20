@@ -352,6 +352,10 @@ class Api {
     try {
       const { seed } = await chrome.storage.local.get(['seed']);
       const { derivate } = await chrome.storage.local.get(['derivate']);
+      const { viewMode } = await chrome.storage.local.get(['viewMode']);
+      if(viewMode){
+        this.viewMode = viewMode;
+      }
       if (seed) {
         myself.wallet.root.seed = seed;
       }
