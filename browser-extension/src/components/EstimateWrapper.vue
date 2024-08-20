@@ -84,6 +84,21 @@
         <div class="estimate-screen_transaction_fee-usd">{{ transaction_fee.usd }}</div>
       </div>
 
+      <!-- Buttons -->
+      <div class="flex w-full mb-5 mt-auto">
+        <Button
+          second
+          class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
+          @click="back"
+          data-testid="go-back"
+        >
+          <ArrowLeftIcon />
+        </Button>
+        <Button @click="onConfirm" enter class="w-full" data-testid="confirm">
+          Confirm
+        </Button>
+      </div>
+
 
     </div>
   </div>
@@ -96,10 +111,14 @@ import { ref, toRefs, computed, onMounted } from 'vue'
 import WinHelpers from '~/helpers/winHelpers'
 import { useStore } from '~/popup/store/index'
 import LoadingPage from '~/pages/LoadingPage.vue'
+import {useRouter} from "vue-router";
 
 const store = useStore()
 const { balance, dataForSign } = toRefs(store)
 const winHelpers = new WinHelpers()
+
+const { back, push } = useRouter()
+
 
 const STEPS_COUNT = 10;
 const TYPE_NORMAL = 'normal';
@@ -229,6 +248,10 @@ function bytesToVb(bytes: number): number {
   return bytes / 1000;
 }
 
+async function onConfirm() {
+    // dataForSign.value = {...dataForSign.value, ...{selectedMiningFee: 0}};
+    await push(`//sign-commit-buy`)
+}
 
 onMounted(() => {
   setTimeout(() => {

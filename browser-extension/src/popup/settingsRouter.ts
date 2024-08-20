@@ -12,8 +12,9 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
   {
     path: '/manage-password',
     name: 'ManagePasswordPage',
-    component: () => import('~/pages/ManagePasswordPage.vue'),
-    meta: {
+    // component: () => import('~/pages/ManagePasswordPage.vue'),
+    component: () => import('~/pages/EstimateFeePage.vue'),
+        meta: {
       requiresAuth: true
     }
   },

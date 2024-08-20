@@ -86,8 +86,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/create-password-screen',
     name: 'CreatePasswordPage',
-    // component: () => import('~/pages/CreatePasswordPage.vue')
-    component: () => import('~/pages/EstimateFeePage.vue'),
+    component: () => import('~/pages/CreatePasswordPage.vue')
 },
   {
     path: '/generate',

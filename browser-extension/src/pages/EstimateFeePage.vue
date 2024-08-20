@@ -1,23 +1,9 @@
 <template>
   <EstimateWrapper data-testid="estimate-fee-page">
 
-    <!-- Buttons -->
-    <div class="flex w-full mb-5 mt-auto">
-      <Button
-        second
-        class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-        @click="goToBack"
-        data-testid="go-back"
-      >
-        <ArrowLeftIcon />
-      </Button>
-      <Button @click="onConfirm" enter class="w-full" data-testid="confirm">
-        Confirm
-      </Button>
-    </div>
-
     <!-- TX Info -->
     <NotifyInBody/>
+
   </EstimateWrapper>
 
 
@@ -45,17 +31,6 @@ const total = computed(
     (dataForSign.value?.data?.ord_price || 0) +
     (dataForSign.value?.data?.market_fee || 0)
 )
-
-function goToBack() {
-  // removeTempDataFromLocalStorage()
-  push('/start')
-}
-
-async function onConfirm() {
-    // dataForSign.value = {...dataForSign.value, ...{selectedMiningFee: 0}};
-    await push(`//sign-commit-buy`)
-}
-
 
 </script>
 
