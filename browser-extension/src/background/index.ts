@@ -917,16 +917,12 @@ interface ICollectionTransferResult {
                 if (payload.data?.addresses) {
                   Api.sync = true;    // FIXME: Seems useless because happening too much late.
                   Api.connect = true; // FIXME: However it's working for some reason in v1.1.5.
-                                      // FIXME: Probably due to high balance refresh frequency.
-                  const balance = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
-                  Api.balances = balance;
+                                    // FIXME: Probably due to high balance refresh frequency.
+                  Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+                  console.log('Api.balances:',Api.balances);
 
-                  // const balance = await Api.fetchBalance("UNUSED_VALUE");  // FIXME: currently address is still unused
-                  // console.debug('SEND_BALANCES: Api.fetchBalance:', balance);
-                  setTimeout(async () => {
-                    postMessageToPopupIfOpen({ id: BALANCE_REFRESH_DONE, data: { balance: balance?.data }});
-                  }, 1000);
-                  // -------
+                  const balance = await Api.fetchBalance("UNUSED_VALUE");  // FIXME: currently address is still unused
+                  postMessageToPopupIfOpen({ id: BALANCE_REFRESH_DONE,  data: balance?.data});
                 }
             //   };
             // })(payload), 0);

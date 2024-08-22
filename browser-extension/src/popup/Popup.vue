@@ -110,7 +110,7 @@ port.onMessage.addListener(async function(payload) {
       break;
     }
     case BALANCE_REFRESH_DONE: {
-      const fresh_balance = payload.data?.balance
+      const fresh_balance = payload.data
       store.setBalance({
         ...fresh_balance || balance.value,
         sync: true,
