@@ -19,8 +19,7 @@ permissions:
 
 jobs:
   build_publish_release:
-    runs-on: ubuntu-20.04
-#    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       -
@@ -38,10 +37,12 @@ jobs:
 
       -
         name: Build wallet core
-        uses: adrielcodeco/docker-compose-run-action@v1
-        with:
-          compose-file: "./docker-compose.yml"
-          service: build-wasm-core
+        run: docker compose run build-wasm-core
+
+#        uses: adrielcodeco/docker-compose-run-action@v1
+#        with:
+#          compose-file: "./docker-compose.yml"
+#          service: build-wasm-core
 
 #      -
 #        name: Build UTXORD wallet
