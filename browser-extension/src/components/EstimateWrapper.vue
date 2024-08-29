@@ -6,18 +6,24 @@
     <Header />
     <Logo />
     <div class="w-full h-[1px] bg-[var(--border-color)]" />
-    <div
-      class="estimate-screen_content h-full flex flex-col items-center px-5 pb-5"
-    >
+    <div class="estimate-screen_content h-full flex flex-col items-center px-5 pb-5">
       <slot />
 
+      <div class="w-full flex flex-col gap-2 mb-4">
+        <div class="estimate-screen_fees-title">
+          Choose your transaction speed and fee
+        </div>
+        <div class="estimate-screen_fees-descr">
+          The USD values are approximate.
+        </div>
+      </div>
 
       <!-- Fees -->
-      <div class="full-width flex column q-gap-sm q-mb-sm">
+      <div class="w-full flex flex-col gap-2 mb-4">
         <div
           v-for="(t, i) of FEES_TABS"
           :key="i"
-          class="estimate-screen_fees-tab flex column"
+          class="estimate-screen_fees-tab flex flex-col"
           :class="{
             'estimate-screen_fees-tab--active': t.type === selectedType,
             'cursor-not-allowed': loading,
@@ -27,13 +33,13 @@
         >
           <!-- Buttons -->
           <div class="flex items-center justify-between">
-            <div class="flex column">
-              <span class="estimate-screen_fees-tab-label q-mr-auto">
+            <div class="flex flex-col items-start">
+              <span class="estimate-screen_fees-tab-label mr-auto">
                 {{ t.label }}
               </span>
               <span class="estimate-screen_fees-tab-value">{{ t.time }}</span>
             </div>
-            <div class="flex column items-end">
+            <div class="flex flex-col items-end">
               <span class="estimate-screen_fees-tab-label"
                 >{{ t.value?.toFixed(2) || 0 }} sats/vB</span
               >
@@ -44,7 +50,7 @@
           <!-- Slider -->
           <div
             v-if="t.type === TYPE_CUSTOM"
-            class="estimate-screen_fees-tab-custom flex column"
+            class="estimate-screen_fees-tab-custom flex flex-col"
           >
             <q-slider
               v-model="selectedStep"
@@ -60,14 +66,22 @@
             <div
               class="estimate-screen_fees-tab-custom_labels flex items-center justify-between"
             >
-              <span>
-                min
-                <q-tooltip class="text-caption">{{ minVB }} sats/vB</q-tooltip>
-              </span>
-              <span>
-                max
-                <q-tooltip class="text-caption">{{ maxVB }} sats/vB</q-tooltip>
-              </span>
+              <VDropdown :triggers="['hover']" :distance="10" placement="bottom">
+                <span class="cursor-pointer">min</span>
+                <template #popper>
+                  <div class="max-w-[250px] load-screen_tooltip-descr bg-black py-2 px-3 text-white">
+                    {{ minVB }} sats/vB
+                  </div>
+                </template>
+              </VDropdown>
+              <VDropdown :triggers="['hover']" :distance="10" placement="bottom">
+                <span class="cursor-pointer">max</span>
+                <template #popper>
+                  <div class="max-w-[250px] load-screen_tooltip-descr bg-black py-2 px-3 text-white">
+                    {{ maxVB }} sats/vB
+                  </div>
+                </template>
+              </VDropdown>
             </div>
           </div>
         </div>
@@ -75,13 +89,13 @@
 
       <!-- Transaction fee -->
       <div
-        class="estimate-screen_transaction_fee flex items-center full-width q-gap-sm q-mb-sm"
+        class="estimate-screen_fees_total flex items-center w-full gap-2 mb-2"
       >
-        <div class="estimate-screen_transaction_fee-label q-mr-auto">
+        <div class="estimate-screen_fees_total-label mr-auto">
           {{ transaction_fee.label }}
         </div>
-        <div class="estimate-screen_transaction_fee-sats q-ml-sm">{{ transaction_fee.sats }}</div>
-        <div class="estimate-screen_transaction_fee-usd">{{ transaction_fee.usd }}</div>
+        <div class="estimate-screen_fees_total-sats ml-2">{{ transaction_fee.sats }}</div>
+        <div class="estimate-screen_fees_total-usd">{{ transaction_fee.usd }}</div>
       </div>
 
       <!-- Buttons -->
@@ -98,8 +112,6 @@
           Confirm
         </Button>
       </div>
-
-
     </div>
   </div>
 
@@ -273,7 +285,7 @@ onMounted(() => {
   line-height: 16px;
   letter-spacing: -0.08px;
   text-align: right;
-  color: var(--grey-text);
+  color: var(--text-grey-color);
 }
 
 @mixin satsStyle() {
@@ -288,23 +300,23 @@ onMounted(() => {
   flex: 1;
 
   &-title {
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 24px;
-    text-align: center;
+    font-size: 18px;
+    line-height: 24.59px;
+    text-align: left;
   }
 
   &-descr {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 400;
     line-height: 20px;
-    text-align: center;
-    color: var(--grey-text);
+    letter-spacing: -0.32px;
+    text-align: left;
+    color: var(--text-grey-color);
   }
 
   &-tab {
     border-radius: 10px;
-    border: 1px solid var(--border-bg);
+    border: 1px solid var(--border-color);
     position: relative;
     cursor: pointer;
     padding: 8px 12px;
@@ -312,23 +324,19 @@ onMounted(() => {
     &-label {
       color: #fff;
       font-size: 16px;
-      font-style: normal;
-      font-weight: 600;
-      line-height: 20px; /* 120% */
-      letter-spacing: -0.32px;
+      line-height: 24px;
+      text-align: left;
     }
 
     &-value {
       color: #aaabad;
       font-size: 14px;
-      font-style: normal;
-      font-weight: 600;
       line-height: 20px;
-      letter-spacing: -0.32px;
+      text-align: left;
     }
 
     &--active {
-      border: 1px solid var(--q-primary);
+      border: 1px solid var(--primary);
     }
 
     &-custom_labels {
@@ -346,10 +354,9 @@ onMounted(() => {
   &_total {
     &-label {
       font-size: 14px;
-      font-weight: 600;
       line-height: 20px;
       text-align: left;
-      color: var(--grey-text);
+      color: var(--text-grey-color);
     }
 
     &-sats {
@@ -358,36 +365,6 @@ onMounted(() => {
 
     &-usd {
       @include usdStyle;
-    }
-  }
-
-  &_btns {
-    :deep(.q-btn) {
-      height: 40px;
-      font-size: 16px;
-      border-radius: 8px;
-    }
-
-    &-collect {
-      color: #000;
-      background-color: var(--q-primary);
-
-      &.disabled {
-        color: rgba($color: #000, $alpha: 0.24);
-        background-color: rgba($color: #000, $alpha: 0.04) !important;
-        box-shadow: none;
-        border: 1px solid rgba($color: #000, $alpha: 0.1);
-
-        .q-btn__content {
-          color: rgba($color: #000, $alpha: 0.4);
-        }
-      }
-    }
-
-    &-start {
-      color: #fff;
-      background-color: #2b2d33;
-      box-shadow: 0px 20px 80px 12px var(--q-primary);
     }
   }
 
@@ -439,30 +416,6 @@ onMounted(() => {
       rgba(255, 255, 255, 0) 0,
       rgba(255, 255, 255, 0)
     );
-  }
-}
-
-.body--dark {
-  .estimate-screen_fees {
-    &_btns {
-      &-collect {
-        &.disabled {
-          color: rgba($color: #fff, $alpha: 0.24);
-          background-color: rgba($color: #fff, $alpha: 0.04) !important;
-          box-shadow: none;
-          border: 1px solid rgba($color: #fff, $alpha: 0.1);
-
-          .q-btn__content {
-            color: rgba($color: #fff, $alpha: 0.4);
-          }
-        }
-      }
-
-      &-start {
-        color: #000;
-        background-color: #fff;
-      }
-    }
   }
 }
 </style>
