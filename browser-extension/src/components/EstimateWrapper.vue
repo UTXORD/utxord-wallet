@@ -5,7 +5,7 @@
   <div v-else class="estimate-screen h-full flex flex-col" v-bind="$attrs">
     <Header />
     <Logo />
-    <div class="w-full h-[1px] bg-[var(--border-color)]" />
+    <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
     <div class="estimate-screen_content h-full flex flex-col items-center px-5 pb-5">
       <slot />
 
@@ -52,17 +52,23 @@
             v-if="t.type === TYPE_CUSTOM"
             class="estimate-screen_fees-tab-custom flex flex-col"
           >
-            <q-slider
+          <div class="estimate-screen_fees-slider mt-1">
+            <RangeSlider
               v-model="selectedStep"
-              color="primary"
-              markers
-              snap
               :min="0"
               :max="STEPS_COUNT"
-              selection-color="transparent"
-              :disable="loading"
+              step="1"
+              sticky
               @update:model-value="debounceOnSelect(t.type)"
             />
+            <div class="estimate-screen_fees-slider-points w-full flex items-center justify-between">
+              <div
+                v-for="i of STEPS_COUNT + 1"
+                :key="i"
+                class="estimate-screen_fees-slider-point"
+              />
+            </div>
+          </div>
             <div
               class="estimate-screen_fees-tab-custom_labels flex items-center justify-between"
             >
@@ -89,7 +95,7 @@
 
       <!-- Transaction fee -->
       <div
-        class="estimate-screen_fees_total flex items-center w-full gap-2 mb-2"
+        class="estimate-screen_fees_total flex items-center w-full gap-2 mb-8"
       >
         <div class="estimate-screen_fees_total-label mr-auto">
           {{ transaction_fee.label }}
@@ -124,6 +130,7 @@ import WinHelpers from '~/helpers/winHelpers'
 import { useStore } from '~/popup/store/index'
 import LoadingPage from '~/pages/LoadingPage.vue'
 import {useRouter} from "vue-router";
+import RangeSlider from "vue3-slider";
 
 const store = useStore()
 const { balance, dataForSign } = toRefs(store)
@@ -368,54 +375,54 @@ onMounted(() => {
     }
   }
 
-  :deep(.q-slider__track) {
-    height: 6px !important;
-    background: transparent;
-    border-radius: 0 !important;
-  }
+  &-slider {
+    position: relative;
 
-  :deep(.q-slider__inner) {
-    margin-top: 2px;
-    background: #404247;
-    height: 2px;
-    width: 100%;
-  }
+    .vue3-slider {
+      height: 18px;
+      margin: 0;
+      z-index: 2;
 
-  :deep(.q-slider__markers) {
-    color: #404247;
-    width: calc(100% - 6px) !important;
-    overflow: visible !important;
+      :deep(.handle) {
+        width: 13px;
+        height: 13px;
+        background: #000;
+        border-radius: 100%;
+        border: 3px solid var(--primary);
+        top: 50%;
+        transform: translateY(-50%) scale(1);
+      }
 
-    &:after {
-      width: 6px;
-      right: -6px;
+      :deep(.track) {
+        height: 2px;
+        background: var(--border-color);
+        top: 50%;
+        transform: translateY(-50%);
+        position: absolute;
+      }
+      
+      :deep(.track-filled) {
+        height: 2px;
+        background: transparent;
+      }
     }
-  }
 
-  :deep(.q-slider__thumb) {
-    &::after {
-      content: '';
-      width: 6px;
-      height: 6px;
-      z-index: 10;
+    &-points {
       position: absolute;
-      left: 50%;
       top: 50%;
-      display: block;
-      background: #000;
-      border-radius: 100%;
-      transform: translate(-50%, -50%);
+      transform: translateY(-50%);
+      width: 100%;
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
     }
-  }
 
-  :deep(.q-slider__markers--h) {
-    background-image: repeating-linear-gradient(
-      to right,
-      currentColor,
-      currentColor 6px,
-      rgba(255, 255, 255, 0) 0,
-      rgba(255, 255, 255, 0)
-    );
+    &-point {
+      width: 5px;
+      height: 5px;
+      border-radius: 100%;
+      background: var(--border-color);
+    }
   }
 }
 </style>
