@@ -9,6 +9,7 @@
     <div class="estimate-screen_content h-full flex flex-col items-center px-5 pb-5">
       <slot />
 
+      <!-- Title and description -->
       <div class="w-full flex flex-col gap-2 mb-4">
         <div class="estimate-screen_fees-title">
           Choose your transaction speed and fee
@@ -41,9 +42,11 @@
             </div>
             <div class="flex flex-col items-end">
               <span class="estimate-screen_fees-tab-label"
-                >{{ t.value?.toFixed(2) || 0 }} sats/vB</span
+                >{{ t.value || 0 }} sats/vB</span
               >
-              <span class="estimate-screen_fees-tab-value">(~$0.20)</span>
+              <span class="estimate-screen_fees-tab-value">
+                (~${{ convertSatsToUSD(vbToBytes(t.value), usdRate) }})
+              </span>
             </div>
           </div>
 
@@ -59,7 +62,6 @@
               :max="STEPS_COUNT"
               step="1"
               sticky
-              @update:model-value="debounceOnSelect(t.type)"
             />
             <div class="estimate-screen_fees-slider-points w-full flex items-center justify-between">
               <div
@@ -126,15 +128,15 @@
 <script setup lang="ts">
 
 import { ref, toRefs, computed, onMounted } from 'vue'
-import WinHelpers from '~/helpers/winHelpers'
 import { useStore } from '~/popup/store/index'
 import LoadingPage from '~/pages/LoadingPage.vue'
 import {useRouter} from "vue-router";
 import RangeSlider from "vue3-slider";
+import useWallet from '~/popup/modules/useWallet';
 
 const store = useStore()
-const { balance, dataForSign } = toRefs(store)
-const winHelpers = new WinHelpers()
+const { dataForSign } = toRefs(store)
+const { usdRate } = useWallet();
 
 const { back, push } = useRouter()
 
@@ -148,8 +150,8 @@ const loading = ref(false);
 const selectedType = ref<string>('');
 const selectedStep = ref<number>(0);
 
-const NORMAL_FEE_VAL = 12000;
-const PRIORITY_FEE_VAL = 22000;
+const NORMAL_FEE_VAL = 12152;
+const PRIORITY_FEE_VAL = 22396;
 
 const selectedFeeRate = computed(
   () => NORMAL_FEE_VAL + ((PRIORITY_FEE_VAL - NORMAL_FEE_VAL) / STEPS_COUNT) * selectedStep.value
@@ -213,8 +215,8 @@ const minVB = computed(() => bytesToVb(NORMAL_FEE_VAL).toFixed(2));
 const maxVB = computed(() => bytesToVb(PRIORITY_FEE_VAL).toFixed(2));
 const transaction_fee = computed(() => ({
   label: 'Transaction fee',
-  sats: formatPrice(1172, 'sats'),  // TODO: why 1172 ?
-  usd: `(~$${convertSatsToUSD(7700, 10 /* usd.value */)})`,  // TODO: why 7700 ? Why usd.value ?
+  sats: `${bytesToVb(selectedFeeRate.value)} sats`,
+  usd: `(~$${convertSatsToUSD(selectedFeeRate.value, usdRate.value)})`,
 }));
 
 function handleText(value: number) {
@@ -239,36 +241,24 @@ function onSelect(type: string, val?: number) {
     selectedType.value = type;
     if (val)
       selectedStep.value = calculateStep(
-        1000,
-        1900,
+        NORMAL_FEE_VAL,
+        PRIORITY_FEE_VAL,
         STEPS_COUNT,
         vbToBytes(val || 0)
       );
   }
 }
 
-const debounce = (func: (e: any) => void, timeout = 300) => {
-  let timer: ReturnType<typeof setTimeout>;
-  return (...args: [e: any]) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      func.apply(this, args);
-    }, timeout);
-  };
-};
-
-const debounceOnSelect = debounce(onSelect);
-
 function vbToBytes(kb: number): number {
   return kb * 1000;
 }
 
 function bytesToVb(bytes: number): number {
-  return bytes / 1000;
+  return +((bytes / 1000).toFixed(2).replace(/[.,]0+$/, ''));
 }
 
 async function onConfirm() {
-    // dataForSign.value = {...dataForSign.value, ...{selectedMiningFee: 0}};
+    dataForSign.value = {...dataForSign.value, ...{ selectedMiningFee: 0 }};
     await push(`//sign-commit-buy`)
 }
 
