@@ -19,8 +19,7 @@ permissions:
 
 jobs:
   build_publish_release:
-    runs-on: ubuntu-20.04
-#    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       -
@@ -38,89 +37,77 @@ jobs:
 
       -
         name: Build wallet core
-        uses: adrielcodeco/docker-compose-run-action@v1
-        with:
-          compose-file: "./docker-compose.yml"
-          service: build-wasm-core
+        run: docker compose run build-wasm-core
 
-#      -
-#        name: Build UTXORD wallet
-#        uses: adrielcodeco/docker-compose-run-action@v1
-#        with:
-#          compose-file: "./docker-compose.yml"
-#          service: build-wallet-utxord
-#      -
-#        name: Archive versioned release
-#        uses: thedoctor0/zip-release@0.7.1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          directory: "./browser-extension/extension/prod"
-#          type: 'zip'
-#          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}.zip
-#      -
-#        name: Archive non-versioned release
-#        uses: thedoctor0/zip-release@0.7.1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          directory: "./browser-extension/extension/prod"
-#          type: 'zip'
-#          filename: ../../../utxord-wallet.zip
-#
-#      -
-#        name: Build QA wallet
-#        uses: adrielcodeco/docker-compose-run-action@v1
-#        with:
-#          compose-file: "./docker-compose.yml"
-#          service: build-wallet-qa
-#      -
-#        name: Archive versioned release
-#        uses: thedoctor0/zip-release@0.7.1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          directory: "./browser-extension/extension/prod"
-#          type: 'zip'
-#          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-qa.zip
-#      -
-#        name: Archive non-versioned release
-#        uses: thedoctor0/zip-release@0.7.1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          directory: "./browser-extension/extension/prod"
-#          type: 'zip'
-#          filename: ../../../utxord-wallet-qa.zip
-#
-#      -
-#        name: Build E2E wallet
-#        uses: adrielcodeco/docker-compose-run-action@v1
-#        with:
-#          compose-file: "./docker-compose.yml"
-#          service: build-wallet-e2e
-#      -
-#        name: Archive versioned release
-#        uses: thedoctor0/zip-release@0.7.1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          directory: "./browser-extension/extension/prod"
-#          type: 'zip'
-#          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-e2e.zip
-#      -
-#        name: Archive non-versioned release
-#        uses: thedoctor0/zip-release@0.7.1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          directory: "./browser-extension/extension/prod"
-#          type: 'zip'
-#          filename: ../../../utxord-wallet-e2e.zip
-#
-#      -
-#        name: Release
-#        uses: softprops/action-gh-release@v1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          files: |
-#            utxord-wallet-${{ steps.vars.outputs.tag }}.zip
-#            utxord-wallet-${{ steps.vars.outputs.tag }}-qa.zip
-#            utxord-wallet-${{ steps.vars.outputs.tag }}-e2e.zip
-#            utxord-wallet.zip
-#            utxord-wallet-qa.zip
-#            utxord-wallet-e2e.zip
+      -
+        name: Build UTXORD wallet
+        run: docker compose run build-wallet-utxord
+      -
+        name: Archive versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet.zip
+
+      -
+        name: Build QA wallet
+        run: docker compose run build-wallet-qa
+      -
+        name: Archive versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-qa.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-qa.zip
+
+      -
+        name: Build E2E wallet
+        run: docker compose run build-wallet-e2e
+      -
+        name: Archive versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-e2e.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-e2e.zip
+
+      -
+        name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            utxord-wallet-${{ steps.vars.outputs.tag }}.zip
+            utxord-wallet-${{ steps.vars.outputs.tag }}-qa.zip
+            utxord-wallet-${{ steps.vars.outputs.tag }}-e2e.zip
+            utxord-wallet.zip
+            utxord-wallet-qa.zip
+            utxord-wallet-e2e.zip
