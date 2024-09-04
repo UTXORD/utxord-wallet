@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -9,25 +9,23 @@ RUN apt update && apt upgrade -y && \
                    git \
                    make \
                    cmake \
-                   gcc-12 \
+                   gcc \
                    autotools-dev \
                    autoconf \
                    autoconf-archive \
                    pkg-config \
                    libtool \
-                   g++-12 \
+                   g++ \
                    libtbb-dev \
                    bison \
                    flex \
+                   python3.12 \
+                   python3.12-dev \
                    python3-distutils-extra \
                    libpcre2-dev \
+                   python-is-python3 \
                    software-properties-common \
-                   build-essential \
-                   libgmp-dev
-
-RUN add-apt-repository ppa:deadsnakes/ppa && \
-    apt update -y && \
-    apt install -y python3.12 python3.12-dev python3.12-distutils python-is-python3
+                   build-essential
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
@@ -39,7 +37,7 @@ RUN git clone https://github.com/swig/swig.git && \
       git fetch --tag && \
       git checkout v4.2.0 && \
       ./autogen.sh && \
-      CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ./configure && \
+      ./configure && \
       make -j8 && \
       make install && \
       cd /utxord-wallet
@@ -50,7 +48,7 @@ RUN cd /utxord-wallet/core && ./autogen.sh
 RUN mkdir /utxord-wallet/core/build
 WORKDIR /utxord-wallet/core/build
 RUN cd /utxord-wallet/core/build && \
-    CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ../configure --enable-python-binding
+    ../configure --enable-python-binding
 
 RUN make -j8
 WORKDIR /utxord-wallet/core/build/src/python_binding
