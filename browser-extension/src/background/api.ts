@@ -324,6 +324,7 @@ class Api {
         this.balances = [];
         this.fundings = [];
         this.inscriptions = [];
+        this.expects = {};
         this.connect = false;
         this.sync = false;
         this.derivate = false;
@@ -889,6 +890,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     this.balances = [];
     this.fundings = [];
     this.inscriptions = [];
+    this.expects = {};
     this.connect = false;
     this.sync = false;
     await this.removePublicKeyToWebPage();
@@ -1237,6 +1239,19 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     this.fundings = balances.funds;
     this.inscriptions = balances.inscriptions;
     return list;
+  }
+
+  parseExpectsData(msgType: string, data: object) {
+    return {
+      defaultMiningFeeRate: data?.mining_fee_rate || null,
+      miningFeeRates: {
+        priority: data?.mining_fee_rates?.priority || null,
+        normal: data?.mining_fee_rates?.normal || null,
+        min: data?.mining_fee_rates?.min || null,
+        max: data?.mining_fee_rates?.max || null,
+      },
+      ordExpectedAmount: data?.ord_expected_amount || null,
+    };
   }
 
   async prepareBalances(balances) {

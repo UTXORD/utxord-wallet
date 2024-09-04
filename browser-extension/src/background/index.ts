@@ -1160,9 +1160,10 @@ interface ICollectionTransferResult {
             payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
             payload.data.errorMessage = payload.data?.costs?.errorMessage;
             if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
+            payload.data.expects = Api.expects;
             console.log(COMMIT_BUY_INSCRIPTION+':',payload);
             //update balances before openWindow
-            winManager.openWindow('sign-commit-buy', async (id) => {
+            winManager.openWindow('estimate-fee', async (id) => {
               setTimeout(async () => {
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
