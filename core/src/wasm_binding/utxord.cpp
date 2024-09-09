@@ -56,7 +56,7 @@ using l15::ParseAmount;
 using l15::hex;
 using l15::unhex;
 
-class MnemonicParser : private l15::core::MnemonicParser
+class MnemonicParser : private l15::core::MnemonicParser<l15::stringvector>
 {
     static l15::stringvector ConvertJsonList(std::string json_list)
     {
@@ -74,34 +74,34 @@ class MnemonicParser : private l15::core::MnemonicParser
         return dictionary;
     }
 
-    static l15::stringvector to_vec(const std::string& str)
+    static l15::sensitive_stringvector to_vec(const l15::sensitive_string& str)
     {
-        std::string curword;
-        l15::stringvector vec;
+        l15::sensitive_string curword;
+        l15::sensitive_stringvector vec;
         vec.reserve(24);
 
-        std::istringstream buf(str);
+        std::basic_istringstream<char, std::char_traits<char>, secure_allocator<char>> buf(str);
         while (getline (buf, curword, ' ')) {
             vec.emplace_back(move(curword));
         }
         return vec;
     }
 public:
-    explicit MnemonicParser(std::string word_list_json) : l15::core::MnemonicParser(ConvertJsonList(word_list_json)) {}
+    explicit MnemonicParser(std::string word_list_json) : l15::core::MnemonicParser<l15::stringvector>(ConvertJsonList(move(word_list_json))) {}
 
-    const char* DecodeEntropy(const std::string& phrase) const
+    const char* DecodeEntropy(const l15::sensitive_string& phrase) const
     {
         static std::string cache;
 
-        cache = hex(l15::core::MnemonicParser::DecodeEntropy(to_vec(phrase)));
+        cache = hex(l15::core::MnemonicParser<l15::stringvector>::DecodeEntropy(to_vec(phrase)));
         return cache.c_str();
     }
 
-    const char* EncodeEntropy(const std::string entropy_hex) const
+    const char* EncodeEntropy(const char* entropy_hex) const
     {
-        static std::string cache;
+        static l15::sensitive_string cache;
 
-        auto phrase_vec = l15::core::MnemonicParser::EncodeEntropy(unhex<l15::core::MnemonicParser::entropy_type>(entropy_hex));
+        auto phrase_vec = l15::core::MnemonicParser<l15::stringvector>::EncodeEntropy(unhex<l15::sensitive_bytevector>(entropy_hex));
 
         std::ostringstream buf;
         bool insert_space = false;
@@ -117,14 +117,13 @@ public:
         return cache.c_str();
     }
 
-    const char* MakeSeed(const std::string& phrase, const std::string& passphrase) const
+    const char* MakeSeed(const l15::sensitive_string& phrase, const l15::sensitive_string& passphrase) const
     {
-        static std::string cache;
+        static l15::sensitive_string cache;
 
-        cache = hex(l15::core::MnemonicParser::MakeSeed(to_vec(phrase), passphrase));
+        cache = hex(l15::core::MnemonicParser<l15::stringvector>::MakeSeed(to_vec(phrase), passphrase));
         return cache.c_str();
     }
-
 };
 
 
@@ -203,7 +202,7 @@ public:
 class KeyRegistry : private l15::core::KeyRegistry
 {
 public:
-    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<bytevector>(seed))
+    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<l15::sensitive_bytevector>(seed))
     {}
 
     void AddKeyType(const char* name, const char* filter_json)

@@ -34,6 +34,14 @@ interface KeyPair
     [Const] DOMString GetP2WPKHAddress(ChainMode mode);
 };
 
+[Prefix="utxord::wasm::"]
+interface MnemonicParser
+{
+    void MnemonicParser([Const] DOMString json_dictionary);
+    [Const] DOMString DecodeEntropy([Const] DOMString phrase);
+    [Const] DOMString EncodeEntropy([Const] DOMString entropy_hex);
+    [Const] DOMString MakeSeed([Const] DOMString phrase, [Const] DOMString passphrase);
+};
 
 [Prefix="utxord::wasm::"]
 interface KeyRegistry

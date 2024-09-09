@@ -1,4 +1,7 @@
 FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && echo "Etc/UTC" > /etc/timezone
 RUN apt update && apt upgrade -y && \
     apt install -y ca-certificates \
@@ -16,11 +19,16 @@ RUN apt update && apt upgrade -y && \
                    libtbb-dev \
                    bison \
                    flex \
-                   python3.10 \
-                   python3.10-dev \
+                   python3.12 \
+                   python3.12-dev \
                    python3-distutils-extra \
                    libpcre2-dev \
-                   python-is-python3
+                   python-is-python3 \
+                   software-properties-common \
+                   build-essential
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
 WORKDIR /utxord-wallet
 
@@ -40,8 +48,6 @@ RUN cd /utxord-wallet/core && ./autogen.sh
 RUN mkdir /utxord-wallet/core/build
 WORKDIR /utxord-wallet/core/build
 RUN cd /utxord-wallet/core/build && \
-    CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ../configure --enable-python-binding
+    CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ../configure --enable-python-binding  --prefix=/utxord-wallet/core/build/python_binding
 
-RUN make -j8
-WORKDIR /utxord-wallet/core/build/src/python_binding
-RUN cd /utxord-wallet/core/build/src/python_binding && make install-completed-library
+RUN make install -j8

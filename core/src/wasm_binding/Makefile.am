@@ -19,12 +19,9 @@ AM_LDFLAGS=-L$(top_builddir)/l15/node/src -L$(top_builddir)/l15/node/src/crypto 
 
 
 L15_LIBS = \
-$(top_builddir)/l15/src/core/libl15-core.la  \
-$(top_builddir)/l15/src/common/libl15-common.la \
-$(top_builddir)/l15/node/src/libbitcoinconsensus.la \
-$(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la \
-$(top_builddir)/l15/node/src/libunivalue.la \
-$(top_builddir)/src/contract/libutxord-contract.la
+    $(top_builddir)/src/contract/libutxord-contract.la \
+    $(top_builddir)/l15/libl15.la \
+    $(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la
 
 BUILT_SOURCES = contract.cpp contract.js
 EXTRA_DIST = contract.idl
