@@ -33,6 +33,7 @@
                 @update:model-value="onChangePhraseLength"
                 :options="PHRASE_LENGTH_OPTIONS"
                 data-testid="phrase-length"
+                tabindex="-1"
               />
               </div>
         <CustomInput
@@ -49,56 +50,57 @@
             (val) => isASCII(val) || 'Please enter only Latin characters'
           ]"
           data-testid="mnemonic-phrase"
+          tabindex="0"
         />
         <div
-          v-if="flag_check"
+          v-if="isReadyToCheck"
           class="custom-input_error"
           :class="my-2"
           data-testid="mnemonic-checksum-error"
         >
-          <span v-if="!valid" class="text-red-300 text-left">Invalid checksum menemonic</span>
+          <span v-if="!isValid" class="text-red-300 text-left">Invalid checksum mnemonic</span>
         </div>
         <NotifyInBody/>
         <table style="width: 100%;" v-if="picked == 'list'">
         <!-- for 12 words -->
           <tbody v-if="passphraseLength == 12" v-for="n in 4">
           <tr class="flex">
-            <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+4" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]"  size="10" type="text" @input="inputWords" v-model="list[n+3]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]"  size="10" type="text" @input="inputWords" v-model="list[n+7]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+4" :placeholder="n+4" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]"  size="10" type="text" @input="inputWords" v-model="list[n+3]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+8" :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]"  size="10" type="text" @input="inputWords" v-model="list[n+7]" data-testid="mnemonic-word"/></td>
           </tr>
           </tbody>
           <!-- for 15 words -->
           <tbody v-if="passphraseLength == 15" v-for="n in 5">
           <tr class="flex">
-            <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+5" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+4]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+10" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+9]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+5" :placeholder="n+5" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+4]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+10" :placeholder="n+10" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+9]" data-testid="mnemonic-word"/></td>
           </tr>
           </tbody>
 
           <!-- for 18 words -->
           <tbody v-if="passphraseLength == 18" v-for="n in 6">
           <tr class="flex">
-            <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+6" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+12" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+6" :placeholder="n+6" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+5]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+12" :placeholder="n+12" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+11]" data-testid="mnemonic-word"/></td>
           </tr>
           </tbody>
           <!-- for 21 words -->
           <tbody v-if="passphraseLength == 21" v-for="n in 7">
           <tr class="flex">
-            <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+7" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+14" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+7" :placeholder="n+7" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+6]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+14" :placeholder="n+14" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+13]" data-testid="mnemonic-word"/></td>
           </tr>
           </tbody>
           <!-- for 24 words -->
           <tbody v-if="passphraseLength == 24" v-for="n in 8">
           <tr class="flex">
-            <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]" data-testid="mnemonic-word"/></td>
-            <td class="w-full"><input :placeholder="n+16" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n-1]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+8" :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+7]" data-testid="mnemonic-word"/></td>
+            <td class="w-full"><input :tabindex="n+16" :placeholder="n+16" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" v-model="list[n+15]" data-testid="mnemonic-word"/></td>
           </tr>
           </tbody>
         </table>
@@ -151,7 +153,7 @@
         >
           <ArrowLeftIcon />
         </Button>
-        <Button @click="onStore" :disabled="isDisabled" class="w-full" data-testid="confirm">Confirm</Button>
+        <Button @click="onStore" :disabled="!isValid || !isReadyToCheck" class="w-full" data-testid="confirm">Confirm</Button>
       </div>
 
       <!-- Info -->
@@ -175,20 +177,8 @@ const { back, push } = useRouter()
 
 const { getFundAddress, getBalance } = useWallet()
 
-const LENGTH_12 = { label: '12', value: 12 }
-const LENGTH_15 = { label: '15', value: 15 }
-const LENGTH_18 = { label: '18', value: 18 }
-const LENGTH_21 = { label: '21', value: 21 }
-const LENGTH_24 = { label: '24', value: 24 }
-
-const PHRASE_LENGTH_OPTIONS = [
-  LENGTH_12,
-  LENGTH_15,
-  LENGTH_18,
-  LENGTH_21,
-  LENGTH_24
-]
-
+const PHRASE_LENGTHS = [12, 15, 18, 21, 24];
+const PHRASE_LENGTH_OPTIONS = PHRASE_LENGTHS.map(l => ({label: l.toString(), value: l}));
 
 const textarea = ref('')
 
@@ -205,13 +195,11 @@ const list = ref(
   localStorage?.getItem(MNEMONIC_KEY)?.trim()?.split(' ') || []
 )
 const passphraseLength = ref(
-  Number(localStorage?.getItem(MNEMONIC_LENGTH)) || LENGTH_12.value
+  Number(localStorage?.getItem(MNEMONIC_LENGTH)) || PHRASE_LENGTHS[0]
 )
 const showInfo = ref(false)
 
-const valid = ref(false)
-
-const flag_check = ref(false)
+const isValid = ref(false)
 
 const MNEMONIC_KEY = 'temp-mnemonic'
 const MNEMONIC_LENGTH = 'mnemonic-length'
@@ -222,74 +210,44 @@ function onChangePhraseLength(option) {
   saveTempDataToLocalStorage()
 }
 
-const isDisabled = computed(() => {
-  checkValid(textarea.value?.trim())
-  const seedArr = textarea.value?.trim()?.split(' ')
-  if (seedArr.length !== 12 &&
-      seedArr.length !== 15 &&
-      seedArr.length !== 18 &&
-      seedArr.length !== 21 &&
-      seedArr.length !== 24) return true
-  if (!textarea.value) return true
-  if (!valid.value) return true
-  return false
-})
+const isReadyToCheck = computed(() => {
+  const seedLength = textarea.value?.replace(/\s+/g, ' ')?.trim()?.split(' ')?.length || 0;
+  return passphraseLength.value == seedLength;
+});
 
-function checkValid(val = ''){
-  (async ()=>{
-    valid.value = await isMnemonicValid(val.trim())
-    if(val.length){
-     flag_check.value = true
-     }else{
-     flag_check.value = false
-     }
-  })()
-  return valid.value
+async function checkValid(val = '') {
+  console.debug('checkValid(): val:', val);
+  isValid.value = await isMnemonicValid(val.trim());
+  console.debug('checkValid(): isValid.value:', isValid.value);
+  return isValid.value;
 }
 
-async function inputWords(e){
-console.log('run inputWords');
-    checkValid(textarea.value?.trim())
-  const l = await list.value
-console.log('picked.value:', picked.value);
-  if(picked.value === 'line'){
-    list.value = textarea.value?.trim()?.split(' ')
-    if (list.value.length === 12 ||
-        list.value.length === 15 ||
-        list.value.length === 18 ||
-        list.value.length === 21 ||
-        list.value.length === 24){
-          passphraseLength.value = list.value.length
-          saveTempDataToLocalStorage()
-          return;
-        }
-        passphraseLength.value = 12
-        saveTempDataToLocalStorage()
-    return;
-  }
+async function inputWords(e) {
+  console.log('inputWords()');
+  console.log('picked.value:', picked.value);
 
-  if(picked.value === 'list'){
-    if(e.target.value?.trim()?.split(' ')?.length > list.value.length){
-      textarea.value = e.target.value
-      list.value = textarea.value?.trim()?.split(' ')
-    }
-    if(list.value.length >= e.target.value?.trim()?.split(' ')?.length){
-      textarea.value = list.value?.join(' ')?.trim()
-    }
+  switch (picked.value) {
+    case 'line':
+      list.value = textarea.value?.replace(/\s+/g, ' ')?.trim()?.split(' ')
+      passphraseLength.value = PHRASE_LENGTHS.includes(list.value.length) ? list.value.length : PHRASE_LENGTHS[0];
+      break;
 
-    if (list.value.length === 12 ||
-        list.value.length === 15 ||
-        list.value.length === 18 ||
-        list.value.length === 21 ||
-        list.value.length === 24){
+    case 'list':
+      const newValue = e.target.value?.replace(/\s+/g, ' ')?.trim();
+      if (list.value.length < newValue.split(' ')?.length) {
+        textarea.value = newValue;
+        list.value = textarea.value?.split(' ')
+      } else /* if (list.value.length >= newValue.split(' ')?.length) */ {
+        textarea.value = list.value?.join(' ')?.trim()
+      }
+      if (PHRASE_LENGTHS.includes(list.value.length)) {
         passphraseLength.value = list.value.length
-        saveTempDataToLocalStorage()
-          return;
-    }
-    saveTempDataToLocalStorage()
-    return;
+      }
+      break;
   }
-  if(!passphraseLength.value) passphraseLength.value = 12
+  if (!passphraseLength.value) passphraseLength.value = PHRASE_LENGTHS[0];
+
+  await checkValid(textarea.value?.replace(/\s+/g, ' ')?.trim());
   saveTempDataToLocalStorage()
   return;
 }
@@ -340,7 +298,7 @@ function goToBack(){
 
 onBeforeMount(() => {
   console.log('onBeforeMount')
-  if(list.value.length > 0) inputWords({
+  if(list.value?.length > 0) inputWords({
     target:{
       value: list.value.join(' ')
     }

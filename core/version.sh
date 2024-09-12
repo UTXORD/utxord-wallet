@@ -7,10 +7,10 @@
 
 if [ "x$1" = "x" ]
 then
-  git describe --always --dirty --broke
+  git describe --always --dirty --broke --tag
 elif [ -d "$1" ]
 then
-  ( cd -- "$1"; git describe --always --dirty --broke )
+  ( cd -- "$1"; git describe --always --dirty --broke --tag)
 else
   echo "unknown"
 fi

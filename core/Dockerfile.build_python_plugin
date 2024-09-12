@@ -19,13 +19,15 @@ RUN apt update && apt upgrade -y && \
                    libtbb-dev \
                    bison \
                    flex \
-                   python3.12 \
-                   python3.12-dev \
                    python3-distutils-extra \
                    libpcre2-dev \
-                   python-is-python3 \
                    software-properties-common \
-                   build-essential
+                   build-essential \
+                   libgmp-dev
+
+RUN add-apt-repository ppa:deadsnakes/ppa && \
+    apt update -y && \
+    apt install -y python3.12 python3.12-dev python3.12-distutils python-is-python3
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1

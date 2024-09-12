@@ -129,13 +129,13 @@ function refreshBalance() {
   fetchUSDRate()
   setTimeout(async () => {
     const res = await sendMessage(STATUS_DERIVATION, {}, 'background')
-    store.setUseDerivation(Boolean(res.derivate))
+    await store.setUseDerivation(Boolean(res.derivate))
     const ta = Number(typeAddress.value);
     const tl = Boolean(useDerivation.value)?'fund':'oth'
-    const addr = res.keys?.addresses?.reverse()?.find(
+    const addr = await res.keys?.addresses?.reverse()?.find(
       (item) => item.type === tl && item.typeAddress === ta
     )?.address
-    store.setFundAddress(addr)
+    await store.setFundAddress(addr)
     await getBalance(fundAddress.value);
   }, 1000)
 }
@@ -152,10 +152,10 @@ async function onChangeTypeAddress(){
       'background'
   )
   const tl = Boolean(useDerivation.value) ? 'fund' : 'oth'
-  const addr = response?.addresses?.reverse()?.find(
+  const addr = await response?.addresses?.reverse()?.find(
     (item) => item.type === tl && item.typeAddress === ta
     )?.address
-  store.setFundAddress(addr)
+  await store.setFundAddress(addr)
   await refreshBalance();
 }
 

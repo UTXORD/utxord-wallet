@@ -131,7 +131,7 @@ const isDisabledMessage = computed(() => {
 
 const isDisabledPass = computed(() => {
   if (isDisabled.value) return true
-  if (!password.value.length) return true
+  if (!password.value?.length) return true
   return false
 })
 

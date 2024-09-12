@@ -14,6 +14,7 @@
       />
     </div>
     <!-- To address -->
+    <!--
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
     >
@@ -22,7 +23,8 @@
           >My funding address:</span
         >
         <CustomInput
-          :value="formatAddress(fundAddress, 12, 12)"
+          type="text"
+          :value="fundAddress"
           class="w-full"
           readonly
           data-testid="fund-address"
@@ -34,7 +36,7 @@
         </CustomInput>
       </div>
     </div>
-
+    -->
     <!-- TX Info -->
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"

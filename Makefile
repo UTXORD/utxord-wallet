@@ -32,6 +32,8 @@ ext-build-clean:
 ext-clean: ext-build-clean
 	rm -rf $(EXT_LIB_FILES) $(EXT_MODULE_FILES)
 
+clean: core-clean ext-clean
+
 ext-core-lib: $(CORE_TARGETS)
 	cp -f $(CORE_TARGET_DIR)/utxord.wasm $(EXT_LIB_DIR)
 	sed 's/^var utxord = /self.utxord = /' $(CORE_TARGET_DIR)/utxord.js  > $(EXT_LIB_DIR)/utxord.js
@@ -52,8 +54,6 @@ ext-utxord: ext-deps
 	(cd $(EXT_DIR) ; npm run build-utxord)
 
 ext: ext-utxord
-
-clean: core-clean ext-clean
 
 all: ext
 

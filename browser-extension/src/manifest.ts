@@ -13,6 +13,9 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     name: `${(pkg.displayName || pkg.name)} ${LABELS[TARGET]}`,
     version: pkg.version,
     description: pkg.description,
+    side_panel: {
+      default_path: "./popup/index.html"
+    },
     action: {
       default_icon: `./assets/${NETWORKS[TARGET]}-128x128.png`,
       default_popup: './popup/index.html'
@@ -34,9 +37,9 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
       {
         matches: [
             'https://utxord.com/*',
+            'https://api.utxord.com/*',
             'https://qa.utxord.com/*',
-            'http://10.1.10.100:8080/*',
-            'http://e2e.utxord.com:9000/*',
+            'https://api.qa.utxord.com/*',
             'https://sntry.l15.co/*',
             'http://localhost/*',
             'http://127.0.0.1/*'
@@ -46,9 +49,9 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     ],
     host_permissions: [
         'https://utxord.com/*',
+        'https://api.utxord.com/*',
         'https://qa.utxord.com/*',
-        'http://10.1.10.100:8080/*',
-        'http://e2e.utxord.com:9000/*',
+        'https://api.qa.utxord.com/*',
         'https://sntry.l15.co/*',
         'http://localhost/*',
         'http://127.0.0.1/*'
@@ -61,7 +64,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
       matches: ['<all_urls>']
     },
     // permissions: ['contextMenus', 'background', 'storage', 'nativeMessaging', 'declarativeContent', 'activeTab', 'tabs', 'scripting', 'alarms', 'unlimitedStorage'],
-    permissions: ['alarms', 'scripting', 'storage', 'unlimitedStorage', 'tabs', 'activeTab'],
+    permissions: ['alarms', 'scripting', 'storage', 'unlimitedStorage', 'tabs', 'activeTab','sidePanel'],
     optional_permissions: [],
     content_security_policy: {
       extension_pages: `script-src 'self' 'wasm-unsafe-eval'; object-src 'self' 'wasm-unsafe-eval'; worker-src 'self' 'wasm-unsafe-eval' http://localhost:* http://127.0.0.1:*; script-src-elem 'self' 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; frame-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
@@ -73,6 +76,11 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     manifest.content_security_policy = {
       extension_pages: `script-src 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; script-src-elem 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
     }
+  }
+  if (TARGET !== '_utxord') {
+    const e2eUrl = 'http://e2e.utxord.com:9000/*';
+    manifest.content_scripts[0].matches.push(e2eUrl);
+    manifest.host_permissions.push(e2eUrl);
   }
 
   return manifest

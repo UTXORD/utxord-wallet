@@ -170,9 +170,7 @@ std::list<Inscription> ParseInscriptions(const string &hex_tx)
 
         while (it != script.end()) {
             auto envelope_tags = ParseEnvelopeScript(script, it);
-            if (!envelope_tags.empty()) {
-                res.emplace_back(move((tx.GetHash().GetHex() + "i") += std::to_string(res.size())), move(envelope_tags));
-            }
+            res.emplace_back(move((tx.GetHash().GetHex() + "i") += std::to_string(res.size())), move(envelope_tags));
         }
     }
 

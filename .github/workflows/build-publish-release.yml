@@ -37,17 +37,11 @@ jobs:
 
       -
         name: Build wallet core
-        uses: adrielcodeco/docker-compose-run-action@v1
-        with:
-          compose-file: "./docker-compose.yml"
-          service: build-wasm-core
+        run: docker compose run build-wasm-core
 
       -
         name: Build UTXORD wallet
-        uses: adrielcodeco/docker-compose-run-action@v1
-        with:
-          compose-file: "./docker-compose.yml"
-          service: build-wallet-utxord
+        run: docker compose run build-wallet-utxord
       -
         name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.1
@@ -67,10 +61,7 @@ jobs:
 
       -
         name: Build QA wallet
-        uses: adrielcodeco/docker-compose-run-action@v1
-        with:
-          compose-file: "./docker-compose.yml"
-          service: build-wallet-qa
+        run: docker compose run build-wallet-qa
       -
         name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.1
@@ -90,10 +81,7 @@ jobs:
 
       -
         name: Build E2E wallet
-        uses: adrielcodeco/docker-compose-run-action@v1
-        with:
-          compose-file: "./docker-compose.yml"
-          service: build-wallet-e2e
+        run: docker compose run build-wallet-e2e
       -
         name: Archive versioned release
         uses: thedoctor0/zip-release@0.7.1

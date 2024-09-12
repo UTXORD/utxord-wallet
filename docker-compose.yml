@@ -16,17 +16,22 @@ services:
       - YARN_CACHE_FOLDER=/tmp/yarn_cache
       - NODE_OPTIONS=--max-old-space-size=4096
     volumes:
-      - "./:/src"
+      - ".:/src"
 
   toolchain-shell:
     profiles: ["donotstart"]
     <<: *common_config
     command: "bash"
 
+  build-debug:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "bash -c 'pwd ; ls -al ; ls -al / ; ls -al /src ; set ; mount'"
+
   build-wasm-core:
     profiles: ["donotstart"]
     <<: *common_config
-    command: "make clean core"
+    command: "make clean ext-core-lib"
 
   build-wallet-qa:
     profiles: ["donotstart"]

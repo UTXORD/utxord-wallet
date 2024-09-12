@@ -12,8 +12,9 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
   {
     path: '/manage-password',
     name: 'ManagePasswordPage',
-    component: () => import('~/pages/ManagePasswordPage.vue'),
-    meta: {
+    // component: () => import('~/pages/ManagePasswordPage.vue'),
+    component: () => import('~/pages/EstimateFeePage.vue'),
+        meta: {
       requiresAuth: true
     }
   },
@@ -29,6 +30,14 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
     path: '/manage-errors',
     name: 'ManageErrors',
     component: () => import('~/pages/ManageErrors.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/view-mode',
+    name: 'ManageViewMode',
+    component: () => import('~/pages/ManageViewMode.vue'),
     meta: {
       requiresAuth: true
     }

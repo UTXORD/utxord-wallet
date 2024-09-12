@@ -35,6 +35,7 @@ export default defineConfig(({ command }) => {
       sourcemap: isDev ? 'inline' : false,
       rollupOptions: {
         input: {
+          sidePanel: r('src/popup/index.html'),
           popup: r('src/popup/index.html'),
           options: r('src/options/index.html'),
         },

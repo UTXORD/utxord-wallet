@@ -324,10 +324,16 @@ class Api {
         this.balances = [];
         this.fundings = [];
         this.inscriptions = [];
+        this.expects = {};
         this.connect = false;
         this.sync = false;
         this.derivate = false;
         this.error_reporting = true;
+        this.timeSync = false;
+        this.viewMode = false;
+        // view mode true = sidePanel enabled
+        // view mode false = popup enabled
+
 
         await this.init(this);
         await this.sentry();
@@ -346,6 +352,10 @@ class Api {
     try {
       const { seed } = await chrome.storage.local.get(['seed']);
       const { derivate } = await chrome.storage.local.get(['derivate']);
+      const { viewMode } = await chrome.storage.local.get(['viewMode']);
+      if(viewMode){
+        this.viewMode = viewMode;
+      }
       if (seed) {
         myself.wallet.root.seed = seed;
       }
@@ -630,6 +640,14 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     return true;
   }
 
+  async setViewMode(value){
+    this.viewMode = Boolean(value);
+    setTimeout(() => {
+      chrome.storage.local.set({viewMode: this.viewMode});
+    }, 2000);
+    return true;
+  }
+
   async setErrorReporting(value) {
     if (!this.checkSeed()) return false;
     this.error_reporting = Boolean(value);
@@ -872,6 +890,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     this.balances = [];
     this.fundings = [];
     this.inscriptions = [];
+    this.expects = {};
     this.connect = false;
     this.sync = false;
     await this.removePublicKeyToWebPage();
@@ -1063,8 +1082,8 @@ checkAddressFromKeyRegistry(address, type = undefined, path = undefined){
   }
 
   // console.log('checkAddressFromKeyRegistry->address:', address, ' type:',type, ' path:',path)
-   return setTimeout(((address, type, path, myself) =>{
-     return ()=>{
+   // return setTimeout(((address, type, path, myself) =>{
+   //   return ()=>{
        try {
   let min_index = 0;
   let max_index_range = myself.max_index_range + 1;
@@ -1132,8 +1151,8 @@ checkAddressFromKeyRegistry(address, type = undefined, path = undefined){
     }
     return null;
   }
-     };
-   })(address,type, path, myself), 0);
+   //   };
+   // })(address,type, path, myself), 0);
 }
 
 getKeyFromKeyRegistry(address: string, type = undefined, path = undefined){
@@ -1220,6 +1239,19 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     this.fundings = balances.funds;
     this.inscriptions = balances.inscriptions;
     return list;
+  }
+
+  parseExpectsData(msgType: string, data: object) {
+    return {
+      defaultMiningFeeRate: data?.mining_fee_rate || null,
+      miningFeeRates: {
+        priority: data?.mining_fee_rates?.priority || null,
+        normal: data?.mining_fee_rates?.normal || null,
+        min: data?.mining_fee_rates?.min || null,
+        max: data?.mining_fee_rates?.max || null,
+      },
+      ordExpectedAmount: data?.ord_expected_amount || null,
+    };
   }
 
   async prepareBalances(balances) {
@@ -1546,6 +1578,47 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     return response;
   }
 
+  async fetchTimeSystem(){
+    if(this.timeSync){
+      return true;
+    }
+    const datetime_server_resp = await this.Rest.get('/api/datetime');
+    const datetime_from_server = datetime_server_resp?.data?.datetime;
+    if(!datetime_from_server){
+      return true;
+    }
+    const d = new Date(datetime_from_server);
+
+    console.debug('datetime from server:', d);
+    const serverYear = d.getUTCFullYear()
+    const serverMonth = this.zeroPad((d.getUTCMonth()+1), 2)
+    const serverDay = this.zeroPad(d.getUTCDate(), 2)
+    const serverHour = this.zeroPad(d.getUTCHours(), 2)
+    const serverMinute = this.zeroPad(d.getUTCMinutes(), 2)
+    const serverSecond = this.zeroPad(d.getUTCSeconds(), 2)
+
+    const sd = new Date();
+    // console.log('sd:',sd);
+    const sysYear = sd.getUTCFullYear()
+    const sysMonth = this.zeroPad((sd.getUTCMonth()+1), 2)
+    const sysDay = this.zeroPad(sd.getUTCDate(), 2)
+    const sysHour = this.zeroPad(sd.getUTCHours(), 2)
+    const sysMinute = this.zeroPad(sd.getUTCMinutes(), 2)
+    const sysSecond = this.zeroPad(sd.getUTCSeconds(), 2)
+    if(serverYear !== sysYear ||
+      serverMonth !== sysMonth ||
+      serverDay !== sysDay ||
+      serverHour !== sysHour ||
+      serverMinute !== sysMinute ||
+      Math.abs(serverSecond-sysSecond) > 5
+    ){
+      console.log('serverSecond',serverSecond,'| sysSecond:',sysSecond)
+      console.log('Enable automatic date and time setting for your device'); return false;
+    }
+    this.timeSync = true;
+    return true;
+  }
+
   async fetchExternalAddresses() {
     if(this.wallet.ext.keys.length<1) return;
 
@@ -1737,6 +1810,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
     if (1 < tabs.length) {
       console.warn(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
+    }
+    if(!await this.fetchTimeSystem()){
+      return null;
     }
     for (let tab of tabs) {
       const url = tab.url || tab.pendingUrl;
@@ -2372,10 +2448,12 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         // or wait and check utxo this translation on balances
 
         outData.outputs = {
-          collection: newOrd.CollectionOutput(),
-          inscription: newOrd.InscriptionOutput(),
           change: newOrd.ChangeOutput(),
         };
+        if(!is_lazy){
+          outData.outputs.collection= newOrd.CollectionOutput();
+          outData.outputs.inscription= newOrd.InscriptionOutput();
+        }
       }
 
       return outData;
