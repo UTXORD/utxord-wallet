@@ -47,11 +47,11 @@
         >Connect to site</Button>
         </template>
         <span
-          v-show="balance?.confirmed > 0"
+          v-if="Number(balance?.confirmed) > 0"
           class="w-2/4"
           data-testid="send"
           @click="sendTo"
-          style="display: none;cursor: pointer;font-size: 20px;"
+          style="cursor: pointer;font-size: 20px;margin-top: 5px;"
           >
           &#9658;
         </span>

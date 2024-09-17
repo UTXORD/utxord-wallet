@@ -4,6 +4,7 @@ import {sendMessage} from "webext-bridge";
 import {ADDRESS_COPIED} from "~/config/events";
 import * as WebBip39 from 'web-bip39';
 import wordlist from 'web-bip39/wordlists/english';
+import { validate, getAddressInfo } from 'bitcoin-address-validation';
 
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
@@ -85,4 +86,41 @@ export function isLength(str: string) {
 
 export function convertSatsToUSD(sats: number, usdRate: number): number {
   return (sats || 0) * (1 / 100000000) * (usdRate || 0);
+}
+
+export function toNumberFormat(num: number){
+  return new Intl.NumberFormat(/* format || */ 'en-US', {
+    style: 'decimal',
+  }).format(num);
+}
+
+export function validateBtcAddress(address: string){
+  let addressInfo = {}
+  try {
+    addressInfo = getAddressInfo(address)
+  } catch (e) {
+
+  }
+  //Taproot and Native Segwit only
+  if(addressInfo.type!=='p2tr' && addressInfo.type!=='p2wpkh'){
+    return false;
+  }
+  return validate(address)
+}
+export function validateBtcAddressInfo(address: string){
+  let addressInfo = {}
+  let error = {}
+  try {
+    addressInfo = getAddressInfo(address)
+  } catch (e) {
+    error = e
+  }
+  //Taproot and Native Segwit only
+  if(addressInfo.type!=='p2tr' && addressInfo.type!=='p2wpkh'){
+    return `We are temporarily not supporting ${addressInfo.type}, please use p2tr and p2wpkh types`;
+  }
+  if(!validate(address)){
+    console.log(error)
+    return `Address is incorrect`
+  }
 }

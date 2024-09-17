@@ -258,11 +258,21 @@ function bytesToVb(bytes: number): number {
 }
 
 async function onConfirm() {
-    dataForSign.value = {...dataForSign.value, ...{ selectedMiningFee: 0 }};
-    await push(`//sign-commit-buy`)
+       dataForSign.value = {
+       ...dataForSign.value,
+       ...{ selectedMiningFee: selectedFeeRate.value },
+       };
+
+    console.log('onConfirm()->dataForSign:', dataForSign.value);
+    if(!dataForSign.value?.location){
+      await push(`/sign-commit-buy`)
+    }else{
+      await push(dataForSign.value?.location)
+    }
 }
 
 onMounted(() => {
+console.log('dataForSign:', dataForSign.value);
   setTimeout(() => {
     loading.value = false
   }, 1000)
@@ -390,7 +400,7 @@ onMounted(() => {
         transform: translateY(-50%);
         position: absolute;
       }
-      
+
       :deep(.track-filled) {
         height: 2px;
         background: transparent;

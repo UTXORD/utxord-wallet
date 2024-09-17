@@ -1,47 +1,59 @@
 <template>
   <SignWrapper data-testid="sign-transfer-page">
     <!-- To address -->
-<!--
+    <!-- Title and description -->
+    <div class="w-full flex flex-col gap-2 mb-4">
+      <div class="sign-screen_block-title">
+        Rewiew
+      </div>
+    </div>
+
     <div
       class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
     >
-      <div class="sign-screen_block-input flex flex-col">
-        <span class="mb-2 w-full text-[var(--text-grey-color)]"
-          >My ordinal address:</span
-        >
-        <CustomInput
-          :value="formatAddress(toAddress, 12, 12)"
-          class="w-full"
-          readonly
-        >
-          <CopyIcon
-            class="cursor-pointer"
-            @click="copyToClipboard(toAddress)"
-          />
-        </CustomInput>
-      </div>
+    <PriceComp
+      class="sign-screen_amount text-[var(--text-color)] flex flex-col gap-[0]"
+      :price="dataForSign?.amount || 0"
+      :loading-size="6"
+      :font-size-breakpoints="{
+        1000000: '40px',
+        10000000: '30px',
+        1000000000: '20px'
+      }"
+      data-testid="amount"
+    />
+
     </div>
--->
-    <!-- TX Info -->
     <div
-      class="sign-screen_block w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5 gap-3"
+      class="sign-screen_block-wrapper w-full flex flex-col bg-[var(--section)] rounded-lg p-3 mb-5"
+    >
+
+    <span class="sign-screen_block-title text-[var(--text-grey-color)] address-title"
+      >To&nbsp;&nbsp;&nbsp;</span
+    >
+    <span class="sign-screen_block-address text-[var(--text-color)] address"
+      >{{dataForSign?.address}}</span
+    >
+    </div>
+
+    <div
+      class="sign-screen_block w-full flex flex-col rounded-lg p-3 mb-5 gap-3"
     >
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Transfer collection:</span>
         <TextComp
           class="ml-auto"
           :text="dataForSign?.data?.collection?.metadata?.title"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
-          data-testid="collection-title"
+          data-testid="block-title"
         />
       </div>
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Lazy setup fee:</span>
+        <span class="mr-2 text-[var(--text-grey-color)]">Sending</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.market_fee?.amount || 0"
+          :price="dataForSign?.amount || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -49,10 +61,10 @@
         />
       </div>
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-grey-color)]">Transaction Mining Fee:</span>
+        <span class="mr-2 text-[var(--text-grey-color)]">Transaction Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.data?.costs?.total_mining_fee || 0"
+          :price="dataForSign?.selectedMiningFee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -63,7 +75,7 @@
         class="w-full min-h-[1px] bg-[var(--border-color)] dark:bg-[#555555]"
       />
       <div class="flex items-center">
-        <span class="mr-2 text-[var(--text-color)]">Total Needed:</span>
+        <span class="mr-2 text-[var(--text-color)]">TOTAL</span>
         <PriceComp
           class="ml-auto"
           :price="totalNeed"
@@ -75,20 +87,6 @@
       </div>
     </div>
 
-    <div
-      class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
-    >
-      <span class="mr-2 text-[var(--text-color)]">Available:</span>
-      <PriceComp
-        class="ml-auto"
-        :price="balance?.confirmed || 0"
-        :loading="!isSynchronized"
-        :font-size-breakpoints="{
-          1000000: '15px'
-        }"
-        data-testid="available"
-      />
-    </div>
 
     <NotifyInBody/>
     <GetRawTransactions/>
@@ -117,20 +115,57 @@ const connected = computed(() => balance?.value?.connect)
 //     dataForSign.value?.data?.costs?.expect_amount) || 0
 // )
 
-const totalNeed = computed(() => dataForSign.value?.data?.costs?.amount ||  0)
+const totalNeed = computed(() =>
+    Number(dataForSign.value?.amount) +
+    Number(dataForSign?.value?.selectedMiningFee) ||  0)
 
 onMounted(() => {
-  console.debug('dataForSign.value', dataForSign.value);
+    if(!dataForSign.value){
+      dataForSign.value = {};
+    }
+  console.log('dataForSign.value', dataForSign.value);
+  if(dataForSign.value?.location) dataForSign.value.location = undefined;
 })
 
 </script>
 
-<style scoped>
-.sign-screen_block span {
-  text-align: left;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 18px;
-  letter-spacing: -0.154px;
+<style lang="scss" scoped>
+.sign-screen {
+  &_block-title {
+    flex: 1;
+    font-size: 18px;
+    line-height: 24.59px;
+    text-align: left;
+  }
+  &_block-wrapper {
+    display: inline-block;
+  }
+  &_block span {
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 18px;
+    letter-spacing: -0.154px;
+  }
+  &_block-address {
+    word-break: break-all;
+    text-align: right;
+  }
+  &_amount {
+    font-weight: 600;
+    line-height: normal;
+
+    &-label {
+      font-weight: 400;
+      font-size: 15px;
+      line-height: 20px;
+      display: flex;
+      align-items: left;
+      letter-spacing: -0.32px;
+    }
+  }
+
+
 }
+
+
 </style>
