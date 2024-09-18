@@ -16,7 +16,8 @@ const routes: Array<RouteRecordRaw> = [
     name: 'HomePage',
     component: () => import('~/pages/HomePage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -40,7 +41,8 @@ const routes: Array<RouteRecordRaw> = [
     name: 'SendPage',
     component: () => import('~/pages/SendPage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -48,7 +50,8 @@ const routes: Array<RouteRecordRaw> = [
     name: 'ConfirmSendPage',
     component: () => import('~/pages/ConfirmSendPage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -80,7 +83,8 @@ const routes: Array<RouteRecordRaw> = [
     name: 'EstimateFeePage',
     component: () => import('~/pages/EstimateFeePage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -96,7 +100,8 @@ const routes: Array<RouteRecordRaw> = [
     name: 'SignBuyPage',
     component: () => import('~/pages/SignBuyPage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -149,12 +154,21 @@ router.beforeEach(async (to, from, next) => {
   } catch(e) {}
   const currentPage = await localStorage?.getItem(CURRENT_PAGE)
   const pageMatched = to.matched.some(record => record.meta.requiresAuth)
+  const restorePage = to.matched.some(record => record.meta.restore)
   console.log('authenticated:', authenticated, ' to.path:', to.path);
+  console.log('currentPage:', currentPage,' restorePage:',restorePage);
+  console.log('to:', to,' from:',from);
+
   if (!authenticated && pageMatched) {
     if(!currentPage) next({ path: START_ROUTE.path });
     if(to.path === '/' && currentPage === START_ROUTE.path) next({ path: START_ROUTE.path });
     if(currentPage === '/') next({ path: START_ROUTE.path });
     if(currentPage !=='/' && currentPage !== START_ROUTE.path){
+      next({ path: currentPage });
+    }
+  }
+  if(authenticated && pageMatched){
+    if(currentPage !=='/' && currentPage !== START_ROUTE.path && restorePage){
       next({ path: currentPage });
     }
   }
