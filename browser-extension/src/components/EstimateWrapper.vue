@@ -111,7 +111,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="goToBack"
           data-testid="go-back"
         >
           <ArrowLeftIcon />
@@ -260,8 +260,16 @@ function bytesToVb(bytes: number): number {
 async function onConfirm() {
        dataForSign.value = {
        ...dataForSign.value,
-       ...{ selectedMiningFee: selectedFeeRate.value },
+       ...{
+       fee_rate: selectedFeeRate.value,
+        },
        };
+
+console.log(
+  'selectedStep:',selectedStep.value,
+  ' selectedType:',selectedType.value,
+  ' selectedFeeRate:',selectedFeeRate.value
+)
 
     console.log('onConfirm()->dataForSign:', dataForSign.value);
     if(!dataForSign.value?.location){
@@ -269,6 +277,14 @@ async function onConfirm() {
     }else{
       await push(dataForSign.value?.location)
     }
+}
+
+async function goToBack(){
+  if(!dataForSign.value?.back){
+    back()
+  }else{
+    await push(dataForSign.value?.back)
+  }
 }
 
 onMounted(() => {

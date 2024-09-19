@@ -1,5 +1,5 @@
 <template>
-  <SignWrapper data-testid="sign-transfer-page">
+  <SignWrapperForSend data-testid="confirm-send-page">
     <!-- To address -->
     <!-- Title and description -->
     <div class="w-full flex flex-col gap-2 mb-4">
@@ -64,7 +64,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Transaction Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.selectedMiningFee || 0"
+          :price="dataForSign?.fee_rate || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -91,17 +91,21 @@
     <NotifyInBody/>
     <GetRawTransactions/>
     <!-- Inputs -->
-  </SignWrapper>
+  </SignWrapperForSend>
 </template>
 
 <script setup lang="ts">
 import {toRefs, computed, onMounted} from 'vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
-import SignWrapper from '~/components/SignWrapper.vue'
+import SignWrapperForSend from '~/components/SignWrapperForSend.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
 import NotifyInBody from '~/components/NotifyInBody.vue'
+import { SEND_TO } from '~/config/events'
+import { sendMessage } from 'webext-bridge'
+import useWallet from '~/popup/modules/useWallet'
+const { getBalance, saveDataForSign } = useWallet()
 
 
 const store = useStore()
@@ -117,14 +121,19 @@ const connected = computed(() => balance?.value?.connect)
 
 const totalNeed = computed(() =>
     Number(dataForSign.value?.amount) +
-    Number(dataForSign?.value?.selectedMiningFee) ||  0)
+    Number(dataForSign?.value?.fee_rate) ||  0)
 
-onMounted(() => {
+onMounted(async() => {
     if(!dataForSign.value){
       dataForSign.value = {};
     }
   console.log('dataForSign.value', dataForSign.value);
+  const payload = await sendMessage(SEND_TO, dataForSign.value, 'background')
+  console.log('payload.data:',payload.data);
+  saveDataForSign(payload.data);
+  console.log(JSON.parse(payload.data.costs.data))
   if(dataForSign.value?.location) dataForSign.value.location = undefined;
+  if(dataForSign.value?.back) dataForSign.value.back = undefined;
 })
 
 </script>

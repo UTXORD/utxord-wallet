@@ -168,7 +168,12 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   if(authenticated && pageMatched){
-    if(currentPage !=='/' && currentPage !== START_ROUTE.path && restorePage){
+    if(currentPage !=='/' &&
+    currentPage !== START_ROUTE.path &&
+    restorePage &&
+    !from.name
+
+  ){
       next({ path: currentPage });
     }
   }

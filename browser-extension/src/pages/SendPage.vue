@@ -147,8 +147,9 @@ const placeholderAmount = computed(() => `From 546 to ${toNumberFormat(balance.v
 
 function onContinue(){
  dataForSign.value.location = '/confirm-send-to'
- dataForSign.value.amount = amount
- dataForSign.value.address = address
+ dataForSign.value.back = '/send-to'
+ dataForSign.value.amount = amount.value
+ dataForSign.value.address = address.value
  console.log('dataForSign:', dataForSign.value);
  push('/estimate-fee')
 }
@@ -158,6 +159,9 @@ onMounted(() => {
     dataForSign.value = {};
   }
   if(dataForSign.value?.location) dataForSign.value.location = undefined;
+  if(dataForSign.value?.back) dataForSign.value.back = undefined;
+  if(dataForSign.value?.address) address.value = dataForSign.value.address
+  if(dataForSign.value?.amount) amount.value = dataForSign.value.amount
   console.log('dataForSign.value', dataForSign.value);
 })
 
