@@ -2026,6 +2026,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       inputs_sum: 0,
       utxo_list: [],
       amount: Number(payload.amount),
+      expect_amount: Number(payload.amount),
       fee_rate: payload.fee_rate,
       address: payload.address,
       fund: myself.wallet.fund,
@@ -2053,7 +2054,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
 
         const sendOutput = new myself.utxord.P2TR(
             myself.network,
-            myself.satToBtc(payload.amount).toFixed(8),
+            myself.satToBtc(outData.amount).toFixed(8),
             payload.address
         );
         tx.AddOutput(sendOutput);

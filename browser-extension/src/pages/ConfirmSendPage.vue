@@ -64,7 +64,7 @@
         <span class="mr-2 text-[var(--text-grey-color)]">Transaction Fee:</span>
         <PriceComp
           class="ml-auto"
-          :price="dataForSign?.fee_rate || 0"
+          :price="miningFee || 0"
           :font-size-breakpoints="{
             1000000: '15px'
           }"
@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import {toRefs, computed, onMounted} from 'vue'
+import {toRefs, ref, computed, onMounted, onBeforeMount} from 'vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapperForSend from '~/components/SignWrapperForSend.vue'
@@ -114,27 +114,37 @@ const { balance, fundAddress, ordAddress, dataForSign } = toRefs(store)
 const isSynchronized = computed(() => balance?.value?.sync)
 const connected = computed(() => balance?.value?.connect)
 
-// const miningFee = computed(
-//   () => Math.abs(dataForSign.value?.data?.costs?.amount -
-//     dataForSign.value?.data?.costs?.expect_amount) || 0
-// )
-
-const totalNeed = computed(() =>
-    Number(dataForSign.value?.amount) +
-    Number(dataForSign?.value?.fee_rate) ||  0)
-
 onMounted(async() => {
-    if(!dataForSign.value){
-      dataForSign.value = {};
-    }
+  console.log('1');
+})
+
+onBeforeMount(async()=>{
+console.log('2');
+  if(!dataForSign.value){
+    dataForSign.value = {};
+  }
   console.log('dataForSign.value', dataForSign.value);
   const payload = await sendMessage(SEND_TO, dataForSign.value, 'background')
   console.log('payload.data:',payload.data);
-  saveDataForSign(payload.data);
+  //  await saveDataForSign(payload.data);
+  dataForSign.value = {
+  ...dataForSign.value,
+  ...payload
+  };
+  miningFee.value = await dataForSign.value?.data?.costs?.total_mining_fee
+  totalNeed.value = (Number(dataForSign.value?.amount) + Number(miningFee.value));
+  console.log('totalNeed.value:', totalNeed.value)
+  console.log('miningFee.value:', miningFee.value)
   console.log(JSON.parse(payload.data.costs.data))
+
   if(dataForSign.value?.location) dataForSign.value.location = undefined;
   if(dataForSign.value?.back) dataForSign.value.back = undefined;
 })
+
+const miningFee = ref(0)
+const totalNeed = ref(0)
+
+
 
 </script>
 
