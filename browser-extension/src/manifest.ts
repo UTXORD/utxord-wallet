@@ -1,12 +1,39 @@
 import type { Manifest } from 'webextension-polyfill'
 import pkg from '../package.json'
 import { IS_DEV, TARGET, PORT } from '../scripts/utils'
-import { LABELS, NETWORKS } from '~/config/index';
-console.log(TARGET);
+import { LABELS, NETWORKS, NETWORK } from '~/config/index';
+console.log('TARGET::',TARGET,' NETWORK::',NETWORK);
 
 export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
   // update this file to update this manifest.json
   // can also be conditional based on your need
+
+  let permissions = [];
+
+  switch (TARGET) {
+  case '_utxord':
+    permissions = [
+      'https://utxord.com/*',
+      'https://api.utxord.com/*',
+      'https://sntry.utxord.com/*',
+    ];
+    break;
+  case '_qa':
+    permissions = [
+      'https://qa.utxord.com/*',
+      'https://api.qa.utxord.com/*',
+      'https://sntry.utxord.com/*',
+    ];
+      break;
+  case '_e2e':
+  default:
+    permissions = [
+      'http://e2e.utxord.com:9000/*',
+      'http://localhost/*',
+      'http://127.0.0.1/*',
+      'https://sntry.utxord.com/*',
+    ];
+}
 
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,
@@ -35,27 +62,11 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     },
     content_scripts: [
       {
-        matches: [
-            'https://utxord.com/*',
-            'https://api.utxord.com/*',
-            'https://qa.utxord.com/*',
-            'https://api.qa.utxord.com/*',
-            'https://sntry.l15.co/*',
-            'http://localhost/*',
-            'http://127.0.0.1/*'
-        ],
+        matches: permissions,
         js: ['./content/index.global.js']
       }
     ],
-    host_permissions: [
-        'https://utxord.com/*',
-        'https://api.utxord.com/*',
-        'https://qa.utxord.com/*',
-        'https://api.qa.utxord.com/*',
-        'https://sntry.l15.co/*',
-        'http://localhost/*',
-        'http://127.0.0.1/*'
-    ],
+    host_permissions: permissions,
     web_accessible_resources: [{
       resources: [],
       matches: ['<all_urls>']
@@ -76,11 +87,6 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     manifest.content_security_policy = {
       extension_pages: `script-src 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; script-src-elem 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
     }
-  }
-  if (TARGET !== '_utxord') {
-    const e2eUrl = 'http://e2e.utxord.com:9000/*';
-    manifest.content_scripts[0].matches.push(e2eUrl);
-    manifest.host_permissions.push(e2eUrl);
   }
 
   return manifest
