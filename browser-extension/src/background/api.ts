@@ -54,7 +54,7 @@ function GetEnvironment(){
 
 Sentry.init({
   environment: GetEnvironment(),
-  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.l15.co/6",
+  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.utxord.com/6",
   // Performance Monitoring
   tracesSampleRate: 1.0, //  Capture 100% of the transactions
   integrations: [wasmIntegration()],
