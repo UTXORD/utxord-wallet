@@ -24,7 +24,10 @@ import {
   CREATE_INSCRIBE_RESULT,
   DECRYPTED_WALLET,
   TRANSFER_LAZY_COLLECTION,
-  BUY_PRODUCT
+  BUY_PRODUCT,
+  SEND_TO,
+  SEND_TO_ADDRESS,
+  SEND_TO_ADDRESS_RESULT,
 } from '~/config/events';
 
 import {
@@ -2009,6 +2012,133 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     } catch (e) {
       outData.errorMessage = await myself.sendExceptionMessage(BUY_PRODUCT, e);
       setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+      return outData;
+    }
+  }
+
+  //------------------------------------------------------------------------------
+  async sendToAddressContract(payload, estimate: boolean = false) {
+    const myself = this;
+
+    const outData = {
+      data: null,
+      change_amount: null,
+      inputs_sum: 0,
+      utxo_list: [],
+      amount: Number(payload.amount),
+      expect_amount: Number(payload.amount),
+      fee_rate: payload.fee_rate,
+      address: payload.address,
+      fund: myself.wallet.fund,
+      raw: [],
+      total_mining_fee: 0,
+      errorMessage: null as string | null
+    };
+    try {
+      console.log('sendToAddressContract payload: ', {...payload || {}});
+
+      let tx = new myself.utxord.SimpleTransaction(myself.network);
+
+      const protocol_version = Number(payload?.protocol_version);
+      if (protocol_version) {
+        const versions = await myself.getSupportedVersions(tx);
+        if(versions.indexOf(protocol_version) === -1) {
+          outData.errorMessage = 'Please update the plugin to latest version.';
+          outData.raw = [];
+          return outData;
+        }
+      }
+
+      tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
+
+
+        const sendOutput = new myself.utxord.P2TR(
+            myself.network,
+            myself.satToBtc(outData.amount).toFixed(8),
+            payload.address
+        );
+        tx.AddOutput(sendOutput);
+        myself.utxord.destroy(sendOutput);
+
+
+
+      if (payload.market_fee?.amount) {
+        const marketOutput = new myself.utxord.P2TR(
+            myself.network,
+            myself.satToBtc(payload.market_fee?.amount).toFixed(8),
+            payload.market_fee?.address
+        );
+        tx.AddOutput(marketOutput);
+        myself.utxord.destroy(marketOutput);
+      }
+
+      let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
+      min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
+      outData.amount = min_fund_amount;
+
+      if (!myself.fundings.length && !estimate) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // outData.raw = [];
+        return outData;
+      }
+
+      const input_mining_fee = myself.btcToSat(tx.GetNewInputMiningFee());
+      const utxo_list = await myself.smartSelectFundsByAmount(min_fund_amount, input_mining_fee);
+      outData.utxo_list = utxo_list;
+
+      console.log("min_fund_amount:", min_fund_amount);
+      console.log("utxo_list:", utxo_list);
+
+      if (utxo_list?.length < 1 && !estimate) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // outData.raw = [];
+        return outData;
+      }
+
+      outData.inputs_sum = await myself.sumAllFunds(utxo_list);
+
+      for(const fund of utxo_list) {
+        const utxo = new myself.utxord.UTXO(myself.network,
+            fund.txid,
+            fund.nout,
+            myself.satToBtc(fund.amount).toFixed(8),
+            fund.address
+        );
+        tx.AddInput(utxo);
+        myself.utxord.destroy(utxo);
+      }
+
+      tx.AddChangeOutput(myself.wallet.fund.address);  // should be last in/out definition
+
+      if (!estimate) {
+        tx.Sign(myself.wallet.root.key, "fund");
+        outData.raw = await myself.getRawTransactions(tx);
+
+        // TODO: core API needs to be refactored to make change-related stuff more usable
+        const changeOutput = tx.ChangeOutput();
+        if (changeOutput.ptr != 0) {
+          const changeDestination = changeOutput.Destination();
+          if (changeDestination.ptr != 0) {
+            outData.change_amount = myself.btcToSat(changeDestination.Amount()) || null;
+            myself.destroy(changeDestination);
+          }
+          myself.destroy(changeOutput);
+        }
+        console.debug('change_amount: ', outData.change_amount);
+
+        outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
+
+        const contractData = JSON.parse(outData.data);
+        console.debug('sendToAddressContract: contractData:', contractData);
+      }
+
+      outData.total_mining_fee = myself.btcToSat(tx.GetTotalMiningFee(""));
+      myself.utxord.destroy(tx);
+
+      return outData;
+    } catch (e) {
+      outData.errorMessage = await myself.sendExceptionMessage(SEND_TO_ADDRESS, e);
+      //setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
       return outData;
     }
   }

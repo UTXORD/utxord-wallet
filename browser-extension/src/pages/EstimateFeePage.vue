@@ -13,7 +13,6 @@
 import { toRefs, computed } from 'vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
-import SignWrapper from '~/components/SignWrapper.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
 import NotifyInBody from '~/components/NotifyInBody.vue'
