@@ -46,15 +46,16 @@
           data-testid="connect-to-site"
         >Connect to site</Button>
         </template>
-        <span
-          v-if="Number(balance?.confirmed) > 0"
-          class="w-2/4"
+<!--        <span
+           v-if="Number(balance?.confirmed) > 0"
+          class="hidden w-2/4"
           data-testid="send"
           @click="sendTo"
           style="cursor: pointer;font-size: 20px;margin-top: 5px;"
           >
           &#9658;
         </span>
+-->
       </div>
 
       <!-- Balance -->
