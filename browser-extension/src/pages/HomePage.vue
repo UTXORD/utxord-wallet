@@ -46,8 +46,9 @@
           data-testid="connect-to-site"
         >Connect to site</Button>
         </template>
-<!--
+
       <div>
+  <!--
         <span
            v-if="Number(balance?.confirmed) > 0"
           class=" w-2/4"
