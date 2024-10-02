@@ -14,6 +14,7 @@ const useWallet = () => {
 
   async function getFundAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
+    store.setAddresses(list.addresses)
     if(list?.addresses?.length === 0) return
     const addresses = {};
     for(const item of list.addresses){
@@ -29,6 +30,7 @@ const useWallet = () => {
 
   async function getOrdAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
+    store.setAddresses(list.addresses)
     console.log('getOrdAddress->list:',list)
     if(list?.addresses?.length === 0) return
     const addresses = {};
