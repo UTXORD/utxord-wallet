@@ -39,7 +39,7 @@ struct ContractDestinationFactory<ZeroDestination>
     { return std::make_shared<ZeroDestination>(json, lazy_name); }
 };
 
+typedef ContractDestinationFactory<P2Witness, RuneStoneDestination, OpReturnDestination, ZeroDestination> DestinationFactory;
+typedef ContractDestinationFactory<P2Witness, RuneStoneDestination, OpReturnDestination> NoZeroDestinationFactory;
 
-    typedef ContractDestinationFactory<P2Witness, RuneStoneDestination, ZeroDestination> DestinationFactory;
-    typedef ContractDestinationFactory<P2Witness, RuneStoneDestination> NoZeroDestinationFactory;
 };
