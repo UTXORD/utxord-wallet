@@ -1,10 +1,10 @@
 <template>
   <LoadingPage v-if="loading" />
-  <div v-else class="manage-addresses flex flex-col h-full" data-testid="manage-page">
+  <div v-else class="manage-addresses flex flex-col h-full" data-testid="manage-addresses-page">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="manage-screen_content h-full flex flex-col items-start px-5">
+    <div class="manage-addresses_content h-full flex flex-col items-start px-5">
 
       <h1 class="text-[var(--text-color)] text-[18px] mb-4">Addresses</h1>
   <div class="filters">

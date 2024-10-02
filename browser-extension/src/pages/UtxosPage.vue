@@ -1,10 +1,10 @@
 <template>
   <LoadingPage v-if="loading" />
-  <div v-else class="manage-utxos flex flex-col h-full" data-testid="manage-page">
+  <div v-else class="manage-utxos flex flex-col h-full" data-testid="manage-utxos-page">
     <Header />
     <Logo />
     <div class="w-full min-h-[1px] bg-[var(--border-color)]" />
-    <div class="manage-screen_content h-full flex flex-col items-start px-5">
+    <div class="manage-utxos_content h-full flex flex-col items-start px-5">
 
       <h1 class="text-[var(--text-color)] text-[18px] mb-4 items-start ">Address details</h1>
       <h2 class="text-[var(--text-color)] text-[15px] mb-4 items-start " style="display: inline-flex;">
@@ -19,19 +19,19 @@
         <span class="mr-2 justify-between text-[15px]">{{ address?.index }}</span>
         <br />
         <span class="mr-2 justify-between text-[15px] text-[var(--text-grey-color)]">Available balance:</span>
-        <span class="mr-2 justify-between text-[15px]">{{ availableBalance }}</span>
+        <span class="mr-2 justify-between text-[15px]">{{ availableBalance }} sat</span>
         <br />
         <span class="mr-2 justify-between text-[15px] text-[var(--text-grey-color)]">Total inscriptions:</span>
         <span class="mr-2 justify-between text-[15px]">{{ inscriptionsCount }}</span>
         <br />
         <span class="mr-2 justify-between text-[15px] text-[var(--text-grey-color)]">Used for inscription:</span>
-        <span class="mr-2 justify-between text-[15px]">{{ usedForInscriptions }}</span>
+        <span class="mr-2 justify-between text-[15px]">{{ usedForInscriptions }} sat</span>
         <br />
         <span class="mr-2 justify-between text-[15px] text-[var(--text-grey-color)]">Total runes:</span>
         <span class="mr-2 justify-between text-[15px]">{{ runesCount }}</span>
         <br />
         <span class="mr-2 justify-between text-[15px] text-[var(--text-grey-color)]">Used for runes:</span>
-        <span class="mr-2 justify-between text-[15px]">{{ usedForRunes }}</span>
+        <span class="mr-2 justify-between text-[15px]">{{ usedForRunes }} sat</span>
       </div>
       <br />
       <NotifyInBody/>
@@ -43,7 +43,7 @@
       >
 
       <span class="mr-2 justify-between text-[15px] text-[var(--text-grey-color)]">Amount:</span>
-      <span class="mr-2 justify-between text-[15px]">{{ item?.amount }}</span><br />
+      <span class="mr-2 justify-between text-[15px]">{{ toNumberFormat(item?.amount) }} sat</span><br />
 
      <div style="display: inline-flex;">
      <span class="mr-2 text-[var(--text-grey-color)]">
@@ -102,7 +102,7 @@ import { sendMessage } from 'webext-bridge'
 import { GET_ADDRESSES, GET_ALL_BALANCES } from '~/config/events'
 import { useRouter } from 'vue-router'
 import LoadingPage from '~/pages/LoadingPage.vue'
-import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { formatAddress, copyToClipboard, toNumberFormat } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 const { back, push } = useRouter()
 
@@ -150,12 +150,12 @@ console.log('address.value:',address.value)
     }
   UTXOS.value = address.value?.utxo_set
 
-  availableBalance.value = address.value?.utxo_set.reduce((acc, cur)=>{
+  availableBalance.value = toNumberFormat(address.value?.utxo_set.reduce((acc, cur)=>{
     if(!cur?.is_locked && !cur?.is_inscription && !cur?.is_rune && !cur?.in_queue){
       return acc + Number(cur?.amount)
     }
     return acc
-  },0)
+  },0))
   inscriptionsCount.value = address.value?.utxo_set.reduce((acc, cur)=>{
     if(cur?.is_inscription === true){
       return acc += 1
@@ -168,18 +168,18 @@ console.log('address.value:',address.value)
     }
     return acc
   },0)
-  usedForInscriptions.value = address.value?.utxo_set.reduce((acc, cur)=>{
+  usedForInscriptions.value = toNumberFormat(address.value?.utxo_set.reduce((acc, cur)=>{
     if(cur?.is_inscription === true){
       return acc + Number(cur?.amount)
     }
     return acc
-  },0)
-  usedForRunes.value = address.value?.utxo_set.reduce((acc, cur)=>{
+  },0))
+  usedForRunes.value = toNumberFormat(address.value?.utxo_set.reduce((acc, cur)=>{
     if(cur?.is_rune === true){
       return acc + Number(cur?.amount)
     }
     return acc
-  },0)
+  },0))
   loading.value = false
   console.log('address.value:',address.value, 'UTXOS.value:',UTXOS.value)
   }else{
