@@ -465,7 +465,7 @@ public:
     ContractBuilder& operator=(const ContractBuilder&) = default;
     ContractBuilder& operator=(ContractBuilder&&) = default;
 
-    std::string Serialize(uint32_t version, PHASE phase)
+    std::string Serialize(uint32_t version, PHASE phase) const
     {
         CheckContractTerms(phase);
 

@@ -19,7 +19,7 @@ class RuneStoneDestination;
 enum InscribeType { INSCRIPTION, LAZY_INSCRIPTION };
 enum InscribePhase { MARKET_TERMS, LAZY_INSCRIPTION_MARKET_TERMS, LAZY_INSCRIPTION_SIGNATURE, INSCRIPTION_SIGNATURE };
 
-class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribePhase>
+class CreateInscriptionBuilder: public ContractBuilder<InscribePhase>
 {
     static const CAmount COLLECTION_SCRIPT_ADD_VSIZE = 18;
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;

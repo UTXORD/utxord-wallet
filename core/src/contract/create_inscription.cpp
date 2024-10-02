@@ -112,7 +112,8 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { MakeInscriptionScript() });
 
-    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(*m_inscribe_int_pk, tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(l15::core::SchnorrKeyPair::GetStaticSecp256k1Context(),
+                                                            *m_inscribe_int_pk, tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilder::FundMiningFeeTapRoot() const
@@ -121,7 +122,8 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
                               { MakeMultiSigScript(m_inscribe_script_pk.value_or(xonly_pubkey()),
                                                   m_inscribe_script_market_pk.value_or(xonly_pubkey())) });
 
-    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(m_fund_mining_fee_int_pk.value_or(xonly_pubkey()),
+    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(l15::core::SchnorrKeyPair::GetStaticSecp256k1Context(),
+                                                            m_fund_mining_fee_int_pk.value_or(xonly_pubkey()),
                                                             tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
@@ -776,7 +778,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
 
     for (const auto& out: tx.vout) {
         if (out.nValue && out.nValue < Dust(DUST_RELAY_TX_FEE))
-            throw ContractStateError(move((std::string("Funds not enough: out[") += std::to_string(&out - tx.vout.data()) += "]: ") += std::to_string(out.nValue)));
+            throw ContractFundsNotEnough(move((std::string("Funds not enough: out[") += std::to_string(&out - tx.vout.data()) += "]: ") += std::to_string(out.nValue)));
     }
 
     return tx;
@@ -872,7 +874,7 @@ CAmount CreateInscriptionBuilder::CalculateWholeFee(const std::string& params) c
         if (param == FEE_OPT_HAS_CHANGE) { change = true; continue; }
         else if (param == FEE_OPT_HAS_COLLECTION) { collection = true; continue; }
         else if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
-        else throw IllegalArgumentError(move(param));
+        else throw IllegalArgument(move(param));
     }
 
     CMutableTransaction genesisTxTpl = CreateGenesisTxTemplate();

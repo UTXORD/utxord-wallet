@@ -61,7 +61,7 @@ std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> TrustlessSwapInscriptionBuil
     if (!m_ord_int_pk) throw ContractStateError(name_ord_int_pk + " not defined");
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { OrdSwapScript() });
-    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(l15::core::SchnorrKeyPair::GetStaticSecp256k1Context(), m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 
@@ -143,6 +143,8 @@ const CMutableTransaction &TrustlessSwapInscriptionBuilder::GetOrdCommitTx() con
 const CMutableTransaction &TrustlessSwapInscriptionBuilder::GetFundsCommitTx() const
 {
     if (!mCommitBuilder) throw ContractStateError("Funds committed outside of the swap contract builder");
+    if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
+    if (!m_ord_price) throw ContractStateError(name_ord_price + " not defined");
 
     if (!mFundsCommitTx) {
         CAmount funds_required = CalculateWholeFee((m_market_fee->Amount() == 0 || m_market_fee->Amount() >= l15::Dust(DUST_RELAY_TX_FEE) * 2) ? "" : "change") + *m_ord_price + m_market_fee->Amount();
@@ -490,7 +492,6 @@ const CMutableTransaction &TrustlessSwapInscriptionBuilder::GetSwapTx() const
 
 void TrustlessSwapInscriptionBuilder::CommitOrdinal(std::string txid, uint32_t nout, CAmount amount, std::string addr)
 {
-    if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
     if (mOrdCommitBuilder) throw ContractStateError(name_ord_commit + " already defined");
 
     mOrdCommitBuilder = std::make_shared<SimpleTransaction>(chain());
@@ -503,7 +504,6 @@ void TrustlessSwapInscriptionBuilder::CommitOrdinal(std::string txid, uint32_t n
 
 void TrustlessSwapInscriptionBuilder::FundCommitOrdinal(std::string txid, uint32_t nout, CAmount amount, std::string addr, std::string change_addr)
 {
-    if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
     if (!mOrdCommitBuilder) throw ContractStateError(name_ord_commit + " not defined, call CommitOrdinal(...) first");
 
     mOrdCommitBuilder->AddInput(std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
@@ -719,7 +719,7 @@ CAmount TrustlessSwapInscriptionBuilder::CalculateWholeFee(const std::string& pa
     while(std::getline(ss, param, ',')) {
         if (param == FEE_OPT_HAS_CHANGE) { change = true; continue; }
         else if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
-        else throw l15::IllegalArgumentError(move(param));
+        else throw l15::IllegalArgument(move(param));
     }
 
     CAmount commit_vsize;

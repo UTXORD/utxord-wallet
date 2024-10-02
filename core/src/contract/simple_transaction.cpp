@@ -103,6 +103,9 @@ void SimpleTransaction::DropChangeOutput()
 
 void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
+    if (m_inputs.empty()) throw ContractStateError(std::string(name_utxo) + " not defined");
+    if (m_outputs.empty()) throw ContractStateError(name_outputs + " not defined");
+
     CMutableTransaction tx = MakeTx("");
 
     std::vector<CTxOut> spent_outs;
@@ -199,6 +202,8 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 
 CAmount SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
+    if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
+
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
     return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out;
 }

@@ -31,6 +31,7 @@ secp256k1_context * CreateSecp256k1() {
         memory_cleanse(vseed, sizeof(vseed));
         std::rethrow_exception(std::current_exception());
     }
+    l15::core::KeyPairBase::SetStaticSecp256k1ContextInt(ctx);
     return ctx;
 }
 
@@ -128,7 +129,7 @@ public:
 class KeyRegistry : private l15::core::KeyRegistry
 {
 public:
-    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<bytevector>(seed))
+    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<l15::sensitive_bytevector>(seed))
     {}
 
     void AddKeyType(const char* name, const char* filter_json)
