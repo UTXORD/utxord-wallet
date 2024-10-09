@@ -62,7 +62,6 @@ class CreateInscriptionBuilder: public ContractBuilder<InscribePhase>
     mutable std::optional<std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>> mInscriptionTaproot;
     mutable std::optional<CMutableTransaction> mCommitTx;
     mutable std::optional<CMutableTransaction> mGenesisTx;
-    mutable std::optional<CMutableTransaction> mCollectionCommitTx;
 
 private:
     void CheckContractTerms(InscribePhase phase) const override;
@@ -75,6 +74,7 @@ public:
 private:
     CScript MakeInscriptionScript() const;
 
+    l15::bytevector InscribeScriptControlBlock(const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> &tr) const;
     std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> GenesisTapRoot() const;
     std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> FundMiningFeeTapRoot() const;
 
@@ -195,6 +195,7 @@ public:
     CAmount GetMinFundingAmount(const std::string& params) const override;
 
     std::vector<std::string> RawTransactions() const;
+    std::vector<std::string> TransactionsPSBT() const;
 
     uint32_t TransactionCount(InscribePhase phase) const
     { return 2; }
