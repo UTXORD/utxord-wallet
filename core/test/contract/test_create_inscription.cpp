@@ -247,6 +247,10 @@ TEST_CASE("inscribe")
                                                       collection_utxo.m_addr));
             }
 
+            auto psbt = builder.TransactionsPSBT();
+            std::clog << "Commit PSBT:\n" << psbt[0] << std::endl;
+            std::clog << "Genesis PSBT:\n" << psbt[1] << std::endl;
+
             CHECK_NOTHROW(builder.SignCommit(master_key, "fund"));
             CHECK_NOTHROW(builder.SignInscription(master_key, "inscribe"));
             if (condition.has_parent) {
