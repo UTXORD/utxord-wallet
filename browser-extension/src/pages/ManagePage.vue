@@ -51,6 +51,11 @@ const LINKS = [
     testId: 'manage-address'
   },
   {
+    label: 'User Address Setup',
+    link: '/user-address',
+    testId: 'user-address'
+  },
+  {
     label: 'Manage Password',
     link: '/manage-password',
     testId: 'manage-password'

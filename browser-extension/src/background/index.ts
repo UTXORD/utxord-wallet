@@ -44,6 +44,8 @@ import {
   SAVE_DATA_FOR_EXPORT_KEY_PAIR,
   SAVE_DATA_FOR_SIGN,
   SAVE_GENERATED_SEED,
+  SAVE_USER_PATH,
+  GET_USER_PATH,
   SELL_INSCRIPTION,
   BUY_PRODUCT,
   SEND_TO,
@@ -335,6 +337,17 @@ interface ICollectionTransferResult {
       console.log('SET_UP_PASSWORD->run')
       const sup = await Api.setUpPassword(payload.data.password);
       return sup;
+    });
+
+    onMessage(SAVE_USER_PATH, async (payload) => {
+      console.log('SAVE_USER_PATH->run')
+      const sup = await Api.setUserPath(payload.data.list);
+      return sup;
+    });
+
+    onMessage(GET_USER_PATH, async (payload) => {
+      console.log('GET_USER_PATH->run')
+      return Api.userPathList;
     });
 
     onMessage(SAVE_GENERATED_SEED, async (payload) => {
