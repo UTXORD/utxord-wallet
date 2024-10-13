@@ -41,6 +41,7 @@ import {Exception} from "sass";
 
 import * as WebBip39 from 'web-bip39';
 import wordlist from 'web-bip39/wordlists/english';
+import {logger} from "../../scripts/utils";
 
 function GetEnvironment(){
   switch (BASE_URL_PATTERN) {
@@ -333,7 +334,7 @@ class Api {
         this.viewMode = false;
         // view mode true = sidePanel enabled
         // view mode false = popup enabled
-
+        this.mnemonicParserInstance = null;
 
         await this.init(this);
         await this.sentry();
@@ -849,22 +850,57 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     }).join('');
   }
 
-  async generateMnemonic(length: number = 12){
-    const strength = length / 3 * 32;
-    const mnemonic = await WebBip39.generateMnemonic(wordlist, strength);
-    return mnemonic;
+  getMnemonicParser() {
+    if (this.mnemonicParserInstance == null) {
+      this.mnemonicParserInstance = new this.utxord.MnemonicParser(`["${wordlist.join('","')}"]`);
+    }
+    return this.mnemonicParserInstance;
   }
 
-  async validateMnemonic(mnemonic){
-     const valid = await WebBip39.validateMnemonic(mnemonic, wordlist);
-     return valid;
+  randomBytes(bytesLength = 32): Uint8Array {
+    if (crypto && typeof crypto.getRandomValues === 'function') {
+      return crypto.getRandomValues(new Uint8Array(bytesLength));
+    }
+    throw new Error('crypto.getRandomValues must be defined');
   }
 
-  async setUpSeed(mnemonic, passphrase = ''){
-    const buffer_seed = await WebBip39.mnemonicToSeed(mnemonic, passphrase);
+  async generateMnemonic(length: number = 12) {
+    let strength = length / 3 * 32;
+    if (strength === void 0) {
+      strength = 128;
+    }
+    if (!(Number.isSafeInteger(strength) &&
+        strength > 0 &&
+        strength <= 256 &&
+        strength % 32 === 0)) {
+      throw new TypeError('Invalid strength');
+    }
+    const random_hex = this.bytesToHexString(this.randomBytes(strength / 8));
+    return this.getMnemonicParser().EncodeEntropy(random_hex);
+  }
+
+  async validateMnemonic(mnemonic) {
+    const valid_legacy = await WebBip39.validateMnemonic(mnemonic, wordlist);
+    const valid = await this.getMnemonicParser().DecodeEntropy(mnemonic);
+    console.debug('=== api.validateMnemonic mnemonic:', mnemonic);
+    console.debug('=== api.validateMnemonic valid_legacy:', valid_legacy);
+    console.debug('=== api.validateMnemonic valid:', valid);
+    return valid_legacy;
+  }
+
+  // [Const] DOMString MakeSeed([Const] DOMString phrase, [Const] DOMString passphrase);
+  async setUpSeed(mnemonic, passphrase = '') {
+    console.debug('=== api.setUpSeed mnemonic:', mnemonic);
+    console.debug('=== api.setUpSeed passphrase:', passphrase);
+
+    const buffer_seed_legacy = await WebBip39.mnemonicToSeed(mnemonic, passphrase);
+    console.debug('=== api.setUpSeed buffer_seed_legacy:', buffer_seed_legacy);
+    const buffer_seed = await this.getMnemonicParser().MakeSeed(mnemonic, passphrase);
+    console.debug('=== api.setUpSeed buffer_seed:', buffer_seed);
+
     const valid = this.validateMnemonic(mnemonic);
     if(!valid) return 'Invalid checksum';
-    const seed = this.bytesToHexString(buffer_seed);
+    const seed = this.bytesToHexString(buffer_seed_legacy);
     chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
@@ -1922,24 +1958,18 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
 
       if (payload.owner_fee?.amount) {
-        const ownerOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.owner_fee?.address
         );
-        tx.AddOutput(ownerOutput);
-        myself.utxord.destroy(ownerOutput);
       }
 
 
       if (payload.market_fee?.amount) {
-        const marketOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.market_fee?.address
         );
-        tx.AddOutput(marketOutput);
-        myself.utxord.destroy(marketOutput);
       }
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
@@ -2088,22 +2118,16 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       tx.AddInput(collectionUtxo);
       myself.utxord.destroy(collectionUtxo);
 
-      const transferOutput = new myself.utxord.P2TR(
-          this.network,
+      tx.AddOutput(
           myself.satToBtc(collection.amount).toFixed(8),
           payload.transfer_address
       );
-      tx.AddOutput(transferOutput);
-      myself.utxord.destroy(transferOutput);
 
       if (payload.market_fee?.amount) {
-        const marketOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.market_fee?.address
         );
-        tx.AddOutput(marketOutput);
-        myself.utxord.destroy(marketOutput);
       }
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
@@ -2273,7 +2297,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       );
 
       const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
-      await newOrd.OrdDestination((myself.satToBtc(payload.expect_amount)).toFixed(8), dst_address);
+      await newOrd.OrdOutput((myself.satToBtc(payload.expect_amount)).toFixed(8), dst_address);
 
       // For now it's just a support for title and description
       if (payload.metadata) {
@@ -2299,7 +2323,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
           outData.raw = [];
           return outData;
         }
-        newOrd.AddToCollection(
+        newOrd.AddCollectionUTXO(
             `${payload.collection.genesis_txid}i0`,  // inscription ID = <genesis_txid>i<envelope(inscription)_number>
             payload.collection.owner_txid,  // current collection utxo
             payload.collection.owner_nout,  // current collection nout
