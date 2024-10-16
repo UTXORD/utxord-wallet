@@ -46,6 +46,16 @@
           data-testid="connect-to-site"
         >Connect to site</Button>
         </template>
+<!--        <span
+           v-if="Number(balance?.confirmed) > 0"
+          class="hidden w-2/4"
+          data-testid="send"
+          @click="sendTo"
+          style="cursor: pointer;font-size: 20px;margin-top: 5px;"
+          >
+          &#9658;
+        </span>
+-->
       </div>
 
       <!-- Balance -->
@@ -157,7 +167,8 @@ import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-
+import { useRouter } from 'vue-router'
+const { back, push } = useRouter()
 
 const store = useStore()
 const { balance, fundAddress, typeAddress, useDerivation } = toRefs(store)
@@ -178,6 +189,10 @@ async function newFundAddress() {
     (item) => item.type === tl && item.typeAddress === ta
   )?.address
   store.setFundAddress(addr)
+}
+
+function sendTo(){
+  return push('/send-to')
 }
 
 function refreshBalance() {

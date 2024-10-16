@@ -1,0 +1,182 @@
+<template>
+  <LoadingPage v-if="loading" />
+  <div v-else class="sign-screen h-full flex flex-col" v-bind="$attrs">
+    <Header />
+    <Logo />
+    <div class="w-full h-[1px] bg-[var(--border-color)]" />
+    <div
+      class="sign-screen_content h-full flex flex-col items-center px-5 pb-5"
+    >
+      <slot />
+
+      <!-- Buttons -->
+      <div class="w-full flex items-center rounded-lg p-3 mb-6">
+      <Button
+        v-if="!isInsufficientBalance"
+        second
+        class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
+        @click="goToBack"
+        data-testid="go-back"
+      >
+        <ArrowLeftIcon />
+      </Button>
+      <Button v-if="isInsufficientBalance" @click="cancel" outline class="w-2/4" data-testid="cancel"> {{ !isInsufficientBalance?'Cancel':'Ok' }} </Button>
+        <Modal
+          @on-submit="onSign"
+          @on-close="password = ''"
+          title="Unlock Your Wallet"
+          class="w-full"
+          text="Do you want to unload your keys?"
+          submit-text="Yes"
+          :disabled="isDisabledPass"
+          submit-by-enter
+        >
+          <template #button="{ onClick }" v-if="!isInsufficientBalance">
+            <Button
+              class="w-full min-w-[40px] mr-3 px-0 flex items-center justify-center"
+              :disabled="isDisabled"
+              style="white-space: nowrap"
+              @click="onClick"
+              data-testid="close"
+              >{{ isDisabledMessage }}</Button
+            >
+          </template>
+          <template #body>
+            <!-- Inputs -->
+            <div
+              class="password-screen_form w-full flex flex-col bg-[var(--section)] rounded-lg px-3 pt-3"
+            >
+              <div class="password-screen_form-input flex text-left flex-col">
+                <span class="mb-2 w-full text-[var(--text-grey-color)]"
+                  >Password</span
+                >
+                <CustomInput
+                  autofocus
+                  type="password"
+                  v-model="password"
+                  :rules="[
+                    (val) =>
+                      isASCII(val) || 'Please enter only Latin characters'
+                  ]"
+                  data-testid="password"
+                />
+              </div>
+            </div>
+          </template>
+        </Modal>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { sendMessage } from 'webext-bridge'
+import { ref, toRefs, computed, onMounted } from 'vue'
+import WinHelpers from '~/helpers/winHelpers'
+import { useStore } from '~/popup/store/index'
+import {
+  SELL_INSCRIPTION,
+  BUY_PRODUCT,
+  CREATE_INSCRIPTION,
+  SUBMIT_SIGN,
+  BALANCE_CHANGE_PRESUMED,
+  CREATE_CHUNK_INSCRIPTION
+} from '~/config/events'
+import LoadingPage from '~/pages/LoadingPage.vue'
+import CustomInput from '~/components/CustomInput.vue'
+import Modal from '~/components/Modal.vue'
+import { isASCII } from '~/helpers/index'
+import {useRouter} from "vue-router";
+
+const { back, push } = useRouter()
+
+const store = useStore()
+const { balance, dataForSign } = toRefs(store)
+const loading = ref(true)
+const password = ref('')
+
+const winHelpers = new WinHelpers()
+
+const total = computed(() => {
+  let out = 0
+  if (dataForSign.value?.type === CREATE_INSCRIPTION || dataForSign.value?.type === CREATE_CHUNK_INSCRIPTION) {
+    out += dataForSign.value?.data?.costs?.amount || 0
+  } else if(dataForSign.value?.type === BUY_PRODUCT){
+    out += dataForSign.value?.data?.owner_fee || 0
+    out += dataForSign.value?.data?.market_fee || 0
+    out += dataForSign.value?.data?.expect_amount || 0
+    out += dataForSign.value?.data?.market_fee || 0
+  }else {
+    out += dataForSign.value?.data?.ord_price || 0
+    out += dataForSign.value?.data?.market_fee || 0
+    out += dataForSign.value?.data?.expect_amount || 0
+    out += dataForSign.value?.data?.market_fee || 0
+  }
+  return out
+})
+
+const isInsufficientBalance = computed(() => {
+  if (dataForSign.value?.type === SELL_INSCRIPTION) return false
+  if (Number(total.value) > Number(balance.value?.confirmed)) return true
+  return false
+})
+
+const message = computed(() => {
+ return dataForSign.value?.data?.costs?.errorMessage || dataForSign.value?.data?.errorMessage
+})
+
+const isDisabled = computed(() => {
+  if (dataForSign.value?.type === SELL_INSCRIPTION) return false
+  if (Number(balance.value?.confirmed) === 0) return true
+  if (isInsufficientBalance.value) return true
+  if (message?.value?.length) return true
+  if (!isASCII(password.value)) return true
+  return false
+})
+
+const isDisabledMessage = computed(() => {
+  if (dataForSign.value?.type === SELL_INSCRIPTION) return 'Confirm and send'
+  if (Number(balance.value?.confirmed) === 0) return 'No Balance'
+  if (isInsufficientBalance.value) return 'Insufficient Balance'
+  return 'Confirm and send'
+})
+
+const isDisabledPass = computed(() => {
+  if (isDisabled.value) return true
+  if (!password.value?.length) return true
+  return false
+})
+
+async function onSign() {
+  dataForSign.value = { ...dataForSign.value, password: password.value }
+  //await sendMessage(BALANCE_CHANGE_PRESUMED, {}, 'background')
+  //await sendMessage(SUBMIT_SIGN, dataForSign.value, 'background')
+
+  //if(dataForSign.value?.address) dataForSign.value.address = undefined;
+  //if(dataForSign.value?.amount) dataForSign.value.amount = undefined;
+  dataForSign.value = {};
+  push('/')
+}
+
+function cancel() {
+  push('/')
+}
+function goToBack(){
+  dataForSign.value.location = '/confirm-send-to'
+  dataForSign.value.back = '/send-to';
+  push('/estimate-fee')
+}
+
+onMounted(() => {
+  setTimeout(() => {
+    loading.value = false
+  }, 1000)
+})
+</script>
+
+<style scoped>
+.sign-screen_content {
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+</style>

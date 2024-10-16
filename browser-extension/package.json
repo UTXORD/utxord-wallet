@@ -32,6 +32,7 @@
     "@sentry/vite-plugin": "^2.16.0",
     "@sentry/vue": "^7.108.0",
     "@sentry/wasm": "^7.108.0",
+    "bitcoin-address-validation": "^2.2.3",
     "cbor-js": "^0.1.0",
     "crypto-js": "^4.2.0",
     "floating-vue": "^5.2.2",

@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs, computed } from 'vue'
+import { toRefs, computed, onMounted } from 'vue'
 import { formatAddress, copyToClipboard } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapper from '~/components/SignWrapper.vue'
@@ -133,7 +133,12 @@ const isInsufficientBalance = computed(() => {
   if (Number(total.value) > Number(balance.value?.confirmed)) return true
   return false
 })
-
+onMounted(() => {
+  if(!dataForSign.value){
+    dataForSign.value = {};
+  }
+  if(dataForSign.value?.location) dataForSign.value.location = undefined;
+})
 </script>
 
 <style scoped>

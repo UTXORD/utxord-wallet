@@ -44,6 +44,9 @@ import {
   SAVE_GENERATED_SEED,
   SELL_INSCRIPTION,
   BUY_PRODUCT,
+  SEND_TO,
+  SEND_TO_ADDRESS,
+  SEND_TO_ADDRESS_RESULT,
   SEND_BALANCES,
   SUBMIT_SIGN,
   UNLOAD,
@@ -370,6 +373,35 @@ interface ICollectionTransferResult {
       return network;
     });
 
+    onMessage(SEND_TO, async(payload) => {
+      console.log('SEND_TO->run:',payload)
+      //...
+      //if (payload.type === SEND_TO) {
+        //await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+
+        const costs = await Api.sendToAddressContract(payload.data);
+
+        payload.data.errorMessage = payload.data?.costs?.errorMessage;
+        if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];
+
+        payload.data.costs = costs;
+        console.log(SEND_TO+':',payload.data);
+        return payload;
+        // winManager.openWindow('sign-buy-product', async (id) => {
+        //   setTimeout(async  () => {
+        //     const changeAmount = payload.data.costs.change_amount
+        //     if (changeAmount !== null  && changeAmount < 546) {
+        //       Api.sendNotificationMessage(
+        //         'SEND_TO',
+        //         'There are too few coins left after creation and they will become part of the inscription balance'
+        //       );
+        //     }
+        //     await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
+        //   }, 1000);
+        // }, Api.viewMode);
+      //}
+      //...
+    });
 
     onMessage(UNLOAD_SEED, async () => {
       console.log('UNLOAD_SEED->run')
@@ -797,6 +829,27 @@ interface ICollectionTransferResult {
         }
         return false;
       }
+      if (signData?.type === SEND_TO_ADDRESS) {
+        const res = await Api.decryptedWallet(payload.data.password);
+        if(res){
+          const payload_data = payload.data.data;
+
+          let success = true;
+          if(payload_data?.costs) {
+            success = await sendResult(
+                signData?.type,
+                SEND_TO_ADDRESS_RESULT,
+                payload_data?.costs,
+                "",
+                payload_data?._tabId
+            );
+          }
+
+          await Api.encryptedWallet(payload.data.password);
+          return success;
+        }
+        return false;
+      }
       if (signData?.type === SELL_INSCRIPTION) {
         const res = await Api.decryptedWallet(payload.data.password);
         if(res){
@@ -1120,7 +1173,7 @@ interface ICollectionTransferResult {
           if (payload.type === BUY_PRODUCT) {
             await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
-            const costs = await Api.BuyProductContract(payload.data);
+            const costs = await Api.buyProductContract(payload.data);
 
             payload.data.errorMessage = payload.data?.costs?.errorMessage;
             if(payload.data?.costs?.errorMessage) delete payload.data?.costs['errorMessage'];

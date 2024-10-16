@@ -111,7 +111,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="goToBack"
           data-testid="go-back"
         >
           <ArrowLeftIcon />
@@ -258,11 +258,37 @@ function bytesToVb(bytes: number): number {
 }
 
 async function onConfirm() {
-    dataForSign.value = {...dataForSign.value, ...{ selectedMiningFee: 0 }};
-    await push(`//sign-commit-buy`)
+       dataForSign.value = {
+       ...dataForSign.value,
+       ...{
+       fee_rate: selectedFeeRate.value,
+        },
+       };
+
+console.log(
+  'selectedStep:',selectedStep.value,
+  ' selectedType:',selectedType.value,
+  ' selectedFeeRate:',selectedFeeRate.value
+)
+
+    console.log('onConfirm()->dataForSign:', dataForSign.value);
+    if(!dataForSign.value?.location){
+      await push(`/sign-commit-buy`)
+    }else{
+      await push(dataForSign.value?.location)
+    }
+}
+
+async function goToBack(){
+  if(!dataForSign.value?.back){
+    back()
+  }else{
+    await push(dataForSign.value?.back)
+  }
 }
 
 onMounted(() => {
+console.log('dataForSign:', dataForSign.value);
   setTimeout(() => {
     loading.value = false
   }, 1000)
@@ -390,7 +416,7 @@ onMounted(() => {
         transform: translateY(-50%);
         position: absolute;
       }
-      
+
       :deep(.track-filled) {
         height: 2px;
         background: transparent;
