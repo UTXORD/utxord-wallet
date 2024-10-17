@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { useStore } from '~/popup/store/index'
-import { sendMessage } from 'webext-bridge'
+import { sendMessage } from '~/helpers/index'
 import { GET_BALANCE, GET_USD_RATE, GET_ADDRESSES, GET_NETWORK } from '~/config/events'
 
 const useWallet = () => {
@@ -14,32 +14,36 @@ const useWallet = () => {
 
   async function getFundAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
-    if(list?.addresses?.length === 0) return
+    if(!list?.addresses?.length) return
     const addresses = {};
-    for(const item of list.addresses){
-      if(store.typeAddress === item.typeAddress){
-        addresses[item.type] = item;
+    if(list.addresses.length > 0){
+      for(const item of list.addresses){
+        if(store.typeAddress === item.typeAddress){
+          addresses[item.type] = item;
+        }
       }
-    }
-    if (addresses?.fund) {
-      store.setFundAddress(addresses?.fund?.address)
-      return addresses?.fund?.address
+      if (addresses?.fund) {
+        store.setFundAddress(addresses?.fund?.address)
+        return addresses?.fund?.address
+      }
     }
   }
 
   async function getOrdAddress() {
     const list = await sendMessage(GET_ADDRESSES, {}, 'background')
     console.log('getOrdAddress->list:',list)
-    if(list?.addresses?.length === 0) return
+    if(!list?.addresses?.length) return
     const addresses = {};
-    for(const item of list.addresses){
-      if(store.typeAddress === item.typeAddress){
-        addresses[item.type] = item;
+    if(list.addresses.length > 0){
+      for(const item of list.addresses){
+        if(store.typeAddress === item.typeAddress){
+          addresses[item.type] = item;
+        }
       }
-    }
-    if (addresses?.ord) {
-      store.setOrdAddress(addresses?.ord?.address)
-      return addresses?.ord?.address
+      if (addresses?.ord) {
+        store.setOrdAddress(addresses?.ord?.address)
+        return addresses?.ord?.address
+      }
     }
   }
 

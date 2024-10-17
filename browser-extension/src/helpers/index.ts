@@ -1,6 +1,6 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
-import {sendMessage} from "webext-bridge";
+import * as webext from "webext-bridge";
 import {ADDRESS_COPIED} from "~/config/events";
 import * as WebBip39 from 'web-bip39';
 import wordlist from 'web-bip39/wordlists/english';
@@ -8,6 +8,8 @@ import { validate, getAddressInfo } from 'bitcoin-address-validation';
 
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
+const sendMessageLimit = 5
+const sendMessageTimeout = 100
 
 export function showSuccess(title: string, text: string, duration: number = 4000) { // 4s
   notify({
@@ -39,6 +41,27 @@ export function formatAddress(address: string, start?: number, end?: number) {
   return '-';
 }
 
+export async function sendMessage(type, message, destination, index?: number){
+  let output = null;
+  if(!index){
+    index = 0;
+  }
+  try {
+    output = await webext.sendMessage(type, message, destination)
+  } catch (error) {
+    console.log('sendMessageError:',error)
+    if(index >=  sendMessageLimit){
+       console.log('sendMessageError: limit has expired')
+       return output;
+     }
+    return setTimeout(() => {
+      index += 1
+      return sendMessage(type, message, destination, index);
+    }, sendMessageTimeout);
+  }
+  return output;
+}
+
 export function copyToClipboard(text: string, message?: string) {
   if (text) {
     const tempInput = document.createElement('input');
@@ -51,7 +74,6 @@ export function copyToClipboard(text: string, message?: string) {
     tempInput.setSelectionRange(0, 99999); /* For mobile devices */
     document.execCommand('copy');
     document.body.removeChild(tempInput);
-
     sendMessage(ADDRESS_COPIED, {}, 'background')
     showSuccess('Success', message || 'Address was copied!');
     return text;
@@ -107,6 +129,7 @@ export function validateBtcAddress(address: string){
   }
   return validate(address)
 }
+
 export function validateBtcAddressInfo(address: string){
   let addressInfo = {}
   let error = {}

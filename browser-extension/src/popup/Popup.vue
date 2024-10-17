@@ -7,7 +7,8 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage, onMessage } from 'webext-bridge'
+import { sendMessage } from '~/helpers/index'
+import { onMessage } from 'webext-bridge'
 import { onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import NotifySuccess from '~/components/NotifySuccess.vue'

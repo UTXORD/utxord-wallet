@@ -77,10 +77,9 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII, isLength, isContains } from '~/helpers/index'
+import { isASCII, isLength, isContains, sendMessage } from '~/helpers/index'
 
 const { back, push } = useRouter()
 

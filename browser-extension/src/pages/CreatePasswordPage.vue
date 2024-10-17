@@ -81,12 +81,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeMount } from 'vue'
-import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
 import { SET_UP_PASSWORD } from '~/config/events'
 import CustomInput from '~/components/CustomInput.vue'
 
-import { isASCII, isLength, isContains } from '~/helpers/index'
+import { isASCII, isLength, isContains, sendMessage } from '~/helpers/index'
 
 const { back, push } = useRouter()
 
