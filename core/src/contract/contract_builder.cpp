@@ -255,6 +255,7 @@ const std::string IContractBuilder::name_params = "params";
 const std::string IContractBuilder::name_version = "protocol_version";
 const std::string IContractBuilder::name_mining_fee_rate = "mining_fee_rate";
 const std::string IContractBuilder::name_market_fee = "market_fee";
+const std::string IContractBuilder::name_custom_fee = "custom_fee";
 const char* IContractBuilder::name_utxo = "utxo";
 const std::string IContractBuilder::name_txid = "txid";
 const std::string IContractBuilder::name_nout = "nout";
