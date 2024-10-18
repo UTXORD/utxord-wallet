@@ -25,6 +25,7 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_custom_fee;
     static const uint32_t s_protocol_version_no_runes;
     static const uint32_t s_protocol_version_no_fixed_change;
     static const char* s_versions;

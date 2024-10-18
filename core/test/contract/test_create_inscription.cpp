@@ -15,7 +15,6 @@
 #include "create_inscription.hpp"
 #include "runes.hpp"
 #include "inscription.hpp"
-#include "core_io.h"
 
 #include "test_case_wrapper.hpp"
 #include "policy/policy.h"
@@ -92,6 +91,7 @@ struct CreateCondition
     bool is_parent;
     bool has_parent;
     bool return_collection;
+    uint32_t ext_fee_count;
     uint32_t min_version;
     const char* comment;
 };
@@ -116,11 +116,12 @@ TEST_CASE("inscribe")
     std::string destination_addr = w->btc().GetNewAddress();
     std::string market_fee_addr = w->btc().GetNewAddress();
     std::string author_fee_addr = w->btc().GetNewAddress();
+    std::string extra_fee_addr = w->btc().GetNewAddress();
     std::string return_addr = w->btc().GetNewAddress();
 
     fee_rate = 3000;
 
-    auto content = GENERATE_COPY(pixel_avif, /*pixel_png, pixel_webp, simple_html, svg*/ no_content);
+    auto content = GENERATE_COPY(pixel_avif/*, pixel_png, pixel_webp, simple_html*/, svg, no_content);
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
 
@@ -130,10 +131,17 @@ TEST_CASE("inscribe")
     REQUIRE_NOTHROW(test_inscription.MarketFee(0, market_fee_addr));
     REQUIRE_NOTHROW(test_inscription.AuthorFee(0, author_fee_addr));
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
-    if (get<1>(content).empty())
-        REQUIRE_NOTHROW(test_inscription.Delegate(delegate_id));
-    else
+    if (get<1>(content).empty()) {
+        if (delegate_id.empty()) {
+            REQUIRE_NOTHROW(test_inscription.Data(get<0>(simple_html), get<1>(simple_html)));
+        }
+        else {
+            REQUIRE_NOTHROW(test_inscription.Delegate(delegate_id));
+        }
+    }
+    else {
         REQUIRE_NOTHROW(test_inscription.Data(get<0>(content), get<1>(content)));
+    }
     CAmount inscription_amount = test_inscription.GetMinFundingAmount("");
     CAmount child_amount = test_inscription.GetMinFundingAmount("collection");
     CAmount segwit_child_amount = test_inscription.GetMinFundingAmount("collection,p2wpkh_utxo");
@@ -143,50 +151,68 @@ TEST_CASE("inscribe")
     REQUIRE_NOTHROW(test_lazy_inscription.OrdOutput(546, destination_addr));
     REQUIRE_NOTHROW(test_lazy_inscription.MarketFee(0, market_fee_addr));
     REQUIRE_NOTHROW(test_lazy_inscription.MiningFeeRate(fee_rate));
-    if (get<1>(content).empty())
-        REQUIRE_NOTHROW(test_lazy_inscription.Delegate(delegate_id));
-    else
+    if (get<1>(content).empty()) {
+        if (delegate_id.empty()) {
+            REQUIRE_NOTHROW(test_lazy_inscription.Data(get<0>(simple_html), get<1>(simple_html)));
+        }
+        else {
+            REQUIRE_NOTHROW(test_lazy_inscription.Delegate(delegate_id));
+        }
+    }
+    else {
         REQUIRE_NOTHROW(test_lazy_inscription.Data(get<0>(content), get<1>(content)));
+    }
     REQUIRE_NOTHROW(test_lazy_inscription.AuthorFee(1000, author_fee_addr));
     CAmount lazy_add_amount = test_lazy_inscription.GetMinFundingAmount("collection") - child_amount;
 
 //    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->p2wpkh(0,0,1) }}, 0, false, true, false};
-    CreateCondition inscription {{{ inscription_amount, w->p2tr(0,0,1) }}, 0, 0, false, true, false, false, 8, "inscription"};
-    CreateCondition inscription_w_change {{{ 10000, w->p2tr(0,0,2) }}, 0, 0, true, false, false, false, 8, "inscription_w_change"};
-    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,3) }}, 1000, 0, false, false, false, false, 8, "inscription_w_fee"};
-    CreateCondition inscription_w_change_fee {{{ 8000, w->p2tr(0, 0, 4) }, { 20000, w->p2tr(0, 1, 4) }}, 1000, 0, true, false, false, false, 8, "inscription_w_change_fee"};
-    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, w->p2tr(0, 0,5) }}, 0, 1000, false, true, false, false, 9, "inscription_w_fix_change"};
+    CreateCondition inscription {{{ inscription_amount, w->p2tr(0,0,1) }}, 0, 0, false, true, false, false, 0, 8, "inscription"};
+    CreateCondition inscription_w_change {{{ 10000, w->p2tr(0,0,2) }}, 0, 0, true, false, false, false, 0, 8, "inscription_w_change"};
+    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,3) }}, 1000, 0, false, false, false, false, 0, 8, "inscription_w_fee"};
+    CreateCondition inscription_w_change_fee {{{ 8000, w->p2tr(0, 0, 4) }, { 20000, w->p2tr(0, 1, 4) }}, 1000, 0, true, false, false, false, 0, 8, "inscription_w_change_fee"};
+    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, w->p2tr(0, 0,5) }}, 0, 1000, false, true, false, false, 0, 9, "inscription_w_fix_change"};
 
-    CreateCondition child {{{child_amount, w->p2tr(0, 0, 6) }}, 0, 0, false, false, true, false, 8, "child"};
-    CreateCondition child_w_change {{{10000, w->p2tr(0, 0, 7) }}, 0, 0, true, false, true, false, 8, "child_w_change"};
-    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0, 0, 8) }}, 1000, 0, false, false, true, false, 8, "child_w_fee"};
-    CreateCondition child_w_change_fee {{{10000, w->p2tr(0, 0, 9) }}, 1000, 0, true, false, true, false, 8, "child_w_change_fee"};
-    CreateCondition child_w_change_fixed_change {{{10000, w->p2tr(0, 0, 10) }}, 0, 5000, true, false, true, false, 9, "child_w_change_fixed_change"};
+    CreateCondition child {{{child_amount, w->p2tr(0, 0, 6) }}, 0, 0, false, false, true, false, 0, 8, "child"};
+    CreateCondition child_w_change {{{10000, w->p2tr(0, 0, 7) }}, 0, 0, true, false, true, false, 0, 8, "child_w_change"};
+    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0, 0, 8) }}, 1000, 0, false, false, true, false, 0, 8, "child_w_fee"};
+    CreateCondition child_w_change_fee {{{10000, w->p2tr(0, 0, 9) }}, 1000, 0, true, false, true, false, 0, 8, "child_w_change_fee"};
+    CreateCondition child_w_change_fixed_change {{{10000, w->p2tr(0, 0, 10) }}, 0, 5000, true, false, true, false, 0, 9, "child_w_change_fixed_change"};
 
-    CreateCondition segwit_child {{{ segwit_child_amount, w->p2wpkh(0,0,11) }}, 0, 0, false, false, true, false, 8, "segwit_child"};
-    CreateCondition segwit_child_w_change {{{10000, w->p2wpkh(0,0,12) }}, 0, 0, true, false, true, false, 8, "segwit_child_w_change"};
-    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, w->p2wpkh(0,0,13) }}, 1000, 0, false, false, true, false, 8, "segwit_child_w_fee"};
-    CreateCondition segwit_child_w_change_fee {{{15000, w->p2wpkh(0,0,14) }}, 1000, 0, true, false, true, true, 8, "segwit_child_w_change_fee"};
+    CreateCondition segwit_child {{{ segwit_child_amount, w->p2wpkh(0,0,11) }}, 0, 0, false, false, true, false, 0, 8, "segwit_child"};
+    CreateCondition segwit_child_w_change {{{10000, w->p2wpkh(0,0,12) }}, 0, 0, true, false, true, false, 0, 8, "segwit_child_w_change"};
+    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, w->p2wpkh(0,0,13) }}, 1000, 0, false, false, true, false, 0, 8, "segwit_child_w_fee"};
+    CreateCondition segwit_child_w_change_fee {{{15000, w->p2wpkh(0,0,14) }}, 1000, 0, true, false, true, false, 0, 8, "segwit_child_w_change_fee"};
 
-    auto version = GENERATE(8,9,10);
+    // CreateCondition child_extfee_1 {{{20000, w->p2tr(0,0,15) }}, 0, 0, false, false, true, false, 11, 1, "child_extfee_1"};
+    CreateCondition child_w_change_extfee_1 {{{20000, w->p2tr(0,0,16) }}, 0, 0, true, false, true, false, 1, 11, "child_w_change_extfee_1"};
+    // CreateCondition child_w_fee_extfee_1 {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,17) }}, 1000, 0, false, false, true, false, 11, 1, "child_w_fee_extfee_1"};
+    CreateCondition child_w_change_fee_extfee_1 {{{20000, w->p2tr(0,0,18) }}, 1000, 0, true, false, true, false, 1, 11, "child_w_change_fee_extfee_1"};
+    CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,19) }}, 0, 5000, true, false, true, true, 2, 11, "child_w_change_fixed_change_extfee_2"};
+
+    auto version = GENERATE(8,9,10,11);
     auto condition = GENERATE_COPY(inscription,
                                    inscription_w_change, inscription_w_fee, inscription_w_change_fee, inscription_w_fix_change,
                                    child, child_w_change, child_w_fee, child_w_change_fee, child_w_change_fixed_change,
-                                   segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee
+                                   segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee,
+                                   /*child_extfee_1,*/ child_w_change_extfee_1, /*child_w_fee_extfee_1,*/ child_w_change_fee_extfee_1, child_w_change_fixed_change_extfee_2
     );
 
     if (condition.min_version <= version) {
         stringvector rawtxs;
+        std::vector<CTxOut> spends;
         bool check_result = false;
         bool lazy = false;
 
         SECTION("Self inscribe") {
-            std::clog << "Self inscribe: " << condition.comment << " ====================================================" << std::endl;
+            std::clog << "Self inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
 
             check_result = true;
 
             CreateInscriptionBuilder builder_terms(w->chain(), INSCRIPTION);
             CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
+            for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
+                CHECK_NOTHROW(builder_terms.AddCustomFee(1000, extra_fee_addr));
+            }
 
             std::string market_terms;
             REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(version, MARKET_TERMS));
@@ -198,11 +224,17 @@ TEST_CASE("inscribe")
 
             CHECK_NOTHROW(builder.OrdOutput(546, condition.is_parent ? w->p2tr(2,0,1) : destination_addr));
             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-            //CHECK_NOTHROW(builder.AuthorFee(0, author_fee_addr));
-            if (get<1>(content).empty())
-                CHECK_NOTHROW(builder.Delegate(delegate_id));
-            else
-                CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+            if (get<1>(content).empty()) {
+                if (delegate_id.empty()) {
+                    REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
+                }
+                else {
+                    REQUIRE_NOTHROW(builder.Delegate(delegate_id));
+                }
+            }
+            else {
+                REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+            }
             CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
             CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
             if (condition.fixed_change != 0) {
@@ -227,13 +259,15 @@ TEST_CASE("inscribe")
 
             std::string contract;
             REQUIRE_NOTHROW(contract = builder.Serialize(version, INSCRIPTION_SIGNATURE));
-            std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
+            // std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
 
             CreateInscriptionBuilder fin_contract(w->chain(), INSCRIPTION);
             REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
 
             REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
 
+
+            spends = fin_contract.GetGenesisTxSpends();
 //        CMutableTransaction tx;
 //        REQUIRE(DecodeHexTx(tx, rawtxs[0]));
 //
@@ -258,7 +292,7 @@ TEST_CASE("inscribe")
 
         SECTION("lazy inscribe") {
             if (condition.has_parent) {
-                std::clog << "Lazy inscribe: " << condition.comment << " ====================================================" << std::endl;
+                std::clog << "Lazy inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
 
                 check_result = true;
                 lazy = true;
@@ -266,20 +300,30 @@ TEST_CASE("inscribe")
                 CreateInscriptionBuilder builder_terms(w->chain(), LAZY_INSCRIPTION);
                 CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
                 CHECK_NOTHROW(builder_terms.AuthorFee(1000, author_fee_addr));
+                for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
+                    CHECK_NOTHROW(builder_terms.AddCustomFee(1000, extra_fee_addr));
+                }
                 CHECK_NOTHROW(builder_terms.MarketInscribeScriptPubKey(w->derive(86, 3, 0, 0).GetSchnorrKeyPair().GetPubKey()));
                 CHECK_NOTHROW(builder_terms.Collection(collection_id, collection_utxo.m_amount, collection_utxo.m_addr));
                 std::string market_terms;
                 REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(version, LAZY_INSCRIPTION_MARKET_TERMS));
 
-                std::clog << "{LASY_INSCRIPTION_MARKET_TERMS:\n" << market_terms << "\n}" << std::endl;
+                // std::clog << "{LASY_INSCRIPTION_MARKET_TERMS:\n" << market_terms << "\n}" << std::endl;
 
                 CreateInscriptionBuilder builder(w->chain(), LAZY_INSCRIPTION);
                 REQUIRE_NOTHROW(builder.Deserialize(market_terms, LAZY_INSCRIPTION_MARKET_TERMS));
 
-                if (get<1>(content).empty())
-                    CHECK_NOTHROW(builder.Delegate(delegate_id));
-                else
-                    CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+                if (get<1>(content).empty()) {
+                    if (delegate_id.empty()) {
+                        REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
+                    }
+                    else {
+                        REQUIRE_NOTHROW(builder.Delegate(delegate_id));
+                    }
+                }
+                else {
+                    REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+                }
                 CHECK_NOTHROW(builder.OrdOutput(546, condition.is_parent ? w->p2tr(2,0,1) : destination_addr));
                 CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
                 CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
@@ -311,7 +355,7 @@ TEST_CASE("inscribe")
 
                 std::string contract;
                 REQUIRE_NOTHROW(contract = builder.Serialize(version, LAZY_INSCRIPTION_SIGNATURE));
-                std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
+                // std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
 
                 CreateInscriptionBuilder fin_builder(w->chain(), LAZY_INSCRIPTION);
                 REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LAZY_INSCRIPTION_SIGNATURE));
@@ -325,11 +369,12 @@ TEST_CASE("inscribe")
 
                 REQUIRE_NOTHROW(rawtxs = fin_builder.RawTransactions());
 
+                spends = fin_builder.GetGenesisTxSpends();
+
 //                CMutableTransaction tx;
 //                REQUIRE(DecodeHexTx(tx, rawtxs[1]));
 //
 //                //size_t nin = 2;
-//                auto spends = fin_builder.GetGenesisTxSpends();
 //
 //                for (size_t nin = 0; nin < spends.size(); ++nin) {
 //                    CAmount amount = spends[nin].nValue;
@@ -352,11 +397,11 @@ TEST_CASE("inscribe")
             REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
             REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
 
-            std::clog << condition.comment << " ^^^" << '\n';
-            std::clog << "Funding TX min fee: " << CalculateTxFee(fee_rate, commitTx) << " ============================================================" << '\n';
+            // std::clog << "Funding TX min fee: " << CalculateTxFee(fee_rate, commitTx) << " ============================================================" << '\n';
             LogTx(commitTx);
-            std::clog << "Genesis TX min fee: " << CalculateTxFee(fee_rate, revealTx) << " ============================================================" << '\n';
+            // std::clog << "Genesis TX min fee: " << CalculateTxFee(fee_rate, revealTx) << " ============================================================" << '\n';
             LogTx(revealTx);
+            std::clog << condition.comment << "" << '\n';
             std::clog << "=======================================================================" << '\n';
 
             if (condition.has_parent) {
@@ -364,7 +409,7 @@ TEST_CASE("inscribe")
                 CHECK(revealTx.vout[1].nValue == 546);
             }
 
-            size_t vout_size = 1;
+            size_t vout_size = 1 + condition.ext_fee_count;
             if (condition.has_parent) vout_size += 1;
             if (condition.market_fee > 0) vout_size += 1;
             if (lazy) vout_size += 1;
@@ -378,7 +423,39 @@ TEST_CASE("inscribe")
             }
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
-            REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+//            REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+
+            try {
+                w->btc().SpendTx(CTransaction(revealTx));
+            }
+            catch(...) {
+                bool ok = true;
+
+                PrecomputedTransactionData txdata;
+                txdata.Init(revealTx, move(spends), /* force=*/ true);
+
+                for (size_t nin = 0; nin < txdata.m_spent_outputs.size(); ++nin) {
+                    std::clog << "Input " << nin << " signature ... ";
+                    CAmount amount = txdata.m_spent_outputs[nin].nValue;
+
+                    MutableTransactionSignatureChecker txChecker(&revealTx, nin, amount, txdata, MissingDataBehavior::FAIL);
+                    ScriptError err;
+                    ok &= VerifyScript(CScript(), txdata.m_spent_outputs[nin].scriptPubKey, &revealTx.vin[nin].scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, txChecker, &err);
+
+                    if (!ok) {
+                        std::clog << " FAIL: " << ScriptErrorString(err) << std::endl;
+                        FAIL("Genesis TX error on input " + std::to_string(nin));
+                    }
+                    else {
+                        std::clog << " ok" << std::endl;
+                    }
+                }
+                if (ok) {
+                    std::clog << w->btc().TestTxSequence({revealTx}) << std::endl;
+
+                    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+                }
+            }
 
             if (condition.is_parent) {
                 collection_id = revealTx.GetHash().GetHex() + "i0";

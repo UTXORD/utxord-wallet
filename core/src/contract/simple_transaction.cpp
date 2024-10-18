@@ -1,10 +1,11 @@
 
 #include <algorithm>
 
+#include <smartinserter.hpp>
+
 #include "univalue.h"
 
 #include "policy.h"
-#include "core_io.h"
 
 #include "utils.hpp"
 
@@ -206,7 +207,7 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& k
 
 std::vector<std::string> SimpleTransaction::RawTransactions() const
 {
-    return { EncodeHexTx(CTransaction(MakeTx(""))) };
+    return {l15::EncodeHexTx(MakeTx("")) };
 }
 
 UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
