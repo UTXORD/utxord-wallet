@@ -381,6 +381,7 @@ public:
     static const std::string name_version;
     static const std::string name_mining_fee_rate;
     static const std::string name_market_fee;
+    static const std::string name_custom_fee;
 
     static const std::string name_utxo;
     static const std::string name_txid;
@@ -406,6 +407,7 @@ protected:
 
     std::optional<CAmount> m_mining_fee_rate;
     std::shared_ptr<IContractDestination> m_market_fee;
+    std::list<std::shared_ptr<IContractDestination>> m_custom_fees;
     std::optional<std::string> m_change_addr;
 
     virtual CAmount CalculateWholeFee(const std::string &params) const;
@@ -443,6 +445,9 @@ public:
             m_market_fee = std::make_shared<ZeroDestination>();
         }
     }
+
+    void AddCustomFee(CAmount amount, std::string addr)
+    { m_custom_fees.emplace_back(P2Witness::Construct(chain(), amount, move(addr))); }
 
     void MiningFeeRate(CAmount rate)
     { m_mining_fee_rate = rate; }
