@@ -172,11 +172,10 @@
 
 <script setup lang="ts">
 import { toRefs, computed } from 'vue'
-import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
-import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
 import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
 import { useRouter } from 'vue-router'

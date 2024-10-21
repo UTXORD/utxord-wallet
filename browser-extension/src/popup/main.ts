@@ -25,7 +25,7 @@ import {
  } from '~/config/index';
  import {version} from '~/../package.json';
  import { STATUS_VIEW_MODE  } from '~/config/events';
- import { sendMessage } from 'webext-bridge'
+ import { sendMessage } from '~/helpers/index'
 
 
 const pinia = createPinia()

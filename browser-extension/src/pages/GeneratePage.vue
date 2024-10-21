@@ -192,11 +192,17 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SET_UP_PASSWORD } from '~/config/events'
-import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid } from '~/helpers/index'
+import {
+  isASCII,
+  isLength,
+  isContains,
+  copyToClipboard,
+  isMnemonicValid,
+  sendMessage 
+  } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 
 const WORDS_COUNT = 'temp-words-count'

@@ -89,10 +89,9 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
 import { computed, ref, toRefs} from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII } from '~/helpers/index'
+import { isASCII, sendMessage } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import {BALANCE_CHANGE_PRESUMED, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION} from '~/config/events';
 import useWallet from '~/popup/modules/useWallet'
