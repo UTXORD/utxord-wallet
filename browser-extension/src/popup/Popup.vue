@@ -71,7 +71,7 @@ async function checkAuth(): Promise<boolean> {
 function runHeartbeat() {
   setInterval(async () => {
     await sendMessage(POPUP_HEARTBEAT, {}, 'background')
-  }, 10000)
+  }, 6000)
 }
 
 
@@ -79,7 +79,7 @@ function refreshBalance() {
   store.setSyncToFalse();
   setTimeout(async () => {
     await getBalance(fundAddress.value)
-  }, 1000)
+  }, 500)
 }
 
 async function init() {

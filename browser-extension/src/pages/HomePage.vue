@@ -207,7 +207,7 @@ function refreshBalance() {
     )?.address
     store.setFundAddress(addr)
     await getBalance(fundAddress.value);
-  }, 1000)
+  }, 500)
 }
 
 const isSynchronized = computed(() => balance?.value?.sync)
