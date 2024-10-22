@@ -36,7 +36,7 @@ function goToHomePage() {
 onMounted(() => {
   setTimeout(() => {
     loading.value = false
-  }, 1000)
+  }, 500)
 })
 </script>
 
@@ -52,7 +52,7 @@ onMounted(() => {
       font-size: 22px;
       line-height: 30px;
       letter-spacing: 0.33px;
-    }  
+    }
   }
 
   &_text {

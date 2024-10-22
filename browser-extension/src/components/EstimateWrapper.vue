@@ -291,7 +291,7 @@ onMounted(() => {
 console.log('dataForSign:', dataForSign.value);
   setTimeout(() => {
     loading.value = false
-  }, 1000)
+  }, 500)
 })
 </script>
 
