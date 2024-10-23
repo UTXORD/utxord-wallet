@@ -70,11 +70,10 @@
 
 <script setup lang="ts">
 import { toRefs, computed, ref } from 'vue'
-import { sendMessage } from 'webext-bridge'
 import { GET_ADDRESSES, GET_ALL_BALANCES } from '~/config/events'
 import { useRouter } from 'vue-router'
 import LoadingPage from '~/pages/LoadingPage.vue'
-import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 const { back, push } = useRouter()
 
@@ -100,7 +99,7 @@ async function updateBalances(){
   uaddrs = []
   const items = []
   const addrList = []
-  const list = await sendMessage(GET_ADDRESSES, {refresh: true}, 'background')
+  const list = await sendMessage(GET_ADDRESSES, { refresh: true }, 'background')
   const utxoList = await sendMessage(GET_ALL_BALANCES, {}, 'background')
 
   for(let item of list?.addresses){
@@ -150,7 +149,7 @@ async function updateBalances(){
           loading.value = false
         }
       }
-    }, 1000)
+    }, 500)
   }
 }
 
