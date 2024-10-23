@@ -46,9 +46,12 @@
           data-testid="connect-to-site"
         >Connect to site</Button>
         </template>
-<!--        <span
+
+      <div>
+  <!--
+        <span
            v-if="Number(balance?.confirmed) > 0"
-          class="hidden w-2/4"
+          class=" w-2/4"
           data-testid="send"
           @click="sendTo"
           style="cursor: pointer;font-size: 20px;margin-top: 5px;"
@@ -56,6 +59,15 @@
           &#9658;
         </span>
 -->
+        <span
+          class=" w-2/4"
+          data-testid="addresses"
+          @click="addressesList"
+          style="cursor: pointer;font-size: 20px;margin-top: 5px;"
+          >
+          &#8801;
+        </span>
+        </div>
       </div>
 
       <!-- Balance -->
@@ -192,6 +204,10 @@ async function newFundAddress() {
 
 function sendTo(){
   return push('/send-to')
+}
+
+function addressesList(){
+  return push('/addresses')
 }
 
 function refreshBalance() {

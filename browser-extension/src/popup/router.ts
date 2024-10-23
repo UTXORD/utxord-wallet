@@ -88,6 +88,24 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/addresses',
+    name: 'AddressesPage',
+    component: () => import('~/pages/AddressesPage.vue'),
+    meta: {
+      requiresAuth: true,
+      restore: true
+    }
+  },
+  {
+    path: '/utxos',
+    name: 'UtxosPage',
+    component: () => import('~/pages/UtxosPage.vue'),
+    meta: {
+      requiresAuth: true,
+      restore: true
+    }
+  },
+  {
     path: '/sign-commit-buy',
     name: 'SignCommitPage',
     component: () => import('~/pages/SignCommitPage.vue'),
