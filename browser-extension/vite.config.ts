@@ -37,7 +37,6 @@ export default defineConfig(({ command }) => {
         input: {
           sidePanel: r('src/popup/index.html'),
           popup: r('src/popup/index.html'),
-          options: r('src/options/index.html'),
         },
       },
     },
