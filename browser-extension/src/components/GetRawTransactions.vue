@@ -1,34 +1,25 @@
 <template>
 <!-- Total -->
 <div
-  class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+  class="transactions-screen_block w-full flex items-center p-3 mb-5"
   v-show="raws?.length > 0"
   data-testid="get-raw-tx-description"
 >
-  <span><a @click="whatSigning" class="mr-2 text-[var(--text-color)]">What am I signing?</a></span>
-  <span class="w-full text-[var(--text-grey-color)]"
-    >Description:</span
-  >
-  <span class="mr-2 text-[var(--text-color)]" >...</span>
+  <span><a @click="whatSigning" class="mr-2 text-[var(--text-color)] cursor-pointer">Transactions details</a></span>
 </div>
 <!-- What am I signing -->
 <div
-  class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3 mb-5"
+  class="transactions-screen_form w-full rounded-xl p-3 mb-5"
   v-if="showContract"
   data-testid="get-raw-tx-contract"
 >
   <div class="flex items-center mb-2">
-    <span class="w-full text-[var(--text-grey-color)]"
-      >Raw transcation:</span
-    >
-    <CopyIcon
-      class="cursor-pointer"
-      @click="copyToClipboard(textarea, 'Constant was copied!')"
-    />
+  <a v-for="(item, index) in raws" @click="showRawTranscation(index)" :active="activeTab === index" style="float:left;" class="mr-2 text-[var(--text-color)]" data-testid="raw-tx-link">Transcation {{ index+1 }}</a>
+  <CopyIcon
+    class="cursor-pointer"
+    @click="copyToClipboard(textarea, 'Constant was copied!')"
+  />
   </div>
-  <span>
-  <a v-for="(item, index) in raws" @click="showRawTranscation(index)" :active="activeTab === index" style="float:left;" class="mr-2 text-[var(--text-color)]" data-testid="raw-tx-link">#raw_transcation_{{ index+1 }}</a>
-  </span>
   <CustomInput
     type="textarea"
     class="w-full"
