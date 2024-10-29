@@ -1,12 +1,14 @@
 #include <memory>
 
+#include "nlohmann/json.hpp"
+
 #include "random.h"
 
+#include "mnemonic.hpp"
 #include "bech32.hpp"
 #include "schnorr.hpp"
 #include "keypair.hpp"
 #include "keyregistry.hpp"
-#include "master_key.hpp"
 #include "contract_builder.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
@@ -43,15 +45,76 @@ const secp256k1_context * GetSecp256k1()
 }
 
 namespace utxord {
-
-class SimpleTransaction;
-
 namespace wasm {
 
 using l15::FormatAmount;
 using l15::ParseAmount;
 using l15::hex;
 using l15::unhex;
+
+class MnemonicParser : private l15::core::MnemonicParser<nlohmann::json>
+{
+    static nlohmann::json ConvertJsonList(std::string json_list)
+    {
+        auto word_list = nlohmann::json::parse(move(json_list));
+        if (!word_list.is_array()) throw l15::core::MnemonicDictionaryError("dictionary JSON is not an array");
+        if (word_list.size() != 2048) throw l15::core::MnemonicDictionaryError("wrong size: " + std::to_string(word_list.size()));
+
+        return word_list;
+    }
+
+    static l15::sensitive_stringvector to_vec(const l15::sensitive_string& str)
+    {
+        l15::sensitive_string curword;
+        l15::sensitive_stringvector vec;
+        vec.reserve(24);
+
+        std::basic_istringstream<char, std::char_traits<char>, secure_allocator<char>> buf(str);
+        while (getline (buf, curword, ' ')) {
+            vec.emplace_back(move(curword));
+        }
+        return vec;
+    }
+public:
+    explicit MnemonicParser(std::string word_list_json) : l15::core::MnemonicParser<nlohmann::json>(ConvertJsonList(move(word_list_json))) {}
+
+    const char* DecodeEntropy(const l15::sensitive_string& phrase) const
+    {
+        static std::string cache;
+
+        cache = hex(l15::core::MnemonicParser<nlohmann::json>::DecodeEntropy(to_vec(phrase)));
+        return cache.c_str();
+    }
+
+    const char* EncodeEntropy(const char* entropy_hex) const
+    {
+        static l15::sensitive_string cache;
+
+        auto phrase_vec = l15::core::MnemonicParser<nlohmann::json>::EncodeEntropy(unhex<l15::sensitive_bytevector>(entropy_hex));
+
+        std::ostringstream buf;
+        bool insert_space = false;
+        for (const auto& w: phrase_vec) {
+            if (insert_space)
+                buf << ' ';
+            else
+                insert_space = true;
+            buf << w;
+        }
+
+        cache = buf.str();
+        return cache.c_str();
+    }
+
+    const char* MakeSeed(const l15::sensitive_string& phrase, const l15::sensitive_string& passphrase) const
+    {
+        static l15::sensitive_string cache;
+
+        cache = hex(l15::core::MnemonicParser<nlohmann::json>::MakeSeed(to_vec(phrase), passphrase));
+        return cache.c_str();
+    }
+};
+
 
 enum Bech32Encoding
 {
@@ -128,7 +191,7 @@ public:
 class KeyRegistry : private l15::core::KeyRegistry
 {
 public:
-    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<bytevector>(seed))
+    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<l15::sensitive_bytevector>(seed))
     {}
 
     void AddKeyType(const char* name, const char* filter_json)

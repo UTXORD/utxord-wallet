@@ -30,34 +30,34 @@ SWIG_SRC_INCLUDES = \
 
 
 AM_CPPFLAGS = $(COMMON_INCLUDES) $(PYTHON_CPPFLAGS) $(PYTHON_INCLUDES)
+AM_CXXFLAGS = -ffunction-sections -fdata-sections
 
 SWIG_FLAGS = -stdstl
 SWIG_SRC_FILES = utxord-pybind.i
 SWIG_PYTHON_MODULE = libutxord-pybind-wrap.cxx
-CLEANFILES = $(SWIG_PYTHON_MODULE) libutxord_pybind.py
+SWIG_PYTHON_SCRIPT = libutxord_pybind.py
 
-BUILT_SOURCES = $(SWIG_PYTHON_MODULE)
+data_DATA = $(SWIG_PYTHON_SCRIPT)
+
+CLEANFILES = $(SWIG_PYTHON_MODULE) $(SWIG_PYTHON_SCRIPT)
+
+BUILT_SOURCES = $(SWIG_PYTHON_MODULE) $(SWIG_PYTHON_SCRIPT)
 EXTRA_DIST = $(SWIG_SRC_FILES)
 
 $(SWIG_PYTHON_MODULE): $(SWIG_SRC_FILES) $(SWIG_SRC_INCLUDES)
 	$(SWIG) $(COMMON_INCLUDES) -c++ -python -o $@ $<
 
+$(SWIG_PYTHON_SCRIPT): $(SWIG_PYTHON_MODULE)
 
 lib_LTLIBRARIES = _libutxord_pybind.la
 
 _libutxord_pybind_la_SOURCES = $(SWIG_PYTHON_MODULE)
-_libutxord_pybind_la_LDFLAGS = -shared -module -avoid-version $(PYTHON_LDFLAGS) -Wl,--no-undefined
+_libutxord_pybind_la_LDFLAGS = -shared -module -avoid-version $(PYTHON_LDFLAGS) -Wl,--no-undefined,--gc-sections
 
-_libutxord_pybind_la_LIBADD = \
-    $(top_builddir)/l15/src/core/libl15-core.la \
-    $(top_builddir)/l15/src/common/libl15-common.la \
-    $(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la \
-    $(top_builddir)/l15/node/src/libbitcoinconsensus.la \
-    $(top_builddir)/l15/node/src/libunivalue.la \
+_libutxord_pybind_la_LIBADD = $(PYTHON_LIBS) \
     $(top_builddir)/src/contract/libutxord-contract.la \
-    $(PYTHON_LIBS)
+    $(top_builddir)/l15/libl15.la \
+    $(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la
 
-install-completed-library:
-	cp $(srcdir)/__init__.py $(top_builddir)/src/python_binding/
-	cp $(top_builddir)/src/python_binding/.libs/_libutxord_pybind.so $(top_builddir)/src/python_binding/_libutxord_pybind.so
+
 
