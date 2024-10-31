@@ -65,7 +65,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="push('/manage')"
           data-testid="go-back"
         >
           <ArrowLeftIcon />

@@ -26,7 +26,7 @@
         <Button
           second
           class="w-full px-0 flex items-center justify-center gap-2"
-          @click="back"
+          @click="push('/')"
           data-testid="go-back"
         >
           Go Back
