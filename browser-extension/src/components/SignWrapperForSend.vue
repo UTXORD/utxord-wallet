@@ -160,6 +160,7 @@ async function onSign() {
 function cancel() {
   push('/')
 }
+
 function goToBack(){
   dataForSign.value.location = '/confirm-send-to'
   dataForSign.value.back = '/send-to';

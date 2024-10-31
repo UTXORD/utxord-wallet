@@ -76,6 +76,9 @@ import LoadingPage from '~/pages/LoadingPage.vue'
 import CustomInput from '~/components/CustomInput.vue'
 import Modal from '~/components/Modal.vue'
 import { isASCII, sendMessage } from '~/helpers/index'
+import {useRouter} from "vue-router";
+
+const { back, push } = useRouter()
 
 const store = useStore()
 const { balance, dataForSign } = toRefs(store)
@@ -142,6 +145,7 @@ async function onSign() {
 
 function cancel() {
   winHelpers.closeCurrentWindow()
+  push('/')
 }
 
 onMounted(() => {
