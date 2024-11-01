@@ -398,9 +398,9 @@ TEST_CASE("inscribe")
             REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
 
             // std::clog << "Funding TX min fee: " << CalculateTxFee(fee_rate, commitTx) << " ============================================================" << '\n';
-            LogTx(commitTx);
+            LogTx(w->chain(), commitTx);
             // std::clog << "Genesis TX min fee: " << CalculateTxFee(fee_rate, revealTx) << " ============================================================" << '\n';
-            LogTx(revealTx);
+            LogTx(w->chain(), revealTx);
             std::clog << condition.comment << "" << '\n';
             std::clog << "=======================================================================" << '\n';
 
@@ -551,9 +551,9 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     REQUIRE(DecodeHexTx(revealTx0, rawtxs0[1]));
 
     std::clog << "Commit0: ========================" << std::endl;
-    LogTx(commitTx0);
+    LogTx(w->chain(), commitTx0);
     std::clog << "Genesis0: ========================" << std::endl;
-    LogTx(revealTx0);
+    LogTx(w->chain(), revealTx0);
     std::clog << "========================" << std::endl;
 
     REQUIRE_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
@@ -699,7 +699,7 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
-    LogTx(revealTx);
+    LogTx(w->chain(), revealTx);
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
@@ -741,7 +741,7 @@ TEST_CASE("etch")
             CMutableTransaction mintTx;
             REQUIRE(DecodeHexTx(mintTx, mint_raw_tx[0]));
 
-            LogTx(mintTx);
+            LogTx(w->chain(), mintTx);
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(mintTx)));
 
@@ -787,7 +787,7 @@ TEST_CASE("etch")
             CMutableTransaction transferTx;
             REQUIRE(DecodeHexTx(transferTx, transfer_raw_tx[0]));
 
-            LogTx(transferTx);
+            LogTx(w->chain(), transferTx);
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(transferTx)));
 
