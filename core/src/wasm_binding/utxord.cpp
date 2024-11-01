@@ -3,6 +3,7 @@
 #include "nlohmann/json.hpp"
 
 #include "random.h"
+#include "core_io.h"
 
 #include "mnemonic.hpp"
 #include "bech32.hpp"
@@ -136,6 +137,19 @@ public:
     }
 };
 
+class Util {
+public:
+    static const char* LogTx(ChainMode chain, const std::string hex)
+    {
+        static std::string cache;
+        CMutableTransaction tx;
+        if (!DecodeHexTx(tx, hex)) {
+            throw l15::IllegalArgument("Wrong Tx hex");
+        }
+        cache = l15::JsonTx<nlohmann::ordered_json>(chain, tx).dump();
+        return cache.c_str();
+    }
+};
 
 class KeyPair : private l15::core::KeyPair
 {
