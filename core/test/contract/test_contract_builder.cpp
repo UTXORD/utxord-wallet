@@ -125,7 +125,7 @@ TEST_CASE("Fee")
 
     SchnorrKeyPair key;
     l15::ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { IContractBuilder::MakeMultiSigScript(xonly_pubkey(), xonly_pubkey()) });
-    auto tr = core::SchnorrKeyPair::AddTapTweak(key.GetPubKey(), tap_tree.CalculateRoot());
+    auto tr = core::SchnorrKeyPair::AddTapTweak(KeyPair::GetStaticSecp256k1Context(), key.GetPubKey(), tap_tree.CalculateRoot());
 
     std::vector<uint256> scriptpath = tap_tree.CalculateScriptPath(tap_tree.GetScripts().front());
     bytevector control_block;

@@ -266,7 +266,7 @@ TEST_CASE("inscribe")
 //        REQUIRE(DecodeHexTx(tx, rawtxs[0]));
 //
 //        std::clog << "TX ============================================================" << '\n';
-//        LogTx(tx);
+//        LogTx(w->chain(), tx);
 //        std::clog << "===============================================================" << '\n';
 //
 //
@@ -333,7 +333,7 @@ TEST_CASE("inscribe")
                     CMutableTransaction tx;
                     CHECK(DecodeHexTx(tx, rawtx));
 
-                    //LogTx(tx);
+                    //LogTx(w->chain(), tx);
                 }
 
                 CHECK_NOTHROW(builder.SignCommit(master_key, "fund"));
@@ -384,9 +384,9 @@ TEST_CASE("inscribe")
 
             std::clog << condition.comment << " ^^^" << '\n';
             std::clog << "Funding TX min fee: " << CalculateTxFee(fee_rate, commitTx) << " ============================================================" << '\n';
-            LogTx(commitTx);
+            LogTx(w->chain(), commitTx);
             std::clog << "Genesis TX min fee: " << CalculateTxFee(fee_rate, revealTx) << " ============================================================" << '\n';
-            LogTx(revealTx);
+            LogTx(w->chain(), revealTx);
             std::clog << "=======================================================================" << '\n';
 
 //        if (condition.has_change && condition.has_parent) {
@@ -526,9 +526,9 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     REQUIRE(DecodeHexTx(revealTx0, rawtxs0[1]));
 
     std::clog << "Commit0: ========================" << std::endl;
-    LogTx(commitTx0);
+    LogTx(w->chain(), commitTx0);
     std::clog << "Genesis0: ========================" << std::endl;
-    LogTx(revealTx0);
+    LogTx(w->chain(), revealTx0);
     std::clog << "========================" << std::endl;
 
     REQUIRE_NOTHROW(builder.SignCommit(master_key, "fund"));
@@ -688,7 +688,7 @@ TEST_CASE("etch")
 
     w->btc().GenerateToAddress(return_addr, "4");
 
-    LogTx(revealTx);
+    LogTx(w->chain(), revealTx);
 
     REQUIRE_THROWS(w->btc().SpendTx(CTransaction(revealTx)));
 
@@ -696,7 +696,7 @@ TEST_CASE("etch")
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
-    LogTx(revealTx);
+    LogTx(w->chain(), revealTx);
 
     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
@@ -751,7 +751,7 @@ TEST_CASE("etch")
             CMutableTransaction mintTx;
             REQUIRE(DecodeHexTx(mintTx, mint_raw_tx[0]));
 
-            LogTx(mintTx);
+            LogTx(w->chain(), mintTx);
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(mintTx)));
 
