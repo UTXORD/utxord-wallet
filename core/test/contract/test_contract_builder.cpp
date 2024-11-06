@@ -125,7 +125,7 @@ TEST_CASE("Fee")
 
     SchnorrKeyPair key;
     l15::ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { IContractBuilder::MakeMultiSigScript(xonly_pubkey(), xonly_pubkey()) });
-    auto tr = core::SchnorrKeyPair::AddTapTweak(key.Secp256k1Context(), key.GetPubKey(), tap_tree.CalculateRoot());
+    auto tr = core::SchnorrKeyPair::AddTapTweak(KeyPair::GetStaticSecp256k1Context(), key.GetPubKey(), tap_tree.CalculateRoot());
 
     std::vector<uint256> scriptpath = tap_tree.CalculateScriptPath(tap_tree.GetScripts().front());
     bytevector control_block;
@@ -242,5 +242,3 @@ TEST_CASE("DeserializeContractHexData")
     CHECK(sig.has_value());
     CHECK(hex(*sig) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
 }
-
-

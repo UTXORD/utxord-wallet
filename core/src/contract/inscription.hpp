@@ -9,6 +9,9 @@
 namespace utxord {
 
 class InscriptionError : public l15::Error {
+protected:
+    InscriptionError() : l15::Error() {}
+
 public:
     explicit InscriptionError(std::string&& details) : l15::Error(move(details)) {}
     ~InscriptionError() override = default;
@@ -24,6 +27,15 @@ public:
 
     const char* what() const noexcept override
     { return "InscriptionFormatError"; }
+};
+
+class EnvelopeEnd : public InscriptionError {
+public:
+    EnvelopeEnd() = default;
+    ~EnvelopeEnd() override = default;
+
+    const char* what() const noexcept override
+    { return "EnvelopeEnd"; }
 };
 
 std::list<std::pair<l15::bytevector, l15::bytevector>> ParseEnvelopeScript(const CScript& script, CScript::const_iterator& it);
