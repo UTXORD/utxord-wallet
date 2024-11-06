@@ -809,6 +809,7 @@ interface ICollectionTransferResult {
                 {
                   contract: JSON.parse(payload_data?.costs?.data || "{}"),
                   title: payload_data?.title,
+                  name: payload_data?.name,
                   description: payload_data?.description,
                   type: payload_data?.type
                 },
