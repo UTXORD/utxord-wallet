@@ -42,7 +42,6 @@ import {
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
 
-import * as WebBip39 from 'web-bip39';
 import wordlist from 'web-bip39/wordlists/english';
 import {logger} from "../../scripts/utils";
 
@@ -434,6 +433,8 @@ class Api {
 
   async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
     const out = {name, props, list, args, proto, lvl};
+    const methodsToDontWarn = ['LookupAddress'];
+    const propsToDontWrap = ['DecodeEntropy']
     const myself = this;
     if(!obj) return out;
     let methods = Object.getOwnPropertyNames(obj).filter((n) => n[0]!== '_');
@@ -451,7 +452,8 @@ class Api {
         out.lvl
       );
     }
-    for (let m of methods){
+    for (let m of methods) {
+      if (propsToDontWrap.includes(m)) continue;
       if((typeof obj[m]) === 'function' &&
         m.indexOf('dynCall') === -1 &&
         m.indexOf('constructor') === -1 &&
@@ -471,7 +473,7 @@ class Api {
               }
               return o;
             }catch(e){
-              if(m!=='LookupAddress') myself.sendWarningMessage(m, e);
+              if (!methodsToDontWarn.includes(m)) myself.sendWarningMessage(m, e);
               return null;
             }
         };
@@ -882,29 +884,21 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     return this.getMnemonicParser().EncodeEntropy(random_hex);
   }
 
-  async validateMnemonic(mnemonic) {
-    const valid_legacy = await WebBip39.validateMnemonic(mnemonic, wordlist);
-    const valid = await this.getMnemonicParser().DecodeEntropy(mnemonic);
-    console.debug('=== api.validateMnemonic mnemonic:', mnemonic);
-    console.debug('=== api.validateMnemonic valid_legacy:', valid_legacy);
-    console.debug('=== api.validateMnemonic valid:', valid);
-    return valid_legacy;
+  async validateMnemonic(mnemonic: string) {
+    try {
+      return await (this.getMnemonicParser()).DecodeEntropy(mnemonic);
+    } catch (ex) {
+      return false;
+    }
   }
 
   // [Const] DOMString MakeSeed([Const] DOMString phrase, [Const] DOMString passphrase);
   async setUpSeed(mnemonic, passphrase = '') {
-    console.debug('=== api.setUpSeed mnemonic:', mnemonic);
-    console.debug('=== api.setUpSeed passphrase:', passphrase);
-
-    const buffer_seed_legacy = await WebBip39.mnemonicToSeed(mnemonic, passphrase);
-    console.debug('=== api.setUpSeed buffer_seed_legacy:', buffer_seed_legacy);
-    const buffer_seed = await this.getMnemonicParser().MakeSeed(mnemonic, passphrase);
-    console.debug('=== api.setUpSeed buffer_seed:', buffer_seed);
-
     const valid = this.validateMnemonic(mnemonic);
     if(!valid) return 'Invalid checksum';
-    const seed = this.bytesToHexString(buffer_seed_legacy);
-    chrome.storage.local.set({ seed: seed });
+
+    const seed = await this.getMnemonicParser().MakeSeed(mnemonic, passphrase);
+    await chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
   }

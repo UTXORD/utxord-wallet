@@ -168,7 +168,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
-import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid, sendMessage} from '~/helpers/index'
+import { isASCII, isMnemonicValid, sendMessage} from '~/helpers/index'
 import useWallet from '~/popup/modules/useWallet'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 
