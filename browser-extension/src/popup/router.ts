@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
-import {sendMessage} from 'webext-bridge';
+import {sendMessage} from '~/helpers/index'
 import {CHECK_AUTH, CURRENT_PAGE} from '~/config/events';
 import {settingsRoutes} from "~/popup/settingsRouter";
 
@@ -88,6 +88,24 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/addresses',
+    name: 'AddressesPage',
+    component: () => import('~/pages/AddressesPage.vue'),
+    meta: {
+      requiresAuth: true,
+      restore: true
+    }
+  },
+  {
+    path: '/utxos',
+    name: 'UtxosPage',
+    component: () => import('~/pages/UtxosPage.vue'),
+    meta: {
+      requiresAuth: true,
+      restore: true
+    }
+  },
+  {
     path: '/sign-commit-buy',
     name: 'SignCommitPage',
     component: () => import('~/pages/SignCommitPage.vue'),
@@ -148,10 +166,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  let authenticated = false;
-  try {
-    authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
-  } catch(e) {}
+  const authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
   const currentPage = await localStorage?.getItem(CURRENT_PAGE)
   const pageMatched = to.matched.some(record => record.meta.requiresAuth)
   const restorePage = to.matched.some(record => record.meta.restore)

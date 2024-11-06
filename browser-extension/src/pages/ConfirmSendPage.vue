@@ -96,14 +96,13 @@
 
 <script setup lang="ts">
 import {toRefs, ref, computed, onMounted, onBeforeMount} from 'vue'
-import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
 import { useStore } from '~/popup/store/index'
 import SignWrapperForSend from '~/components/SignWrapperForSend.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
 import GetRawTransactions from '~/components/GetRawTransactions.vue'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 import { SEND_TO } from '~/config/events'
-import { sendMessage } from 'webext-bridge'
 import useWallet from '~/popup/modules/useWallet'
 const { getBalance, saveDataForSign } = useWallet()
 

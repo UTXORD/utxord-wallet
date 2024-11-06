@@ -92,12 +92,11 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
 import useWallet from '~/popup/modules/useWallet'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
-import { isASCII, isLength, isMnemonicValid, getRandom} from '~/helpers/index'
+import { isASCII, isLength, isMnemonicValid, getRandom, sendMessage} from '~/helpers/index'
 import {
   BASE_URL_PATTERN,
   PROD_URL_PATTERN,

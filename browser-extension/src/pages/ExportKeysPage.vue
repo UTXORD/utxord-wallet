@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
+
 import { ref, toRefs, computed, onMounted } from 'vue'
 import WinHelpers from '~/helpers/winHelpers'
 import { useStore } from '~/popup/store/index'
@@ -78,7 +78,7 @@ import { EXPORT_INSCRIPTION_KEY_PAIR } from '~/config/events'
 import LoadingPage from '~/pages/LoadingPage.vue'
 import CustomInput from '~/components/CustomInput.vue'
 import Modal from '~/components/Modal.vue'
-import { isASCII } from '~/helpers/index'
+import { isASCII, sendMessage } from '~/helpers/index'
 import { showSuccess } from '~/helpers'
 
 const store = useStore()
@@ -132,7 +132,7 @@ function cancel() {
 onMounted(() => {
   setTimeout(() => {
     loading.value = false
-  }, 1000)
+  }, 500)
 })
 </script>
 

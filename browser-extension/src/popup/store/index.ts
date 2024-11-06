@@ -12,6 +12,7 @@ interface IBalance {
 
 interface IStore {
   balance: IBalance;
+  addresses: any[] | null
   fundAddress: string | null
   ordAddress: string | null
   typeAddress: number
@@ -41,6 +42,7 @@ export const useStore = defineStore('store', {
     viewMode: false,
     fundAddress: null,
     ordAddress: null,
+    addresses: null,
     typeAddress: 0,
     dataForSign: null,
     dataForExportKeyPair: null,
@@ -49,6 +51,7 @@ export const useStore = defineStore('store', {
   } as IStore),
   getters: {
     getUSDRate: (state) => state.usdRate || 0,
+    getAddresses: (state) => state.addresses || [],
   },
   actions: {
     setUSD(value: number) {
@@ -63,6 +66,9 @@ export const useStore = defineStore('store', {
     },
     setOrdAddress(addr: string) {
       this.ordAddress = addr
+    },
+    setAddresses(list: any[]) {
+      this.addresses = list
     },
     setUseDerivation(val: boolean){
       this.useDerivation = Boolean(val)
@@ -108,6 +114,7 @@ export const useStore = defineStore('store', {
     clearStore() {
       this.clearBalance()
       this.fundAddress = null
+      this.addresses = null
       this.ordAddress = null
       this.dataForSign = null
       this.dataForExportKeyPair = null

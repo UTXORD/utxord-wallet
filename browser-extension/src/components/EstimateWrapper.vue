@@ -163,9 +163,10 @@ const minutesStart = computed(
 const normalText = computed(() => handleText(NORMAL_FEE_VAL));
 const priorityText = computed(() => handleText(PRIORITY_FEE_VAL));
 const customText = computed(() => {
-  if (selectedStep.value < 3) return 'days';
-  if (selectedStep.value > 7) return 'minutes';
-  return 'hours';
+  return '';
+  // if (selectedStep.value < 3) return 'days';
+  // if (selectedStep.value > 7) return 'minutes';
+  // return 'hours';
 });
 const FEES_TABS = computed(() => [
   {
@@ -220,9 +221,10 @@ const transaction_fee = computed(() => ({
 }));
 
 function handleText(value: number) {
-  if (hoursStart.value >= value) return 'days';
-  if (minutesStart.value <= value) return 'minutes';
-  return 'hours';
+  return '';
+  // if (hoursStart.value >= value) return 'days';
+  // if (minutesStart.value <= value) return 'minutes';
+  // return 'hours';
 }
 
 function calculateStep(
@@ -291,7 +293,7 @@ onMounted(() => {
 console.log('dataForSign:', dataForSign.value);
   setTimeout(() => {
     loading.value = false
-  }, 1000)
+  }, 500)
 })
 </script>
 

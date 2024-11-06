@@ -22,6 +22,7 @@ import {
   GET_ADDRESSES,
   GET_ALL_ADDRESSES,
   GET_BALANCE,
+  GET_ALL_BALANCES,
   GET_BALANCES,
   GET_USD_RATE,
   GET_NETWORK,
@@ -438,16 +439,30 @@ interface ICollectionTransferResult {
       return balance;
     });
 
+    onMessage(GET_ALL_BALANCES, async (payload: any) => {
+      await refreshBalanceAndAdressed();
+      console.log('GET_ALL_BALANCE->run')
+      console.log('balances', Api.balances)
+      const balances = await Api.balances;
+      if(balances.length> 0) return balances;
+    });
+
     onMessage(GET_USD_RATE, async () => {
       console.log('GET_USD_RATE->run')
       const usdRate = await Api.fetchUSDRate();
       return usdRate;
     });
 
-    onMessage(GET_ADDRESSES, async () => {
+    onMessage(GET_ADDRESSES, async (payload: any) => {
       console.log('GET_ADDRESSES->run')
       const addresses = await Api.genKeys();
       console.log('GET_ADDRESSES->addresses:',addresses)
+      console.log('payload.data?.refresh:',payload.data?.refresh)
+      if(payload.data?.refresh){
+        setTimeout(async () => {
+          await refreshBalanceAndAdressed();
+        }, 0);
+      }
       return addresses;
     });
 
@@ -794,6 +809,7 @@ interface ICollectionTransferResult {
                 {
                   contract: JSON.parse(payload_data?.costs?.data || "{}"),
                   title: payload_data?.title,
+                  name: payload_data?.name,
                   description: payload_data?.description,
                   type: payload_data?.type
                 },
@@ -1006,14 +1022,14 @@ interface ICollectionTransferResult {
           }
 
           if (payload.type === GET_INSCRIPTION_CONTRACT || payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION) {
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
             const is_lazy = payload.type === ESTIMATE_PURCHASE_LAZY_INSCRIPTION;
             const contract = await Api.createInscriptionContract({...payload.data, is_lazy}, true);
             await Api.sendMessageToWebPage(is_lazy ? ESTIMATE_PURCHASE_LAZY_INSCRIPTION_RESULT : GET_INSCRIPTION_CONTRACT_RESULT, contract, tabId);
           }
 
           if (payload.type === GET_BULK_INSCRIPTION_ESTIMATION) {
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             const data = payload.data as IBulkInscriptionEstimation;
             let bulkAmount = 0;
@@ -1062,7 +1078,7 @@ interface ICollectionTransferResult {
             // console.log('payload?.data?.type:', payload?.data?.type);
             // console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             let chunkData = _fixChunkInscriptionPayload(payload?.data) as IChunkInscription;
 
@@ -1098,7 +1114,7 @@ interface ICollectionTransferResult {
           }
 
           if (payload.type === ESTIMATE_TRANSFER_LAZY_COLLECTION) {
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             const contract = await Api.transferForLazyInscriptionContract(payload.data, true);
             await Api.sendMessageToWebPage(ESTIMATE_TRANSFER_LAZY_COLLECTION_RESULT, {
@@ -1113,7 +1129,7 @@ interface ICollectionTransferResult {
             // console.log('payload?.data?.type:', payload?.data?.type)
             // console.log('payload?.data?.collection?.owner_txid:', payload?.data?.collection?.genesis_txid);
 
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             costs = await Api.transferForLazyInscriptionContract(payload.data);
             console.log('costs:', costs)
@@ -1142,7 +1158,7 @@ interface ICollectionTransferResult {
             console.log('payload?.data?.type:', payload?.data?.type)
             console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
 
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             const is_lazy = payload.type === PURCHASE_LAZY_INSCRIPTION;
             costs = await Api.createInscriptionContract({...payload.data, is_lazy});
@@ -1171,7 +1187,7 @@ interface ICollectionTransferResult {
           }
 
           if (payload.type === BUY_PRODUCT) {
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             const costs = await Api.buyProductContract(payload.data);
 
@@ -1195,7 +1211,7 @@ interface ICollectionTransferResult {
           }
 
           if (payload.type === SELL_INSCRIPTION) {
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             const costs = await Api.sellInscriptionContract(payload.data);
             payload.data.costs = costs;
@@ -1208,7 +1224,7 @@ interface ICollectionTransferResult {
           }
 
           if (payload.type === COMMIT_BUY_INSCRIPTION) {
-            await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
+            Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
             payload.data.costs = await Api.commitBuyInscriptionContract(payload.data);
             payload.data.errorMessage = payload.data?.costs?.errorMessage;
