@@ -82,7 +82,7 @@
     "vue": "^3.2.47",
     "vue-demi": "^0.13.11",
     "vue-global-api": "^0.4.1",
-    "webext-bridge": "^5.0.5",
+    "webext-bridge": "5.0.5",
     "webextension-polyfill": "^0.10.0",
     "windicss": "^3.5.6"
   }
