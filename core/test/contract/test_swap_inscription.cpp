@@ -247,7 +247,7 @@ TEST_CASE("Swap")
     REQUIRE(DecodeHexTx(funds_commit_tx, funds_commit_raw_tx));
 
     std::clog << "FundsCommitTx: ====================================" << std::endl;
-    LogTx(funds_commit_tx);
+    LogTx(w->chain(), funds_commit_tx);
 
     CHECK(funds_commit_tx.vout.size() == (condition.has_change ? 2 : 1));
 

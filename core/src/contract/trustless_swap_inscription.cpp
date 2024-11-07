@@ -1,6 +1,7 @@
 #include <ranges>
 
-#include "core_io.h"
+#include "smartinserter.hpp"
+
 #include "policy.h"
 #include "feerate.h"
 
@@ -16,6 +17,7 @@ using l15::TreeBalanceType;
 using l15::ParseAmount;
 using l15::FormatAmount;
 using l15::CalculateOutputAmount;
+using l15::EncodeHexTx;
 
 namespace {
 
@@ -61,7 +63,7 @@ std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> TrustlessSwapInscriptionBuil
     if (!m_ord_int_pk) throw ContractStateError(name_ord_int_pk + " not defined");
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { OrdSwapScript() });
-    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(KeyPair::GetStaticSecp256k1Context(), m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 
@@ -264,19 +266,19 @@ void TrustlessSwapInscriptionBuilder::SignFundsSwap(const KeyRegistry &master_ke
 
 string TrustlessSwapInscriptionBuilder::OrdCommitRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetOrdCommitTx()));
+    std::string res = EncodeHexTx(GetOrdCommitTx());
     return res;
 }
 
 string TrustlessSwapInscriptionBuilder::FundsCommitRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetFundsCommitTx()));
+    std::string res = EncodeHexTx(GetFundsCommitTx());
     return res;
 }
 
 string TrustlessSwapInscriptionBuilder::OrdSwapRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetSwapTx()));
+    std::string res = EncodeHexTx(GetSwapTx());
     return res;
 }
 
@@ -718,8 +720,8 @@ CAmount TrustlessSwapInscriptionBuilder::CalculateWholeFee(const std::string& pa
     std::string param;
     while(std::getline(ss, param, ',')) {
         if (param == FEE_OPT_HAS_CHANGE) { change = true; continue; }
-        else if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
-        else throw l15::IllegalArgumentError(move(param));
+        if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
+        throw l15::IllegalArgument(move(param));
     }
 
     CAmount commit_vsize;
