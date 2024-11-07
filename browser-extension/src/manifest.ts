@@ -55,6 +55,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     },
     background: {
       service_worker: 'background.js',
+      scripts: ['background.js'],
     },
     content_scripts: [
       {
@@ -72,9 +73,10 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     },
     // permissions: ['contextMenus', 'background', 'storage', 'nativeMessaging', 'declarativeContent', 'activeTab', 'tabs', 'scripting', 'alarms', 'unlimitedStorage'],
     permissions: ['alarms', 'scripting', 'storage', 'unlimitedStorage', 'tabs', 'activeTab','sidePanel'],
+
     optional_permissions: [],
     content_security_policy: {
-      extension_pages: `script-src 'self' 'wasm-unsafe-eval'; object-src 'self' 'wasm-unsafe-eval'; worker-src 'self' 'wasm-unsafe-eval' http://localhost:* http://127.0.0.1:*; script-src-elem 'self' 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; frame-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
+      extension_pages: `worker-src 'self' 'wasm-unsafe-eval'; script-src 'self' 'wasm-unsafe-eval'; object-src 'self' 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; frame-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
     }
   }
 
