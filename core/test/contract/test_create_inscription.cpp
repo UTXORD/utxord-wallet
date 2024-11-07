@@ -272,7 +272,7 @@ TEST_CASE("inscribe")
 //        REQUIRE(DecodeHexTx(tx, rawtxs[0]));
 //
 //        std::clog << "TX ============================================================" << '\n';
-//        LogTx(tx);
+//        LogTx(w->chain(), tx);
 //        std::clog << "===============================================================" << '\n';
 //
 //
@@ -347,7 +347,7 @@ TEST_CASE("inscribe")
                     CMutableTransaction tx;
                     CHECK(DecodeHexTx(tx, rawtx));
 
-                    //LogTx(tx);
+                    //LogTx(w->chain(), tx);
                 }
 
                 CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
