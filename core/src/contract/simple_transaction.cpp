@@ -1,13 +1,17 @@
 
+#include <algorithm>
+
+#include <smartinserter.hpp>
+
 #include "univalue.h"
 
 #include "policy.h"
-#include "core_io.h"
 
 #include "utils.hpp"
 
 #include "simple_transaction.hpp"
 #include "contract_builder_factory.hpp"
+#include "runes.hpp"
 
 namespace utxord {
 
@@ -18,9 +22,11 @@ const std::string val_simple_transaction = "transaction";
 }
 
 const  std::string SimpleTransaction::name_outputs = "outputs";
+const  std::string SimpleTransaction::name_rune_inputs = "rune_inputs";
 
-const uint32_t SimpleTransaction::s_protocol_version = 2;
-const char* SimpleTransaction::s_versions = "[2]";
+const uint32_t SimpleTransaction::s_protocol_version = 3;
+const uint32_t SimpleTransaction::s_protocol_version_no_rune_transfer = 2;
+const char* SimpleTransaction::s_versions = "[2,3]";
 
 
 const std::string& SimpleTransaction::GetContractName() const
@@ -54,6 +60,58 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
     return tx;
 }
 
+void SimpleTransaction::AddRuneInput(std::shared_ptr<IContractOutput> prevout, RuneId runeid, uint128_t rune_amount)
+{
+    AddInput(move(prevout));
+    m_rune_inputs.emplace(move(runeid), std::make_tuple(move(rune_amount), m_inputs.size()));
+}
+
+void SimpleTransaction::AddRuneUTXO(std::string txid, uint32_t nout, CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount)
+{
+    AddRuneInput(std::make_shared<UTXO>(chain(), move(txid), nout, btc_amount, move(addr)), move(runeid), move(rune_amount));
+}
+
+void SimpleTransaction::AddRuneOutput(CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount)
+{
+    AddRuneOutputDestination(P2Witness::Construct(chain(), btc_amount, addr), move(runeid), move(rune_amount));
+}
+
+void SimpleTransaction::AddRuneOutputDestination(std::shared_ptr<IContractDestination> destination, RuneId runeid, uint128_t rune_amount)
+{
+    AddOutputDestination(move(destination));
+
+    uint32_t transfer_nout = m_outputs.size() -1;
+
+    std::shared_ptr<RuneStoneDestination> rune_stone;
+    if (m_runestone_nout) {
+        rune_stone = std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs[*m_runestone_nout]);
+        if (!rune_stone) throw ContractTermMismatch("Not RuneStone output: " + std::to_string(*m_runestone_nout));
+    }
+    else {
+        rune_stone = std::make_shared<RuneStoneDestination>(chain());
+        m_outputs.push_back(rune_stone);
+        m_runestone_nout = m_outputs.size() - 1;
+    }
+
+    rune_stone->op_dictionary.emplace(move(runeid), std::make_tuple(move(rune_amount), transfer_nout));
+}
+
+void SimpleTransaction::BurnRune(RuneId runeid, uint128_t rune_amount)
+{
+    std::shared_ptr<RuneStoneDestination> rune_stone;
+    if (m_runestone_nout) {
+        rune_stone = std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs[*m_runestone_nout]);
+        if (!rune_stone) throw ContractStateError("Not a RuneStone output: " + std::to_string(*m_runestone_nout));
+    }
+    else {
+        rune_stone = std::make_shared<RuneStoneDestination>(chain());
+        m_outputs.push_back(rune_stone);
+        m_runestone_nout = m_outputs.size() - 1;
+    }
+
+    rune_stone->op_dictionary.emplace(move(runeid), std::make_tuple(move(rune_amount), *m_runestone_nout));
+}
+
 void SimpleTransaction::AddChangeOutput(std::string addr)
 {
     if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
@@ -67,10 +125,10 @@ void SimpleTransaction::AddChangeOutput(std::string addr)
     bytevector arg;
     std::tie(v, arg) = bech32().Decode(addr);
     if (v == 0) {
-        AddOutput(std::make_shared<P2WPKH>(bech32().GetChainMode(), 0, move(addr)));
+        AddOutputDestination(std::make_shared<P2WPKH>(chain(), 0, move(addr)));
     }
     else if (v == 1) {
-        AddOutput(std::make_shared<P2TR>(bech32().GetChainMode(), 0, move(addr)));
+        AddOutputDestination(std::make_shared<P2TR>(chain(), 0, move(addr)));
     }
     else {
         throw ContractTermWrongValue(name_change_addr.c_str());
@@ -101,6 +159,29 @@ void SimpleTransaction::DropChangeOutput()
 }
 
 
+void SimpleTransaction::PartialSign(const KeyRegistry &master_key, const string &key_filter_tag, uint32_t nin) {
+    CMutableTransaction tx = MakeTx("");
+
+    std::vector<CTxOut> spent_outs;
+    spent_outs.reserve(m_inputs.size());
+    for(const auto& input: m_inputs) {
+        const auto& dest = input.output->Destination();
+        spent_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
+    }
+
+    auto inputIt = std::find_if(m_inputs.begin(), m_inputs.end(),[nin](const auto& in){ return in.nin == nin; });
+    if (inputIt == m_inputs.end()) throw ContractTermMissing(name_utxo + '[' + std::to_string(nin) + ']');
+
+    auto dest = inputIt->output->Destination();
+    auto keypair = dest->LookupKey(master_key, key_filter_tag);
+
+    std::vector<bytevector> stack = keypair->Sign(tx, nin, spent_outs, SIGHASH_ALL);
+
+    for (size_t i = 0; i < stack.size(); ++i) {
+        inputIt->witness.Set(i, move(stack[i]));
+    }
+}
+
 void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
     CMutableTransaction tx = MakeTx("");
@@ -126,12 +207,12 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& k
 
 std::vector<std::string> SimpleTransaction::RawTransactions() const
 {
-    return { EncodeHexTx(CTransaction(MakeTx(""))) };
+    return {l15::EncodeHexTx(MakeTx("")) };
 }
 
 UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 {
-    if (version != s_protocol_version) throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
+    if (version != s_protocol_version && version != s_protocol_version_no_rune_transfer) throw ContractProtocolError("Wrong contract version: " + std::to_string(version) + ". Allowed are " + s_versions);
 
     UniValue contract(UniValue::VOBJ);
     contract.pushKV(name_version, (int)s_protocol_version);
@@ -144,6 +225,11 @@ UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
     }
     contract.pushKV(name_utxo, move(utxo_arr));
 
+    if (!m_rune_inputs.empty()) {
+        if (version <= s_protocol_version_no_rune_transfer) throw ContractProtocolError(name_rune_inputs + " is not supported with v. " + std::to_string(version));
+        contract.pushKV(name_rune_inputs, RuneStoneDestination::MakeOpDictionaryJson(m_rune_inputs));
+    }
+
     UniValue out_arr(UniValue::VARR);
     for (const auto& out: m_outputs) {
         UniValue dest = out->MakeJson();
@@ -155,7 +241,8 @@ UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 
 void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 {
-    if (contract[name_version].getInt<int>() != s_protocol_version)
+    uint32_t version = contract[name_version].getInt<uint32_t>();
+    if (version != s_protocol_version && version != s_protocol_version_no_rune_transfer)
         throw ContractProtocolError("Wrong " + val_simple_transaction + " contract version: " + contract[name_version].getValStr());
 
     {   const auto &val = contract[name_mining_fee_rate];
@@ -167,7 +254,7 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 
         if (val.isNull() || val.empty()) throw ContractTermMissing(std::string(name_utxo));
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
-        if (!m_inputs.empty() && m_inputs.size() != val.size()) throw ContractTermMismatch(std::string(name_utxo) + " size");
+        if (!m_inputs.empty() && m_inputs.size() != val.size()) throw ContractTermMismatch(name_utxo + " size");
 
         m_inputs.reserve(val.size());
 
@@ -181,6 +268,17 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
         }
     }
 
+    if (version > s_protocol_version_no_rune_transfer) {
+        const auto &val = contract[name_rune_inputs];
+
+        if (!(val.isNull() || val.empty())) {
+            if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_rune_inputs));
+            if (!m_rune_inputs.empty() && m_rune_inputs.size() != val.size()) throw ContractTermMismatch(std::string(name_rune_inputs) + " size");
+
+            RuneStoneDestination::ReadOpDictionaryJson(val, m_rune_inputs, []{ return name_rune_inputs; });
+        }
+    }
+
     {   const auto &val = contract[name_outputs];
         if (val.isNull() || val.empty()) throw ContractTermMissing(std::string(name_outputs));
         if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_outputs));
@@ -189,6 +287,7 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
         for (size_t i = 0; i < val.size(); ++i) {
             if (i == m_outputs.size()) {
                 m_outputs.emplace_back(NoZeroDestinationFactory::ReadJson(chain(), val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();}));
+                if (std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs.back())) m_runestone_nout = m_outputs.size() - 1;
             }
             else {
                 m_outputs[i]->ReadJson(val[i], [i](){ return (std::ostringstream() << name_outputs << '[' << i << ']').str();});
@@ -205,6 +304,29 @@ CAmount SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 
 void SimpleTransaction::CheckContractTerms(TxPhase phase) const
 {
+#ifndef DEBUG
+    using int136_t = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<128, 136, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
+#else
+    using int136_t = boost::multiprecision::number<boost::multiprecision::debug_adaptor<boost::multiprecision::cpp_int_backend<128, 136, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>>;
+#endif
+
+    if (m_runestone_nout || !m_rune_inputs.empty()) {
+        std::shared_ptr<RuneStoneDestination> rune_stone;
+        if (m_runestone_nout) {
+            rune_stone = std::dynamic_pointer_cast<RuneStoneDestination>(m_outputs[*m_runestone_nout]);
+            if (!rune_stone) throw ContractStateError("Not RuneStone output: " + std::to_string(*m_runestone_nout));
+        }
+        else throw ContractStateError("RuneStone");
+
+        std::map<RuneId, int136_t> balances;
+
+        std::for_each(m_rune_inputs.begin(), m_rune_inputs.end(), [&balances](const auto& rune_in){ balances[rune_in.first] += get<0>(rune_in.second); });
+        std::for_each(rune_stone->op_dictionary.begin(), rune_stone->op_dictionary.end(), [&balances](const auto& rune_out) { balances[rune_out.first] -= get<0>(rune_out.second); });
+        for (const auto& bal: balances) {
+            if (bal.second != 0) throw ContractTermWrongValue((std::ostringstream() << "Non zero rune balance " << (std::string)bal.first << ": " << bal.second).str());
+        }
+    }
+
     if (phase == TX_SIGNATURE)
         CheckSig();
 }

@@ -1,6 +1,7 @@
 #include <ranges>
 
-#include "core_io.h"
+#include "smartinserter.hpp"
+
 #include "policy.h"
 #include "feerate.h"
 
@@ -15,6 +16,7 @@ using l15::TreeBalanceType;
 using l15::ParseAmount;
 using l15::FormatAmount;
 using l15::CalculateOutputAmount;
+using l15::EncodeHexTx;
 
 namespace {
 
@@ -444,7 +446,7 @@ void SwapInscriptionBuilder::MarketSignSwap(const KeyRegistry &master_key, const
 
 string SwapInscriptionBuilder::FundsCommitRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetFundsCommitTx()));
+    std::string res = EncodeHexTx(GetFundsCommitTx());
     return res;
 }
 
@@ -453,19 +455,19 @@ string SwapInscriptionBuilder::FundsPayBackRawTransaction() const
     if (!mFundsPaybackTx) {
         throw std::logic_error("FundsPayOff transaction data unavailable");
     }
-    std::string res = EncodeHexTx(CTransaction(*mFundsPaybackTx));
+    std::string res = EncodeHexTx(*mFundsPaybackTx);
     return res;
 }
 
 string SwapInscriptionBuilder::OrdSwapRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetSwapTx()));
+    std::string res = EncodeHexTx(GetSwapTx());
     return res;
 }
 
 string SwapInscriptionBuilder::OrdPayoffRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetPayoffTx()));
+    std::string res = EncodeHexTx(GetPayoffTx());
     return res;
 }
 
@@ -825,7 +827,7 @@ std::string SwapInscriptionBuilder::RawTransaction(SwapPhase phase, uint32_t n) 
     switch (phase) {
     case ORD_SWAP_SIG:
         if (n == 0) {
-            return EncodeHexTx(CTransaction(MakeSwapTx(false)));
+            return EncodeHexTx(MakeSwapTx(false));
         }
         else throw ContractStateError("Transaction unavailable: " + std::to_string(n));
     case FUNDS_COMMIT_SIG:

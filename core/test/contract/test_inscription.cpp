@@ -4,7 +4,6 @@
 #include "nlohmann/json.hpp"
 
 #include "util/translation.h"
-#include "core_io.h"
 
 #include "inscription_common.hpp"
 #include "inscription.hpp"

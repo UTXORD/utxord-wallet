@@ -1,9 +1,7 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
 import * as webext from "webext-bridge";
-import {ADDRESS_COPIED} from "~/config/events";
-import * as WebBip39 from 'web-bip39';
-import wordlist from 'web-bip39/wordlists/english';
+import { ADDRESS_COPIED, GENERATE_MNEMONIC, VALIDATE_MNEMONIC } from '~/config/events'
 import { validate, getAddressInfo } from 'bitcoin-address-validation';
 
 export const isDark = useDark()
@@ -49,9 +47,9 @@ export async function sendMessage(type, message, destination, index?: number){
   try {
     output = await webext.sendMessage(type, message, destination)
   } catch (error) {
-    console.log('sendMessageError:',error)
+    console.log('sendMessageError:', error)
     if(index >=  sendMessageLimit){
-       console.log('sendMessageError: limit has expired')
+       console.warn('sendMessageError: limit has expired');
        return output;
      }
     return setTimeout(() => {
@@ -85,9 +83,16 @@ export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
 }
 
-export async function isMnemonicValid(val: string){
- const valid = await WebBip39.validateMnemonic(val, wordlist)
- return valid
+export async function generateMnemonic(length: number) {
+  const mnemonic = await sendMessage(GENERATE_MNEMONIC, {length}, 'background');
+  // console.log('helpers.generateMnemonic: mnemonic:', mnemonic)
+  return mnemonic;
+}
+
+export async function isMnemonicValid(mnemonic: str) {
+  const isValid = await sendMessage(VALIDATE_MNEMONIC, {mnemonic}, 'background');
+  // console.log('helpers.isMnemonicValid: isValid:', isValid);
+  return isValid;
 }
 
 export function isContains(str: string) {

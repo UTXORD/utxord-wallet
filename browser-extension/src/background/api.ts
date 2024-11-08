@@ -42,8 +42,8 @@ import {
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
 
-import * as WebBip39 from 'web-bip39';
-import wordlist from 'web-bip39/wordlists/english';
+import wordlist from '~/config/bip39_wordlists/english.js';
+import {logger} from "../../scripts/utils";
 
 function GetEnvironment(){
   switch (BASE_URL_PATTERN) {
@@ -336,7 +336,7 @@ class Api {
         this.viewMode = false;
         // view mode true = sidePanel enabled
         // view mode false = popup enabled
-
+        this.mnemonicParserInstance = null;
 
         await this.init(this);
         await this.sentry();
@@ -433,6 +433,8 @@ class Api {
 
   async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
     const out = {name, props, list, args, proto, lvl};
+    const methodsToDontWarn = ['LookupAddress'];
+    const propsToDontWrap = ['DecodeEntropy']
     const myself = this;
     if(!obj) return out;
     let methods = Object.getOwnPropertyNames(obj).filter((n) => n[0]!== '_');
@@ -450,7 +452,8 @@ class Api {
         out.lvl
       );
     }
-    for (let m of methods){
+    for (let m of methods) {
+      if (propsToDontWrap.includes(m)) continue;
       if((typeof obj[m]) === 'function' &&
         m.indexOf('dynCall') === -1 &&
         m.indexOf('constructor') === -1 &&
@@ -470,7 +473,7 @@ class Api {
               }
               return o;
             }catch(e){
-              if(m!=='LookupAddress') myself.sendWarningMessage(m, e);
+              if (!methodsToDontWarn.includes(m)) myself.sendWarningMessage(m, e);
               return null;
             }
         };
@@ -852,23 +855,50 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     }).join('');
   }
 
-  async generateMnemonic(length: number = 12){
-    const strength = length / 3 * 32;
-    const mnemonic = await WebBip39.generateMnemonic(wordlist, strength);
-    return mnemonic;
+  getMnemonicParser() {
+    if (this.mnemonicParserInstance == null) {
+      this.mnemonicParserInstance = new this.utxord.MnemonicParser(`["${wordlist.join('","')}"]`);
+    }
+    return this.mnemonicParserInstance;
   }
 
-  async validateMnemonic(mnemonic){
-     const valid = await WebBip39.validateMnemonic(mnemonic, wordlist);
-     return valid;
+  randomBytes(bytesLength = 32): Uint8Array {
+    if (crypto && typeof crypto.getRandomValues === 'function') {
+      return crypto.getRandomValues(new Uint8Array(bytesLength));
+    }
+    throw new Error('crypto.getRandomValues must be defined');
   }
 
-  async setUpSeed(mnemonic, passphrase = ''){
-    const buffer_seed = await WebBip39.mnemonicToSeed(mnemonic, passphrase);
+  async generateMnemonic(length: number = 12) {
+    let strength = length / 3 * 32;
+    if (strength === void 0) {
+      strength = 128;
+    }
+    if (!(Number.isSafeInteger(strength) &&
+        strength > 0 &&
+        strength <= 256 &&
+        strength % 32 === 0)) {
+      throw new TypeError('Invalid strength');
+    }
+    const random_hex = this.bytesToHexString(this.randomBytes(strength / 8));
+    return this.getMnemonicParser().EncodeEntropy(random_hex);
+  }
+
+  async validateMnemonic(mnemonic: string) {
+    try {
+      return await (this.getMnemonicParser()).DecodeEntropy(mnemonic);
+    } catch (ex) {
+      return false;
+    }
+  }
+
+  // [Const] DOMString MakeSeed([Const] DOMString phrase, [Const] DOMString passphrase);
+  async setUpSeed(mnemonic, passphrase = '') {
     const valid = this.validateMnemonic(mnemonic);
     if(!valid) return 'Invalid checksum';
-    const seed = this.bytesToHexString(buffer_seed);
-    chrome.storage.local.set({ seed: seed });
+
+    const seed = await this.getMnemonicParser().MakeSeed(mnemonic, passphrase);
+    await chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
   }
@@ -1925,24 +1955,18 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
 
       if (payload.owner_fee?.amount) {
-        const ownerOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.owner_fee?.address
         );
-        tx.AddOutput(ownerOutput);
-        myself.utxord.destroy(ownerOutput);
       }
 
 
       if (payload.market_fee?.amount) {
-        const marketOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.market_fee?.address
         );
-        tx.AddOutput(marketOutput);
-        myself.utxord.destroy(marketOutput);
       }
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
@@ -2218,22 +2242,16 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       tx.AddInput(collectionUtxo);
       myself.utxord.destroy(collectionUtxo);
 
-      const transferOutput = new myself.utxord.P2TR(
-          this.network,
+      tx.AddOutput(
           myself.satToBtc(collection.amount).toFixed(8),
           payload.transfer_address
       );
-      tx.AddOutput(transferOutput);
-      myself.utxord.destroy(transferOutput);
 
       if (payload.market_fee?.amount) {
-        const marketOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.market_fee?.address
         );
-        tx.AddOutput(marketOutput);
-        myself.utxord.destroy(marketOutput);
       }
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
@@ -2403,7 +2421,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       );
 
       const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
-      await newOrd.OrdDestination((myself.satToBtc(payload.expect_amount)).toFixed(8), dst_address);
+      await newOrd.OrdOutput((myself.satToBtc(payload.expect_amount)).toFixed(8), dst_address);
 
       // For now it's just a support for title and description
       if (payload.metadata) {
@@ -2429,7 +2447,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
           outData.raw = [];
           return outData;
         }
-        newOrd.AddToCollection(
+        newOrd.AddCollectionUTXO(
             `${payload.collection.genesis_txid}i0`,  // inscription ID = <genesis_txid>i<envelope(inscription)_number>
             payload.collection.owner_txid,  // current collection utxo
             payload.collection.owner_nout,  // current collection nout
