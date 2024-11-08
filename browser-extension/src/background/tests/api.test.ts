@@ -1,8 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import wordlist from 'web-bip39/wordlists/english';
-
 
 import utxord from '~/libs/utxord.js'
+import wordlist from '~/config/bip39_wordlists/english.js';
 
 describe('CoreAPI', async () => {
   const api = await utxord();
