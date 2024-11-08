@@ -42,7 +42,7 @@ import {
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
 
-import wordlist from 'web-bip39/wordlists/english';
+import wordlist from '~/config/bip39_wordlists/english.js';
 import {logger} from "../../scripts/utils";
 
 function GetEnvironment(){
