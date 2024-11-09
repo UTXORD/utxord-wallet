@@ -9,13 +9,11 @@ RUN apt update && apt upgrade -y && \
                    git \
                    make \
                    cmake \
-                   gcc-12 \
                    autotools-dev \
                    autoconf \
                    autoconf-archive \
                    pkg-config \
                    libtool \
-                   g++-12 \
                    libtbb-dev \
                    bison \
                    flex \
@@ -24,6 +22,9 @@ RUN apt update && apt upgrade -y && \
                    software-properties-common \
                    build-essential \
                    libgmp-dev
+
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test && apt update -y && \
+    apt install -y gcc-13 g++-13
 
 RUN add-apt-repository ppa:deadsnakes/ppa && \
     apt update -y && \
@@ -39,7 +40,7 @@ RUN git clone https://github.com/swig/swig.git && \
       git fetch --tag && \
       git checkout v4.2.0 && \
       ./autogen.sh && \
-      CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ./configure && \
+      CC=/usr/bin/gcc-13 CPP=/usr/bin/cpp-13 CXX=/usr/bin/g++-13 ./configure && \
       make -j8 && \
       make install && \
       cd /utxord-wallet
@@ -50,6 +51,6 @@ RUN cd /utxord-wallet/core && ./autogen.sh
 RUN mkdir /utxord-wallet/core/build
 WORKDIR /utxord-wallet/core/build
 RUN cd /utxord-wallet/core/build && \
-    CC=/usr/bin/gcc-12 CPP=/usr/bin/cpp-12 CXX=/usr/bin/g++-12 ../configure --enable-python-binding  --prefix=/utxord-wallet/core/build/python_binding
+    CC=/usr/bin/gcc-13 CPP=/usr/bin/cpp-13 CXX=/usr/bin/g++-13 ../configure --enable-python-binding  --prefix=/utxord-wallet/core/build/python_binding
 
 RUN make install -j8
