@@ -10,6 +10,7 @@ COMMON_INCLUDES = \
  -I$(top_srcdir)/l15/src/common \
  -I$(top_srcdir)/l15/src/core \
  -I$(top_srcdir)/l15/contrib/cex \
+ -I$(top_srcdir)/l15/contrib/nlohmann_json \
  -I$(top_srcdir)/src/contract
 
 SWIG_SRC_INCLUDES = \
@@ -17,16 +18,18 @@ SWIG_SRC_INCLUDES = \
  $(top_srcdir)/l15/src/common/bech32.hpp \
  $(top_srcdir)/l15/src/common/utils.hpp \
  $(top_srcdir)/l15/src/core/transaction.hpp \
+ $(top_srcdir)/src/contract/inscription.hpp \
  $(top_srcdir)/src/contract/contract_error.hpp \
  $(top_srcdir)/src/contract/contract_builder.hpp \
  $(top_srcdir)/src/contract/create_inscription.hpp \
  $(top_srcdir)/src/contract/swap_inscription.hpp \
+ $(top_srcdir)/src/contract/trustless_swap_inscription.hpp \
  $(top_srcdir)/src/contract/simple_transaction.hpp \
+ $(top_srcdir)/src/contract/runes.hpp \
  $(top_srcdir)/l15/src/core/schnorr.hpp \
  $(top_srcdir)/l15/src/core/ecdsa.hpp \
  $(top_srcdir)/l15/src/core/keypair.hpp \
  $(top_srcdir)/l15/src/core/keyregistry.hpp
-
 
 
 AM_CPPFLAGS = $(COMMON_INCLUDES) $(PYTHON_CPPFLAGS) $(PYTHON_INCLUDES)
@@ -58,6 +61,4 @@ _libutxord_pybind_la_LIBADD = $(PYTHON_LIBS) \
     $(top_builddir)/src/contract/libutxord-contract.la \
     $(top_builddir)/l15/libl15.la \
     $(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la
-
-
 
