@@ -52,3 +52,23 @@ services:
     profiles: ["donotstart"]
     <<: *common_config
     command: "make clean ext-utxord"
+
+  build-wallet-qa-firefox:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make ext-build-clean ext-qa-firefox"
+
+  build-wallet-e2e-firefox:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make ext-build-clean ext-e2e-firefox"
+
+  build-wallet-utxord-firefox:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make ext-build-clean ext-utxord-firefox"
+
+  build-wallet-firefox:
+    profiles: ["donotstart"]
+    <<: *common_config
+    command: "make clean ext-utxord-firefox"
