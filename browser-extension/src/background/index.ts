@@ -945,6 +945,12 @@ interface ICollectionTransferResult {
       return true;
     });
 
+    onMessage(OPEN_START_PAGE, async () => {
+      console.log('OPEN_START_PAGE->run')
+        winManager.openWindow('start', undefined, Api.viewMode);
+      return true;
+    });
+
     browser.runtime.onConnect.addListener(port => {
       port.onDisconnect.addListener(() => {})
     })
@@ -1055,35 +1061,34 @@ interface ICollectionTransferResult {
             }, tabId);
           }
 
-          function _fixChunkInscriptionPayload(data: IChunkInscription) {
-            for (let inscrData of Array.from(data?.inscriptions || [])) {
-              inscrData.expect_amount = data.expect_amount;  // per item amount
-              inscrData.fee_rate = data.fee_rate;  // per item mining fee rate
-              inscrData.fee = data.fee;   // per item platform/market fee (if any)
-            }
-            return data;
-          }
-
-          function _prepareInscriptionForPopup(data: object) {
-            // console.debug('_prepareInscriptionForPopup data:', {...data || {}});
-            data.market_fee = data.platform_fee || 0;  // total platform/market fee
-            data.costs = {
-              expect_amount: data.total_expect_amount,  // total expect_amount
-              amount: data.total_amount,  // total amount (including all total fees)
-              fee_rate: data.fee_rate,  // per item mining fee rate
-              mining_fee: data.total_mining_fee || 0,  // total mining fee
-              fee: data.fee, // per item platform/market fee (if any)
-              metadata: data.metadata,
-              raw: []
-            };
-            // console.debug('_prepareInscriptionForPopup result:', {...data || {}});
-            return data;
-          }
-
           if (payload.type === CREATE_CHUNK_INSCRIPTION) {
             console.debug(`${CREATE_CHUNK_INSCRIPTION}: payload?.data:`, {...payload?.data || {}});
             // console.log('payload?.data?.type:', payload?.data?.type);
             // console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
+            function _fixChunkInscriptionPayload(data: IChunkInscription) {
+              for (let inscrData of Array.from(data?.inscriptions || [])) {
+                inscrData.expect_amount = data.expect_amount;  // per item amount
+                inscrData.fee_rate = data.fee_rate;  // per item mining fee rate
+                inscrData.fee = data.fee;   // per item platform/market fee (if any)
+              }
+              return data;
+            }
+  
+            function _prepareInscriptionForPopup(data: object) {
+              // console.debug('_prepareInscriptionForPopup data:', {...data || {}});
+              data.market_fee = data.platform_fee || 0;  // total platform/market fee
+              data.costs = {
+                expect_amount: data.total_expect_amount,  // total expect_amount
+                amount: data.total_amount,  // total amount (including all total fees)
+                fee_rate: data.fee_rate,  // per item mining fee rate
+                mining_fee: data.total_mining_fee || 0,  // total mining fee
+                fee: data.fee, // per item platform/market fee (if any)
+                metadata: data.metadata,
+                raw: []
+              };
+              // console.debug('_prepareInscriptionForPopup result:', {...data || {}});
+              return data;
+            }
 
             Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
@@ -1262,11 +1267,6 @@ interface ICollectionTransferResult {
               await Api.encryptedWallet(Api.wallet.tmp);
               Api.wallet.tmp = ''
             }
-          }
-
-          if (payload.type === OPEN_START_PAGE) {
-            console.log('OPEN_START_PAGE->run')
-            winManager.openWindow('start',null, Api.viewMode);
           }
 
     });
