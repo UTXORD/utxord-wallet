@@ -128,7 +128,7 @@ public:
     std::string GetInscribeAddress() const { return m_ord_destination->Address(); }
 
     void OrdOutput(CAmount amount, std::string addr)
-    { m_ord_destination = P2Witness::Construct(chain(), amount, move(addr)); }
+    { m_ord_destination = P2Address::Construct(chain(), amount, move(addr)); }
 
     void OrdOutputDestination(std::shared_ptr<IContractDestination> destination)
     { m_ord_destination = move(destination); }
@@ -164,7 +164,7 @@ public:
     void AuthorFee(CAmount amount, std::string addr)
     {
         if (amount > 0) {
-            m_author_fee = P2Witness::Construct(chain(), amount, move(addr));
+            m_author_fee = P2Address::Construct(chain(), amount, move(addr));
         }
         else {
             m_author_fee = std::make_shared<ZeroDestination>();
@@ -172,7 +172,7 @@ public:
     }
 
     void FixedChange(CAmount amount, std::string addr)
-    { m_fixed_change = P2Witness::Construct(chain(), amount, move(addr)); }
+    { m_fixed_change = P2Address::Construct(chain(), amount, move(addr)); }
 
     void AddCollectionInput(std::string collection_id, std::shared_ptr<IContractOutput> prevout)
     {

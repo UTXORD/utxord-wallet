@@ -141,57 +141,71 @@ void ZeroDestination::ReadJson(const UniValue &json, const std::function<std::st
 
 const char* P2Witness::type = "p2witness";
 
-P2Witness::P2Witness(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): mBech(BTC, chain)
+P2Address::P2Address(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): m_chain(chain)
 {
-    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
+    if (!json[name_type].isStr()) {
         throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
     }
     m_amount = json[name_amount].getInt<CAmount>();
     m_addr = json[name_addr].get_str();
 }
 
-UniValue P2Witness::MakeJson() const
+UniValue P2Address::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
-    res.pushKV(name_type, type);
+    res.pushKV(name_type, Type());
     res.pushKV(name_amount, m_amount);
     res.pushKV(name_addr, m_addr);
 
     return res;
 }
 
-void P2Witness::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
+void P2Address::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
 {
-    if (!json[name_type].isStr() || json[name_type].get_str() != type) throw ContractTermMismatch(lazy_name());
+    if (!json[name_type].isStr() || json[name_type].get_str() != Type()) throw ContractTermMismatch(move((lazy_name() += '.') += name_type));
     if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
     if (m_addr != json[name_addr].get_str())  throw ContractTermMismatch(move((lazy_name() += '.') += name_addr));
 }
 
 
-std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
+std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
 {
-    P2Witness dest(chain, json, lazy_name);
+    P2Address dest(chain, json, lazy_name);
     try {
-        return P2Witness::Construct(chain, dest.m_amount, dest.m_addr);
+        auto p2addr = Construct(chain, dest.m_amount, dest.m_addr);
+        p2addr->ReadJson(json, lazy_name);
+        return p2addr;
     }
     catch(...) {
         std::throw_with_nested(ContractTermWrongValue(lazy_name()));
     }
 }
 
-std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, CAmount amount, std::string addr)
+std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, CAmount amount, std::string addr)
 {
-    unsigned witver;
-    bytevector data;
-    std::tie(witver, data) = Bech32(BTC, chain).Decode(addr);
-    if (witver == 0) {
-        return std::make_shared<P2WPKH>(chain, amount, move(addr));
-    } else if (witver == 1) {
-        return std::make_shared<P2TR>(chain, amount, move(addr));
-    } else {
+    Bech32 bech(BTC, chain);
+    if (addr.starts_with(bech.GetHrp())) {
+        auto [witver, data] = bech.Decode(addr);
+
+        if (witver == 0)
+            return std::make_shared<P2WPKH>(chain, amount, move(addr));
+        if (witver == 1)
+            return std::make_shared<P2TR>(chain, amount, move(addr));
+
         throw ContractTermWrongValue((std::ostringstream() << addr << " wrong witness ver: " << witver).str());
     }
+
+    Base58 base58(chain);
+    auto [addrtype, hash] = base58.Decode(addr);
+    if (addrtype == PUB_KEY_HASH) {
+        return std::make_shared<P2PKH>(chain, amount, move(addr));
+    }
+
+    throw ContractTermWrongValue(move(addr));
 }
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+const char* P2PKH::type = "p2pkh";
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
@@ -269,7 +283,7 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const s
 {
     unsigned witver;
     bytevector pkhash;
-    std::tie(witver, pkhash) = mBech.Decode(m_addr);
+    std::tie(witver, pkhash) = Bech().Decode(m_addr);
     if (witver != 0) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
@@ -281,7 +295,7 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std
 {
     unsigned witver;
     bytevector pk;
-    std::tie(witver, pk) = mBech.Decode(m_addr);
+    std::tie(witver, pk) = Bech().Decode(m_addr);
     if (witver != 1) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
