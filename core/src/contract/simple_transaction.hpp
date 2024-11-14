@@ -66,7 +66,7 @@ public:
     void AddRuneUTXO(std::string txid, uint32_t nout, CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount);
 
     void AddOutput(CAmount amount, std::string addr)
-    { AddOutputDestination(P2Witness::Construct(chain(), amount, addr)); }
+    { AddOutputDestination(P2Address::Construct(chain(), amount, addr)); }
 
     void AddOutputDestination(std::shared_ptr<IContractDestination> destination)
     {
