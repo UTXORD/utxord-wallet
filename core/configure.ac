@@ -47,7 +47,7 @@ AC_PROG_CXX
 AC_PROG_CPP
 AC_PROG_MKDIR_P
 
-AX_CXX_COMPILE_STDCXX([20], [noext], [mandatory])
+AX_CXX_COMPILE_STDCXX([23], [noext], [mandatory])
 dnl AX_BOOST_BASE([1.70])
 
 

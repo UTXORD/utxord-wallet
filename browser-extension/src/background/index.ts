@@ -20,6 +20,7 @@ import {
   EXCEPTION,
   EXPORT_INSCRIPTION_KEY_PAIR,
   GENERATE_MNEMONIC,
+  VALIDATE_MNEMONIC,
   GET_ADDRESSES,
   GET_ALL_ADDRESSES,
   GET_BALANCE,
@@ -308,6 +309,11 @@ interface ICollectionTransferResult {
     onMessage(GENERATE_MNEMONIC, async (payload) => {
       console.log('GENERATE_MNEMONIC->run')
       return await Api.generateMnemonic(payload.data?.length);
+    });
+
+    onMessage(VALIDATE_MNEMONIC, async (payload) => {
+      console.log('VALIDATE_MNEMONIC->run')
+      return await Api.validateMnemonic(payload.data?.mnemonic);
     });
 
     onMessage(CONNECT_TO_SITE, async (payload) => {

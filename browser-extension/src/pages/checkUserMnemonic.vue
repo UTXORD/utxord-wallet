@@ -96,20 +96,7 @@ import useWallet from '~/popup/modules/useWallet'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
-import { isASCII, isLength, isMnemonicValid, getRandom, sendMessage} from '~/helpers/index'
-import {
-  BASE_URL_PATTERN,
-  PROD_URL_PATTERN,
-  STAGE_URL_PATTERN,
-  ETWOE_URL_PATTERN,
-  LOCAL_URL_PATTERN,
-  NETWORK,
-  TESTNET,
-  REGTEST,
-  SIGNET,
-  MAINNET
- } from '~/config/index';
-
+import { getRandom, sendMessage} from '~/helpers/index'
 const { back, push } = useRouter()
 
 const { getFundAddress, getBalance, getNetWork } = useWallet()

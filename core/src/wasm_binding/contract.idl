@@ -21,6 +21,12 @@ interface Bech32
 };
 
 [Prefix="utxord::wasm::"]
+interface Util
+{
+    [Const] static DOMString LogTx(ChainMode mode, [Const] DOMString hex);
+};
+
+[Prefix="utxord::wasm::"]
 interface KeyPair
 {
     static void InitSecp256k1();
@@ -34,6 +40,14 @@ interface KeyPair
     [Const] DOMString GetP2WPKHAddress(ChainMode mode);
 };
 
+[Prefix="utxord::wasm::"]
+interface MnemonicParser
+{
+    void MnemonicParser([Const] DOMString json_dictionary);
+    [Const] DOMString DecodeEntropy([Const] DOMString phrase);
+    [Const] DOMString EncodeEntropy([Const] DOMString entropy_hex);
+    [Const] DOMString MakeSeed([Const] DOMString phrase, [Const] DOMString passphrase);
+};
 
 [Prefix="utxord::wasm::"]
 interface KeyRegistry
@@ -145,9 +159,11 @@ interface CreateInscriptionBuilder
 {
     void CreateInscriptionBuilder(ChainMode mode, InscribeType type);
     void MarketFee([Const] DOMString amount, [Const] DOMString addr);
-    void OrdDestination([Const] DOMString amount, [Const] DOMString inscriptionAddr);
+    void OrdOutput([Const] DOMString amount, [Const] DOMString inscriptionAddr);
+    void OrdOutputDestination([Const] IContractDestination dest);
     void MiningFeeRate([Const] DOMString rate);
     void AddUTXO([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void AddInput([Const] IContractOutput prevout);
     void Data([Const] DOMString contentType, [Const] DOMString hexData);
     void Delegate([Const] DOMString inscriptionId);
     void MetaData([Const] DOMString hexCborData);
@@ -157,8 +173,10 @@ interface CreateInscriptionBuilder
     void InscribeInternalPubKey([Const] DOMString pk);
     void FundMiningFeeInternalPubKey([Const] DOMString pk);
 
-    void AddToCollection([Const] DOMString collectionId, [Const] DOMString txid, unsigned long nout, [Const] DOMString amount,
-                                                   [Const] DOMString collectionAddr);
+    void AddCollectionUTXO([Const] DOMString collectionId, [Const] DOMString txid, unsigned long nout,
+                           [Const] DOMString amount, [Const] DOMString collectionAddr);
+    void AddCollectionInput([Const] DOMString collectionId, [Const] IContractOutput prevout);
+
     void SignCommit(KeyRegistry keyRegistry, [Const] DOMString key_filter);
     void SignInscription(KeyRegistry keyRegistry, [Const] DOMString script_key_filter);
     void SignCollection(KeyRegistry keyRegistry, [Const] DOMString key_filter);
@@ -321,10 +339,20 @@ interface SimpleTransaction
     [Const] DOMString GetNewOutputMiningFee();
 
     void AddInput([Const] IContractOutput prevout);
-    void AddOutput([Const] IContractDestination out);
+    void AddUTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString addr);
+    void AddOutput([Const] DOMString amount, [Const] DOMString addr);
+    void AddOutputDestination([Const] IContractDestination out);
+
+    void AddRuneInput([Const] IContractOutput prevout, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+    void AddRuneUTXO([Const] DOMString txid, unsigned long nout, [Const] DOMString amount, [Const] DOMString addr, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+    void AddRuneOutput([Const] DOMString amount, [Const] DOMString addr, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+    void AddRuneOutputDestination([Const] IContractDestination out, [Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+    void BurnRune([Const] DOMString rune_id_json, [Const] DOMString rune_amount);
+
     void AddChangeOutput([Const] DOMString pk);
 
     void Sign([Const] KeyRegistry master, [Const] DOMString key_filter);
+    void PartialSign([Const] KeyRegistry master, [Const] DOMString key_filter, unsigned long nin);
 
     [Const] DOMString Serialize(unsigned long ver, TxPhase phase);
     void Deserialize([Const] DOMString data, TxPhase phase);
@@ -334,4 +362,5 @@ interface SimpleTransaction
 
     [Const] static DOMString SupportedVersions();
     [Const] IContractOutput ChangeOutput();
+    [Const] IContractOutput RuneStoneOutput();
 };

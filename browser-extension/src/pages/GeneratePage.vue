@@ -194,14 +194,11 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
-import { SET_UP_PASSWORD } from '~/config/events'
 import {
   isASCII,
-  isLength,
-  isContains,
   copyToClipboard,
+  generateMnemonic,
   isMnemonicValid,
-  sendMessage 
   } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 
@@ -304,9 +301,7 @@ async function getMnemonic() {
     passphraseLength.value = tempLength
     passphrase.value = tempPassphrase
   } else {
-    const mnemonic = await sendMessage('GENERATE_MNEMONIC', {
-      length: passphraseLength.value
-    }, 'background')
+    const mnemonic = await generateMnemonic(passphraseLength.value);
     textarea.value = mnemonic
     saveTempDataToLocalStorage()
   }

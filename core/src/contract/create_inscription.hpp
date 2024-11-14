@@ -25,6 +25,7 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_custom_fee;
     static const uint32_t s_protocol_version_no_runes;
     static const uint32_t s_protocol_version_no_fixed_change;
     static const char* s_versions;
@@ -127,10 +128,18 @@ public:
     std::string GetContent() const { return m_content ? l15::hex(m_content.value()) : std::string(); }
     std::string GetInscribeAddress() const { return m_ord_destination->Address(); }
 
-    void OrdDestination(CAmount amount, std::string addr)
+    void OrdOutput(CAmount amount, std::string addr)
     { m_ord_destination = P2Witness::Construct(chain(), amount, move(addr)); }
 
-    void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
+    void OrdOutputDestination(std::shared_ptr<IContractDestination> destination)
+    { m_ord_destination = move(destination); }
+
+    void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
+    { m_inputs.emplace_back(bech32(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr))); }
+
+    void AddInput(std::shared_ptr<IContractOutput> prevout)
+    { m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout)); }
+
     void Data(std::string content_type, bytevector data)
     {
         m_content_type = move(content_type);
@@ -166,8 +175,14 @@ public:
     void FixedChange(CAmount amount, std::string addr)
     { m_fixed_change = P2Witness::Construct(chain(), amount, move(addr)); }
 
-    void AddToCollection(std::string collection_id,
-                         std::string utxo_txid, uint32_t utxo_nout, CAmount amount, std::string collection_addr);
+    void AddCollectionInput(std::string collection_id, std::shared_ptr<IContractOutput> prevout)
+    {
+        Collection(move(collection_id), prevout->Amount(), prevout->Address());
+        m_collection_input.emplace(bech32(), 1, move(prevout));
+    }
+
+    void AddCollectionUTXO(std::string collection_id, std::string utxo_txid, uint32_t utxo_nout, CAmount amount, std::string collection_addr)
+    { AddCollectionInput(move(collection_id), std::make_shared<UTXO>(chain(), move(utxo_txid), utxo_nout, amount, move(collection_addr))); }
 
     void Collection(std::string collection_id, CAmount amount, std::string collection_addr);
 

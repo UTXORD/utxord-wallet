@@ -5,9 +5,7 @@
 
 #include "univalue.h"
 
-#include "serialize.h"
 #include "interpreter.h"
-#include "core_io.h"
 #include "feerate.h"
 #include "policy.h"
 
@@ -25,10 +23,11 @@ const std::string val_create_inscription("CreateInscription");
 
 }
 
-const uint32_t CreateInscriptionBuilder::s_protocol_version = 10;
+const uint32_t CreateInscriptionBuilder::s_protocol_version = 11;
+const uint32_t CreateInscriptionBuilder::s_protocol_version_no_custom_fee = 10;
 const uint32_t CreateInscriptionBuilder::s_protocol_version_no_runes = 9;
 const uint32_t CreateInscriptionBuilder::s_protocol_version_no_fixed_change = 8;
-const char* CreateInscriptionBuilder::s_versions = "[8,9,10]";
+const char* CreateInscriptionBuilder::s_versions = "[8,9,10,11]";
 
 const std::string CreateInscriptionBuilder::name_ord = "ord";
 const std::string CreateInscriptionBuilder::name_ord_amount = "ord_amount";
@@ -112,7 +111,7 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { MakeInscriptionScript() });
 
-    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(*m_inscribe_int_pk, tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(KeyPair::GetStaticSecp256k1Context(), *m_inscribe_int_pk, tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilder::FundMiningFeeTapRoot() const
@@ -121,23 +120,10 @@ std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> CreateInscriptionBuilde
                               { MakeMultiSigScript(m_inscribe_script_pk.value_or(xonly_pubkey()),
                                                   m_inscribe_script_market_pk.value_or(xonly_pubkey())) });
 
-    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(m_fund_mining_fee_int_pk.value_or(xonly_pubkey()),
+    return std::tuple_cat(core::SchnorrKeyPair::AddTapTweak(KeyPair::GetStaticSecp256k1Context(), m_fund_mining_fee_int_pk.value_or(xonly_pubkey()),
                                                             tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
-
-void CreateInscriptionBuilder::AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
-{
-    m_inputs.emplace_back(bech32(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
-}
-
-void CreateInscriptionBuilder::AddToCollection(std::string collection_id,
-                                               std::string utxo_txid, uint32_t utxo_nout, CAmount amount,
-                                               std::string collection_addr)
-{
-    Collection(move(collection_id), amount, collection_addr);
-    m_collection_input.emplace(bech32(), 1, std::make_shared<UTXO>(chain(), move(utxo_txid), utxo_nout, amount, move(collection_addr)));
-}
 
 void CreateInscriptionBuilder::Collection(std::string collection_id, CAmount amount, std::string collection_addr)
 {
@@ -293,8 +279,8 @@ std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
         RestoreTransactions();
     }
 
-    std::string funding_tx_hex = EncodeHexTx(CTransaction(*mCommitTx));
-    std::string genesis_tx_hex = EncodeHexTx(CTransaction(*mGenesisTx));
+    std::string funding_tx_hex = EncodeHexTx(*mCommitTx);
+    std::string genesis_tx_hex = EncodeHexTx(*mGenesisTx);
 
     return {move(funding_tx_hex), move(genesis_tx_hex)};
 }
@@ -356,6 +342,7 @@ void CreateInscriptionBuilder::CheckContractTerms(InscribePhase phase) const
 UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePhase phase) const
 {
     if (version != s_protocol_version &&
+        version != s_protocol_version_no_custom_fee &&
         version != s_protocol_version_no_runes &&
         version != s_protocol_version_no_fixed_change)
         throw ContractProtocolError("Wrong serialize version: " + std::to_string(version) + ". Allowed are " + s_versions);
@@ -398,6 +385,7 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
             if (m_rune_stone) contract.pushKV(name_rune_stone, m_rune_stone->MakeJson());
         }
         else {
+            if (m_rune_stone) throw ContractProtocolError(name_rune_stone + " is not supported with v. " + std::to_string(version));
             contract.pushKV(name_ord_amount, m_ord_destination->Amount());
             contract.pushKV(name_destination_addr, m_ord_destination->Address());
         }
@@ -432,6 +420,18 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
 
     case MARKET_TERMS:
         contract.pushKV(name_market_fee, m_market_fee->MakeJson());
+        if (!m_custom_fees.empty()) {
+            if (version > s_protocol_version_no_custom_fee) {
+                UniValue customFeesVal(UniValue::VARR);
+                for (const auto& fee: m_custom_fees) {
+                    customFeesVal.push_back(fee->MakeJson());
+                }
+                contract.pushKV(name_custom_fee, move(customFeesVal));
+            }
+            else {
+                throw ContractProtocolError(name_custom_fee + " is not supported with v. " + std::to_string(version));
+            }
+        }
     }
 
     return contract;
@@ -443,6 +443,7 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
 
     uint32_t version = contract[name_version].getInt<uint32_t>();
     if (version != s_protocol_version &&
+        version != s_protocol_version_no_custom_fee &&
         version != s_protocol_version_no_runes &&
         version != s_protocol_version_no_fixed_change)
         throw ContractProtocolError("Wrong " + val_create_inscription + " contract version: " + contract[name_version].getValStr());
@@ -468,6 +469,24 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
                 m_author_fee->ReadJson(val, [](){return name_author_fee;});
             else
                 m_author_fee = DestinationFactory::ReadJson(chain(), val, [](){ return name_author_fee; });
+        }
+    }
+    {   const auto& vals = contract[name_custom_fee];
+        if (!vals.isNull()) {
+            if (!vals.isArray()) throw ContractTermWrongFormat(name_custom_fee.c_str());
+            auto feeIt = m_custom_fees.begin();
+            size_t i = 0;
+            for (const UniValue &val: vals.getValues()) {
+                if (feeIt == m_custom_fees.end()) {
+                    m_custom_fees.emplace_back(NoZeroDestinationFactory::ReadJson(chain(), val, [i]{ return name_custom_fee + '[' + std::to_string(i) + ']'; }));
+                    feeIt = m_custom_fees.end();
+                }
+                else {
+                    (*feeIt)->ReadJson(val, [i]{ return name_custom_fee + '[' + std::to_string(i) + ']'; });
+                    ++feeIt;
+                }
+                ++i;
+            }
         }
     }
 
@@ -505,8 +524,18 @@ void CreateInscriptionBuilder::ReadJson(const UniValue &contract, InscribePhase 
         if (!val.isNull()) {
             if (!val.isArray()) throw ContractTermWrongFormat(std::string(name_utxo));
 
+            auto inputIt = m_inputs.begin();
+            size_t i = 0;
             for (const UniValue &input: val.getValues()) {
-                m_inputs.emplace_back(chain(), m_inputs.size(), input, [](){ return name_utxo; });
+                if (inputIt == m_inputs.end()) {
+                    m_inputs.emplace_back(chain(), m_inputs.size(), input, [i]{ return name_utxo + '[' + std::to_string(i) + ']'; });
+                    inputIt = m_inputs.end();
+                }
+                else {
+                    inputIt->ReadJson(input, [i]{ return name_utxo + '[' + std::to_string(i) + ']'; });
+                    ++inputIt;
+                }
+                i++;
             }
         }
     }
@@ -618,6 +647,10 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
     CAmount genesis_sum_fee = CalculateTxFee(*m_mining_fee_rate, CreateGenesisTxTemplate()) + m_market_fee->Amount();
     if (m_author_fee)
         genesis_sum_fee += m_author_fee->Amount();
+
+    for (const auto& fee: m_custom_fees)
+       genesis_sum_fee += fee->Amount();
+
     if (m_rune_stone)
         genesis_sum_fee += m_rune_stone->Amount();
 
@@ -761,6 +794,9 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
     if (m_author_fee && m_author_fee->Amount() > 0) {
         tx.vout.emplace_back(m_author_fee->Amount(), m_author_fee->PubKeyScript());
     }
+    for (const auto& fee: m_custom_fees) {
+        tx.vout.emplace_back(fee->Amount(), fee->PubKeyScript());
+    }
     if (m_rune_stone) {
         tx.vin.front().nSequence = 5;
         tx.vout.emplace_back(m_rune_stone->Amount(), m_rune_stone->PubKeyScript());
@@ -770,6 +806,8 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
         tx.vout.front().nValue = CalculateOutputAmount(commit_tx.vout.front().nValue, *m_mining_fee_rate, tx) - m_market_fee->Amount();
         if (m_author_fee)
             tx.vout.front().nValue -= m_author_fee->Amount();
+        for (const auto& fee: m_custom_fees)
+            tx.vout.front().nValue -= fee->Amount();
         if (m_rune_stone)
             tx.vout.front().nValue -= m_rune_stone->Amount();
     }
@@ -822,6 +860,9 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
     if (m_author_fee && m_author_fee->Amount() > 0) {
         tx.vout.emplace_back(m_author_fee->Amount(), m_author_fee->PubKeyScript());
     }
+    for (const auto& fee: m_custom_fees) {
+        tx.vout.emplace_back(fee->Amount(), fee->PubKeyScript());
+    }
     if (m_rune_stone) {
         tx.vout.emplace_back(m_rune_stone->Amount(), m_rune_stone->PubKeyScript());
     }
@@ -847,6 +888,8 @@ CAmount CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params)
     CAmount amount = m_ord_destination->Amount() + m_market_fee->Amount() + CalculateWholeFee(params);
     if (m_author_fee)
         amount += m_author_fee->Amount();
+    for (const auto& fee: m_custom_fees)
+        amount += fee->Amount();
     if (m_rune_stone)
         amount += m_rune_stone->Amount();
 
@@ -870,9 +913,9 @@ CAmount CreateInscriptionBuilder::CalculateWholeFee(const std::string& params) c
     std::string param;
     while(std::getline(ss, param, ',')) {
         if (param == FEE_OPT_HAS_CHANGE) { change = true; continue; }
-        else if (param == FEE_OPT_HAS_COLLECTION) { collection = true; continue; }
-        else if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
-        else throw IllegalArgumentError(move(param));
+        if (param == FEE_OPT_HAS_COLLECTION) { collection = true; continue; }
+        if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
+        throw IllegalArgument(move(param));
     }
 
     CMutableTransaction genesisTxTpl = CreateGenesisTxTemplate();
@@ -951,10 +994,10 @@ std::shared_ptr<IContractOutput> CreateInscriptionBuilder::FixedChangeOutput() c
 std::string CreateInscriptionBuilder::RawTransaction(InscribePhase phase, uint32_t n) const
 {
     if (n == 0) {
-        return EncodeHexTx(CTransaction(MakeCommitTx()));
+        return EncodeHexTx(MakeCommitTx());
     }
     else if (n == 1) {
-        return EncodeHexTx(CTransaction(MakeGenesisTx()));
+        return EncodeHexTx(MakeGenesisTx());
     }
     else return {};
 }
