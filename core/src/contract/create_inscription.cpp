@@ -141,13 +141,13 @@ void CreateInscriptionBuilder::Collection(std::string collection_id, CAmount amo
             throw ContractTermMismatch(name_collection_destination.c_str());
     }
     else
-        m_collection_destination = P2Witness::Construct(chain(), amount, move(collection_addr));
+        m_collection_destination = P2Address::Construct(chain(), amount, move(collection_addr));
 }
 
 void CreateInscriptionBuilder::OverrideCollectionAddress(std::string addr)
 {
     if (!m_collection_destination) throw ContractStateError(name_collection_destination + " is needed to override collection address");
-    m_collection_destination = P2Witness::Construct(chain(), m_collection_destination->Amount(), move(addr));
+    m_collection_destination = P2Address::Construct(chain(), m_collection_destination->Amount(), move(addr));
 }
 
 void CreateInscriptionBuilder::MetaData(bytevector cbor)

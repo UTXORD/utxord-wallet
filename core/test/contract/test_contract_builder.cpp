@@ -242,3 +242,21 @@ TEST_CASE("DeserializeContractHexData")
     CHECK(sig.has_value());
     CHECK(hex(*sig) == "f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4f4bd18cdaa7c9212143b9ff0547e3b1f81379219dcbbe3cbb9743688e0a4daa4");
 }
+
+
+TEST_CASE("p2address")
+{
+    std::string p2tr_addr = "bc1pp5t2a3j6fl8v7785szxeyhk8dpqksas7w5ta9j8caysn5ud8l68qcey6ak";
+    std::string p2wpkh_addr = "bc1q7g2ek6p3gjlp7j639mxk95tm7f3h839mhk9v97";
+    std::string p2pkh_addr = "1PC7E8JRBw5UY8xDQUKgWLUsdRJBDTqsRe";
+
+    auto [addr, type] = GENERATE_REF(std::make_tuple(p2tr_addr, P2TR::type),
+                                     std::make_tuple(p2wpkh_addr, P2WPKH::type),
+                                     std::make_tuple(p2pkh_addr, P2PKH::type));
+
+    auto p2tr = utxord::P2Address::Construct(MAINNET, 546, addr);
+
+    CHECK(p2tr->Type() == type);
+    CHECK(p2tr->Amount() == 546);
+    CHECK(p2tr->Address() == addr);
+}

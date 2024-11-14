@@ -73,7 +73,7 @@ void SimpleTransaction::AddRuneUTXO(std::string txid, uint32_t nout, CAmount btc
 
 void SimpleTransaction::AddRuneOutput(CAmount btc_amount, std::string addr, RuneId runeid, uint128_t rune_amount)
 {
-    AddRuneOutputDestination(P2Witness::Construct(chain(), btc_amount, addr), move(runeid), move(rune_amount));
+    AddRuneOutputDestination(P2Address::Construct(chain(), btc_amount, addr), move(runeid), move(rune_amount));
 }
 
 void SimpleTransaction::AddRuneOutputDestination(std::shared_ptr<IContractDestination> destination, RuneId runeid, uint128_t rune_amount)
