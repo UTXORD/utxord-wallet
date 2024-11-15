@@ -7,7 +7,8 @@
   "scripts": {
     "lint": "eslint --ext .js,.ts,.vue ./",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
-    "dev": "rimraf extension/dev && run-p dev:prepare dev:web dev:js",
+    "dev": "rimraf extension/dev && cross-env BROWSER_ENV=chrome run-p dev:prepare dev:web dev:js",
+    "dev-firefox": "rimraf extension/dev && cross-env BROWSER_ENV=firefox run-p dev:prepare dev:web dev:js",
     "dev:prepare": "esno scripts/prepare-dev.ts dev",
     "dev:web": "vite --no-open",
     "dev:js": "npm run build:dev -- --watch src",
