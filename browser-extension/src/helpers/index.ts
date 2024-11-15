@@ -1,8 +1,9 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
 import * as webext from "webext-bridge";
-import { ADDRESS_COPIED, GENERATE_MNEMONIC, VALIDATE_MNEMONIC } from '~/config/events'
+import {ADDRESS_COPIED, GENERATE_MNEMONIC, SAVE_GENERATED_SEED, VALIDATE_MNEMONIC} from '~/config/events'
 import { validate, getAddressInfo } from 'bitcoin-address-validation';
+import * as bip39 from "~/config/bip39";
 
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
@@ -83,16 +84,20 @@ export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
 }
 
-export async function generateMnemonic(length: number) {
-  const mnemonic = await sendMessage(GENERATE_MNEMONIC, {length}, 'background');
+export async function generateMnemonic(length: number, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  const mnemonic = await sendMessage(GENERATE_MNEMONIC, {length, language}, 'background');
   // console.log('helpers.generateMnemonic: mnemonic:', mnemonic)
   return mnemonic;
 }
 
-export async function isMnemonicValid(mnemonic: str) {
-  const isValid = await sendMessage(VALIDATE_MNEMONIC, {mnemonic}, 'background');
+export async function isMnemonicValid(mnemonic: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  const isValid = await sendMessage(VALIDATE_MNEMONIC, {mnemonic, language}, 'background');
   // console.log('helpers.isMnemonicValid: isValid:', isValid);
   return isValid;
+}
+
+export async function saveGeneratedSeed(seed: string, passphrase: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  return await sendMessage(SAVE_GENERATED_SEED,  {seed, passphrase, language},  'background');
 }
 
 export function isContains(str: string) {

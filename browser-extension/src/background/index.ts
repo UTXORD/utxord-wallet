@@ -307,12 +307,12 @@ interface ICollectionTransferResult {
 
     onMessage(GENERATE_MNEMONIC, async (payload) => {
       console.log('GENERATE_MNEMONIC->run')
-      return await Api.generateMnemonic(payload.data?.length);
+      return await Api.generateMnemonic(payload.data?.length, payload.data?.language);
     });
 
     onMessage(VALIDATE_MNEMONIC, async (payload) => {
       console.log('VALIDATE_MNEMONIC->run')
-      return await Api.validateMnemonic(payload.data?.mnemonic);
+      return await Api.validateMnemonic(payload.data?.mnemonic, payload.data?.language);
     });
 
     onMessage(CONNECT_TO_SITE, async (payload) => {
@@ -339,7 +339,7 @@ interface ICollectionTransferResult {
 
     onMessage(SAVE_GENERATED_SEED, async (payload) => {
       console.log('SAVE_GENERATED_SEED->run')
-      await Api.setUpSeed(payload.data.seed, payload.data?.passphrase);
+      await Api.setUpSeed(payload.data.seed, payload.data?.passphrase, payload.data?.language);
       Api.genKeys();
       if(Api.wallet.auth.key) {
         await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet.auth.key?.PubKey());
@@ -741,7 +741,7 @@ interface ICollectionTransferResult {
     }
 
     onMessage(SUBMIT_SIGN, async (payload) => {
-      console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
+      // console.debug("===== SUBMIT_SIGN: payload?.data", payload?.data)
       const signData = payload?.data;
 
       if (signData?.type === TRANSFER_LAZY_COLLECTION) {
