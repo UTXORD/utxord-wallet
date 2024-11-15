@@ -8,6 +8,7 @@ import * as cbor from 'cbor-js';
 import * as Sentry from "@sentry/browser";
 import { wasmIntegration } from "@sentry/wasm";
 import {version} from '~/../package.json';
+import browser from 'webextension-polyfill';
 import {
   EXCEPTION,
   WARNING,
@@ -39,7 +40,7 @@ import {
   NETWORK
  } from '~/config/index';
 
-import Tab = chrome.tabs.Tab;
+import Tab = browser.tabs.Tab;
 import {Exception} from "sass";
 
 import wordlist from '~/config/bip39_wordlists/english.js';
@@ -70,7 +71,7 @@ Sentry.init({
   ]
 });
 
-// import tabId = chrome.devtools.inspectedWindow.tabId;
+// import tabId = browser.devtools.inspectedWindow.tabId;
 
 const limitQuery = 1000;
 let bgSiteQueryIndex = 0;
@@ -345,7 +346,8 @@ class Api {
         this.sentry(e);
         console.log('constructor->error:',e);
         this.removePublicKeyToWebPage();
-        chrome.runtime.reload();
+        browser.runtime.reload();
+        console.log('reload');
       }
     })();
   }
@@ -353,9 +355,9 @@ class Api {
   async init() {
     const myself = this
     try {
-      const { seed } = await chrome.storage.local.get(['seed']);
-      const { derivate } = await chrome.storage.local.get(['derivate']);
-      const { viewMode } = await chrome.storage.local.get(['viewMode']);
+      const { seed } = await browser.storage.local.get(['seed']);
+      const { derivate } = await browser.storage.local.get(['derivate']);
+      const { viewMode } = await browser.storage.local.get(['viewMode']);
       if(viewMode){
         this.viewMode = viewMode;
       }
@@ -365,7 +367,7 @@ class Api {
       if(derivate){
         myself.derivate = derivate;
       }
-      const { ext_keys } = await chrome.storage.local.get(['ext_keys']);
+      const { ext_keys } = await browser.storage.local.get(['ext_keys']);
       if(ext_keys) {
         if(ext_keys.length > 0) {
            myself.resExtKeys(ext_keys);
@@ -599,14 +601,14 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     const Obj = {};
     Obj[`${type}Index`] = Number(value);
     return setTimeout(() => {
-      chrome.storage.local.set(Obj);
+      browser.storage.local.set(Obj);
     }, 2000);
 
   }
 
   async getIndexFromStorage(type) {
     if(type==='ext') return;
-    return (await chrome.storage.local.get([`${type}Index`]))[`${type}Index`] || 0
+    return (await browser.storage.local.get([`${type}Index`]))[`${type}Index`] || 0
   }
 
   async rememberIndexes() {
@@ -641,7 +643,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     if (!this.checkSeed()) return false;
     this.derivate = Boolean(value);
     setTimeout(() => {
-      chrome.storage.local.set({derivate: this.derivate});
+      browser.storage.local.set({derivate: this.derivate});
     }, 2000);
     return true;
   }
@@ -649,7 +651,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
   async setViewMode(value){
     this.viewMode = Boolean(value);
     setTimeout(() => {
-      chrome.storage.local.set({viewMode: this.viewMode});
+      browser.storage.local.set({viewMode: this.viewMode});
     }, 2000);
     return true;
   }
@@ -896,9 +898,8 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
   async setUpSeed(mnemonic, passphrase = '') {
     const valid = this.validateMnemonic(mnemonic);
     if(!valid) return 'Invalid checksum';
-
     const seed = await this.getMnemonicParser().MakeSeed(mnemonic, passphrase);
-    await chrome.storage.local.set({ seed: seed });
+    browser.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
   }
@@ -927,9 +928,10 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     this.connect = false;
     this.sync = false;
     await this.removePublicKeyToWebPage();
-    await chrome.storage.local.clear();
-    chrome.runtime.reload()
-    const lastErr = chrome.runtime.lastError;
+    await browser.storage.local.clear();
+    browser.runtime.reload()
+    console.log('reload');
+    const lastErr = browser.runtime.lastError;
     if (lastErr) {
       console.error(lastErr)
       return false
@@ -982,7 +984,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
         ext_keys.push(item.privKeyStr);
       }
       setTimeout(() => {
-        chrome.storage.local.set({ext_keys: ext_keys});
+        browser.storage.local.set({ext_keys: ext_keys});
       }, 3000);
 
     }
@@ -1750,9 +1752,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     const myself = this;
     let tabs: Tab[];
     if (tabId != null) {
-      tabs = [await chrome.tabs.get(tabId)]
+      tabs = [await browser.tabs.get(tabId)]
     } else {
-      tabs = await chrome.tabs.query({
+      tabs = await browser.tabs.query({
         windowType: 'normal',
         url: BASE_URL_PATTERN,
       });
@@ -1762,7 +1764,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
     for (let tab of tabs) {
       if(tab?.id) {
-        const [{result}] = await chrome.scripting.executeScript({
+        const [{result}] = await browser.scripting.executeScript({
           target: { tabId: tab?.id },
           func: () =>window.localStorage.removeItem('publickey'),
           args: [],
@@ -1776,9 +1778,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     const myself = this;
     let tabs: Tab[];
     if (tabId != null) {
-      tabs = [await chrome.tabs.get(tabId)]
+      tabs = [await browser.tabs.get(tabId)]
     } else {
-      tabs = await chrome.tabs.query({
+      tabs = await browser.tabs.query({
         windowType: 'normal',
         url: BASE_URL_PATTERN,
       });
@@ -1788,7 +1790,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
     for (let tab of tabs) {
       if(tab?.id) {
-        const [{result}] = await chrome.scripting.executeScript({
+        const [{result}] = await browser.scripting.executeScript({
           target: { tabId: tab?.id },
           func: () =>window.localStorage.getItem('publickey'),
           args: [],
@@ -1802,9 +1804,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     const myself = this;
     let tabs: Tab[];
     if (tabId != null) {
-      tabs = [await chrome.tabs.get(tabId)]
+      tabs = [await browser.tabs.get(tabId)]
     } else {
-      tabs = await chrome.tabs.query({
+      tabs = await browser.tabs.query({
         windowType: 'normal',
         url: BASE_URL_PATTERN,
       });
@@ -1814,7 +1816,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
     for (let tab of tabs) {
       if(tab?.id) {
-        const [{result}] = await chrome.scripting.executeScript({
+        const [{result}] = await browser.scripting.executeScript({
           target: { tabId: tab?.id },
           func: (a) =>window.localStorage.setItem('publickey', a),
           args: [myself.wallet.auth.key?.PubKey()],
@@ -1830,9 +1832,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
 
     let tabs: Tab[];
     if (tabId != null) {
-      tabs = [await chrome.tabs.get(tabId)]
+      tabs = [await browser.tabs.get(tabId)]
     } else {
-      tabs = await chrome.tabs.query({
+      tabs = await browser.tabs.query({
         windowType: 'normal',
         url: BASE_URL_PATTERN,
       });
@@ -1851,12 +1853,12 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       const url = tab.url || tab.pendingUrl;
       if(tab?.id &&
          url?.startsWith(base_url) &&
-         !url?.startsWith('chrome-extension://') &&
+         !url?.startsWith('browser-extension://') &&
          !url?.startsWith('chrome://')) {
-        await chrome.scripting.executeScript({
+        await browser.scripting.executeScript({
           target: { tabId: tab?.id },
           func: function (t, a) {
-            window.postMessage({ type: t, payload: a })
+            window.postMessage({ type: t, payload: a, from: 'MESSAGE_FROM_PLUGIN' })
           },
           args: [type, args],
         });
@@ -3034,23 +3036,23 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     this.wallet.secret = this.encrypt('secret', password);
 /*
     const seed = this.encrypt(this.wallet.root.seed.toString('hex'));
-    chrome.storage.local.set({ seed: seed });
+    browser.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
 */
     this.wallet.encrypted = true;
-    chrome.storage.local.set({encryptedWallet: true, secret: this.wallet.secret });
+    browser.storage.local.set({encryptedWallet: true, secret: this.wallet.secret });
     return true;
   }
 
   async setUpPassword(password) {
     this.wallet.secret = await this.encrypt('secret', password);
     this.wallet.encrypted = true;
-    await chrome.storage.local.set({encryptedWallet: true, secret: this.wallet.secret });
+    await browser.storage.local.set({encryptedWallet: true, secret: this.wallet.secret });
     return true;
   }
 
   async initPassword() {
-    const {secret} = await chrome.storage.local.get(['secret'])
+    const {secret} = await browser.storage.local.get(['secret'])
     if(secret) {
       this.wallet.secret = secret;
       this.wallet.encrypted = true;
@@ -3085,19 +3087,19 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
     /*
     const seed = this.decrypt(this.wallet.root.seed.toString('hex'));
-    chrome.storage.local.set({ seed: seed });
+    browser.storage.local.set({ seed: seed });
     this.wallet.root.seed = this.hexToString(seed);
     */
     this.wallet.encrypted = false;
-    chrome.storage.local.set({ encryptedWallet: false });
+    browser.storage.local.set({ encryptedWallet: false });
     return true
   }
 
   async isEncryptedWallet() {
-    const {encryptedWallet} = await chrome.storage.local.get(['encryptedWallet']);
+    const {encryptedWallet} = await browser.storage.local.get(['encryptedWallet']);
     console.log("encryptedWallet: ",encryptedWallet);
     if(encryptedWallet===undefined) {
-      chrome.storage.local.set({ encryptedWallet: this.wallet.encrypted });
+      browser.storage.local.set({ encryptedWallet: this.wallet.encrypted });
     }
     return this.wallet.encrypted;
   }

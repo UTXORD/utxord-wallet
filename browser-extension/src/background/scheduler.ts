@@ -1,3 +1,5 @@
+import browser from 'webextension-polyfill';
+
 export const enum ScheduleName {
     Default = "DEFAULT",
     AddressCopied = "ADDRESS_COPIED",
@@ -40,7 +42,7 @@ export class Watchdog {
         this._nameOfCheckAlarm = `${this._name}.check_alarm`;
         this._action = null;
         this._timeout = this._timeoutValue;
-        chrome.alarms.onAlarm.addListener(async (alarm) => {
+        browser.alarms.onAlarm.addListener(async (alarm) => {
             if (alarm.name == this._nameOfCheckAlarm) {
                 this._check();
             }
@@ -96,7 +98,7 @@ export class Watchdog {
 
     public async run() {
         Watchdog._log("run");
-        await chrome.alarms.create(
+        await browser.alarms.create(
             this._nameOfCheckAlarm,
             { periodInMinutes: Watchdog.DEFAULT_CHECK_INTERVAL },
         );
@@ -104,7 +106,7 @@ export class Watchdog {
 
     public async stop() {
         Watchdog._log("stop");
-        await chrome.alarms.clear(this._nameOfCheckAlarm);
+        await browser.alarms.clear(this._nameOfCheckAlarm);
     }
 
     private static _log(msg: string) {
@@ -132,7 +134,7 @@ export class Scheduler {
         this._nameOfIntervalAlarm = `${this._name}.interval_alarm`;
         this._nameOfDurationAlarm = `${this._name}.duration_alarm`;
         this._isActive = false;
-        chrome.alarms.onAlarm.addListener(async (alarm) => {
+        browser.alarms.onAlarm.addListener(async (alarm) => {
             switch (alarm.name) {
                 case this._nameOfLatencyAlarm: {
                     await this.runActionInterval(this._currentScheduleItem?.interval || 0);
@@ -203,7 +205,7 @@ export class Scheduler {
         Scheduler._log("run action interval");
         this.doAction();
         if (0 < interval) {
-            await chrome.alarms.create(
+            await browser.alarms.create(
                 this._nameOfIntervalAlarm,
                 { periodInMinutes: interval / 60.0 }
             );
@@ -214,7 +216,7 @@ export class Scheduler {
         Scheduler._log(`--- ${new Date().toLocaleString()} startScheduleItem, latency: ${item.latency}, interval: ${item.interval}, duration: ${item.duration}`);
         this._currentScheduleItem = item;
         if (0 < item.latency) {
-            await chrome.alarms.create(
+            await browser.alarms.create(
                 this._nameOfLatencyAlarm,
                 { delayInMinutes: item.latency / 60.0 }
             );
@@ -222,7 +224,7 @@ export class Scheduler {
             await this.runActionInterval(item.interval);
         }
         if (0 < item.duration) {
-            await chrome.alarms.create(
+            await browser.alarms.create(
                 this._nameOfDurationAlarm,
                 {delayInMinutes: (item.latency + item.duration) / 60.0}
             );
@@ -231,9 +233,9 @@ export class Scheduler {
 
     private async stopRunningScheduleItem() {
         Scheduler._log("--- ${new Date().toLocaleString()} stopRunningScheduleItem");
-        await chrome.alarms.clear(this._nameOfLatencyAlarm);
-        await chrome.alarms.clear(this._nameOfIntervalAlarm);
-        await chrome.alarms.clear(this._nameOfDurationAlarm);
+        await browser.alarms.clear(this._nameOfLatencyAlarm);
+        await browser.alarms.clear(this._nameOfIntervalAlarm);
+        await browser.alarms.clear(this._nameOfDurationAlarm);
     }
 
     public async changeScheduleTo(state: ScheduleName) {

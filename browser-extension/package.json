@@ -7,13 +7,20 @@
   "scripts": {
     "lint": "eslint --ext .js,.ts,.vue ./",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
-    "dev": "rimraf extension/dev && run-p dev:prepare dev:web dev:js",
+    "dev": "rimraf extension/dev && cross-env BROWSER_ENV=chrome run-p dev:prepare dev:web dev:js",
+    "dev-firefox": "rimraf extension/dev && cross-env BROWSER_ENV=firefox run-p dev:prepare dev:web dev:js",
     "dev:prepare": "esno scripts/prepare-dev.ts dev",
     "dev:web": "vite --no-open",
     "dev:js": "npm run build:dev -- --watch src",
-    "build-qa": "cross-env NODE_ENV=production TARGET_ENV=qa run-s build",
-    "build-e2e": "cross-env NODE_ENV=production TARGET_ENV=e2e run-s build",
-    "build-utxord": "cross-env NODE_ENV=production TARGET_ENV=utxord run-s build",
+
+    "build-qa": "cross-env NODE_ENV=production TARGET_ENV=qa BROWSER_ENV=chrome run-s build",
+    "build-e2e": "cross-env NODE_ENV=production TARGET_ENV=e2e BROWSER_ENV=chrome run-s build",
+    "build-utxord": "cross-env NODE_ENV=production TARGET_ENV=utxord BROWSER_ENV=chrome run-s build",
+
+    "build-qa-firefox": "cross-env NODE_ENV=production TARGET_ENV=qa BROWSER_ENV=firefox run-s build",
+    "build-e2e-firefox": "cross-env NODE_ENV=production TARGET_ENV=e2e BROWSER_ENV=firefox run-s build",
+    "build-utxord-firefox": "cross-env NODE_ENV=production TARGET_ENV=utxord BROWSER_ENV=firefox run-s build",
+
     "build": "cross-env NODE_ENV=production run-s clear build:web build:prepare build:prod",
     "build:prepare": "esno scripts/prepare-prod.ts build",
     "build:web": "vite build",
@@ -82,7 +89,7 @@
     "vue": "^3.2.47",
     "vue-demi": "^0.13.11",
     "vue-global-api": "^0.4.1",
-    "webext-bridge": "^5.0.5",
+    "webext-bridge": "5.0.5",
     "webextension-polyfill": "^0.10.0",
     "windicss": "^3.5.6"
   }
