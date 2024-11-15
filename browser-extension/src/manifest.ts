@@ -75,6 +75,13 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     manifest.background = {
       scripts: ['background.js'],
     }
+    if (IS_DEV) {
+      // this is required on dev for Vite script to load
+      // script-src-elem 'self' 'wasm-unsafe-eval';
+      // manifest.content_security_policy = {
+      //   extension_pages: `script-src 'self' moz-extension: blob: filesystem: 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline';script-src-elem 'self' moz-extension: blob: filesystem: 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline';`,
+      // }
+    }
   }
   if(BROWSER === 'chrome'){
     manifest.background = {
@@ -87,14 +94,15 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
       matches: ['<all_urls>']
     };
     manifest.permissions.push('sidePanel');
-  }
 
-  if (IS_DEV) {
-    // this is required on dev for Vite script to load
-    manifest.content_security_policy = {
-      extension_pages: `script-src 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; script-src-elem 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
+    if (IS_DEV) {
+      // this is required on dev for Vite script to load
+      manifest.content_security_policy = {
+        extension_pages: `script-src 'self' http://localhost:${PORT} 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; script-src-elem 'self' 'wasm-unsafe-eval'; connect-src * data: blob: filesystem:; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src * data: blob: filesystem:;`,
+      }
     }
   }
+
 
   return manifest
 }
