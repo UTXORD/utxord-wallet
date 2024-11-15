@@ -158,7 +158,7 @@ onMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, (payload) => {
 })
 
 onBeforeMount(() => {
-  console.log('===== onBeforeMount')
+  // console.info('===== onBeforeMount')
   init()
 })
 </script>

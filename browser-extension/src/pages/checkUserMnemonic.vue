@@ -22,7 +22,7 @@
         <NotifyInBody/>
         <table style="width: 100%;">
         <!-- for 12 words -->
-          <tbody v-if="passphraseLength == 12" v-for="n in 4">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[0]" v-for="n in 4">
           <tr class="flex">
             <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
             <td class="w-full"><input :disabled="disable[n+3]" :placeholder="n+4" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+3]"/></td>
@@ -30,7 +30,7 @@
           </tr>
           </tbody>
           <!-- for 15 words -->
-          <tbody v-if="passphraseLength == 15" v-for="n in 5">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[1]" v-for="n in 5">
           <tr class="flex">
             <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
             <td class="w-full"><input :disabled="disable[n+4]" :placeholder="n+5" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+4]"/></td>
@@ -39,7 +39,7 @@
           </tbody>
 
           <!-- for 18 words -->
-          <tbody v-if="passphraseLength == 18" v-for="n in 6">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[2]" v-for="n in 6">
           <tr class="flex">
             <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
             <td class="w-full"><input :disabled="disable[n+5]" :placeholder="n+6" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+5]"/></td>
@@ -47,7 +47,7 @@
           </tr>
           </tbody>
           <!-- for 21 words -->
-          <tbody v-if="passphraseLength == 21" v-for="n in 7">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[3]" v-for="n in 7">
           <tr class="flex">
             <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
             <td class="w-full"><input :disabled="disable[n+6]" :placeholder="n+7" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+6]"/></td>
@@ -55,7 +55,7 @@
           </tr>
           </tbody>
           <!-- for 24 words -->
-          <tbody v-if="passphraseLength == 24" v-for="n in 8">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[4]" v-for="n in 8">
           <tr class="flex">
             <td class="w-full"><input :disabled="disable[n-1]" :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n-1]"/></td>
             <td class="w-full"><input :disabled="disable[n+7]" :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-gray-color)] pl-2.5 min-h-[33px]" size="10" type="text" @input="inputWords" data-testid="mnemonic-word" v-model="list[n+7]"/></td>
@@ -96,22 +96,23 @@ import useWallet from '~/popup/modules/useWallet'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
-import { getRandom, sendMessage} from '~/helpers/index'
-const { back, push } = useRouter()
+import {getRandom, saveGeneratedSeed, sendMessage} from '~/helpers/index'
+import * as bip39 from "~/config/bip39";
 
+const { back, push } = useRouter()
 const { getFundAddress, getBalance, getNetWork } = useWallet()
 
 const MNEMONIC_KEY = 'temp-mnemonic'
-const PASSPHRASE_LENGTH_KEY = 'temp-passphrase-length'
+const MNEMONIC_LANGUAGE_KEY = 'temp-mnemonic-language'
+const MNEMONIC_LENGTH_KEY = 'temp-mnemonic-length'
 const PASSPHRASE_KEY = 'temp-passphrase'
 
 const WORDS_COUNT = 'temp-words-count'
 const ROW_POSITION= 'temp-row-position'
 
-
 const flag_check = ref(false)
-const passphraseLength = ref(
-  Number(localStorage?.getItem(PASSPHRASE_LENGTH_KEY)) || 12
+const mnemonicLength = ref(
+  Number(localStorage?.getItem(MNEMONIC_LENGTH_KEY) || bip39.MNEMONIC_DEFAULT_LENGTH)
 )
 
 const errorMessage = ref('')
@@ -131,11 +132,11 @@ function inputWords(e){
   if(isEmpty()) return false
 }
 
-
 function removeTempDataFromLocalStorage() {
   localStorage.removeItem(MNEMONIC_KEY)
-  localStorage.removeItem(PASSPHRASE_LENGTH_KEY)
+  localStorage.removeItem(MNEMONIC_LENGTH_KEY)
   localStorage.removeItem(PASSPHRASE_KEY)
+  localStorage.removeItem(MNEMONIC_LANGUAGE_KEY)
   localStorage.removeItem(WORDS_COUNT)
   localStorage.removeItem(ROW_POSITION)
 }
@@ -150,13 +151,8 @@ function isEmpty(){
 async function skip(){
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
   const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
-  const success = await sendMessage(
-    SAVE_GENERATED_SEED,
-    {
-      seed: tempMnemonic,
-      passphrase: tempPassphrase
-    },
-    'background')
+  const tempLanguage = localStorage?.getItem(MNEMONIC_LANGUAGE_KEY)
+  const success = await saveGeneratedSeed(tempMnemonic, tempPassphrase, tempLanguage);
   if (success === true) {
     const fundAddress = await getFundAddress()
     getBalance(fundAddress)
@@ -187,22 +183,16 @@ function userChallenge(){
 
 async function Check() {
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
-  const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
   const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
+  const tempLanguage = localStorage?.getItem(MNEMONIC_LANGUAGE_KEY)
   const mnemonic = list.value.join(' ').trim()
-  if(mnemonic === tempMnemonic){
-  const success = await sendMessage(
-    SAVE_GENERATED_SEED,
-    {
-      seed: tempMnemonic,
-      passphrase: tempPassphrase
-    },
-    'background')
-  if (success === true) {
-    const fundAddress = await getFundAddress()
-    getBalance(fundAddress)
-    removeTempDataFromLocalStorage()
-    return push('/wallet-created')
+  if (mnemonic === tempMnemonic) {
+    const success = await saveGeneratedSeed(tempMnemonic, tempPassphrase, tempLanguage);
+    if (success === true) {
+      const fundAddress = await getFundAddress()
+      getBalance(fundAddress)
+      removeTempDataFromLocalStorage()
+      return push('/wallet-created')
     }
   }
   flag_check.value = true
