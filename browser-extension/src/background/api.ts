@@ -42,7 +42,7 @@ import {
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
 
-import wordlist from '~/config/bip39_wordlists/english.js';
+import * as bip39 from "~/config/bip39";
 import {logger} from "../../scripts/utils";
 
 function GetEnvironment(){
@@ -336,7 +336,7 @@ class Api {
         this.viewMode = false;
         // view mode true = sidePanel enabled
         // view mode false = popup enabled
-        this.mnemonicParserInstance = null;
+        this.mnemonicParserInstances = {};
 
         await this.init(this);
         await this.sentry();
@@ -855,11 +855,11 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     }).join('');
   }
 
-  getMnemonicParser() {
-    if (this.mnemonicParserInstance == null) {
-      this.mnemonicParserInstance = new this.utxord.MnemonicParser(`["${wordlist.join('","')}"]`);
+  getMnemonicParserFor(language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    if (!this.mnemonicParserInstances[language]) {
+      this.mnemonicParserInstances[language] = new this.utxord.MnemonicParser(`["${bip39.getWordlistFor(language).join('","')}"]`);
     }
-    return this.mnemonicParserInstance;
+    return this.mnemonicParserInstances[language];
   }
 
   randomBytes(bytesLength = 32): Uint8Array {
@@ -869,7 +869,8 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     throw new Error('crypto.getRandomValues must be defined');
   }
 
-  async generateMnemonic(length: number = 12) {
+  async generateMnemonic(length: number = bip39.MNEMONIC_DEFAULT_LENGTH, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    // console.info('===== generateMnemonic:', arguments);
     let strength = length / 3 * 32;
     if (strength === void 0) {
       strength = 128;
@@ -881,24 +882,27 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
       throw new TypeError('Invalid strength');
     }
     const random_hex = this.bytesToHexString(this.randomBytes(strength / 8));
-    return this.getMnemonicParser().EncodeEntropy(random_hex);
+    const parser = this.getMnemonicParserFor(language);
+    return await parser.EncodeEntropy(random_hex);
   }
 
-  async validateMnemonic(mnemonic: string) {
+  async validateMnemonic(mnemonic: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    console.info('===== validateMnemonic:', arguments);
     try {
-      return await (this.getMnemonicParser()).DecodeEntropy(mnemonic);
+    const parser = this.getMnemonicParserFor(language);
+      return await parser.DecodeEntropy(mnemonic);
     } catch (ex) {
       return false;
     }
   }
 
   // [Const] DOMString MakeSeed([Const] DOMString phrase, [Const] DOMString passphrase);
-  async setUpSeed(mnemonic, passphrase = '') {
-    const valid = this.validateMnemonic(mnemonic);
+  async setUpSeed(mnemonic, passphrase = '', language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    const valid = this.validateMnemonic(mnemonic, language);
     if(!valid) return 'Invalid checksum';
-
-    const seed = await this.getMnemonicParser().MakeSeed(mnemonic, passphrase);
-    await chrome.storage.local.set({ seed: seed });
+    const parser = this.getMnemonicParserFor(language);
+    const seed = await parser.MakeSeed(mnemonic, passphrase);
+    browser.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
   }
