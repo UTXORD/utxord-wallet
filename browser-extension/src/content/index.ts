@@ -15,6 +15,6 @@ window.addEventListener('message', async (event) => {
     // Send message to Background Script
     sendMessage(event.data.type, event.data.payload, 'background');
   } else {
-    console.warn(`Unallowed message from ${event.data.from}`);
+    console.warn(`Unallowed message from ${event.data.from}, type: ${event.data.type}`);
   }
 });
