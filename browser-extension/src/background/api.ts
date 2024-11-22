@@ -1858,7 +1858,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         await browser.scripting.executeScript({
           target: { tabId: tab?.id },
           func: function (t, a) {
-            window.postMessage({ type: t, payload: a, from: 'MESSAGE_FROM_PLUGIN' })
+            window.postMessage({ type: t, payload: a })
           },
           args: [type, args],
         });
