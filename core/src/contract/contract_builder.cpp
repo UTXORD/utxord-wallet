@@ -141,6 +141,8 @@ void ZeroDestination::ReadJson(const UniValue &json, const std::function<std::st
 
 const char* P2Witness::type = "p2witness";
 
+const char* P2Address::type = "p2address";
+
 P2Address::P2Address(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): m_chain(chain)
 {
     if (!json[name_type].isStr()) {
@@ -195,17 +197,32 @@ std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, CAmo
         throw ContractTermWrongValue((std::ostringstream() << addr << " wrong witness ver: " << witver).str());
     }
 
-    Base58 base58(chain);
-    auto [addrtype, hash] = base58.Decode(addr);
-    if (addrtype == PUB_KEY_HASH) {
+    auto [addrtype, hash] = Base58(chain).Decode(addr);
+    if (addrtype == PUB_KEY_HASH)
         return std::make_shared<P2PKH>(chain, amount, move(addr));
-    }
+    if (addrtype == SCRIPT_HASH)
+        return std::make_shared<P2SH>(chain, amount, move(addr));
 
     throw ContractTermWrongValue(move(addr));
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-const char* P2PKH::type = "p2pkh";
+
+CScript P2PKH::PubKeyScript() const
+{
+    auto [addrtype, keyhash] = l15::Base58(m_chain).Decode(m_addr);
+    if (addrtype != l15::PUB_KEY_HASH) throw ContractTermWrongValue("Not P2PKH: " + m_addr);
+    return CScript() << OP_DUP << OP_HASH160 << keyhash << OP_EQUALVERIFY << OP_CHECKSIG;
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+CScript P2SH::PubKeyScript() const
+{
+    auto [addrtype, keyhash] = l15::Base58(m_chain).Decode(m_addr);
+    if (addrtype != l15::SCRIPT_HASH) throw ContractTermWrongValue("Not P2SH: " + m_addr);
+    return CScript() << OP_HASH160 << keyhash << OP_EQUAL;
+}
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
@@ -334,7 +351,7 @@ void UTXO::ReadJson(const UniValue &json, const std::function<std::string()> &la
 
     if (dest.isNull()) throw ContractTermWrongValue(move((lazy_name() += '.') += name_destination));
 
-    m_destination = ContractDestinationFactory<P2Witness, ZeroDestination>::ReadJson(m_chain, dest, [&](){return (lazy_name() += '.') += name_destination; });
+    m_destination = UTXODestinationFactory::ReadJson(m_chain, dest, [&](){return (lazy_name() += '.') += name_destination; });
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -414,10 +431,7 @@ void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature
 
 void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const
 {
-    uint32_t witver;
-    bytevector keyid;
-
-    std::tie(witver, keyid) = bech32().Decode(addr);
+    auto [witver, keyid] = Bech32(BTC, chain()).Decode(addr);
     if (witver == 1) {
         if (witness.size() != 1) throw SignatureError("witness stack size: " + std::to_string(witness.size()));
         if (witness[0].size() != 64 && witness[0].size() != 65) throw SignatureError("sig size");
