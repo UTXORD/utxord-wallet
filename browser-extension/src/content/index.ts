@@ -1,4 +1,5 @@
-import { sendMessage } from 'webext-bridge'
+
+import { sendMessage } from '~/helpers/index'
 
 document.addEventListener('MESSAGE_FROM_WEB', ((event: CustomEvent) => {
   if (event.target?.location.origin !== window.location.origin) return;
