@@ -213,27 +213,20 @@ import {
   } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 import * as bip39 from "~/config/bip39";
-
-const MNEMONIC_KEY = 'temp-mnemonic'
-const MNEMONIC_LANGUAGE_KEY = 'temp-mnemonic-language'
-const MNEMONIC_LENGTH_KEY = 'temp-mnemonic-length'
-const PASSPHRASE_KEY = 'temp-passphrase'
-
-const WORDS_COUNT = 'temp-words-count'
-const ROW_POSITION= 'temp-row-position'
+import * as storageKeys from '~/config/storageKeys';
 
 const { back, push } = useRouter()
 
 const textarea = ref('')
 const usePassphrase = ref(
-  Boolean(localStorage?.getItem(PASSPHRASE_KEY)) || false
+  Boolean(localStorage?.getItem(storageKeys.PASSPHRASE)) || false
 )
 const passphrase = ref('')
 const mnemonicLength = ref(
-  Number(localStorage?.getItem(MNEMONIC_LENGTH_KEY) || bip39.MNEMONIC_DEFAULT_LENGTH)
+  Number(localStorage?.getItem(storageKeys.MNEMONIC_LENGTH) || bip39.MNEMONIC_DEFAULT_LENGTH)
 )
 const mnemonicLanguage = ref(
-  String(localStorage?.getItem(MNEMONIC_LANGUAGE_KEY) || bip39.MNEMONIC_DEFAULT_LANGUAGE)
+  String(localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE) || bip39.MNEMONIC_DEFAULT_LANGUAGE)
 )
 
 const picked = ref('list')
@@ -259,19 +252,19 @@ function viewShowInfo() {
 }
 
 function removeTempDataFromLocalStorage() {
-  localStorage.removeItem(MNEMONIC_KEY)
-  localStorage.removeItem(MNEMONIC_LENGTH_KEY)
-  localStorage.removeItem(PASSPHRASE_KEY)
-  localStorage.removeItem(MNEMONIC_LANGUAGE_KEY)
+  localStorage.removeItem(storageKeys.MNEMONIC)
+  localStorage.removeItem(storageKeys.MNEMONIC_LENGTH)
+  localStorage.removeItem(storageKeys.PASSPHRASE)
+  localStorage.removeItem(storageKeys.MNEMONIC_LANGUAGE)
 }
 
 function saveTempDataToLocalStorage(){
-  localStorage?.setItem(MNEMONIC_LENGTH_KEY, mnemonicLength.value)
-  localStorage?.setItem(MNEMONIC_KEY, textarea.value)
-  localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)
-  localStorage?.setItem(MNEMONIC_LANGUAGE_KEY, mnemonicLanguage.value)
-  localStorage?.removeItem(WORDS_COUNT)
-  localStorage?.removeItem(ROW_POSITION)
+  localStorage?.setItem(storageKeys.MNEMONIC_LENGTH, mnemonicLength.value)
+  localStorage?.setItem(storageKeys.MNEMONIC, textarea.value)
+  localStorage?.setItem(storageKeys.PASSPHRASE, passphrase.value)
+  localStorage?.setItem(storageKeys.MNEMONIC_LANGUAGE, mnemonicLanguage.value)
+  localStorage?.removeItem(storageKeys.WORDS_COUNT)
+  localStorage?.removeItem(storageKeys.ROW_POSITION)
 }
 
 async function onStore() {
@@ -302,10 +295,10 @@ function onChangeMnemonicLanguage(option) {
 }
 
 async function getMnemonic() {
-  const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
-  const tempLength = localStorage?.getItem(MNEMONIC_LENGTH_KEY)
-  const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
-  const tempLanguage = localStorage?.getItem(MNEMONIC_LANGUAGE_KEY)
+  const tempMnemonic = localStorage?.getItem(storageKeys.MNEMONIC)
+  const tempLength = localStorage?.getItem(storageKeys.MNEMONIC_LENGTH)
+  const tempPassphrase = localStorage?.getItem(storageKeys.PASSPHRASE)
+  const tempLanguage = localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE)
   if (tempMnemonic) {
     console.debug('=== tempMnemonic, tempLanguage:', tempLanguage);
     textarea.value = tempMnemonic

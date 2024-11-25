@@ -43,22 +43,23 @@
 <script setup lang="ts">
 import { toRefs } from 'vue'
 import { useRouter } from 'vue-router'
-import {UNLOAD_SEED, SET_UP_PASSWORD } from '~/config/events'
+import { UNLOAD_SEED } from '~/config/events'
 import Modal from '~/components/Modal.vue'
 import ThemeBtn from '~/components/ThemeBtn.vue'
 import { useStore } from '~/popup/store'
 import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
+import * as storageKeys from '~/config/storageKeys';
 
 const { push } = useRouter()
 const store = useStore()
 const { fundAddress } = toRefs(store)
 
 function unload() {
-  localStorage.removeItem('temp-mnemonic')
-  localStorage.removeItem('current-page')
-  localStorage.removeItem(SET_UP_PASSWORD)
-  localStorage.removeItem('SET_UP_PASSWORD_PAGE')
-  localStorage.removeItem('SET_UP_PASSWORD_CONFIRM_PAGE')
+  localStorage.removeItem(storageKeys.MNEMONIC)
+  localStorage.removeItem(storageKeys.PASSWORD_HAS_BEEN_SET)
+  localStorage.removeItem(storageKeys.PASSWORD_VALUE)
+  localStorage.removeItem(storageKeys.PASSWORD_CONFIRM_VALUE)
+  localStorage.removeItem(storageKeys.CURRENT_PAGE)
   store.clearStore()
   sendMessage(UNLOAD_SEED, {}, 'background')
 }

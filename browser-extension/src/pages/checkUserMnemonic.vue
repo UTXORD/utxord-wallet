@@ -95,24 +95,16 @@
 import useWallet from '~/popup/modules/useWallet'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
-import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
 import {getRandom, saveGeneratedSeed, sendMessage} from '~/helpers/index'
 import * as bip39 from "~/config/bip39";
+import * as storageKeys from '~/config/storageKeys';
 
 const { back, push } = useRouter()
 const { getFundAddress, getBalance, getNetWork } = useWallet()
 
-const MNEMONIC_KEY = 'temp-mnemonic'
-const MNEMONIC_LANGUAGE_KEY = 'temp-mnemonic-language'
-const MNEMONIC_LENGTH_KEY = 'temp-mnemonic-length'
-const PASSPHRASE_KEY = 'temp-passphrase'
-
-const WORDS_COUNT = 'temp-words-count'
-const ROW_POSITION= 'temp-row-position'
-
 const flag_check = ref(false)
 const mnemonicLength = ref(
-  Number(localStorage?.getItem(MNEMONIC_LENGTH_KEY) || bip39.MNEMONIC_DEFAULT_LENGTH)
+  Number(localStorage?.getItem(storageKeys.MNEMONIC_LENGTH) || bip39.MNEMONIC_DEFAULT_LENGTH)
 )
 
 const errorMessage = ref('')
@@ -133,12 +125,12 @@ function inputWords(e){
 }
 
 function removeTempDataFromLocalStorage() {
-  localStorage.removeItem(MNEMONIC_KEY)
-  localStorage.removeItem(MNEMONIC_LENGTH_KEY)
-  localStorage.removeItem(PASSPHRASE_KEY)
-  localStorage.removeItem(MNEMONIC_LANGUAGE_KEY)
-  localStorage.removeItem(WORDS_COUNT)
-  localStorage.removeItem(ROW_POSITION)
+  localStorage.removeItem(storageKeys.MNEMONIC)
+  localStorage.removeItem(storageKeys.MNEMONIC_LENGTH)
+  localStorage.removeItem(storageKeys.PASSPHRASE)
+  localStorage.removeItem(storageKeys.MNEMONIC_LANGUAGE)
+  localStorage.removeItem(storageKeys.WORDS_COUNT)
+  localStorage.removeItem(storageKeys.ROW_POSITION)
 }
 
 function isEmpty(){
@@ -149,9 +141,9 @@ function isEmpty(){
 }
 
 async function skip(){
-  const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
-  const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
-  const tempLanguage = localStorage?.getItem(MNEMONIC_LANGUAGE_KEY)
+  const tempMnemonic = localStorage?.getItem(storageKeys.MNEMONIC)
+  const tempPassphrase = localStorage?.getItem(storageKeys.PASSPHRASE)
+  const tempLanguage = localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE)
   const success = await saveGeneratedSeed(tempMnemonic, tempPassphrase, tempLanguage);
   if (success === true) {
     const fundAddress = await getFundAddress()
@@ -162,18 +154,18 @@ async function skip(){
 }
 
 function userChallenge(){
-  const mnemonic = localStorage?.getItem(MNEMONIC_KEY)?.trim()?.split(' ') || []
+  const mnemonic = localStorage?.getItem(storageKeys.MNEMONIC)?.trim()?.split(' ') || []
   const dismap =  Array(mnemonic?.length).fill(true)
-  const count = localStorage?.getItem(WORDS_COUNT) || getRandom(3,4)
-  const row = localStorage?.getItem(ROW_POSITION)?.split(' ') || Array(count)
+  const count = localStorage?.getItem(storageKeys.WORDS_COUNT) || getRandom(3,4)
+  const row = localStorage?.getItem(storageKeys.ROW_POSITION)?.split(' ') || Array(count)
   for(let i = 0; i < count; i += 1){
     let index = row[i] || getRandom(1, mnemonic?.length -1)
     mnemonic[index] = ''
     dismap[index] = false
     row[i] = index
   }
-  localStorage?.setItem(WORDS_COUNT, count)
-  localStorage?.setItem(ROW_POSITION, row.join(' '))
+  localStorage?.setItem(storageKeys.WORDS_COUNT, count)
+  localStorage?.setItem(storageKeys.ROW_POSITION, row.join(' '))
 
   return {
   list: mnemonic,
@@ -182,9 +174,9 @@ function userChallenge(){
 }
 
 async function Check() {
-  const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
-  const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
-  const tempLanguage = localStorage?.getItem(MNEMONIC_LANGUAGE_KEY)
+  const tempMnemonic = localStorage?.getItem(storageKeys.MNEMONIC)
+  const tempPassphrase = localStorage?.getItem(storageKeys.PASSPHRASE)
+  const tempLanguage = localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE)
   const mnemonic = list.value.join(' ').trim()
   if (mnemonic === tempMnemonic) {
     const success = await saveGeneratedSeed(tempMnemonic, tempPassphrase, tempLanguage);
@@ -204,8 +196,8 @@ async function Check() {
 
 }
 function goToBack(){
-  const isPassSetUpd = Boolean(localStorage?.getItem(SET_UP_PASSWORD))
-  if(isPassSetUpd){
+  const passHasBeenSet = Boolean(localStorage?.getItem(storageKeys.PASSWORD_HAS_BEEN_SET))
+  if (passHasBeenSet) {
     return push('/generate')
   }
   return back()

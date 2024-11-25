@@ -177,16 +177,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { SET_UP_PASSWORD } from '~/config/events'
 import {isASCII, isMnemonicValid, saveGeneratedSeed, sendMessage} from '~/helpers/index'
 import useWallet from '~/popup/modules/useWallet'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 import * as bip39 from "~/config/bip39";
-
-const MNEMONIC_KEY = 'temp-mnemonic'
-const MNEMONIC_LANGUAGE_KEY = 'temp-mnemonic-language'
-const MNEMONIC_LENGTH_KEY = 'temp-mnemonic-length'
-const PASSPHRASE_KEY = 'temp-passphrase'
+import * as storageKeys from '~/config/storageKeys';
 
 const { back, push } = useRouter()
 
@@ -197,20 +192,20 @@ const textarea = ref('')
 const picked = ref('list')
 
 const usePassphrase = ref(
-  Boolean(localStorage?.getItem(PASSPHRASE_KEY)) || false
+  Boolean(localStorage?.getItem(storageKeys.PASSPHRASE)) || false
 )
 
 const passphrase = ref(
-  localStorage?.getItem(PASSPHRASE_KEY) || ''
+  localStorage?.getItem(storageKeys.PASSPHRASE) || ''
 )
 const list = ref(
-  localStorage?.getItem(MNEMONIC_KEY)?.trim()?.split(' ') || []
+  localStorage?.getItem(storageKeys.MNEMONIC)?.trim()?.split(' ') || []
 )
 const mnemonicLength = ref(
-  Number(localStorage?.getItem(MNEMONIC_LENGTH_KEY) || bip39.MNEMONIC_DEFAULT_LENGTH)
+  Number(localStorage?.getItem(storageKeys.MNEMONIC_LENGTH) || bip39.MNEMONIC_DEFAULT_LENGTH)
 )
 const mnemonicLanguage = ref(
-  String(localStorage?.getItem(MNEMONIC_LANGUAGE_KEY) || bip39.MNEMONIC_DEFAULT_LANGUAGE)
+  String(localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE) || bip39.MNEMONIC_DEFAULT_LANGUAGE)
 )
 const showInfo = ref(false)
 
@@ -271,17 +266,17 @@ async function inputWords(e) {
 }
 
 function saveTempDataToLocalStorage(){
-  localStorage?.setItem(MNEMONIC_LANGUAGE_KEY, mnemonicLength.value)
-  localStorage?.setItem(MNEMONIC_LENGTH_KEY, mnemonicLength.value)
-  localStorage?.setItem(MNEMONIC_KEY, list.value.join(' '))
-  localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)
+  localStorage?.setItem(storageKeys.MNEMONIC_LANGUAGE, mnemonicLength.value)
+  localStorage?.setItem(storageKeys.MNEMONIC_LENGTH, mnemonicLength.value)
+  localStorage?.setItem(storageKeys.MNEMONIC, list.value.join(' '))
+  localStorage?.setItem(storageKeys.PASSPHRASE, passphrase.value)
 }
 
 function removeTempDataFromLocalStorage() {
-  localStorage?.removeItem(MNEMONIC_LANGUAGE_KEY)
-  localStorage?.removeItem(MNEMONIC_LENGTH_KEY)
-  localStorage?.removeItem(MNEMONIC_KEY)
-  localStorage?.removeItem(PASSPHRASE_KEY)
+  localStorage?.removeItem(storageKeys.MNEMONIC_LANGUAGE)
+  localStorage?.removeItem(storageKeys.MNEMONIC_LENGTH)
+  localStorage?.removeItem(storageKeys.MNEMONIC)
+  localStorage?.removeItem(storageKeys.PASSPHRASE)
 }
 
 function viewShowInfo(){
@@ -290,7 +285,7 @@ function viewShowInfo(){
 }
 
 async function onStore() {
-  localStorage?.setItem(MNEMONIC_KEY, textarea.value.replace(/\s\s+/g, ' ').trim())
+  localStorage?.setItem(storageKeys.MNEMONIC, textarea.value.replace(/\s\s+/g, ' ').trim())
   const generated = await saveGeneratedSeed(
       textarea.value.replace(/\s\s+/g, ' ').trim(),
       passphrase.value,
@@ -305,9 +300,9 @@ async function onStore() {
 }
 
 function goToBack(){
-  const isPassSetUpd = Boolean(localStorage?.getItem(SET_UP_PASSWORD))
+  const passHasBeenSet = Boolean(localStorage?.getItem(storageKeys.PASSWORD_HAS_BEEN_SET))
   removeTempDataFromLocalStorage()
-  if(isPassSetUpd){
+  if (passHasBeenSet) {
     return push('/start')
   }
   return back()
