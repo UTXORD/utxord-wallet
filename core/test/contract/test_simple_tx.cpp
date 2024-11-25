@@ -81,6 +81,7 @@ TEST_CASE("singleinout")
     TestCondition p2wpkh_cond = {w->derive(84, 0, 0, 10), w->p2wpkh(0, 0, 10)};
 
     auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond);
+    auto version = GENERATE(2,3,4);
 
     CAmount fee_rate;
     try {
@@ -103,7 +104,7 @@ TEST_CASE("singleinout")
     REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
 
     std::string data;
-    REQUIRE_NOTHROW(data = tx_contract.Serialize(2, TX_SIGNATURE));
+    REQUIRE_NOTHROW(data = tx_contract.Serialize(version, TX_SIGNATURE));
 
     std::clog << "singleinout:\n"
               << data << std::endl;
@@ -150,6 +151,7 @@ TEST_CASE("singleinout")
 
     CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
 
+    w->confirm(1, tx.GetHash().GetHex());
 }
 
 TEST_CASE("2ins2outs")
@@ -197,6 +199,8 @@ TEST_CASE("2ins2outs")
     CHECK(tx.vout.size() == 2);
 
     CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
+
+    w->confirm(1, tx.GetHash().GetHex());
 }
 
 TEST_CASE("txchain")
@@ -265,5 +269,67 @@ TEST_CASE("txchain")
 
     CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
     CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx1)));
+
+    w->confirm(1, tx1.GetHash().GetHex());
 }
 
+TEST_CASE("legacyaddr")
+{
+    // TestCondition p2tr_cond = {w->derive(86, 0, 0, 255, false), w->p2tr(0, 0, 255)};
+    // TestCondition p2wpkh_cond = {w->derive(84, 0, 0, 10), w->p2wpkh(0, 0, 10)};
+
+    // auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond);
+    auto version = 4;
+    auto addr_type = GENERATE("legacy", "p2sh-segwit", "bech32");
+
+    CAmount fee_rate;
+    try {
+        fee_rate = ParseAmount(w->btc().EstimateSmartFee("1"));
+    }
+    catch(...) {
+        fee_rate = 1000;
+    }
+
+    std::clog << "Fee rate: " << fee_rate << std::endl;
+
+    std::string destination_addr = w->btc().GetNewAddress("", addr_type);
+
+    SimpleTransaction tx_contract(w->chain());
+    tx_contract.MiningFeeRate(fee_rate);
+
+    REQUIRE_NOTHROW(tx_contract.AddInput(w->fund(10000, w->p2tr(0, 0, 255))));
+    REQUIRE_NOTHROW(tx_contract.AddOutput(7000, destination_addr));
+
+    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
+
+    std::string data;
+    REQUIRE_NOTHROW(data = tx_contract.Serialize(version, TX_SIGNATURE));
+
+    std::clog << "singleinout:\n" << data << std::endl;
+
+    SimpleTransaction tx_contract1(w->chain());
+    REQUIRE_NOTHROW(tx_contract1.Deserialize(data, TX_SIGNATURE));
+
+    stringvector txs;
+    REQUIRE_NOTHROW(txs = tx_contract1.RawTransactions());
+
+    CHECK(txs.size() == 1);
+
+    CMutableTransaction tx;
+    REQUIRE(DecodeHexTx(tx, txs[0]));
+
+    CHECK(tx.vin.size() == 1);
+    CHECK(tx.vout.size() == 1);
+
+    // PrecomputedTransactionData txdata;
+    // txdata.Init(tx, {CTxOut {10000, Bech32(BTC, w->chain()).PubKeyScript(w->p2tr(0, 0, 255))}}, /* force=*/ true);
+    //
+    // MutableTransactionSignatureChecker TxOrdChecker(&tx, 0, 10000, txdata, MissingDataBehavior::FAIL);
+    // bool ok = VerifyScript(CScript(), Bech32(BTC, w->chain()).PubKeyScript(w->p2tr(0, 0, 255)), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
+    // REQUIRE(ok);
+
+
+    CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
+
+    w->confirm(1, tx.GetHash().GetHex());
+}

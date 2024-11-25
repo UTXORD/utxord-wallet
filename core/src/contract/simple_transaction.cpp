@@ -24,9 +24,10 @@ const std::string val_simple_transaction = "transaction";
 const  std::string SimpleTransaction::name_outputs = "outputs";
 const  std::string SimpleTransaction::name_rune_inputs = "rune_inputs";
 
-const uint32_t SimpleTransaction::s_protocol_version = 3;
+const uint32_t SimpleTransaction::s_protocol_version = 4;
+const uint32_t SimpleTransaction::s_protocol_version_no_p2address = 3;
 const uint32_t SimpleTransaction::s_protocol_version_no_rune_transfer = 2;
-const char* SimpleTransaction::s_versions = "[2,3]";
+const char* SimpleTransaction::s_versions = "[2,3,4]";
 
 
 const std::string& SimpleTransaction::GetContractName() const
@@ -54,7 +55,7 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
     }
 
     for(const auto& out: m_outputs) {
-        tx.vout.emplace_back(out->Amount(), out->PubKeyScript());
+        tx.vout.emplace_back(out->TxOutput());
     }
 
     return tx;
@@ -121,18 +122,7 @@ void SimpleTransaction::AddChangeOutput(std::string addr)
         m_change_nout.reset();
     }
 
-    unsigned v;
-    bytevector arg;
-    std::tie(v, arg) = bech32().Decode(addr);
-    if (v == 0) {
-        AddOutputDestination(std::make_shared<P2WPKH>(chain(), 0, move(addr)));
-    }
-    else if (v == 1) {
-        AddOutputDestination(std::make_shared<P2TR>(chain(), 0, move(addr)));
-    }
-    else {
-        throw ContractTermWrongValue(name_change_addr.c_str());
-    }
+    AddOutputDestination(P2Address::Construct(chain(), 0, move(addr)));
 
     CAmount required = GetMinFundingAmount("");
 
@@ -165,8 +155,7 @@ void SimpleTransaction::PartialSign(const KeyRegistry &master_key, const string 
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
     for(const auto& input: m_inputs) {
-        const auto& dest = input.output->Destination();
-        spent_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
+        spent_outs.emplace_back(input.output->Destination()->TxOutput());
     }
 
     auto inputIt = std::find_if(m_inputs.begin(), m_inputs.end(),[nin](const auto& in){ return in.nin == nin; });
@@ -189,8 +178,7 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& k
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
     for(const auto& input: m_inputs) {
-        const auto& dest = input.output->Destination();
-        spent_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
+        spent_outs.emplace_back(input.output->Destination()->TxOutput());
     }
 
     for(auto& input: m_inputs) {
@@ -212,14 +200,18 @@ std::vector<std::string> SimpleTransaction::RawTransactions() const
 
 UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 {
-    if (version != s_protocol_version && version != s_protocol_version_no_rune_transfer) throw ContractProtocolError("Wrong contract version: " + std::to_string(version) + ". Allowed are " + s_versions);
+    if (version != s_protocol_version &&
+        version != s_protocol_version_no_p2address &&
+        version != s_protocol_version_no_rune_transfer) throw ContractProtocolError("Wrong contract version: " + std::to_string(version) + ". Allowed are " + s_versions);
 
     UniValue contract(UniValue::VOBJ);
-    contract.pushKV(name_version, (int)s_protocol_version);
+    contract.pushKV(name_version, version);
     contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
 
     UniValue utxo_arr(UniValue::VARR);
     for (const auto& input: m_inputs) {
+        if (input.output->Destination()->Type() == P2Address::type && version <= s_protocol_version_no_p2address)
+            throw ContractProtocolError(name_utxo + '[' + std::to_string(input.nin) + "]." + IContractDestination::name_addr + ": " + input.output->Destination()->Address() + " is not supported with v. " + std::to_string(version));
         UniValue spend = input.MakeJson();
         utxo_arr.push_back(move(spend));
     }
@@ -232,6 +224,8 @@ UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 
     UniValue out_arr(UniValue::VARR);
     for (const auto& out: m_outputs) {
+        if (out->Type() == P2Address::type && version <= s_protocol_version_no_p2address)
+            throw ContractProtocolError(name_outputs + "[...]." + IContractDestination::name_addr + ": " + out->Address() + " is not supported with v. " + std::to_string(version));
         UniValue dest = out->MakeJson();
         out_arr.push_back(move(dest));
     }
@@ -242,7 +236,9 @@ UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 {
     uint32_t version = contract[name_version].getInt<uint32_t>();
-    if (version != s_protocol_version && version != s_protocol_version_no_rune_transfer)
+    if (version != s_protocol_version &&
+        version != s_protocol_version_no_p2address &&
+        version != s_protocol_version_no_rune_transfer)
         throw ContractProtocolError("Wrong " + val_simple_transaction + " contract version: " + contract[name_version].getValStr());
 
     {   const auto &val = contract[name_mining_fee_rate];
@@ -302,7 +298,7 @@ CAmount SimpleTransaction::GetMinFundingAmount(const std::string& params) const
     return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out;
 }
 
-void SimpleTransaction::CheckContractTerms(TxPhase phase) const
+void SimpleTransaction::CheckContractTerms(uint32_t version, TxPhase phase) const
 {
 #ifndef DEBUG
     using int136_t = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<128, 136, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
@@ -340,7 +336,7 @@ void SimpleTransaction::CheckSig() const
 {
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_inputs.size());
-    std::transform(m_inputs.begin(), m_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()), [](const auto& txin){ return CTxOut(txin.output->Destination()->Amount(), txin.output->Destination()->PubKeyScript()); });
+    std::transform(m_inputs.begin(), m_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()), [](const auto& txin){ return txin.output->Destination()->TxOutput(); });
 
     CMutableTransaction tx = MakeTx("");
     for (const auto &input: m_inputs) {
