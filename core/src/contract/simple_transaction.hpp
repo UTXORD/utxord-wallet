@@ -20,8 +20,8 @@ public:
     static const std::string name_rune_inputs;
 private:
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_p2address;
     static const uint32_t s_protocol_version_no_rune_transfer;
-    static const uint32_t s_protocol_version_no_opreturn;
     static const char* s_versions;
 
     std::vector<TxInput> m_inputs;
@@ -44,7 +44,7 @@ public:
     SimpleTransaction& operator=(const SimpleTransaction&) = default;
     SimpleTransaction& operator=(SimpleTransaction&&) = default;
 
-    static uint32_t GetProtocolVersion()
+    uint32_t GetVersion() const override
     { return s_protocol_version; }
 
     static const char* SupportedVersions()
@@ -56,7 +56,7 @@ public:
     void AddInput(std::shared_ptr<IContractOutput> prevout)
     {
         if (!prevout) throw ContractTermWrongValue(name_utxo + '[' + std::to_string(m_inputs.size()) + ']');
-        m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout));
+        m_inputs.emplace_back(chain(), m_inputs.size(), move(prevout));
     }
 
     void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
@@ -96,7 +96,7 @@ public:
     std::vector<std::string> RawTransactions() const;
 
     const std::string& GetContractName() const override;
-    void CheckContractTerms(TxPhase phase) const override;
+    void CheckContractTerms(uint32_t version, TxPhase phase) const override;
     UniValue MakeJson(uint32_t version, TxPhase phase) const override;
     void ReadJson(const UniValue& json, TxPhase phase) override;
 

@@ -90,6 +90,7 @@ public:
     TrustlessSwapInscriptionBuilder& operator=(TrustlessSwapInscriptionBuilder&& ) noexcept = default;
 
     const std::string& GetContractName() const override;
+    uint32_t GetVersion() const override { return s_protocol_version; }
     UniValue MakeJson(uint32_t version, TrustlessSwapPhase phase) const override;
     void ReadJson(const UniValue& json, TrustlessSwapPhase phase) override;
 
@@ -112,16 +113,10 @@ public:
     void AddMainSwapUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
 
     void OrdPayoffAddress(std::string addr)
-    {
-        bech32().Decode(addr);
-        m_ord_payoff_addr = move(addr);
-    }
+    { m_ord_payoff_addr = move(addr); }
 
     void FundsPayoffAddress(std::string addr)
-    {
-        bech32().Decode(addr);
-        m_funds_payoff_addr = move(addr);
-    }
+    { m_funds_payoff_addr = move(addr); }
 
     void SignOrdSwap(const KeyRegistry &masterKey, const std::string& key_filter);
     void SignMarketSwap(const KeyRegistry &masterKey, const std::string& key_filter);
@@ -129,7 +124,7 @@ public:
     void SignFundsCommitment(const KeyRegistry &master_key, const std::string& key_filter);
     void SignFundsSwap(const KeyRegistry &master_key, const std::string& key_filter);
 
-    void CheckContractTerms(TrustlessSwapPhase phase) const override;
+    void CheckContractTerms(uint32_t version, TrustlessSwapPhase phase) const override;
 
     std::string OrdCommitRawTransaction() const;
     std::string FundsCommitRawTransaction() const;

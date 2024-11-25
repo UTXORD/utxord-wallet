@@ -234,6 +234,9 @@ struct TestcaseWrapper
     l15::core::KeyPair derive(uint32_t purpose, uint32_t account, uint32_t change, uint32_t index, bool for_script = true)
     { return keyreg().Derive(keypath(purpose, account, change, index), for_script); }
 
+    xonly_pubkey pubkey(uint32_t account, uint32_t change, uint32_t index)
+    { return keyreg().Derive(keypath(86, account, change, index), true).GetSchnorrKeyPair().GetPubKey(); }
+
     std::string p2tr(uint32_t account, uint32_t change, uint32_t index)
     { return keyreg().Derive(keypath(86, account, change, index), false).GetP2TRAddress(l15::Bech32(l15::BTC, chain())); }
 
