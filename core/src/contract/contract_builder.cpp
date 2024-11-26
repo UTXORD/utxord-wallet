@@ -357,6 +357,7 @@ void UTXO::ReadJson(const UniValue &json, const std::function<std::string()> &la
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 const std::string IContractBuilder::name_contract_type = "contract_type";
+const std::string IContractBuilder::name_contract_phase = "phase";
 const std::string IContractBuilder::name_params = "params";
 const std::string IContractBuilder::name_version = "protocol_version";
 const std::string IContractBuilder::name_mining_fee_rate = "mining_fee_rate";
