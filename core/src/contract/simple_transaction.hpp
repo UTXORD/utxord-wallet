@@ -50,6 +50,9 @@ public:
     static const char* SupportedVersions()
     { return s_versions; }
 
+    static const char* PhaseString(TxPhase phase);
+    static TxPhase ParsePhase(const std::string& p);
+
     CAmount CalculateWholeFee(const std::string& params) const override;
     CAmount GetMinFundingAmount(const std::string& params) const override;
 

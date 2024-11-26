@@ -18,6 +18,9 @@ namespace {
 
 const std::string val_simple_transaction = "transaction";
 
+const char* TX_TERMS_STR = "TX_TERMS";
+const char* TX_SIGNATURE_STR = "TX_SIGNATURE";
+
 }
 
 const  std::string SimpleTransaction::name_outputs = "outputs";
@@ -205,6 +208,7 @@ UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 
     UniValue contract(UniValue::VOBJ);
     contract.pushKV(name_version, version);
+    contract.pushKV(name_contract_phase, PhaseString(phase));
     contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
 
     UniValue utxo_arr(UniValue::VARR);
@@ -324,6 +328,24 @@ void SimpleTransaction::CheckContractTerms(uint32_t version, TxPhase phase) cons
 
     if (phase == TX_SIGNATURE)
         CheckSig();
+}
+
+const char * SimpleTransaction::PhaseString(TxPhase phase)
+{
+    switch (phase) {
+    case TX_TERMS:
+        return TX_TERMS_STR;
+    case TX_SIGNATURE:
+        return TX_SIGNATURE_STR;
+    }
+    throw ContractTermWrongValue("TxPhase: " + std::to_string(phase));
+}
+
+TxPhase SimpleTransaction::ParsePhase(const std::string& str)
+{
+    if (str == TX_TERMS_STR) return TX_TERMS;
+    if (str == TX_SIGNATURE_STR) return TX_SIGNATURE;
+    throw ContractTermWrongValue(std::string(str));
 }
 
 CAmount SimpleTransaction::CalculateWholeFee(const string &params) const

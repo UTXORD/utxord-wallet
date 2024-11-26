@@ -443,6 +443,7 @@ class IContractBuilder
 {
 public:
     static const std::string name_contract_type;
+    static const std::string name_contract_phase;
     static const std::string name_params;
     static const std::string name_version;
     static const std::string name_mining_fee_rate;

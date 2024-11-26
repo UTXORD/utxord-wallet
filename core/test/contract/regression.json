@@ -1,0 +1,65 @@
+{
+  "contracts": [
+    {
+      "contract_type": "transaction",
+      "params": {
+        "protocol_version": 3,
+        "phase": "TX_SIGNATURE",
+        "mining_fee_rate": 1000,
+        "utxo": [
+          {
+            "type": "utxo",
+            "txid": "bd40ce90809da3b73e338e238d0a018a490e6cdc62eab70fbbf721fe980608ae",
+            "nout": 0,
+            "destination": {
+              "type": "p2witness",
+              "amount": 10000,
+              "addr": "bcrt1p5pgkkjnn7ec063dmk3utaurwsgxtfvvkk27kgwfyq2yj7etjfvaqqhmyup"
+            },
+            "witness": [
+              "277ddc7d5a0f93a40e87ae7835f4f0be51e6106512d4026b4e63706d17556fed250ca49892826a3cfa6cb7fdd795d97a62609b74e15cc9b75cbad1072f874740"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "type": "p2witness",
+            "amount": 7000,
+            "addr": "bcrt1psj0y4ufaxzkfum56t2swra3ega0mpcza5epdy0qhekv2vwtk0k6qvzjnd7"
+          }
+        ]
+      }
+    },
+    {
+      "contract_type": "transaction",
+      "params": {
+        "protocol_version": 3,
+        "phase": "TX_SIGNATURE",
+        "mining_fee_rate": 1000,
+        "utxo": [
+          {
+            "type": "utxo",
+            "txid": "daee26aa2ae707a5c3729085984b60c7d2ef23309fe8c1d1cf334eaf7a446359",
+            "nout": 0,
+            "destination": {
+              "type": "p2witness",
+              "amount": 10000,
+              "addr": "bcrt1qezjk05v3x25w30rw9retyh4l09ttpw58nfrztg"
+            },
+            "witness": [
+              "304402202f758bb7c74eec0f2e328cfe74a9d95b10c6d0d81d4294ef6dda7cabe69006bf0220128b7663e3273be929db2e2c5dc490fc52fa5e21ed48265b5c1257675c2b172f01",
+              "02a36c2fa26201beee6e77546c63a86b91be196e3ae07202bacb76af3744cfe9ae"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "type": "p2witness",
+            "amount": 7000,
+            "addr": "bcrt1pn8jk6x58ya5zggmyqaradu39kyl746hramez9c8led277xjcslgqapw6yz"
+          }
+        ]
+      }
+    }
+  ]
+}
