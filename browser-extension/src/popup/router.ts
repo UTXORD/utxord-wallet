@@ -1,7 +1,8 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import {sendMessage} from '~/helpers/index'
-import {CHECK_AUTH, CURRENT_PAGE} from '~/config/events';
+import {CHECK_AUTH} from '~/config/events';
 import {settingsRoutes} from "~/popup/settingsRouter";
+import * as windowStorage from '~/libs/windowStorage';
 
 const START_ROUTE = {
   path: '/start',
@@ -126,7 +127,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/create-password-screen',
     name: 'CreatePasswordPage',
     component: () => import('~/pages/CreatePasswordPage.vue')
-},
+  },
   {
     path: '/generate',
     name: 'GeneratePage',
@@ -167,9 +168,9 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
-  const currentPage = await localStorage?.getItem(CURRENT_PAGE)
-  const pageMatched = to.matched.some(record => record.meta.requiresAuth)
-  const restorePage = to.matched.some(record => record.meta.restore)
+  const currentPage = windowStorage.getItem(windowStorage.CURRENT_PAGE);
+  const pageMatched = to.matched.some(record => record.meta.requiresAuth);
+  const restorePage = to.matched.some(record => record.meta.restore);
   console.log('authenticated:', authenticated, ' to.path:', to.path);
   console.log('currentPage:', currentPage,' restorePage:',restorePage);
   console.log('to:', to,' from:',from);
@@ -182,17 +183,16 @@ router.beforeEach(async (to, from, next) => {
       next({ path: currentPage });
     }
   }
-  if(authenticated && pageMatched){
-    if(currentPage !=='/' &&
-    currentPage !== START_ROUTE.path &&
-    restorePage &&
-    !from.name
-
-  ){
-      next({ path: currentPage });
+  if (authenticated && pageMatched) {
+    if (currentPage !== '/' &&
+        currentPage !== START_ROUTE.path &&
+        restorePage &&
+        !from.name
+    ) {
+      next({path: currentPage});
     }
   }
-  await localStorage?.setItem(CURRENT_PAGE, to.path);
+  windowStorage.setItem(windowStorage.CURRENT_PAGE, to.path);
   next();
 })
 

@@ -83,9 +83,8 @@
 import { ref, computed, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SET_UP_PASSWORD } from '~/config/events'
-import * as storageKeys from '~/config/storageKeys';
 import CustomInput from '~/components/CustomInput.vue'
-import * as CryptoJS from 'crypto-js'
+import * as windowStorage from '~/libs/windowStorage';
 
 import { isASCII, isLength, isContains, sendMessage } from '~/helpers/index'
 
@@ -94,31 +93,12 @@ const { back, push } = useRouter()
 const password = ref('')
 const confirmPassword = ref('')
 
-const VALUE_PREFIX = 'value-';
-
-
-
-function savePasswordToLocalStorage(){
-  console.log('password.value:', password.value)
-  console.log('confirmPassword.value:', confirmPassword.value)
-
-  const iv = CryptoJS.lib.WordArray.random(128/8);
-  const kindaSecret = `secret-${(new Date()).toISOString().replace(/:.*/, '')}`;
-  const encryptedPassword = CryptoJS.AES.encrypt(VALUE_PREFIX + password.value, kindaSecret, {
-    iv: iv,
-    padding: CryptoJS.pad.Pkcs7,
-    mode: CryptoJS.mode.CBC,
-    hasher: CryptoJS.algo.SHA256
-  });
-  const encryptedConfirmPassword = CryptoJS.AES.encrypt(VALUE_PREFIX + confirmPassword.value, kindaSecret, {
-    iv: iv,
-    padding: CryptoJS.pad.Pkcs7,
-    mode: CryptoJS.mode.CBC,
-    hasher: CryptoJS.algo.SHA256
-  });
-
-  localStorage?.setItem(storageKeys.PASSWORD_VALUE, encryptedPassword)
-  localStorage?.setItem(storageKeys.PASSWORD_CONFIRM_VALUE, encryptedConfirmPassword)
+function savePasswordToLocalStorage() {
+  const secret = `secret-${(new Date()).toISOString().replace(/:.*/, '')}`;
+  windowStorage.setItems({
+    [windowStorage.PASSWORD_VALUE]: password.value,
+    [windowStorage.PASSWORD_CONFIRM_VALUE]: confirmPassword.value
+  }, secret);
 }
 
 const isDisabled = computed(() => {
@@ -131,15 +111,17 @@ const isDisabled = computed(() => {
 })
 
 const page = computed(() =>{
-  const current_page = window?.history?.state?.current?.split('#')[1] || localStorage?.getItem(storageKeys.CURRENT_PAGE)
+  const current_page = window?.history?.state?.current?.split('#')[1] || windowStorage.getItem(windowStorage.CURRENT_PAGE)
   if(!current_page) return 'start'
   return current_page;
 })
 
 function removeTempDataFromLocalStorage() {
-  localStorage.removeItem(storageKeys.PASSWORD_VALUE)
-  localStorage.removeItem(storageKeys.PASSWORD_CONFIRM_VALUE)
-  localStorage.removeItem(storageKeys.CURRENT_PAGE)
+  windowStorage.removeItems([
+    windowStorage.PASSWORD_VALUE,
+    windowStorage.PASSWORD_CONFIRM_VALUE,
+    windowStorage.CURRENT_PAGE
+  ])
 }
 
 function goToBack() {
@@ -148,65 +130,40 @@ function goToBack() {
 }
 
 async function onConfirm() {
-  try{
-    const hasBeenSet = await sendMessage(
-      SET_UP_PASSWORD, {
-        password: password.value,
-      },
-      'background'
-      )
+  try {
+    let hasBeenSet = await sendMessage(
+        SET_UP_PASSWORD, {
+          password: password.value,
+        },
+        'background'
+    )
+    console.debug('CreatePasswordPage.onConfirm: hasBeenSet:', hasBeenSet);
+    // hasBeenSet = false;
+    // console.debug('CreatePasswordPage.onConfirm: hasBeenSet:', hasBeenSet);
     if (hasBeenSet) {
-      localStorage?.setItem(storageKeys.PASSWORD_HAS_BEEN_SET, true)
+      windowStorage.setItem(windowStorage.PASSWORD_HAS_BEEN_SET, true);
       push(`/${page.value}`)
     }
-  }catch(e){
-    console.log('CreatePasswordPage->onConfirm():',e);
+  } catch (e) {
+    console.error('CreatePasswordPage->onConfirm():', e);
   }
 }
 
 async function getPasswordFromLocalStorage() {
-  const passHasBeenSet = Boolean(localStorage?.getItem(storageKeys.PASSWORD_HAS_BEEN_SET))
-  if (passHasBeenSet) {
-    console.log('passHasBeenSet:', passHasBeenSet)
-    console.log(`/${page.value}`)
+  const hasBeenSet = Boolean(windowStorage.getItem(windowStorage.PASSWORD_HAS_BEEN_SET));
+  console.debug('CreatePasswordPage.getPasswordFromLocalStorage: hasBeenSet:', hasBeenSet);
+  if (hasBeenSet) {
+    console.debug(`CreatePasswordPage.getPasswordFromLocalStorage: page: /${page.value}`)
     push(`/${page.value}`)
   }
 
-  const iv = CryptoJS.lib.WordArray.random(128/8);
-  const kindaSecret = `secret-${(new Date()).toISOString().replace(/:.*/, '')}`;
-  const encryptedPassword = localStorage?.getItem(storageKeys.PASSWORD_VALUE)
-  const encryptedConfirmPassword = localStorage?.getItem(storageKeys.PASSWORD_CONFIRM_VALUE)
-  
-  let tempPassword = '';
-  let tempConfirmPassword = '';
+  const secret = `secret-${(new Date()).toISOString().replace(/:.*/, '')}`;
+  const [tempPassword, tempConfirmPassword] = windowStorage.getItems([
+      windowStorage.PASSWORD_VALUE,
+      windowStorage.PASSWORD_CONFIRM_VALUE
+  ], secret);
 
-  if (encryptedPassword) {
-    const decryptedPassword = CryptoJS.AES.decrypt(encryptedPassword, kindaSecret, {
-      iv: iv,
-      padding: CryptoJS.pad.Pkcs7,
-      mode: CryptoJS.mode.CBC,
-      hasher: CryptoJS.algo.SHA256
-    })
-    const tempPasswordValue = decryptedPassword.toString(CryptoJS.enc.Utf8);
-    if (tempPasswordValue.startsWith(VALUE_PREFIX)) {
-      tempPassword = tempPasswordValue.substring(VALUE_PREFIX.length);
-    }
-  }
-
-  if (encryptedConfirmPassword) {
-    const decryptedConfirmPassword = CryptoJS.AES.decrypt(encryptedConfirmPassword, kindaSecret, {
-      iv: iv,
-      padding: CryptoJS.pad.Pkcs7,
-      mode: CryptoJS.mode.CBC,
-      hasher: CryptoJS.algo.SHA256
-    })
-    const tempConfirmPasswordValue = decryptedConfirmPassword.toString(CryptoJS.enc.Utf8);
-    if (tempConfirmPasswordValue.startsWith(VALUE_PREFIX)) {
-      tempConfirmPassword = tempConfirmPasswordValue.substring(VALUE_PREFIX.length);
-    }
-  }
-
-  console.log('tempPassword:', tempPassword);
+  console.debug('CreatePasswordPage.getPasswordFromLocalStorage: tempPassword:', tempPassword);
   if (tempPassword) {
     password.value = tempPassword
     confirmPassword.value = tempConfirmPassword
@@ -214,11 +171,11 @@ async function getPasswordFromLocalStorage() {
 }
 
 onBeforeMount(() => {
-  console.log('onBeforeMount')
-  const current_page = window?.history?.state?.current?.split('#')[1] || localStorage?.getItem(storageKeys.CURRENT_PAGE)
-  console.log('current_page:', current_page);
-  if(current_page) localStorage?.setItem(storageKeys.CURRENT_PAGE, current_page)
-  getPasswordFromLocalStorage()
+  console.debug('CreatePasswordPage.onBeforeMount')
+  const current_page = window?.history?.state?.current?.split('#')[1] || windowStorage.getItem(windowStorage.CURRENT_PAGE);
+  console.debug('CreatePasswordPage.onBeforeMount: current_page:', current_page);
+  if(current_page) windowStorage.setItem(windowStorage.CURRENT_PAGE, current_page);
+  getPasswordFromLocalStorage();
 })
 </script>
 

@@ -40,7 +40,7 @@ import {
   NETWORK
  } from '~/config/index';
 
-import * as storageKeys from '~/config/storageKeys';
+import * as windowStorage from '~/libs/windowStorage';
 
 import Tab = browser.tabs.Tab;
 import {Exception} from "sass";
@@ -1773,7 +1773,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       if(tab?.id) {
         const [{result}] = await browser.scripting.executeScript({
           target: { tabId: tab?.id },
-          func: () =>window.localStorage.removeItem(storageKeys.PUBLIC_KEY),
+          func: () => window.localStorage.removeItem(windowStorage.PUBLIC_KEY),
           args: [],
         });
         if(result) return result;
@@ -1799,7 +1799,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       if(tab?.id) {
         const [{result}] = await browser.scripting.executeScript({
           target: { tabId: tab?.id },
-          func: () =>window.localStorage.getItem(storageKeys.PUBLIC_KEY),
+          func: () => window.localStorage.getItem(windowStorage.PUBLIC_KEY),
           args: [],
         });
         if(result) return result;
@@ -1825,7 +1825,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       if(tab?.id) {
         const [{result}] = await browser.scripting.executeScript({
           target: { tabId: tab?.id },
-          func: (a) =>window.localStorage.setItem(storageKeys.PUBLIC_KEY, a),
+          func: (a) => window.localStorage.setItem(windowStorage.PUBLIC_KEY, a),
           args: [myself.wallet.auth.key?.PubKey()],
         });
         if(result) return result;

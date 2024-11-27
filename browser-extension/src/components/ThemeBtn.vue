@@ -9,7 +9,7 @@ import { computed } from 'vue'
 import SunIcon from '~/components/Icons/SunIcon.vue'
 import MoonIcon from '~/components/Icons/MoonIcon.vue'
 import { isDark, mode } from '~/popup/modules/useTheme'
-import * as storageKeys from '~/config/storageKeys';
+import * as windowStorage from '~/libs/windowStorage';
 
 const comp = computed(() => {
   if (isDark.value) return SunIcon
@@ -18,8 +18,8 @@ const comp = computed(() => {
 
 function toggle() {
   mode.value = isDark.value ? 'light' : 'dark'
-  if (localStorage) {
-    localStorage?.setItem(storageKeys.DARK_THEME, isDark)
+  if (window.localStorage) {
+    windowStorage.setItem(windowStorage.DARK_THEME, isDark)
   }
 }
 </script>

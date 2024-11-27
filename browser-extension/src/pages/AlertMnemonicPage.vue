@@ -35,13 +35,16 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import * as storageKeys from '~/config/storageKeys';
+import * as windowStorage from '~/libs/windowStorage';
+
 const { back, push } = useRouter()
+
 async function GotIt() {
   push('/generate')
 }
+
 function goToBack(){
-  const passHasBeenSet = Boolean(localStorage?.getItem(storageKeys.PASSWORD_HAS_BEEN_SET))
+  const passHasBeenSet = Boolean(windowStorage.getItem(windowStorage.PASSWORD_HAS_BEEN_SET))
   if (passHasBeenSet) {
     return push('/start')
   }

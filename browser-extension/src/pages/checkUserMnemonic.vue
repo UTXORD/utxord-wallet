@@ -97,14 +97,14 @@ import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import {getRandom, saveGeneratedSeed, sendMessage} from '~/helpers/index'
 import * as bip39 from "~/config/bip39";
-import * as storageKeys from '~/config/storageKeys';
+import * as windowStorage from '~/libs/windowStorage';
 
 const { back, push } = useRouter()
 const { getFundAddress, getBalance, getNetWork } = useWallet()
 
 const flag_check = ref(false)
 const mnemonicLength = ref(
-  Number(localStorage?.getItem(storageKeys.MNEMONIC_LENGTH) || bip39.MNEMONIC_DEFAULT_LENGTH)
+  Number(windowStorage.getItem(windowStorage.MNEMONIC_LENGTH) || bip39.MNEMONIC_DEFAULT_LENGTH)
 )
 
 const errorMessage = ref('')
@@ -125,12 +125,14 @@ function inputWords(e){
 }
 
 function removeTempDataFromLocalStorage() {
-  localStorage.removeItem(storageKeys.MNEMONIC)
-  localStorage.removeItem(storageKeys.MNEMONIC_LENGTH)
-  localStorage.removeItem(storageKeys.PASSPHRASE)
-  localStorage.removeItem(storageKeys.MNEMONIC_LANGUAGE)
-  localStorage.removeItem(storageKeys.WORDS_COUNT)
-  localStorage.removeItem(storageKeys.ROW_POSITION)
+  windowStorage.removeItems([
+    windowStorage.MNEMONIC,
+    windowStorage.MNEMONIC_LENGTH,
+    windowStorage.PASSPHRASE,
+    windowStorage.MNEMONIC_LANGUAGE,
+    windowStorage.WORDS_COUNT,
+    windowStorage.ROW_POSITION
+  ]);
 }
 
 function isEmpty(){
@@ -141,9 +143,12 @@ function isEmpty(){
 }
 
 async function skip(){
-  const tempMnemonic = localStorage?.getItem(storageKeys.MNEMONIC)
-  const tempPassphrase = localStorage?.getItem(storageKeys.PASSPHRASE)
-  const tempLanguage = localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE)
+  const [tempLanguage, tempMnemonic, tempPassphrase] = windowStorage.getItems([
+      windowStorage.MNEMONIC_LANGUAGE,
+      windowStorage.MNEMONIC,
+      windowStorage.PASSPHRASE
+  ]);
+
   const success = await saveGeneratedSeed(tempMnemonic, tempPassphrase, tempLanguage);
   if (success === true) {
     const fundAddress = await getFundAddress()
@@ -154,18 +159,20 @@ async function skip(){
 }
 
 function userChallenge(){
-  const mnemonic = localStorage?.getItem(storageKeys.MNEMONIC)?.trim()?.split(' ') || []
+  const mnemonic = windowStorage.getItem(windowStorage.MNEMONIC)?.trim()?.split(' ') || []
   const dismap =  Array(mnemonic?.length).fill(true)
-  const count = localStorage?.getItem(storageKeys.WORDS_COUNT) || getRandom(3,4)
-  const row = localStorage?.getItem(storageKeys.ROW_POSITION)?.split(' ') || Array(count)
+  const count = windowStorage.getItem(windowStorage.WORDS_COUNT) || getRandom(3,4)
+  const row = windowStorage.getItem(windowStorage.ROW_POSITION)?.split(' ') || Array(count)
   for(let i = 0; i < count; i += 1){
     let index = row[i] || getRandom(1, mnemonic?.length -1)
     mnemonic[index] = ''
     dismap[index] = false
     row[i] = index
   }
-  localStorage?.setItem(storageKeys.WORDS_COUNT, count)
-  localStorage?.setItem(storageKeys.ROW_POSITION, row.join(' '))
+  windowStorage.setItems({
+    [windowStorage.WORDS_COUNT]: count,
+    [windowStorage.ROW_POSITION]: row.join(' ')
+  });
 
   return {
   list: mnemonic,
@@ -174,9 +181,11 @@ function userChallenge(){
 }
 
 async function Check() {
-  const tempMnemonic = localStorage?.getItem(storageKeys.MNEMONIC)
-  const tempPassphrase = localStorage?.getItem(storageKeys.PASSPHRASE)
-  const tempLanguage = localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE)
+  const [tempLanguage, tempMnemonic, tempPassphrase] = windowStorage.getItems([
+      windowStorage.MNEMONIC_LANGUAGE,
+      windowStorage.MNEMONIC,
+      windowStorage.PASSPHRASE
+  ]);
   const mnemonic = list.value.join(' ').trim()
   if (mnemonic === tempMnemonic) {
     const success = await saveGeneratedSeed(tempMnemonic, tempPassphrase, tempLanguage);
@@ -196,7 +205,7 @@ async function Check() {
 
 }
 function goToBack(){
-  const passHasBeenSet = Boolean(localStorage?.getItem(storageKeys.PASSWORD_HAS_BEEN_SET))
+  const passHasBeenSet = Boolean(windowStorage.getItem(windowStorage.PASSWORD_HAS_BEEN_SET));
   if (passHasBeenSet) {
     return push('/generate')
   }

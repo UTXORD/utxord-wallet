@@ -181,7 +181,7 @@ import {isASCII, isMnemonicValid, saveGeneratedSeed, sendMessage} from '~/helper
 import useWallet from '~/popup/modules/useWallet'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 import * as bip39 from "~/config/bip39";
-import * as storageKeys from '~/config/storageKeys';
+import * as windowStorage from '~/libs/windowStorage';
 
 const { back, push } = useRouter()
 
@@ -192,20 +192,20 @@ const textarea = ref('')
 const picked = ref('list')
 
 const usePassphrase = ref(
-  Boolean(localStorage?.getItem(storageKeys.PASSPHRASE)) || false
+  Boolean(windowStorage.getItem(windowStorage.PASSPHRASE) || false)
 )
 
 const passphrase = ref(
-  localStorage?.getItem(storageKeys.PASSPHRASE) || ''
+  windowStorage.getItem(windowStorage.PASSPHRASE) || ''
 )
 const list = ref(
-  localStorage?.getItem(storageKeys.MNEMONIC)?.trim()?.split(' ') || []
+  windowStorage.getItem(windowStorage.MNEMONIC)?.trim()?.split(' ') || []
 )
 const mnemonicLength = ref(
-  Number(localStorage?.getItem(storageKeys.MNEMONIC_LENGTH) || bip39.MNEMONIC_DEFAULT_LENGTH)
+  Number(windowStorage.getItem(windowStorage.MNEMONIC_LENGTH) || bip39.MNEMONIC_DEFAULT_LENGTH)
 )
 const mnemonicLanguage = ref(
-  String(localStorage?.getItem(storageKeys.MNEMONIC_LANGUAGE) || bip39.MNEMONIC_DEFAULT_LANGUAGE)
+  String(windowStorage.getItem(windowStorage.MNEMONIC_LANGUAGE) || bip39.MNEMONIC_DEFAULT_LANGUAGE)
 )
 const showInfo = ref(false)
 
@@ -266,17 +266,21 @@ async function inputWords(e) {
 }
 
 function saveTempDataToLocalStorage(){
-  localStorage?.setItem(storageKeys.MNEMONIC_LANGUAGE, mnemonicLength.value)
-  localStorage?.setItem(storageKeys.MNEMONIC_LENGTH, mnemonicLength.value)
-  localStorage?.setItem(storageKeys.MNEMONIC, list.value.join(' '))
-  localStorage?.setItem(storageKeys.PASSPHRASE, passphrase.value)
+  windowStorage.setItems({
+    [windowStorage.MNEMONIC_LANGUAGE]: mnemonicLanguage.value,
+    [windowStorage.MNEMONIC_LENGTH]: mnemonicLength.value,
+    [windowStorage.MNEMONIC]: list.value.join(' '),
+    [windowStorage.PASSPHRASE]: passphrase.value
+  });
 }
 
 function removeTempDataFromLocalStorage() {
-  localStorage?.removeItem(storageKeys.MNEMONIC_LANGUAGE)
-  localStorage?.removeItem(storageKeys.MNEMONIC_LENGTH)
-  localStorage?.removeItem(storageKeys.MNEMONIC)
-  localStorage?.removeItem(storageKeys.PASSPHRASE)
+  windowStorage.removeItems([
+      windowStorage.MNEMONIC_LANGUAGE,
+      windowStorage.MNEMONIC_LENGTH,
+      windowStorage.MNEMONIC,
+      windowStorage.PASSPHRASE
+  ]);
 }
 
 function viewShowInfo(){
@@ -285,7 +289,7 @@ function viewShowInfo(){
 }
 
 async function onStore() {
-  localStorage?.setItem(storageKeys.MNEMONIC, textarea.value.replace(/\s\s+/g, ' ').trim())
+  windowStorage.setItem(windowStorage.MNEMONIC, textarea.value.replace(/\s\s+/g, ' ').trim());
   const generated = await saveGeneratedSeed(
       textarea.value.replace(/\s\s+/g, ' ').trim(),
       passphrase.value,
@@ -300,7 +304,7 @@ async function onStore() {
 }
 
 function goToBack(){
-  const passHasBeenSet = Boolean(localStorage?.getItem(storageKeys.PASSWORD_HAS_BEEN_SET))
+  const passHasBeenSet = Boolean(windowStorage.getItem(windowStorage.PASSWORD_HAS_BEEN_SET));
   removeTempDataFromLocalStorage()
   if (passHasBeenSet) {
     return push('/start')
