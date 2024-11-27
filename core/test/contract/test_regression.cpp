@@ -10,6 +10,7 @@
 #include "util/translation.h"
 
 #include "simple_transaction.hpp"
+#include "create_inscription.hpp"
 
 using namespace l15;
 using namespace l15::core;
@@ -77,6 +78,18 @@ TEST_CASE("regression")
 
             std::string contract_string2;
             CHECK_NOTHROW( contract_string2 = contract.Serialize(json["params"]["protocol_version"], SimpleTransaction::ParsePhase(json["params"]["phase"])) );
+
+            auto json2 = nlohmann::json::parse(contract_string2);
+
+            CHECK(json == json2);
+        }
+        else if (json["contract_type"] == "CreateInscription") {
+            CreateInscriptionBuilder contract(REGTEST, json["params"]["phase"].get<std::string>().starts_with("LAZY") ? LAZY_INSCRIPTION : INSCRIPTION);
+
+            CHECK_NOTHROW(contract.Deserialize(contract_string, CreateInscriptionBuilder::ParsePhase(json["params"]["phase"])));
+
+            std::string contract_string2;
+            CHECK_NOTHROW( contract_string2 = contract.Serialize(json["params"]["protocol_version"], CreateInscriptionBuilder::ParsePhase(json["params"]["phase"])) );
 
             auto json2 = nlohmann::json::parse(contract_string2);
 

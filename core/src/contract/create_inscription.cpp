@@ -21,6 +21,11 @@ namespace {
 
 const std::string val_create_inscription("CreateInscription");
 
+const char* MARKET_TERMS_STR = "MARKET_TERMS";
+const char* LAZY_INSCRIPTION_MARKET_TERMS_STR = "LAZY_INSCRIPTION_MARKET_TERMS";
+const char* LAZY_INSCRIPTION_SIGNATURE_STR = "LAZY_INSCRIPTION_SIGNATURE";
+const char* INSCRIPTION_SIGNATURE_STR = "INSCRIPTION_SIGNATURE";
+
 }
 
 const uint32_t CreateInscriptionBuilder::s_protocol_version = 12;
@@ -51,6 +56,29 @@ const std::string CreateInscriptionBuilder::name_destination_addr = "destination
 const std::string CreateInscriptionBuilder::name_author_fee = "author_fee";
 const std::string CreateInscriptionBuilder::name_fixed_change = "fixed_change";
 
+const char * CreateInscriptionBuilder::PhaseString(InscribePhase phase)
+{
+    switch (phase) {
+    case MARKET_TERMS:
+        return MARKET_TERMS_STR;
+    case LAZY_INSCRIPTION_MARKET_TERMS:
+        return LAZY_INSCRIPTION_MARKET_TERMS_STR;
+    case LAZY_INSCRIPTION_SIGNATURE:
+        return LAZY_INSCRIPTION_SIGNATURE_STR;
+    case INSCRIPTION_SIGNATURE:
+        return INSCRIPTION_SIGNATURE_STR;
+    }
+    throw ContractTermWrongValue("InscribePhase: " + std::to_string(phase));
+}
+
+InscribePhase CreateInscriptionBuilder::ParsePhase(const std::string& str)
+{
+    if (str == MARKET_TERMS_STR) return MARKET_TERMS;
+    if (str == LAZY_INSCRIPTION_MARKET_TERMS_STR) return LAZY_INSCRIPTION_MARKET_TERMS;
+    if (str == LAZY_INSCRIPTION_SIGNATURE_STR) return LAZY_INSCRIPTION_SIGNATURE;
+    if (str == INSCRIPTION_SIGNATURE_STR) return INSCRIPTION_SIGNATURE;
+    throw ContractTermWrongValue(std::string(str));
+}
 
 const std::string& CreateInscriptionBuilder::GetContractName() const
 { return val_create_inscription; }
@@ -384,7 +412,7 @@ void CreateInscriptionBuilder::CheckContractTerms(uint32_t version, InscribePhas
     }
 }
 
-UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePhase phase) const
+UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, InscribePhase phase) const
 {
     if (version != s_protocol_version &&
         version != s_protocol_version_no_p2address &&
@@ -395,6 +423,7 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, utxord::InscribePh
 
     UniValue contract(UniValue::VOBJ);
     contract.pushKV(name_version, version);
+    contract.pushKV(name_contract_phase, PhaseString(phase));
 
     switch (phase) {
     case INSCRIPTION_SIGNATURE:
