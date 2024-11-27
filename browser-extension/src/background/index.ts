@@ -927,7 +927,8 @@ interface ICollectionTransferResult {
     });
 
     onMessage(POPUP_HEARTBEAT, async (payload) => {
-      console.log('POPUP_HEARTBEAT->run')
+      console.log('POPUP_HEARTBEAT->run');
+      checkMessage();
           Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG).reset();
           Scheduler.getInstance().activate();
       return true;
@@ -951,11 +952,8 @@ interface ICollectionTransferResult {
       return true;
     });
 
-    browser.runtime.onConnect.addListener(port => {
-      port.onDisconnect.addListener(() => {})
-    })
 
-    browser.runtime.onMessageExternal.addListener(async (payload, sender) => {
+    async function siteMessage (payload, sender){
 
           let tabId = sender?.tab?.id;
           if (typeof payload?.data === 'object' && payload?.data !== null) {
@@ -1073,7 +1071,7 @@ interface ICollectionTransferResult {
               }
               return data;
             }
-  
+
             function _prepareInscriptionForPopup(data: object) {
               // console.debug('_prepareInscriptionForPopup data:', {...data || {}});
               data.market_fee = data.platform_fee || 0;  // total platform/market fee
@@ -1269,11 +1267,52 @@ interface ICollectionTransferResult {
             }
           }
 
-    });
+    }
+
+  browser.runtime.onMessageExternal.addListener(siteMessage);
+
+
+    async function checkMessage(){
+      const base_url = BASE_URL_PATTERN.replace('*', '');
+      const tabs = await browser.tabs.query({ currentWindow: true });
+      for (let tab of tabs) {
+        const url = tab?.url || tab?.pendingUrl;
+        if(tab?.id &&
+           url?.startsWith(base_url) &&
+           !url?.startsWith('about:') &&
+           !url?.startsWith('browser-extension://') &&
+           !url?.startsWith('chrome://')) {
+             console.log('executeScript->',url)
+          const [{result}] = await browser.scripting.executeScript({
+            target: { tabId: tab?.id },
+            func: () => {
+              const out = window.localStorage.getItem('MESSAGE_FROM_WEB');
+              window.localStorage.removeItem('MESSAGE_FROM_WEB');
+              return out;
+            },
+            args: [],
+          });
+          console.log('tab->',url,'|result:',result);
+          if(result){
+            const queue  = JSON.parse(result);
+            for(let q of queue){
+              await siteMessage (q, {'tab': tab});
+            }
+            // await browser.scripting.executeScript({
+            //   target: { tabId: tab?.id },
+            //   func: () =>,
+            //   args: [],
+            // });
+          }
+
+        }
+      }
+    }
 
     // SET PLUGIN ID TO WEB PAGE
     async function sendhello(tabId: number | undefined = undefined) {
-      // console.log('sendhello->run')
+       console.log('sendhello->run')
+       checkMessage();
       helloSite(tabId);
       const versions = await Api.getSupportedVersions();
       await Api.sendMessageToWebPage(PLUGIN_SUPPORTED_VERSIONS, versions, tabId);

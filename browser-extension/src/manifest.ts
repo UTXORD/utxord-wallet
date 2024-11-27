@@ -20,6 +20,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     break;
   case '_qa':
     permissions = [
+      'http://localhost:9000/*',
       'https://qa.utxord.com/*',
       'https://api.qa.utxord.com/*',
       'https://sntry.utxord.com/*',
@@ -82,6 +83,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
       //   extension_pages: `script-src 'self' moz-extension: blob: filesystem: 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline';script-src-elem 'self' moz-extension: blob: filesystem: 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline';`,
       // }
     }
+    //manifest.permissions.push('*://developer.mozilla.org/*');
   }
   if(BROWSER === 'chrome'){
     manifest.background = {
