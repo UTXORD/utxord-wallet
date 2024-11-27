@@ -119,6 +119,9 @@ public:
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
 
+    static const char* PhaseString(InscribePhase phase);
+    static InscribePhase ParsePhase(const std::string& p);
+
     const std::string& GetContractName() const override;
     uint32_t GetVersion() const override { return s_protocol_version; }
     UniValue MakeJson(uint32_t version, InscribePhase phase) const override;
