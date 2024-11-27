@@ -1,7 +1,6 @@
 import { sendMessage } from '~/helpers/index'
 import { BASE_URL_PATTERN } from '~/config/index'
 document.addEventListener('MESSAGE_FROM_WEB', (async (event: CustomEvent) => {
-  console.log('MESSAGE_FROM_WEB:',event);
   if (event.target?.location.origin !== window.location.origin) return;
 
   const customEvent = event as CustomEvent;
