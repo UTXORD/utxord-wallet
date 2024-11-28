@@ -597,6 +597,89 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
     w->confirm(1, revealTx.GetHash().GetHex());
 }
 
+TEST_CASE("legacy_addr_out")
+{
+    string addr = w->p2tr(0,0,1);
+
+    fee_rate = 1000;
+
+    std::string content_type = "image/svg+xml";
+
+    const char* svg =
+R"(<?xml version="1.0" encoding="utf-8"?><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 175 175">
+<path style="fill:#777777;" d="M129,151l-11.7-6.6l-7.2-12l-2.8-5.3l-12.4-13l-0.15,11.7l0.5,2.3l1.2,11.3l-8.3,11l-10.9-3.7l-5.9-9.6l-13-27.8l-3.3-3.9l-4.5,3.6l-0.4,4.6l-0.1,3.1l-5,7l-6.8-3.1l-2.3-6.7l-5.3-28.1l-2.4-6.4l-3.1-1.5l-2,0.7l-1.4,4.4l-2.8,5.9l-5.6-1.5
+l-2.3-4.8l-2.8-15.8l7.6-14.2l15.1-0.4l8.6,4.2l4.6,2.4l12.5,0.7l3.5-10.5l0.1-1.5l0.1-1.2l0.6-4l13.7-13.3l15.7,12.1l0.3,0.5l11.4,11l16.5-5.5l4-3.6l11.2-8.4l18.3,0.1l11.8,14l-3.7,11.6l-8.4-0.6l-5.1-1.2l-5.6,2.9l-2.5,9.7l9.7,15.2l8.2,14
+l-3.4,9.3l-6.6,2.3l-7.4-4.9l-2-2l-6.2-2.1l-2.2,1.4l0.6,5.9l6.8,17.2l2.9,11.6l-5.9,10.5zM94,112l0.3,0l14.3,14.2l2.8,5.4l7,11.7l13.1,5.2l4.7-8.7l-2.8-10.8l-6.8-17.2l0.4-7.6l3.6-2.4l7.8,2.6l2.1,2l6.3,4.3l4.9-1.7l2.8-7.7l-7.6-13l-10.2-16.2
+l3-11.3l7.2-3.6l5.8,1.3l6.9,0.7l2.6-9.3l-10.7-12.7l-16.6-0.1l-10.65,8l-4,3.7l-18.4,5.9l-12.4-11.9l-0.3-0.5l-14-11.2l-11.8,11.8l-0.6,3.6l-0.1,1.2l-0.1,1.5l-4.3,12l-14.6-0.5l-4.7-2.5l-8.3-4l-13.4,0.2l-6.6,12.5l2.8,15.1l1.9,4.1l3.3,1
+l1.7-4.3l2-5.6l3.5-1.2l4.6,2.2l2.9,7.3l5.3,28l2,6l4.7,2.3l3.4-5.7l0.1-3l0.5-5l7-5l4.6,5l13,27.8l5.5,9l9,3l6.8-9.3l-1-10.7l-0.5-2.3l0.7-13.8zM81,42c1.4,1,2,2.5,1.3,3.4c-0.65,1-2.3,1-3.7-0.07c-1.4-1-2-2.5-1.3-3.4zM73,47c-1,2.2-3.2,3.5-4.7,2.7
+c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
+
+    auto content = bytevector(svg, svg + strlen(svg));
+
+    std::string destination_addr = w->btc().GetNewAddress("", "p2sh-segwit");
+
+    CreateInscriptionBuilder builder_terms(w->chain(), INSCRIPTION);
+    CHECK_NOTHROW(builder_terms.MarketFee(1000, destination_addr));
+    CHECK_NOTHROW(builder_terms.AddCustomFee(1000, destination_addr));
+
+    std::string market_terms;
+    REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(12, MARKET_TERMS));
+
+    CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
+    REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
+
+    REQUIRE_NOTHROW(builder.OrdOutput(546, destination_addr));
+    REQUIRE_NOTHROW(builder.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(builder.Data(content_type, content));
+    CHECK_NOTHROW(builder.AuthorFee(1000, destination_addr));
+    CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
+    CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86, 4, 0, 0).GetSchnorrKeyPair().GetPubKey()));
+    CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86, 3, 0, 0).GetSchnorrKeyPair().GetPubKey()));
+
+    CAmount min_fund = builder.GetMinFundingAmount("");
+    REQUIRE_NOTHROW(builder.AddInput(w->fund(/*min_fund*/10000, addr)));
+
+    stringvector rawtxs0;
+    CHECK_NOTHROW(rawtxs0 = builder.RawTransactions());
+
+    CMutableTransaction commitTx0, revealTx0;
+
+    REQUIRE(DecodeHexTx(commitTx0, rawtxs0[0]));
+    REQUIRE(DecodeHexTx(revealTx0, rawtxs0[1]));
+
+    std::clog << "Commit0: ========================" << std::endl;
+    LogTx(w->chain(), commitTx0);
+    std::clog << "Genesis0: ========================" << std::endl;
+    LogTx(w->chain(), revealTx0);
+    std::clog << "========================" << std::endl;
+
+    REQUIRE_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+    REQUIRE_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
+
+    std::string contract = builder.Serialize(12, INSCRIPTION_SIGNATURE);
+    std::clog << "Contract JSON: " << contract << std::endl;
+
+    CreateInscriptionBuilder builder2(w->chain(), INSCRIPTION);
+    builder2.Deserialize(contract, INSCRIPTION_SIGNATURE);
+
+    stringvector rawtxs;
+    CHECK_NOTHROW(rawtxs = builder2.RawTransactions());
+
+    CMutableTransaction commitTx, revealTx;
+
+    REQUIRE(rawtxs.size() == 2);
+
+    REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
+    REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
+
+    CHECK(revealTx.vout[0].nValue == 546);
+
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+
+    w->confirm(1, revealTx.GetHash().GetHex());
+}
+
 struct EtchParams
 {
     uint128_t amount_per_mint;
