@@ -1,20 +1,28 @@
-import { onMessage, sendMessage } from 'webext-bridge'
+import { sendMessage } from '~/helpers/index'
+import { BASE_URL_PATTERN } from '~/config/index'
+document.addEventListener('MESSAGE_FROM_WEB', (async (event: CustomEvent) => {
+  if (event.target?.location.origin !== window.location.origin) return;
 
-// communication example: send previous tab title from background page
-onMessage('tab-prev', ({ data }) => {
-  console.log(`[browser-ext-mv3-starter] Navigate from page '${data.title}'`)
-})
+  const customEvent = event as CustomEvent;
+  const message = customEvent.detail;
 
-// Handle messages from the page
-window.addEventListener('message', async (event) => {
-  // Check that the message is coming from the same page (not from third-party scripts)
-  if (event.origin !== window.location.origin) return;
+  sendMessage(message.type, message.data, 'background');
 
-  // Check the message is from the page
-  if (event.data && event.data.from === 'MESSAGE_FROM_WEB') {
-    // Send message to Background Script
-    sendMessage(event.data.type, event.data.payload, 'background');
-  } else {
-    console.warn(`Unallowed message from ${event.data.from}, type: ${event.data.type}`);
+  const base_url = BASE_URL_PATTERN.replace('*', '');
+  const tabs = await browser.tabs.query({ currentWindow: true });
+  for (let tab of tabs) {
+    const url = tab?.url || tab?.pendingUrl;
+    if(tab?.id &&
+       url?.startsWith(base_url) &&
+       !url?.startsWith('about:') &&
+       !url?.startsWith('browser-extension://') &&
+       !url?.startsWith('chrome://')) {
+      await browser.scripting.executeScript({
+        target: { tabId: tab?.id },
+        func: () =>window.localStorage.removeItem('MESSAGE_FROM_WEB'),
+        args: [],
+      });
+    }
   }
-});
+
+}) as EventListener);

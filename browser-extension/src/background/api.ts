@@ -1834,9 +1834,12 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
   async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
     const myself = this;
     const base_url = BASE_URL_PATTERN.replace('*', '');
-
+    if(!args){
+      console.warn('sendMessageToWebPage-> error no args:', args,'type:', type);
+      return null;
+    }
     let tabs: Tab[];
-    if (tabId != null) {
+    if (tabId !== undefined) {
       tabs = [await browser.tabs.get(tabId)]
     } else {
       tabs = await browser.tabs.query({
@@ -1844,18 +1847,18 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         url: BASE_URL_PATTERN,
       });
     }
-    if(!args){
-      console.warn('sendMessageToWebPage-> error no args:', args,'type:', type);
-      return null;
-    }
     if (1 < tabs.length) {
       console.warn(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with tdbId: ${tabId}`);
     }
+    if (tabs.length === 0) {
+      tabs = await browser.tabs.query({ currentWindow: true });
+    }
+
     if(!await this.fetchTimeSystem()){
       return null;
     }
     for (let tab of tabs) {
-      const url = tab.url || tab.pendingUrl;
+      const url = tab?.url || tab?.pendingUrl;
       if(tab?.id &&
          url?.startsWith(base_url) &&
          !url?.startsWith('browser-extension://') &&
@@ -1863,7 +1866,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         await browser.scripting.executeScript({
           target: { tabId: tab?.id },
           func: function (t, a) {
-            window.postMessage({ type: t, payload: a, from: 'MESSAGE_FROM_PLUGIN' })
+            window.postMessage({ type: t, payload: a })
           },
           args: [type, args],
         });
