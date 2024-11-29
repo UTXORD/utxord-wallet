@@ -164,6 +164,9 @@ public:
 
     bytevector Commit() const;
 
+    const char* Type() const override
+    { return type; }
+
     void Amount(CAmount amount) override { m_amount = amount; }
     CAmount Amount() const final { return m_amount; }
 
