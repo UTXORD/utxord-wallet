@@ -84,7 +84,8 @@ import {
 import LoadingPage from '~/pages/LoadingPage.vue'
 import CustomInput from '~/components/CustomInput.vue'
 import Modal from '~/components/Modal.vue'
-import { isASCII, sendMessage } from '~/helpers/index'
+import { isASCII } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import {useRouter} from "vue-router";
 
 const { back, push } = useRouter()
