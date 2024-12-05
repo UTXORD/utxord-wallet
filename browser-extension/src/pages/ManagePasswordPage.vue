@@ -79,7 +79,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII, isLength, isContains, sendMessage } from '~/helpers/index'
+import { isASCII, isLength, isContains } from '~/helpers/index'
+import {sendMessage } from '~/helpers/messenger'
 
 const { back, push } = useRouter()
 

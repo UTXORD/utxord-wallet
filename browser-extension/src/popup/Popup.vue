@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import browser from 'webextension-polyfill'
-import { sendMessage } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import { onMessage } from 'webext-bridge'
 import { onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'

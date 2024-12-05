@@ -34,7 +34,7 @@
             tabindex="-1"
           />
         </div>
-        
+
         <div class="flex items-center mb-2" v-if="picked == 'list'">
           <span class="w-full text-[var(--text-grey-color)]">Phrase’s length:</span>
           <Dropdown
@@ -45,7 +45,7 @@
             tabindex="-1"
           />
         </div>
-        
+
         <CustomInput
           v-if="picked == 'line'"
           @change="inputWords"
@@ -178,7 +178,8 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { SET_UP_PASSWORD } from '~/config/events'
-import {isASCII, isMnemonicValid, saveGeneratedSeed, sendMessage} from '~/helpers/index'
+import {isASCII, isMnemonicValid, saveGeneratedSeed} from '~/helpers/index'
+import { sendMessag } from '~/helpers/messenger'
 import useWallet from '~/popup/modules/useWallet'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 import * as bip39 from "~/config/bip39";

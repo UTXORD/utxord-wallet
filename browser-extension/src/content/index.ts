@@ -1,4 +1,4 @@
-import { sendMessage } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import { BASE_URL_PATTERN } from '~/config/index'
 document.addEventListener('MESSAGE_FROM_WEB', (async (event: CustomEvent) => {
   if (event.target?.location.origin !== window.location.origin) return;

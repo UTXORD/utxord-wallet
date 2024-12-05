@@ -85,7 +85,8 @@ import { useRouter } from 'vue-router'
 import { SET_UP_PASSWORD } from '~/config/events'
 import CustomInput from '~/components/CustomInput.vue'
 
-import { isASCII, isLength, isContains, sendMessage } from '~/helpers/index'
+import { isASCII, isLength, isContains } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 
 const { back, push } = useRouter()
 
