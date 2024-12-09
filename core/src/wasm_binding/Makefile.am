@@ -10,6 +10,7 @@ AM_CPPFLAGS = -DWASM -DWASM_MODULE \
  -I$(top_srcdir)/l15/node/src/secp256k1/include \
  -I$(top_srcdir)/l15/node/src/univalue/include \
  -I$(top_srcdir)/l15/node/src/consensus \
+ -I$(top_srcdir)/l15/node/src/crypto \
  -I$(top_srcdir)/l15/node/src/policy \
  -I$(top_srcdir)/l15/node/src/script \
  -I$(top_srcdir)/l15/node/src/support

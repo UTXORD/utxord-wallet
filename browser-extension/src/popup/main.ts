@@ -25,8 +25,8 @@ import {
  } from '~/config/index';
  import {version} from '~/../package.json';
  import { STATUS_VIEW_MODE  } from '~/config/events';
- import { sendMessage } from '~/helpers/index'
-
+ import { sendMessage } from '~/helpers/messenger'
+ import browser from 'webextension-polyfill';
 
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
@@ -34,10 +34,12 @@ pinia.use(piniaPluginPersistedstate)
 const app = createApp(App)
 
 async function ViewMode() {
-  const res = await sendMessage(STATUS_VIEW_MODE, {}, 'background')
-  chrome.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: res.viewMode })
-    .catch((error) => console.error(error));
+  if(browser?.sidePanel){
+    const res = await sendMessage(STATUS_VIEW_MODE, {}, 'background')
+    browser.sidePanel
+      .setPanelBehavior({ openPanelOnActionClick: res.viewMode })
+      .catch((error) => console.error(error));
+  }
 }
 ViewMode();
 

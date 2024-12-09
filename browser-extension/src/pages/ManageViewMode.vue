@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import { toRefs} from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '~/popup/store/index'

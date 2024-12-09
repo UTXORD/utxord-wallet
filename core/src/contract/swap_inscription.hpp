@@ -2,7 +2,6 @@
 
 #include <string>
 #include <optional>
-#include <list>
 
 #include "script_merkle_tree.hpp"
 

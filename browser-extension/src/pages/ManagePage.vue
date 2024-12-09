@@ -38,13 +38,8 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-
+import { detectBrowser } from '~/helpers/index'
 const LINKS = [
-  {
-    label: 'Panel Setup',
-    link: '/view-mode',
-    testId: 'view-mode'
-  },
   {
     label: 'Manage Address',
     link: '/manage-address',
@@ -62,6 +57,13 @@ const LINKS = [
   }
 ]
 
+if(detectBrowser() !== 'Firefox'){
+  LINKS.push({
+      label: 'Panel Setup',
+      link: '/view-mode',
+      testId: 'view-mode'
+    })
+}
 const { back, push } = useRouter()
 </script>
 

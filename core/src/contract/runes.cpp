@@ -358,7 +358,7 @@ bytevector RuneStone::Pack() const
 
     if (res.size() > 80) {
         std::ostringstream errbuf;
-        errbuf << RuneStoneDestination::type << " is too large: " + res.size();
+        errbuf << RuneStoneDestination::type << " is too large: " << res.size();
         throw ContractTermWrongValue(errbuf.str());
     }
 

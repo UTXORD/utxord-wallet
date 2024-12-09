@@ -16,16 +16,19 @@ namespace utxord {
 
 namespace {
 
-opcodetype GetNextScriptData(const CScript &script, CScript::const_iterator &it, bytevector &data, const std::string& errtag)
+opcodetype GetNextScriptData(const CScript &script, CScript::const_iterator &it, bytevector &data, const std::string& errtag, bool force_push = false)
 {
     opcodetype opcode;
     if (it < script.end()) {
-        if (!script.GetOp(it, opcode, data))
-            throw InscriptionFormatError(std::string(errtag));
+        if (script.GetOp(it, opcode, data)) {
+            if (force_push && opcode > OP_PUSHDATA4) {
+                if (opcode == OP_ENDIF) throw EnvelopeEnd();
+                throw InscriptionFormatError("Wrong OP_CODE: " + GetOpName(opcode));
+            }
+        }
+        else throw InscriptionFormatError(std::string(errtag));
     }
-    else {
-        throw InscriptionFormatError(std::string(errtag));
-    }
+    else throw InscriptionFormatError(std::string(errtag));
 
     return opcode;
 }
@@ -96,61 +99,62 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
             data == ORD_TAG);
     }
 
+    if (!has_ord_envelope) throw TransactionError("No inscription");
+
     bool fetching_content = false;
 
     while (it < end) {
-        opcode = GetNextScriptData(script, it, data, "inscription envelope");
+        try {
+            opcode = GetNextScriptData(script, it, data, "inscription envelope", fetching_content);
 
-        if (opcode == CONTENT_OP_TAG) {
-            if (!fetching_content && !content.empty()) content.clear();
-            fetching_content = true;
-        }
-        else if (opcode == CONTENT_TYPE_OP_TAG || (opcode == CONTENT_TYPE_TAG.size() && data == CONTENT_TYPE_TAG)) {
-            GetNextScriptData(script, it, data, "content type");
-            res.emplace_back(CONTENT_TYPE_TAG, move(data));
-            fetching_content = false;
-        }
-        else if (opcode == ORD_SHIFT_OP_TAG || (opcode == ORD_SHIFT_TAG.size() && data == ORD_SHIFT_TAG)) {
-            GetNextScriptData(script, it, data, "ord shift");
-            res.emplace_back(ORD_SHIFT_TAG, move(data));
-            fetching_content = false;
-        }
-        else if (opcode == COLLECTION_ID_OP_TAG || (opcode == COLLECTION_ID_TAG.size() && data == COLLECTION_ID_TAG)) {
-            GetNextScriptData(script, it, data, "collection id");
-            res.emplace_back(COLLECTION_ID_TAG, move(data));
-            fetching_content = false;
-        }
-        else if (opcode == METADATA_OP_TAG || (opcode == METADATA_TAG.size() && data == METADATA_TAG)) {
-            GetNextScriptData(script, it, data, "meta-data");
-            res.emplace_back(METADATA_TAG, move(data));
-            fetching_content = false;
-        }
-        else if (opcode == CONTENT_ENCODING_OP_TAG || (opcode == CONTENT_ENCODING_TAG.size() && data == CONTENT_ENCODING_TAG)) {
-            GetNextScriptData(script, it, data, "content encoding");
-            res.emplace_back(CONTENT_ENCODING_TAG, move(data));
-            fetching_content = false;
-        }
-        else if (opcode == DELEGATE_ID_OP_TAG || (opcode == DELEGATE_ID_TAG.size() && data == DELEGATE_ID_TAG)) {
-            GetNextScriptData(script, it, data, "delegate id");
-            res.emplace_back(DELEGATE_ID_TAG, move(data));
-            fetching_content = false;
-        }
-        else if (opcode == OP_ENDIF) {
-            if (!content.empty()) {
-                res.emplace_back(CONTENT_TAG, move(content));
+            if (opcode == OP_ENDIF) {
+                break;
             }
-            break;
+            if (fetching_content) {
+                content.insert(content.end(), data.begin(), data.end());
+            }
+            else if (opcode == CONTENT_OP_TAG) {
+                content.clear();
+                fetching_content = true;
+            }
+            else if (opcode == CONTENT_TYPE_OP_TAG || (opcode == CONTENT_TYPE_TAG.size() && data == CONTENT_TYPE_TAG)) {
+                GetNextScriptData(script, it, data, "content type", true);
+                res.emplace_back(CONTENT_TYPE_TAG, move(data));
+            }
+            else if (opcode == ORD_SHIFT_OP_TAG || (opcode == ORD_SHIFT_TAG.size() && data == ORD_SHIFT_TAG)) {
+                GetNextScriptData(script, it, data, "ord shift", true);
+                res.emplace_back(ORD_SHIFT_TAG, move(data));
+            }
+            else if (opcode == COLLECTION_ID_OP_TAG || (opcode == COLLECTION_ID_TAG.size() && data == COLLECTION_ID_TAG)) {
+                GetNextScriptData(script, it, data, "collection id", true);
+                res.emplace_back(COLLECTION_ID_TAG, move(data));
+            }
+            else if (opcode == METADATA_OP_TAG || (opcode == METADATA_TAG.size() && data == METADATA_TAG)) {
+                GetNextScriptData(script, it, data, "meta-data", true);
+                res.emplace_back(METADATA_TAG, move(data));
+            }
+            else if (opcode == CONTENT_ENCODING_OP_TAG || (opcode == CONTENT_ENCODING_TAG.size() && data == CONTENT_ENCODING_TAG)) {
+                GetNextScriptData(script, it, data, "content encoding", true);
+                res.emplace_back(CONTENT_ENCODING_TAG, move(data));
+            }
+            else if (opcode == DELEGATE_ID_OP_TAG || (opcode == DELEGATE_ID_TAG.size() && data == DELEGATE_ID_TAG)) {
+                GetNextScriptData(script, it, data, "delegate id", true);
+                res.emplace_back(DELEGATE_ID_TAG, move(data));
+            }
+            else {
+                bytevector tag = data.empty() ? bytevector{(uint8_t)opcode} : move(data);
+                GetNextScriptData(script, it, data, "unknown tag", true);
+                res.emplace_back(move(tag), move(data));
+            }
         }
-        else if (fetching_content) {
-            content.insert(content.end(), data.begin(), data.end());
-        }
-        else {
-            bytevector tag = data.empty() ? bytevector{(uint8_t)opcode} : move(data);
-            GetNextScriptData(script, it, data, "unknown tag");
-            res.emplace_back(move(tag), move(data));
-            fetching_content = false;
-        }
+        catch (EnvelopeEnd&) {break;}
+        catch (...) { }
     }
+
+    if (!content.empty()) {
+        res.emplace_back(CONTENT_TAG, move(content));
+    }
+
     return res;
 }
 
@@ -169,8 +173,10 @@ std::list<Inscription> ParseInscriptions(const string &hex_tx)
         CScript::const_iterator it = script.begin();
 
         while (it != script.end()) {
-            auto envelope_tags = ParseEnvelopeScript(script, it);
-            res.emplace_back(move((tx.GetHash().GetHex() + "i") += std::to_string(res.size())), move(envelope_tags));
+            try {
+                auto envelope_tags = ParseEnvelopeScript(script, it);
+                res.emplace_back(move((tx.GetHash().GetHex() + "i") += std::to_string(res.size())), move(envelope_tags));
+            } catch(...) { /*Ignore errors but skip adding inscription*/}
         }
     }
 
