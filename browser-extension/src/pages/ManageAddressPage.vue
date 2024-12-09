@@ -91,7 +91,8 @@
 <script setup lang="ts">
 import { computed, ref, toRefs} from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII, sendMessage } from '~/helpers/index'
+import { isASCII } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import { useStore } from '~/popup/store/index'
 import {BALANCE_CHANGE_PRESUMED, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION} from '~/config/events';
 import useWallet from '~/popup/modules/useWallet'

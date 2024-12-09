@@ -1,5 +1,6 @@
 import {MAINNET, NETWORK, TESTNET, SIGNET, BASE_URL_PATTERN} from '~/config/index';
-import {onMessage, sendMessage} from 'webext-bridge'
+import {onMessage} from 'webext-bridge'
+import {sendMessage} from '~/helpers/messenger'
 import '~/background/api'
 import WinManager from '~/background/winManager';
 import browser from 'webextension-polyfill';
@@ -246,6 +247,7 @@ interface ICollectionTransferResult {
       // if(success){
       //   await Api.sendMessageToWebPage(CONNECT_TO_SITE, true, tabId);
       // }
+      checkMessage();
     }
 
     async function reConnectSession(unload = false){
@@ -298,6 +300,7 @@ interface ICollectionTransferResult {
             postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: connect });
           }
       });
+      checkMessage();
     });
 
     if(NETWORK === SIGNET){
@@ -936,6 +939,7 @@ interface ICollectionTransferResult {
 
     onMessage(BALANCE_CHANGE_PRESUMED, async (payload) => {
       console.log('BALANCE_CHANGE_PRESUMED->run')
+      checkMessage();
           Scheduler.getInstance().changeScheduleTo(ScheduleName.BalanceChangePresumed);
       return true;
     });
@@ -1271,6 +1275,9 @@ interface ICollectionTransferResult {
 
   browser.runtime.onMessageExternal.addListener(siteMessage);
 
+  // for firefox:
+  browser.runtime.onMessage.addListener(siteMessage);
+
 
     async function checkMessage(){
       const base_url = BASE_URL_PATTERN.replace('*', '');
@@ -1298,11 +1305,6 @@ interface ICollectionTransferResult {
             for(let q of queue){
               await siteMessage (q, {'tab': tab});
             }
-            // await browser.scripting.executeScript({
-            //   target: { tabId: tab?.id },
-            //   func: () =>,
-            //   args: [],
-            // });
           }
 
         }
@@ -1329,7 +1331,7 @@ interface ICollectionTransferResult {
         await sendhello(tab.id);
     });
 
-    browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
       //console.log('browser.tabs.onUpdated')
         await sendhello(tabId);
     });
@@ -1339,11 +1341,47 @@ interface ICollectionTransferResult {
         await sendhello(addedTabId);
     });
 
+    // browser.tabs.onActiveChanged.addListener(async (tabId, changeInfo) => {
+    //     await sendhello(tabId);
+    // });
+
+    browser.tabs.onAttached.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    browser.tabs.onDetached.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    // browser.tabs.onHighlightChanged.addListener(async (tabId, changeInfo) => {
+    //     await sendhello(tabId);
+    // });
+
+    browser.tabs.onHighlighted.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    browser.tabs.onMoved.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    browser.tabs.onRemoved.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    // browser.tabs.onSelectionChanged.addListener(async (tabId, changeInfo) => {
+    //     await sendhello(tabId);
+    // });
+
+    browser.tabs.onZoomChange.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
 
     let alarmName = "utxord_wallet.alarm.balance_refresh_main_schedule";
     await browser.alarms.clear(alarmName);
     await browser.alarms.create(alarmName, { periodInMinutes: 10 });
     browser.alarms.onAlarm.addListener(async (alarm) => {
+      checkMessage();
       if (alarm.name == alarmName) {
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success);
@@ -1365,6 +1403,7 @@ interface ICollectionTransferResult {
 
     let watchdog = Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG);
     watchdog.onTimeoutAction = () => {
+      checkMessage();
       scheduler.deactivate();
     };
     await scheduler.run();
