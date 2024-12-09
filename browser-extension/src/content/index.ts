@@ -26,3 +26,4 @@ document.addEventListener('MESSAGE_FROM_WEB', (async (event: CustomEvent) => {
   }
 
 }) as EventListener);
+

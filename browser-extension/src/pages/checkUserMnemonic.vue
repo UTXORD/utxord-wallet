@@ -96,8 +96,10 @@ import useWallet from '~/popup/modules/useWallet'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import { SAVE_GENERATED_SEED, SET_UP_PASSWORD } from '~/config/events'
+
 import {getRandom, saveGeneratedSeed } from '~/helpers/index'
 import { sendMessage } from '~/helpers/messenger'
+
 import * as bip39 from "~/config/bip39";
 
 const { back, push } = useRouter()

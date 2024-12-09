@@ -1,9 +1,11 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
+
 import {ADDRESS_COPIED, GENERATE_MNEMONIC, SAVE_GENERATED_SEED, VALIDATE_MNEMONIC} from '~/config/events'
 import { validate, getAddressInfo } from 'bitcoin-address-validation';
 import * as bip39 from "~/config/bip39";
 import { sendMessage } from '~/helpers/messenger'
+
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
 
