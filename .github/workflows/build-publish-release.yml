@@ -98,6 +98,65 @@ jobs:
           directory: "./browser-extension/extension/prod"
           type: 'zip'
           filename: ../../../utxord-wallet-e2e.zip
+      -
+        name: Build UTXORD wallet Firefox
+        run: docker compose run build-wallet-utxord-firefox
+      -
+        name: Archive versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-firefox.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-firefox.zip
+
+      -
+        name: Build QA wallet Firefox
+        run: docker compose run build-wallet-qa-firefox
+      -
+        name: Archive versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-firefox-qa.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-firefox-qa.zip
+
+      -
+        name: Build E2E wallet Firefox
+        run: docker compose run build-wallet-e2e-firefox
+      -
+        name: Archive versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-${{ steps.vars.outputs.tag }}-firefox-e2e.zip
+      -
+        name: Archive non-versioned release
+        uses: thedoctor0/zip-release@0.7.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          directory: "./browser-extension/extension/prod"
+          type: 'zip'
+          filename: ../../../utxord-wallet-firefox-e2e.zip
 
       -
         name: Release
@@ -111,3 +170,9 @@ jobs:
             utxord-wallet.zip
             utxord-wallet-qa.zip
             utxord-wallet-e2e.zip
+            utxord-wallet-${{ steps.vars.outputs.tag }}-firefox.zip
+            utxord-wallet-${{ steps.vars.outputs.tag }}-firefox-qa.zip
+            utxord-wallet-${{ steps.vars.outputs.tag }}-firefox-e2e.zip
+            utxord-wallet-firefox.zip
+            utxord-wallet-firefox-qa.zip
+            utxord-wallet-firefox-e2e.zip

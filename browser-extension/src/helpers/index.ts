@@ -1,13 +1,12 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
-import * as webext from "webext-bridge";
-import { ADDRESS_COPIED, GENERATE_MNEMONIC, VALIDATE_MNEMONIC } from '~/config/events'
+import {ADDRESS_COPIED, GENERATE_MNEMONIC, SAVE_GENERATED_SEED, VALIDATE_MNEMONIC} from '~/config/events'
 import { validate, getAddressInfo } from 'bitcoin-address-validation';
-
+import * as bip39 from "~/config/bip39";
+import { sendMessage } from '~/helpers/messenger'
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
-const sendMessageLimit = 5
-const sendMessageTimeout = 100
+
 
 export function showSuccess(title: string, text: string, duration: number = 4000) { // 4s
   notify({
@@ -39,26 +38,6 @@ export function formatAddress(address: string, start?: number, end?: number) {
   return '-';
 }
 
-export async function sendMessage(type, message, destination, index?: number){
-  let output = null;
-  if(!index){
-    index = 0;
-  }
-  try {
-    output = await webext.sendMessage(type, message, destination)
-  } catch (error) {
-    console.log('sendMessageError:', error)
-    if(index >=  sendMessageLimit){
-       console.warn('sendMessageError: limit has expired');
-       return output;
-     }
-    return setTimeout(() => {
-      index += 1
-      return sendMessage(type, message, destination, index);
-    }, sendMessageTimeout);
-  }
-  return output;
-}
 
 export function copyToClipboard(text: string, message?: string) {
   if (text) {
@@ -83,16 +62,20 @@ export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
 }
 
-export async function generateMnemonic(length: number) {
-  const mnemonic = await sendMessage(GENERATE_MNEMONIC, {length}, 'background');
+export async function generateMnemonic(length: number, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  const mnemonic = await sendMessage(GENERATE_MNEMONIC, {length, language}, 'background');
   // console.log('helpers.generateMnemonic: mnemonic:', mnemonic)
   return mnemonic;
 }
 
-export async function isMnemonicValid(mnemonic: str) {
-  const isValid = await sendMessage(VALIDATE_MNEMONIC, {mnemonic}, 'background');
+export async function isMnemonicValid(mnemonic: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  const isValid = await sendMessage(VALIDATE_MNEMONIC, {mnemonic, language}, 'background');
   // console.log('helpers.isMnemonicValid: isValid:', isValid);
   return isValid;
+}
+
+export async function saveGeneratedSeed(seed: string, passphrase: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  return await sendMessage(SAVE_GENERATED_SEED,  {seed, passphrase, language},  'background');
 }
 
 export function isContains(str: string) {
@@ -151,4 +134,21 @@ export function validateBtcAddressInfo(address: string){
     console.log(error)
     return `Address is incorrect`
   }
+}
+
+export function detectBrowser() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.indexOf('firefox') !== -1) {
+        return 'Firefox';
+    } else if (userAgent.indexOf('chrome') !== -1) {
+        return 'Chrome';
+    } else if (userAgent.indexOf('safari') !== -1) {
+        return 'Safari';
+    } else if (userAgent.indexOf('opera') !== -1 || userAgent.indexOf('opr') !== -1) {
+        return 'Opera';
+    } else if (userAgent.indexOf('msie') !== -1 || userAgent.indexOf('trident') !== -1) {
+        return 'Internet Explorer';
+    } else {
+        return 'Unknown';
+    }
 }

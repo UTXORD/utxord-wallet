@@ -3,13 +3,13 @@
 #include "nlohmann/json.hpp"
 
 #include "random.h"
+#include "core_io.h"
 
 #include "mnemonic.hpp"
 #include "bech32.hpp"
 #include "schnorr.hpp"
 #include "keypair.hpp"
 #include "keyregistry.hpp"
-#include "master_key.hpp"
 #include "contract_builder.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
@@ -46,9 +46,6 @@ const secp256k1_context * GetSecp256k1()
 }
 
 namespace utxord {
-
-class SimpleTransaction;
-
 namespace wasm {
 
 using l15::FormatAmount;
@@ -56,22 +53,15 @@ using l15::ParseAmount;
 using l15::hex;
 using l15::unhex;
 
-class MnemonicParser : private l15::core::MnemonicParser<l15::stringvector>
+class MnemonicParser : private l15::core::MnemonicParser<nlohmann::json>
 {
-    static l15::stringvector ConvertJsonList(std::string json_list)
+    static nlohmann::json ConvertJsonList(std::string json_list)
     {
         auto word_list = nlohmann::json::parse(move(json_list));
         if (!word_list.is_array()) throw l15::core::MnemonicDictionaryError("dictionary JSON is not an array");
         if (word_list.size() != 2048) throw l15::core::MnemonicDictionaryError("wrong size: " + std::to_string(word_list.size()));
 
-        l15::stringvector dictionary;
-        dictionary.reserve(word_list.size());
-
-        for (const auto&[i, word]: std::ranges::zip_view(std::ranges::iota_view(0), word_list)) {
-            if (!word.is_string()) throw l15::core::MnemonicDictionaryError("item is not a string: " + std::to_string(i));
-            dictionary.emplace_back(word.get<std::string>());
-        }
-        return dictionary;
+        return word_list;
     }
 
     static l15::sensitive_stringvector to_vec(const l15::sensitive_string& str)
@@ -87,13 +77,13 @@ class MnemonicParser : private l15::core::MnemonicParser<l15::stringvector>
         return vec;
     }
 public:
-    explicit MnemonicParser(std::string word_list_json) : l15::core::MnemonicParser<l15::stringvector>(ConvertJsonList(move(word_list_json))) {}
+    explicit MnemonicParser(std::string word_list_json) : l15::core::MnemonicParser<nlohmann::json>(ConvertJsonList(move(word_list_json))) {}
 
     const char* DecodeEntropy(const l15::sensitive_string& phrase) const
     {
         static std::string cache;
 
-        cache = hex(l15::core::MnemonicParser<l15::stringvector>::DecodeEntropy(to_vec(phrase)));
+        cache = hex(l15::core::MnemonicParser<nlohmann::json>::DecodeEntropy(to_vec(phrase)));
         return cache.c_str();
     }
 
@@ -101,7 +91,7 @@ public:
     {
         static l15::sensitive_string cache;
 
-        auto phrase_vec = l15::core::MnemonicParser<l15::stringvector>::EncodeEntropy(unhex<l15::sensitive_bytevector>(entropy_hex));
+        auto phrase_vec = l15::core::MnemonicParser<nlohmann::json>::EncodeEntropy(unhex<l15::sensitive_bytevector>(entropy_hex));
 
         std::ostringstream buf;
         bool insert_space = false;
@@ -121,7 +111,7 @@ public:
     {
         static l15::sensitive_string cache;
 
-        cache = hex(l15::core::MnemonicParser<l15::stringvector>::MakeSeed(to_vec(phrase), passphrase));
+        cache = hex(l15::core::MnemonicParser<nlohmann::json>::MakeSeed(to_vec(phrase), passphrase));
         return cache.c_str();
     }
 };
@@ -147,6 +137,19 @@ public:
     }
 };
 
+class Util {
+public:
+    static const char* LogTx(ChainMode chain, const std::string hex)
+    {
+        static std::string cache;
+        CMutableTransaction tx;
+        if (!DecodeHexTx(tx, hex)) {
+            throw l15::IllegalArgument("Wrong Tx hex");
+        }
+        cache = l15::JsonTx<nlohmann::ordered_json>(chain, tx).dump();
+        return cache.c_str();
+    }
+};
 
 class KeyPair : private l15::core::KeyPair
 {

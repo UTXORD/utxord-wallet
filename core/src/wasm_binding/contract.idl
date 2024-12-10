@@ -21,6 +21,12 @@ interface Bech32
 };
 
 [Prefix="utxord::wasm::"]
+interface Util
+{
+    [Const] static DOMString LogTx(ChainMode mode, [Const] DOMString hex);
+};
+
+[Prefix="utxord::wasm::"]
 interface KeyPair
 {
     static void InitSecp256k1();

@@ -1,6 +1,7 @@
 #include <ranges>
 
-#include "core_io.h"
+#include "smartinserter.hpp"
+
 #include "policy.h"
 #include "feerate.h"
 
@@ -16,6 +17,7 @@ using l15::TreeBalanceType;
 using l15::ParseAmount;
 using l15::FormatAmount;
 using l15::CalculateOutputAmount;
+using l15::EncodeHexTx;
 
 namespace {
 
@@ -61,7 +63,7 @@ std::tuple<xonly_pubkey, uint8_t, ScriptMerkleTree> TrustlessSwapInscriptionBuil
     if (!m_ord_int_pk) throw ContractStateError(name_ord_int_pk + " not defined");
 
     ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { OrdSwapScript() });
-    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
+    return std::tuple_cat(SchnorrKeyPair::AddTapTweak(KeyPair::GetStaticSecp256k1Context(), m_ord_int_pk.value(), tap_tree.CalculateRoot()), std::make_tuple(tap_tree));
 }
 
 
@@ -79,7 +81,7 @@ CMutableTransaction TrustlessSwapInscriptionBuilder::MakeSwapTx() const
     }
 
     if (m_swap_inputs.size() == 1) {
-        swap_tx.vout.emplace_back(*m_ord_price, bech32().PubKeyScript(*m_funds_payoff_addr));
+        swap_tx.vout.emplace_back(P2Address::Construct(chain(), *m_ord_price, *m_funds_payoff_addr)->TxOutput());
     }
     else {
         swap_tx.vout.reserve(5);
@@ -89,23 +91,20 @@ CMutableTransaction TrustlessSwapInscriptionBuilder::MakeSwapTx() const
             swap_tx.vout[0].scriptPubKey = m_market_fee->PubKeyScript();
         }
         else {
-            swap_tx.vout[0].scriptPubKey = bech32().PubKeyScript(*m_change_addr);
+            swap_tx.vout[0].scriptPubKey = P2Address::Construct(chain(), 0, *m_change_addr)->PubKeyScript();
             if (m_market_fee->Amount() > 0) {
-                swap_tx.vout.emplace_back(m_market_fee->Amount(), m_market_fee->PubKeyScript());
+                swap_tx.vout.emplace_back(m_market_fee->TxOutput());
             }
         }
-        swap_tx.vout[1].nValue = m_swap_inputs[2].output->Destination()->Amount(); // Ord amount remains the same
-        swap_tx.vout[1].scriptPubKey = bech32().PubKeyScript(*m_ord_payoff_addr);
-
-        swap_tx.vout[2].nValue = *m_ord_price;
-        swap_tx.vout[2].scriptPubKey = bech32().PubKeyScript(*m_funds_payoff_addr);
+        swap_tx.vout[1] = P2Address::Construct(chain(), m_swap_inputs[2].output->Destination()->Amount(), *m_ord_payoff_addr)->TxOutput();
+        swap_tx.vout[2] = P2Address::Construct(chain(), *m_ord_price, *m_funds_payoff_addr)->TxOutput();
 
         // Check if we need to add separate output for change if presented
         CAmount tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
         CAmount total_in = std::accumulate(m_swap_inputs.begin(), m_swap_inputs.end(), 0, [](CAmount part_sum, const auto &input) { return part_sum + input.output->Destination()->Amount(); });
         CAmount total_out = std::accumulate(swap_tx.vout.begin(), swap_tx.vout.end(), 0, [](CAmount part_sum, const auto &out) { return part_sum + out.nValue; });
         if (total_in - (tx_fee + TAPROOT_VOUT_VSIZE) - total_out >= l15::Dust()) {
-            swap_tx.vout.emplace_back(0, bech32().PubKeyScript(*m_change_addr));
+            swap_tx.vout.emplace_back(P2Address::Construct(chain(), 0, *m_change_addr)->TxOutput());
 
             tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
             swap_tx.vout.back().nValue = total_in - total_out - tx_fee;
@@ -161,7 +160,7 @@ const CMutableTransaction &TrustlessSwapInscriptionBuilder::GetFundsCommitTx() c
 
 void TrustlessSwapInscriptionBuilder::SignOrdCommitment(const KeyRegistry &master_key, const std::string& key_filter)
 {
-    CheckContractTerms(TRUSTLESS_ORD_TERMS);
+    CheckContractTerms(GetVersion(), TRUSTLESS_ORD_TERMS);
     if (!m_ord_script_pk) throw ContractTermMissing(std::string(name_ord_script_pk));
     if (!m_ord_int_pk) throw ContractTermMissing(std::string(name_ord_int_pk));
 
@@ -170,7 +169,7 @@ void TrustlessSwapInscriptionBuilder::SignOrdCommitment(const KeyRegistry &maste
 
 void TrustlessSwapInscriptionBuilder::SignFundsCommitment(const KeyRegistry &master_key, const std::string& key_filter)
 {
-    CheckContractTerms(TRUSTLESS_FUNDS_TERMS);
+    CheckContractTerms(GetVersion(), TRUSTLESS_FUNDS_TERMS);
 
     if (!mCommitBuilder) throw ContractStateError("Funds were committed outside of the swap contract builder");
 
@@ -189,14 +188,14 @@ void TrustlessSwapInscriptionBuilder::SignFundsCommitment(const KeyRegistry &mas
 
 void TrustlessSwapInscriptionBuilder::SignOrdSwap(const KeyRegistry &masterKey, const std::string& key_filter)
 {
-    CheckContractTerms(TRUSTLESS_ORD_TERMS);
+    CheckContractTerms(GetVersion(), TRUSTLESS_ORD_TERMS);
 
     KeyPair keypair = masterKey.Lookup(*m_ord_script_pk, key_filter);
     SchnorrKeyPair schnorr(masterKey.Secp256k1Context(), keypair.PrivKey());
 
     CMutableTransaction swap_tx(MakeSwapTx());
 
-    std::vector<CTxOut> spend_outs = {CTxOut(m_swap_inputs.front().output->Destination()->Amount(), m_swap_inputs.front().output->Destination()->PubKeyScript())};
+    std::vector<CTxOut> spend_outs = {m_swap_inputs.front().output->Destination()->TxOutput()};
 
     signature sig = schnorr.SignTaprootTx(swap_tx, 0, move(spend_outs), OrdSwapScript(), SIGHASH_SINGLE|SIGHASH_ANYONECANPAY);
     m_swap_inputs.front().witness.Set(1, move(sig));
@@ -206,15 +205,15 @@ void TrustlessSwapInscriptionBuilder::SignOrdSwap(const KeyRegistry &masterKey, 
 
 void TrustlessSwapInscriptionBuilder::SignMarketSwap(const KeyRegistry &masterKey, const std::string& key_filter)
 {
-    CheckContractTerms(TRUSTLESS_FUNDS_SWAP_TERMS);
+    CheckContractTerms(GetVersion(), TRUSTLESS_FUNDS_SWAP_TERMS);
 
     if (mCommitBuilder) {
         if (m_swap_inputs.size() != 1) throw ContractStateError(name_swap_inputs + " has inconsistent size: " + std::to_string(m_swap_inputs.size()));
 
         m_swap_inputs.front().nin = 2;
-        m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<ContractOutput>(mCommitBuilder, 0));
-        m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<ContractOutput>(mCommitBuilder, 1));
-        m_swap_inputs.emplace_back(bech32(), 3, std::make_shared<ContractOutput>(mCommitBuilder, 2));
+        m_swap_inputs.emplace_back(chain(), 0, std::make_shared<ContractOutput>(mCommitBuilder, 0));
+        m_swap_inputs.emplace_back(chain(), 1, std::make_shared<ContractOutput>(mCommitBuilder, 1));
+        m_swap_inputs.emplace_back(chain(), 3, std::make_shared<ContractOutput>(mCommitBuilder, 2));
         std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
     }
     if (m_swap_inputs.size() < 4) throw ContractStateError(name_swap_inputs + " has inconsistent size: " + std::to_string(m_swap_inputs.size()));
@@ -226,7 +225,7 @@ void TrustlessSwapInscriptionBuilder::SignMarketSwap(const KeyRegistry &masterKe
 
     std::vector<CTxOut> spend_outs;
     spend_outs.reserve(m_swap_inputs.size());
-    std::transform(m_swap_inputs.begin(), m_swap_inputs.end(), cex::smartinserter(spend_outs, spend_outs.end()), [](const auto& txin){ return CTxOut(txin.output->Destination()->Amount(), txin.output->Destination()->PubKeyScript()); });
+    std::transform(m_swap_inputs.begin(), m_swap_inputs.end(), cex::smartinserter(spend_outs, spend_outs.end()), [](const auto& txin){ return txin.output->Destination()->TxOutput(); });
 
     signature sig = schnorr.SignTaprootTx(swap_tx, 2, move(spend_outs), OrdSwapScript());
     m_swap_inputs[2].witness.Set(0, move(sig));
@@ -236,14 +235,13 @@ void TrustlessSwapInscriptionBuilder::SignMarketSwap(const KeyRegistry &masterKe
 
 void TrustlessSwapInscriptionBuilder::SignFundsSwap(const KeyRegistry &master_key, const std::string& key_filter)
 {
-    CheckContractTerms(TRUSTLESS_FUNDS_SWAP_TERMS);
+    CheckContractTerms(GetVersion(), TRUSTLESS_FUNDS_SWAP_TERMS);
 
     CMutableTransaction swap_tx(MakeSwapTx());
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_swap_inputs.size());
     for(const auto& input: m_swap_inputs) {
-        const auto& dest = input.output->Destination();
-        spent_outs.emplace_back(dest->Amount(), dest->PubKeyScript());
+        spent_outs.emplace_back(input.output->Destination()->TxOutput());
     }
 
     for(auto& input: m_swap_inputs) {
@@ -264,19 +262,19 @@ void TrustlessSwapInscriptionBuilder::SignFundsSwap(const KeyRegistry &master_ke
 
 string TrustlessSwapInscriptionBuilder::OrdCommitRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetOrdCommitTx()));
+    std::string res = EncodeHexTx(GetOrdCommitTx());
     return res;
 }
 
 string TrustlessSwapInscriptionBuilder::FundsCommitRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetFundsCommitTx()));
+    std::string res = EncodeHexTx(GetFundsCommitTx());
     return res;
 }
 
 string TrustlessSwapInscriptionBuilder::OrdSwapRawTransaction() const
 {
-    std::string res = EncodeHexTx(CTransaction(GetSwapTx()));
+    std::string res = EncodeHexTx(GetSwapTx());
     return res;
 }
 
@@ -296,10 +294,10 @@ UniValue TrustlessSwapInscriptionBuilder::MakeJson(uint32_t version, TrustlessSw
         contract.pushKV(name_market_script_pk, hex(*m_market_script_pk));
     }
     if (phase == TRUSTLESS_ORD_TERMS) {
-        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson(mOrdCommitBuilder->GetProtocolVersion(), TX_TERMS));
+        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson(mOrdCommitBuilder->GetVersion(), TX_TERMS));
     }
     if (phase == TRUSTLESS_ORD_SWAP_SIG) {
-        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson(mOrdCommitBuilder->GetProtocolVersion(), TX_SIGNATURE));
+        contract.pushKV(name_ord_commit, mOrdCommitBuilder->MakeJson(mOrdCommitBuilder->GetVersion(), TX_SIGNATURE));
     }
     if (phase == TRUSTLESS_FUNDS_SWAP_TERMS || phase == TRUSTLESS_FUNDS_SWAP_SIG) {
         contract.pushKV(name_market_script_pk, hex(*m_market_script_pk));
@@ -320,10 +318,10 @@ UniValue TrustlessSwapInscriptionBuilder::MakeJson(uint32_t version, TrustlessSw
     }
 
     if (phase == TRUSTLESS_FUNDS_TERMS) {
-        contract.pushKV(name_funds, mCommitBuilder->MakeJson(mCommitBuilder->GetProtocolVersion(), TX_TERMS));
+        contract.pushKV(name_funds, mCommitBuilder->MakeJson(mCommitBuilder->GetVersion(), TX_TERMS));
     }
     else if (phase == TRUSTLESS_FUNDS_COMMIT_SIG) {
-        contract.pushKV(name_funds, mCommitBuilder->MakeJson(mCommitBuilder->GetProtocolVersion(), TX_SIGNATURE));
+        contract.pushKV(name_funds, mCommitBuilder->MakeJson(mCommitBuilder->GetVersion(), TX_SIGNATURE));
     }
 
     if (phase == TRUSTLESS_FUNDS_TERMS || phase == TRUSTLESS_FUNDS_COMMIT_SIG || phase == TRUSTLESS_FUNDS_SWAP_TERMS || phase == TRUSTLESS_FUNDS_SWAP_SIG) {
@@ -338,7 +336,7 @@ UniValue TrustlessSwapInscriptionBuilder::MakeJson(uint32_t version, TrustlessSw
     return contract;
 }
 
-void TrustlessSwapInscriptionBuilder::CheckContractTerms(TrustlessSwapPhase phase) const
+void TrustlessSwapInscriptionBuilder::CheckContractTerms(uint32_t version, TrustlessSwapPhase phase) const
 {
     if (!m_ord_price) throw ContractTermMissing(std::string(name_ord_price));
     if (*m_ord_price < l15::Dust(DUST_RELAY_TX_FEE)) throw ContractTermWrongValue(move((name_ord_price + ": ") += std::to_string(*m_ord_price)));
@@ -396,7 +394,7 @@ void TrustlessSwapInscriptionBuilder::CheckContractTerms(TrustlessSwapPhase phas
         }
     case TRUSTLESS_FUNDS_SWAP_TERMS:
         if (mCommitBuilder)
-            CheckContractTerms(TRUSTLESS_FUNDS_COMMIT_SIG);
+            CheckContractTerms(version, TRUSTLESS_FUNDS_COMMIT_SIG);
         else {
             if (!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
             if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
@@ -591,10 +589,10 @@ void TrustlessSwapInscriptionBuilder::BuildOrdCommit()
         controlblock.insert(controlblock.end(), branchhash.begin(), branchhash.end());
     });
 
-    mOrdCommitBuilder->AddOutput(mOrdCommitBuilder->Inputs().front().output->Destination()->Amount(), bech32().Encode(get<0>(ordSwapTapRoot)));
+    mOrdCommitBuilder->AddOutput(mOrdCommitBuilder->Inputs().front().output->Destination()->Amount(), Bech32(BTC, chain()).Encode(get<0>(ordSwapTapRoot)));
     mOrdCommitBuilder->AddChangeOutput(change_addr);
 
-    m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<ContractOutput>(mOrdCommitBuilder, 0));
+    m_swap_inputs.emplace_back(chain(), 0, std::make_shared<ContractOutput>(mOrdCommitBuilder, 0));
     m_swap_inputs.front().witness.Set(0, signature());
     m_swap_inputs.front().witness.Set(1, bytevector(65));
     m_swap_inputs.front().witness.Set(2, bytevector(script.begin(), script.end()));
@@ -627,7 +625,7 @@ void TrustlessSwapInscriptionBuilder::Brick1SwapUTXO(string txid, uint32_t nout,
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), 0, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
+    m_swap_inputs.emplace_back(chain(), 0, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
@@ -640,7 +638,7 @@ void TrustlessSwapInscriptionBuilder::Brick2SwapUTXO(string txid, uint32_t nout,
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), 1, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
+    m_swap_inputs.emplace_back(chain(), 1, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
@@ -653,7 +651,7 @@ void TrustlessSwapInscriptionBuilder::AddMainSwapUTXO(std::string txid, uint32_t
         m_swap_inputs.front().nin = 2;
     }
 
-    m_swap_inputs.emplace_back(bech32(), m_swap_inputs.back().nin + 1, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
+    m_swap_inputs.emplace_back(chain(), m_swap_inputs.back().nin + 1, std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
     std::sort(m_swap_inputs.begin(), m_swap_inputs.end());
 }
 
@@ -661,7 +659,7 @@ void TrustlessSwapInscriptionBuilder::CheckOrdSwapSig() const
 {
     std::vector<CTxOut> spent_outs;
     spent_outs.reserve(m_swap_inputs.size());
-    std::transform(m_swap_inputs.begin(), m_swap_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()), [](const auto& txin){ return CTxOut(txin.output->Destination()->Amount(), txin.output->Destination()->PubKeyScript()); });
+    std::transform(m_swap_inputs.begin(), m_swap_inputs.end(), cex::smartinserter(spent_outs, spent_outs.end()), [](const auto& txin){ return txin.output->Destination()->TxOutput(); });
     CScript ordSwapScript = OrdSwapScript();
     if (mSwapTx) {
         for (const auto &input: m_swap_inputs) {
@@ -718,8 +716,8 @@ CAmount TrustlessSwapInscriptionBuilder::CalculateWholeFee(const std::string& pa
     std::string param;
     while(std::getline(ss, param, ',')) {
         if (param == FEE_OPT_HAS_CHANGE) { change = true; continue; }
-        else if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
-        else throw l15::IllegalArgumentError(move(param));
+        if (param == FEE_OPT_HAS_P2WPKH_INPUT) { p2wpkh_utxo = true; continue; }
+        throw l15::IllegalArgument(move(param));
     }
 
     CAmount commit_vsize;

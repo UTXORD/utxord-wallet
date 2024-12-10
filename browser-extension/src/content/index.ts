@@ -1,9 +1,28 @@
-/* eslint-disable no-console */
-import { onMessage } from 'webext-bridge'
+import { sendMessage } from '~/helpers/messenger'
+import { BASE_URL_PATTERN } from '~/config/index'
+document.addEventListener('MESSAGE_FROM_WEB', (async (event: CustomEvent) => {
+  if (event.target?.location.origin !== window.location.origin) return;
 
-console.info('[chrome-ext-mv3-starter] Hello world from content script')
+  const customEvent = event as CustomEvent;
+  const message = customEvent.detail;
 
-// communication example: send previous tab title from background page
-onMessage('tab-prev', ({ data }) => {
-  console.log(`[chrome-ext-mv3-starter] Navigate from page "${data.title}"`)
-})
+  sendMessage(message.type, message.data, 'background');
+
+  const base_url = BASE_URL_PATTERN.replace('*', '');
+  const tabs = await browser.tabs.query({ currentWindow: true });
+  for (let tab of tabs) {
+    const url = tab?.url || tab?.pendingUrl;
+    if(tab?.id &&
+       url?.startsWith(base_url) &&
+       !url?.startsWith('about:') &&
+       !url?.startsWith('browser-extension://') &&
+       !url?.startsWith('chrome://')) {
+      await browser.scripting.executeScript({
+        target: { tabId: tab?.id },
+        func: () =>window.localStorage.removeItem('MESSAGE_FROM_WEB'),
+        args: [],
+      });
+    }
+  }
+
+}) as EventListener);

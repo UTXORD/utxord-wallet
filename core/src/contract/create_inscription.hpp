@@ -25,6 +25,8 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     static const CAmount COLLECTION_SCRIPT_VIN_VSIZE = 195;
 
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_p2address;
+    static const uint32_t s_protocol_version_no_custom_fee;
     static const uint32_t s_protocol_version_no_runes;
     static const uint32_t s_protocol_version_no_fixed_change;
     static const char* s_versions;
@@ -65,7 +67,7 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     mutable std::optional<CMutableTransaction> mCollectionCommitTx;
 
 private:
-    void CheckContractTerms(InscribePhase phase) const override;
+    void CheckContractTerms(uint32_t version, InscribePhase phase) const override;
 
     void RestoreTransactions() const;
 
@@ -117,7 +119,11 @@ public:
     CreateInscriptionBuilder& operator=(const CreateInscriptionBuilder&) = default;
     CreateInscriptionBuilder& operator=(CreateInscriptionBuilder&&) noexcept = default;
 
+    static const char* PhaseString(InscribePhase phase);
+    static InscribePhase ParsePhase(const std::string& p);
+
     const std::string& GetContractName() const override;
+    uint32_t GetVersion() const override { return s_protocol_version; }
     UniValue MakeJson(uint32_t version, InscribePhase phase) const override;
     void ReadJson(const UniValue& json, InscribePhase phase) override;
 
@@ -128,16 +134,16 @@ public:
     std::string GetInscribeAddress() const { return m_ord_destination->Address(); }
 
     void OrdOutput(CAmount amount, std::string addr)
-    { m_ord_destination = P2Witness::Construct(chain(), amount, move(addr)); }
+    { m_ord_destination = P2Address::Construct(chain(), amount, move(addr)); }
 
     void OrdOutputDestination(std::shared_ptr<IContractDestination> destination)
     { m_ord_destination = move(destination); }
 
     void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
-    { m_inputs.emplace_back(bech32(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr))); }
+    { m_inputs.emplace_back(chain(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr))); }
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
-    { m_inputs.emplace_back(bech32(), m_inputs.size(), move(prevout)); }
+    { m_inputs.emplace_back(chain(), m_inputs.size(), move(prevout)); }
 
     void Data(std::string content_type, bytevector data)
     {
@@ -164,7 +170,7 @@ public:
     void AuthorFee(CAmount amount, std::string addr)
     {
         if (amount > 0) {
-            m_author_fee = P2Witness::Construct(chain(), amount, move(addr));
+            m_author_fee = P2Address::Construct(chain(), amount, move(addr));
         }
         else {
             m_author_fee = std::make_shared<ZeroDestination>();
@@ -172,12 +178,12 @@ public:
     }
 
     void FixedChange(CAmount amount, std::string addr)
-    { m_fixed_change = P2Witness::Construct(chain(), amount, move(addr)); }
+    { m_fixed_change = P2Address::Construct(chain(), amount, move(addr)); }
 
     void AddCollectionInput(std::string collection_id, std::shared_ptr<IContractOutput> prevout)
     {
         Collection(move(collection_id), prevout->Amount(), prevout->Address());
-        m_collection_input.emplace(bech32(), 1, move(prevout));
+        m_collection_input.emplace(chain(), 1, move(prevout));
     }
 
     void AddCollectionUTXO(std::string collection_id, std::string utxo_txid, uint32_t utxo_nout, CAmount amount, std::string collection_addr)
