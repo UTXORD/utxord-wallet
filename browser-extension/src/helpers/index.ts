@@ -133,8 +133,11 @@ export function validateBtcAddress(address: string){
   } catch (e) {
 
   }
-  //Taproot and Native Segwit only
-  if(addressInfo.type!=='p2tr' && addressInfo.type!=='p2wpkh'){
+  // Taproot, Native Segwit and Legacy only
+  if(
+    addressInfo.type!=='p2tr' &&
+    addressInfo.type!=='p2wpkh' &&
+    addressInfo.type!=='p2pkh'){
     return false;
   }
   return validate(address)
@@ -148,9 +151,12 @@ export function validateBtcAddressInfo(address: string){
   } catch (e) {
     error = e
   }
-  //Taproot and Native Segwit only
-  if(addressInfo.type!=='p2tr' && addressInfo.type!=='p2wpkh'){
-    return `We are temporarily not supporting ${addressInfo.type}, please use p2tr and p2wpkh types`;
+  // Taproot, Native Segwit and Legacy only
+  if(
+    addressInfo.type!=='p2tr' &&
+    addressInfo.type!=='p2wpkh' &&
+    addressInfo.type!=='p2pkh'){
+    return `We are temporarily not supporting ${addressInfo.type}, please use p2tr or p2wpkh or p2pkh types`;
   }
   if(!validate(address)){
     console.log(error)
