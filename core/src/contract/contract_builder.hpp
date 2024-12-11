@@ -33,6 +33,7 @@ using l15::unhex;
 using l15::bytevector;
 using l15::seckey;
 using l15::xonly_pubkey;
+using l15::compressed_pubkey;
 using l15::signature;
 
 using l15::ChainMode;
@@ -43,6 +44,7 @@ using l15::REGTEST;
 using l15::Bech32;
 
 using l15::core::EcdsaKeyPair;
+using l15::core::SchnorrKeyPair;
 using l15::core::KeyPair;
 using l15::core::KeyRegistry;
 
@@ -71,37 +73,7 @@ struct IJsonSerializable
     virtual void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) = 0;
 };
 
-class ISigner
-{
-public:
-    virtual std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const = 0;
-};
-
-class P2WPKHSigner: public ISigner
-{
-    EcdsaKeyPair m_keypair;
-public:
-    explicit P2WPKHSigner(EcdsaKeyPair keypair) : m_keypair(move(keypair)) {}
-    P2WPKHSigner(const P2WPKHSigner&) = default;
-    P2WPKHSigner(P2WPKHSigner&&) noexcept = default;
-    P2WPKHSigner& operator=(const P2WPKHSigner&) = default;
-    P2WPKHSigner& operator=(P2WPKHSigner&&) noexcept = default;
-
-    std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const override;
-};
-
-class TaprootSigner: public ISigner
-{
-    l15::core::SchnorrKeyPair m_keypair;
-public:
-    explicit TaprootSigner(l15::core::SchnorrKeyPair keypair) : m_keypair(move(keypair)) {}
-    TaprootSigner(const TaprootSigner&) = default;
-    TaprootSigner(TaprootSigner&&) noexcept = default;
-    TaprootSigner& operator=(const TaprootSigner&) = default;
-    TaprootSigner& operator=(TaprootSigner&&) noexcept = default;
-
-    std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const override;
-};
+class ISigner;
 
 struct IContractDestination: IJsonSerializable
 {
@@ -113,13 +85,12 @@ struct IContractDestination: IJsonSerializable
     virtual void Amount(CAmount amount) = 0;
     virtual std::string Address() const = 0;
     virtual CScript PubKeyScript() const = 0;
+    virtual CScript DummyScriptSig() const = 0;
     CTxOut TxOutput() const
     { return {Amount(), PubKeyScript()}; };
     virtual std::vector<bytevector> DummyWitness() const = 0;
     virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const = 0;
 };
-
-
 
 struct ZeroDestination: IContractDestination
 {
@@ -129,14 +100,14 @@ struct ZeroDestination: IContractDestination
     CAmount Amount() const override { return 0; }
     void Amount(CAmount amount) override { if (amount) throw l15::IllegalArgument("Non zero amount cannot be assigned to zero destination"); }
     std::string Address() const override { return {}; }
-    CScript PubKeyScript() const override { throw std::domain_error("zero destination cannot has a witness"); }
-    std::vector<bytevector> DummyWitness() const override { throw std::domain_error("zero destination cannot has a witness"); }
+    CScript PubKeyScript() const override { throw std::domain_error("zero destination cannot have a PubKeyScript"); }
+    CScript DummyScriptSig() const override { throw std::domain_error("zero destination cannot have a scriptSig"); }
+    std::vector<bytevector> DummyWitness() const override { throw std::domain_error("zero destination cannot have a witness"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::domain_error("zero destination cannot provide a signer"); }
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
 };
-
 
 class P2Address : public IContractDestination
 {
@@ -169,6 +140,7 @@ public:
     { return m_addr; }
 
     CScript PubKeyScript() const override { throw std::logic_error("P2Address abstract call"); }
+    CScript DummyScriptSig() const override { throw std::logic_error("P2Address abstract call"); }
     std::vector<bytevector> DummyWitness() const override { throw std::logic_error("P2Address abstract call"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::logic_error("P2Address abstract call"); }
@@ -204,6 +176,9 @@ public:
 
     CScript PubKeyScript() const override
     { return Bech32(BTC, m_chain).PubKeyScript(m_addr); }
+
+    CScript DummyScriptSig() const override
+    { return {};}
 
     std::vector<bytevector> DummyWitness() const override
     { throw std::logic_error("generic winness structure is unknown"); } // Should never be called directly
@@ -242,33 +217,39 @@ public:
 
 class P2PKH: public P2Address
 {
+    bytevector DecodePubKeyHash() const;
 public:
     P2PKH() = delete;
     P2PKH(const P2PKH&) = default;
     P2PKH(P2PKH&&) noexcept = default;
-    P2PKH(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
-
+    P2PKH(ChainMode m, CAmount amount, std::string addr) : P2Address(m, amount, move(addr)) {}
     CScript PubKeyScript() const override;
 
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
+    CScript DummyScriptSig() const override
+    { return CScript() << signature() << compressed_pubkey().as_vector();}
     std::vector<bytevector> DummyWitness() const override
-    { throw std::logic_error("P2PKH has no segregated witness"); }
-
-    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
-    { throw std::logic_error("P2PKH signing is not implemented yet"); }
+    { return {}; }
 };
+
 
 class P2SH: public P2Address
 {
+    bytevector DecodeScriptHash() const;
 public:
     P2SH() = delete;
     P2SH(const P2SH&) = default;
     P2SH(P2SH&&) noexcept = default;
     P2SH(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
 
-    CScript PubKeyScript() const override;
+    CScript PubKeyScript() const override
+    { return CScript() << OP_HASH160 << DecodeScriptHash() << OP_EQUAL; }
+
+    CScript DummyScriptSig() const override
+    { throw std::logic_error("generic script is unknown"); }
 
     std::vector<bytevector> DummyWitness() const override
-    { throw std::logic_error("P2SH has no segregated witness"); }
+    { return {}; }
 
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::logic_error("P2SH signing is not implemented yet"); }
@@ -303,6 +284,7 @@ public:
     std::string Address() const override { return {}; }
     CScript PubKeyScript() const override;
     std::vector<bytevector> DummyWitness() const override { throw std::domain_error("OP_RETURN destination cannot have a witness"); }
+    CScript DummyScriptSig() const override { return {}; }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::domain_error("OP_RETURN destination cannot provide a signer"); }
 
@@ -332,6 +314,103 @@ public:
     virtual const std::shared_ptr<IContractDestination> & Destination() const = 0;
     virtual std::shared_ptr<IContractDestination> Destination() = 0;
 };
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+class WitnessStack: public IJsonSerializable
+{
+    std::vector<bytevector> m_stack;
+public:
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
+    size_t size() const
+    { return m_stack.size(); }
+    const bytevector& operator[](size_t i) const
+    { return m_stack[i]; }
+    void Set(size_t i, bytevector data)
+    {
+        if (i >= m_stack.size())
+            m_stack.resize(i+1);
+
+        m_stack[i] = move(data);
+    }
+    operator const std::vector<bytevector>&() const
+    { return m_stack; }
+    operator bool() const
+    { return !m_stack.empty(); }
+};
+
+struct TxInput : public IJsonSerializable
+{
+    static const std::string name_witness;
+    static const std::string name_scriptsig;
+
+    ChainMode chain;
+    uint32_t nin;
+    std::shared_ptr<IContractOutput> output;
+    CScript scriptSig;
+    WitnessStack witness;
+
+    explicit TxInput(ChainMode ch, uint32_t n, std::shared_ptr<IContractOutput> prevout) : chain(ch), nin(n), output(move(prevout)) {}
+    explicit TxInput(ChainMode ch, uint32_t n, const UniValue& json, const std::function<std::string()>& lazy_name) : chain(ch), nin(n)
+    { TxInput::ReadJson(json, lazy_name); }
+
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& data, const std::function<std::string()> &lazy_name) override;
+
+    bool operator<(const TxInput& r) const { return nin < r.nin; }
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+class ISigner
+{
+public:
+    virtual void SignInput(TxInput& input, const CMutableTransaction &tx, std::vector<CTxOut> spent_outputs, int hashtype) const = 0;
+};
+
+class P2PKHSigner : public ISigner
+{
+    EcdsaKeyPair m_keypair;
+public:
+    explicit P2PKHSigner(EcdsaKeyPair keypair) : m_keypair(move(keypair)) {}
+    P2PKHSigner(const P2PKHSigner&) = default;
+    P2PKHSigner(P2PKHSigner&&) noexcept = default;
+    P2PKHSigner& operator=(const P2PKHSigner&) = default;
+    P2PKHSigner& operator=(P2PKHSigner&&) noexcept = default;
+
+    void SignInput(TxInput &input, const CMutableTransaction &tx, std::vector<CTxOut> spent_outputs,
+                   int hashtype) const override;
+};
+
+class P2WPKHSigner: public ISigner
+{
+    EcdsaKeyPair m_keypair;
+public:
+    explicit P2WPKHSigner(EcdsaKeyPair keypair) : m_keypair(move(keypair)) {}
+    P2WPKHSigner(const P2WPKHSigner&) = default;
+    P2WPKHSigner(P2WPKHSigner&&) noexcept = default;
+    P2WPKHSigner& operator=(const P2WPKHSigner&) = default;
+    P2WPKHSigner& operator=(P2WPKHSigner&&) noexcept = default;
+
+    void SignInput(TxInput &input, const CMutableTransaction &tx, std::vector<CTxOut> spent_outputs,
+                   int hashtype) const override;
+};
+
+class TaprootSigner: public ISigner
+{
+    SchnorrKeyPair m_keypair;
+public:
+    explicit TaprootSigner(SchnorrKeyPair keypair) : m_keypair(move(keypair)) {}
+    TaprootSigner(const TaprootSigner&) = default;
+    TaprootSigner(TaprootSigner&&) noexcept = default;
+    TaprootSigner& operator=(const TaprootSigner&) = default;
+    TaprootSigner& operator=(TaprootSigner&&) noexcept = default;
+
+    void SignInput(TxInput &input, const CMutableTransaction &tx, std::vector<CTxOut> spent_outputs,
+                   int hashtype) const override;
+};
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 class ContractOutput : public IContractOutput {
@@ -392,49 +471,6 @@ public:
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()>& lazy_name) override;
-};
-
-class WitnessStack: public IJsonSerializable
-{
-    std::vector<bytevector> m_stack;
-public:
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
-    size_t size() const
-    { return m_stack.size(); }
-    const bytevector& operator[](size_t i) const
-    { return m_stack[i]; }
-    void Set(size_t i, bytevector data)
-    {
-        if (i >= m_stack.size())
-            m_stack.resize(i+1);
-
-        m_stack[i] = move(data);
-    }
-    operator const std::vector<bytevector>&() const
-    { return m_stack; }
-    operator bool() const
-    { return !m_stack.empty(); }
-};
-
-
-struct TxInput : public IJsonSerializable
-{
-    static const std::string name_witness;
-
-    ChainMode chain;
-    uint32_t nin;
-    std::shared_ptr<IContractOutput> output;
-    WitnessStack witness;
-
-    explicit TxInput(ChainMode ch, uint32_t n, std::shared_ptr<IContractOutput> prevout) : chain(ch), nin(n), output(move(prevout)) {}
-    explicit TxInput(ChainMode ch, uint32_t n, const UniValue& json, const std::function<std::string()>& lazy_name) : chain(ch), nin(n)
-    { TxInput::ReadJson(json, lazy_name); }
-
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& data, const std::function<std::string()> &lazy_name) override;
-
-    bool operator<(const TxInput& r) const { return nin < r.nin; }
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -532,7 +568,7 @@ public:
     CAmount GetMiningFeeRate() const { return m_mining_fee_rate.value(); }
 
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script);
-    void VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const;
+    void VerifyTxSignature(const std::string& addr, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const;
 
     static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, const std::function<std::string()> &lazy_name);
     static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, const std::function<std::string()> &lazy_name);

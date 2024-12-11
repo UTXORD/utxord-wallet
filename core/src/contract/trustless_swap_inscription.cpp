@@ -250,11 +250,7 @@ void TrustlessSwapInscriptionBuilder::SignFundsSwap(const KeyRegistry &master_ke
         auto dest = input.output->Destination();
         auto keypair = dest->LookupKey(master_key, key_filter);
 
-        std::vector<bytevector> stack = keypair->Sign(swap_tx, input.nin, spent_outs, SIGHASH_ALL);
-
-        for (size_t i = 0; i < stack.size(); ++i) {
-            input.witness.Set(i, move(stack[i]));
-        }
+        keypair->SignInput(input, swap_tx, spent_outs, SIGHASH_ALL);
     }
 
     if (mSwapTx) mSwapTx.reset();
@@ -672,7 +668,7 @@ void TrustlessSwapInscriptionBuilder::CheckOrdSwapSig() const
                 }
             } else {
                 if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
-                    VerifyTxSignature(input.output->Destination()->Address(), input.witness, *mSwapTx, input.nin, spent_outs);
+                    VerifyTxSignature(input.output->Destination()->Address(), *mSwapTx, input.nin, spent_outs);
                 }
             }
         }
@@ -689,7 +685,7 @@ void TrustlessSwapInscriptionBuilder::CheckOrdSwapSig() const
                 }
             } else {
                 if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
-                    VerifyTxSignature(input.output->Destination()->Address(), input.witness, swap_tx, input.nin, spent_outs);
+                    VerifyTxSignature(input.output->Destination()->Address(), swap_tx, input.nin, spent_outs);
                 }
             }
         }
