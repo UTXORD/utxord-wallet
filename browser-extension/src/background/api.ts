@@ -902,7 +902,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     if(!valid) return 'Invalid checksum';
     const parser = this.getMnemonicParserFor(language);
     const seed = await parser.MakeSeed(mnemonic, passphrase);
-    browser.storage.local.set({ seed: seed });
+    chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
   }
