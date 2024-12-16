@@ -63,12 +63,11 @@ const { dataForSign } = toRefs(store)
 
 
 const openTransactionsDetails = ref(false)
-const openTransactionDetails = ref([false,false])
+const openTransactionDetails = ref([])
 
 const raws = computed(() => {
   return dataForSign.value?.data?.costs?.raw || dataForSign.value?.data?.raw
 })
-
 
 </script>
 
