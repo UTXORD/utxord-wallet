@@ -69,7 +69,6 @@ const raws = computed(() => {
   return dataForSign.value?.data?.costs?.raw || dataForSign.value?.data?.raw
 })
 
-raws.value.push("test")
 
 </script>
 
