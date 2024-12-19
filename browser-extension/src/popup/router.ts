@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
-import {sendMessage} from '~/helpers/index'
+import {sendMessage} from '~/helpers/messenger'
 import {CHECK_AUTH, CURRENT_PAGE} from '~/config/events';
 import {settingsRoutes} from "~/popup/settingsRouter";
 

@@ -96,7 +96,8 @@
 
 <script setup lang="ts">
 import {toRefs, ref, computed, onMounted, onBeforeMount} from 'vue'
-import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
+import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import { useStore } from '~/popup/store/index'
 import SignWrapperForSend from '~/components/SignWrapperForSend.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
