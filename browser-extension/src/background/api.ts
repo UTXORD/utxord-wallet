@@ -902,7 +902,9 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
   async setUpSeed(mnemonic, passphrase = '', language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
     const valid = this.validateMnemonic(mnemonic, language);
     if(!valid) return 'Invalid checksum';
-    const seed = this.bytesToHexString(buffer_seed);
+
+    const parser = this.getMnemonicParserFor(language);
+    const seed = await parser.MakeSeed(mnemonic, passphrase);
     browser.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
