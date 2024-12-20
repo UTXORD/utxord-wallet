@@ -2,7 +2,7 @@
   "name": "utxord-wallet",
   "displayName": "UTXORD Wallet",
   "description": "An open-source Chrome extension to interact with UTXORD.com marketplace",
-  "version": "2.0.28",
+  "version": "2.0.32",
   "private": true,
   "scripts": {
     "lint": "eslint --ext .js,.ts,.vue ./",
@@ -32,6 +32,7 @@
     "@sentry/vite-plugin": "^2.16.0",
     "@sentry/vue": "^7.108.0",
     "@sentry/wasm": "^7.108.0",
+    "bitcoin-address-validation": "^2.2.3",
     "cbor-js": "^0.1.0",
     "crypto-js": "^4.2.0",
     "floating-vue": "^5.2.2",
@@ -43,8 +44,7 @@
     "vue-error-boundary": "^2.0.1",
     "vue-i18n": "^9.2.2",
     "vue-router": "^4.1.6",
-    "vue3-slider": "^1.9.0",
-    "web-bip39": "^0.0.3"
+    "vue3-slider": "^1.9.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.7.0",

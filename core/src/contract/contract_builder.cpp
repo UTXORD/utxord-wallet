@@ -36,22 +36,27 @@ UniValue WitnessStack::MakeJson() const
 void WitnessStack::ReadJson(const UniValue &stack, const std::function<std::string()> &lazy_name)
 {
     if (!stack.isArray()) {
-        throw ContractTermWrongValue(std::string(TxInput::name_witness));
+        throw ContractTermWrongFormat(std::string(TxInput::name_witness));
     }
 
     size_t i = 0;
-    for (const auto& v: stack.getValues()) {
-        if (!v.isStr()) {
-            throw ContractTermWrongValue("witness[" + std::to_string(i) + ']');
-        }
+    try {
+        for (const auto& v: stack.getValues()) {
+            if (!v.isStr()) {
+                throw ContractTermWrongFormat("witness[" + std::to_string(i) + ']');
+            }
 
-        if (i < m_stack.size()) {
-            if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << ']').str());
+            if (i < m_stack.size()) {
+                if (m_stack[i] != unhex<bytevector>(v.get_str())) throw ContractTermMismatch((std::ostringstream() << lazy_name() << '[' << i << ']').str());
+            }
+            else {
+                m_stack.emplace_back(unhex<bytevector>(v.get_str()));
+            }
+            ++i;
         }
-        else {
-            m_stack.emplace_back(unhex<bytevector>(v.get_str()));
-        }
-        ++i;
+    }
+    catch(std::logic_error& e) {
+        std::throw_with_nested(ContractTermWrongFormat("witness[" + std::to_string(i) + ']'));
     }
 }
 
@@ -136,56 +141,157 @@ void ZeroDestination::ReadJson(const UniValue &json, const std::function<std::st
 
 const char* P2Witness::type = "p2witness";
 
-P2Witness::P2Witness(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): mBech(BTC, chain)
+const char* P2Address::type = "p2address";
+
+P2Address::P2Address(ChainMode chain, const UniValue &json, const std::function<std::string()>& lazy_name): m_chain(chain)
 {
-    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
+    if (!json[name_type].isStr()) {
         throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
     }
     m_amount = json[name_amount].getInt<CAmount>();
     m_addr = json[name_addr].get_str();
 }
 
-UniValue P2Witness::MakeJson() const
+UniValue P2Address::MakeJson() const
 {
     UniValue res(UniValue::VOBJ);
-    res.pushKV(name_type, type);
+    res.pushKV(name_type, Type());
     res.pushKV(name_amount, m_amount);
     res.pushKV(name_addr, m_addr);
 
     return res;
 }
 
-void P2Witness::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
+void P2Address::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
 {
-    if (!json[name_type].isStr() || json[name_type].get_str() != type) throw ContractTermMismatch(lazy_name());
+    if (!json[name_type].isStr() || json[name_type].get_str() != Type()) throw ContractTermMismatch(move((lazy_name() += '.') += name_type));
     if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
     if (m_addr != json[name_addr].get_str())  throw ContractTermMismatch(move((lazy_name() += '.') += name_addr));
 }
 
 
-std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
+std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name)
 {
-    P2Witness dest(chain, json, lazy_name);
+    P2Address dest(chain, json, lazy_name);
     try {
-        return P2Witness::Construct(chain, dest.m_amount, dest.m_addr);
+        auto p2addr = Construct(chain, dest.m_amount, dest.m_addr);
+        p2addr->ReadJson(json, lazy_name);
+        return p2addr;
     }
     catch(...) {
         std::throw_with_nested(ContractTermWrongValue(lazy_name()));
     }
 }
 
-std::shared_ptr<IContractDestination> P2Witness::Construct(ChainMode chain, CAmount amount, std::string addr)
+std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, CAmount amount, std::string addr)
 {
-    unsigned witver;
-    bytevector data;
-    std::tie(witver, data) = Bech32(BTC, chain).Decode(addr);
-    if (witver == 0) {
-        return std::make_shared<P2WPKH>(chain, amount, move(addr));
-    } else if (witver == 1) {
-        return std::make_shared<P2TR>(chain, amount, move(addr));
-    } else {
+    Bech32 bech(BTC, chain);
+    if (addr.starts_with(bech.GetHrp())) {
+        auto [witver, data] = bech.Decode(addr);
+
+        if (witver == 0)
+            return std::make_shared<P2WPKH>(chain, amount, move(addr));
+        if (witver == 1)
+            return std::make_shared<P2TR>(chain, amount, move(addr));
+
         throw ContractTermWrongValue((std::ostringstream() << addr << " wrong witness ver: " << witver).str());
     }
+
+    auto [addrtype, hash] = Base58(chain).Decode(addr);
+    if (addrtype == PUB_KEY_HASH)
+        return std::make_shared<P2PKH>(chain, amount, move(addr));
+    if (addrtype == SCRIPT_HASH)
+        return std::make_shared<P2SH>(chain, amount, move(addr));
+
+    throw ContractTermWrongValue(move(addr));
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+CScript P2PKH::PubKeyScript() const
+{
+    auto [addrtype, keyhash] = l15::Base58(m_chain).Decode(m_addr);
+    if (addrtype != l15::PUB_KEY_HASH) throw ContractTermWrongValue("Not P2PKH: " + m_addr);
+    return CScript() << OP_DUP << OP_HASH160 << keyhash << OP_EQUALVERIFY << OP_CHECKSIG;
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+CScript P2SH::PubKeyScript() const
+{
+    auto [addrtype, keyhash] = l15::Base58(m_chain).Decode(m_addr);
+    if (addrtype != l15::SCRIPT_HASH) throw ContractTermWrongValue("Not P2SH: " + m_addr);
+    return CScript() << OP_HASH160 << keyhash << OP_EQUAL;
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+const char* OpReturnDestination::type = "op_return";
+const char* OpReturnDestination::name_data = "data";
+
+OpReturnDestination::OpReturnDestination(const UniValue &json, const std::function<std::string()> &lazy_name)
+{
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) {
+        throw ContractTermWrongValue(move((lazy_name() += '.') += name_type));
+    }
+
+    if (!json.exists(name_amount)) throw ContractTermMissing(lazy_name() + '.' + name_amount);
+    if (!json[name_amount].isNum()) throw ContractTermWrongFormat(lazy_name() + '.' + name_amount);
+
+    if (json.exists(name_data)) {
+        if(!json[name_data].isStr()) throw ContractTermWrongFormat(lazy_name() + '.' + name_data);
+        try {
+            m_data = unhex<bytevector>(json[name_data].getValStr());
+        } catch(std::logic_error& e) {
+            std::throw_with_nested(ContractTermWrongFormat(lazy_name() + '.' + name_data));
+        }
+        if (m_data.size() > 80)
+            throw ContractTermWrongValue(lazy_name() + '.' + name_data + " is too large: " + std::to_string(m_data.size()));
+    }
+
+    m_amount = json[name_amount].getInt<CAmount>();
+}
+
+void OpReturnDestination::Data(bytevector data)
+{
+    if (data.size() > 80) {
+        std::ostringstream buf;
+        buf << type << "." << name_data << " is too large: " << m_data.size();
+        throw ContractTermWrongValue(buf.str());
+    }
+    m_data = move(data);
+}
+
+CScript OpReturnDestination::PubKeyScript() const
+{
+    CScript pubKeyScript {OP_RETURN};
+
+    if (!m_data.empty())
+        pubKeyScript << m_data;
+
+    return pubKeyScript;
+}
+
+UniValue OpReturnDestination::MakeJson() const
+{
+    UniValue res(UniValue::VOBJ);
+    res.pushKV(name_type, type);
+    res.pushKV(name_amount, m_amount);
+    res.pushKV(name_data, hex(m_data));
+
+    return res;
+}
+
+void OpReturnDestination::ReadJson(const UniValue &json, const std::function<std::string()> &lazy_name)
+{
+    if (!json[name_type].isStr() || json[name_type].get_str() != type) throw ContractTermMismatch(lazy_name());
+    if (m_amount != json[name_amount].getInt<CAmount>()) throw ContractTermMismatch(move((lazy_name() += '.') += name_amount));
+    if (hex(m_data) != json[name_data].getValStr())  throw ContractTermMismatch(move((lazy_name() += '.') += name_data));
+}
+
+std::shared_ptr<IContractDestination> OpReturnDestination::Construct(ChainMode chain, const UniValue &json, const std::function<std::string()> &lazy_name)
+{
+    return std::make_shared<OpReturnDestination>(json, lazy_name);
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -194,7 +300,7 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const s
 {
     unsigned witver;
     bytevector pkhash;
-    std::tie(witver, pkhash) = mBech.Decode(m_addr);
+    std::tie(witver, pkhash) = Bech().Decode(m_addr);
     if (witver != 0) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
@@ -206,7 +312,7 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std
 {
     unsigned witver;
     bytevector pk;
-    std::tie(witver, pk) = mBech.Decode(m_addr);
+    std::tie(witver, pk) = Bech().Decode(m_addr);
     if (witver != 1) throw ContractTermWrongValue(std::string(name_addr));
 
     KeyPair keypair = masterKey.Lookup(m_addr, key_filter_tag);
@@ -245,17 +351,19 @@ void UTXO::ReadJson(const UniValue &json, const std::function<std::string()> &la
 
     if (dest.isNull()) throw ContractTermWrongValue(move((lazy_name() += '.') += name_destination));
 
-    m_destination = ContractDestinationFactory<P2Witness, ZeroDestination>::ReadJson(m_chain, dest, [&](){return (lazy_name() += '.') += name_destination; });
+    m_destination = UTXODestinationFactory::ReadJson(m_chain, dest, [&](){return (lazy_name() += '.') += name_destination; });
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 const std::string IContractBuilder::name_contract_type = "contract_type";
+const std::string IContractBuilder::name_contract_phase = "phase";
 const std::string IContractBuilder::name_params = "params";
 const std::string IContractBuilder::name_version = "protocol_version";
 const std::string IContractBuilder::name_mining_fee_rate = "mining_fee_rate";
 const std::string IContractBuilder::name_market_fee = "market_fee";
-const char* IContractBuilder::name_utxo = "utxo";
+const std::string IContractBuilder::name_utxo = "utxo";
+const std::string IContractBuilder::name_custom_fee = "custom_fee";
 const std::string IContractBuilder::name_txid = "txid";
 const std::string IContractBuilder::name_nout = "nout";
 const std::string IContractDestination::name_amount = "amount";
@@ -324,10 +432,7 @@ void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature
 
 void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const
 {
-    uint32_t witver;
-    bytevector keyid;
-
-    std::tie(witver, keyid) = bech32().Decode(addr);
+    auto [witver, keyid] = Bech32(BTC, chain()).Decode(addr);
     if (witver == 1) {
         if (witness.size() != 1) throw SignatureError("witness stack size: " + std::to_string(witness.size()));
         if (witness[0].size() != 64 && witness[0].size() != 65) throw SignatureError("sig size");
@@ -425,8 +530,8 @@ void IContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std:
         try {
             new_pk = unhex<xonly_pubkey>(val.get_str());
         }
-        catch (...) {
-            std::throw_with_nested(ContractTermWrongValue(lazy_name()));
+        catch (std::logic_error& e) {
+            std::throw_with_nested(ContractTermWrongFormat(lazy_name()));
         }
 
         if (pk) {

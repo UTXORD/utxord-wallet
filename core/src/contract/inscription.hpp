@@ -8,6 +8,14 @@
 
 namespace utxord {
 
+class EnvelopeEnd : public InscriptionError {
+public:
+    EnvelopeEnd() = default;
+    ~EnvelopeEnd() override = default;
+
+    const char* what() const noexcept override
+    { return "EnvelopeEnd"; }
+};
 
 std::list<std::pair<l15::bytevector, l15::bytevector>> ParseEnvelopeScript(const CScript& script, CScript::const_iterator& it);
 

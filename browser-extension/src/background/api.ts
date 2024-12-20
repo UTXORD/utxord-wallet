@@ -24,7 +24,10 @@ import {
   CREATE_INSCRIBE_RESULT,
   DECRYPTED_WALLET,
   TRANSFER_LAZY_COLLECTION,
-  BUY_PRODUCT
+  BUY_PRODUCT,
+  SEND_TO,
+  SEND_TO_ADDRESS,
+  SEND_TO_ADDRESS_RESULT,
 } from '~/config/events';
 
 import {
@@ -39,8 +42,8 @@ import {
 import Tab = chrome.tabs.Tab;
 import {Exception} from "sass";
 
-import * as WebBip39 from 'web-bip39';
-import wordlist from 'web-bip39/wordlists/english';
+import * as bip39 from "~/config/bip39";
+import {logger} from "../../scripts/utils";
 
 function GetEnvironment(){
   switch (BASE_URL_PATTERN) {
@@ -54,7 +57,7 @@ function GetEnvironment(){
 
 Sentry.init({
   environment: GetEnvironment(),
-  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.l15.co/6",
+  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.utxord.com/6",
   // Performance Monitoring
   tracesSampleRate: 1.0, //  Capture 100% of the transactions
   integrations: [wasmIntegration()],
@@ -333,7 +336,7 @@ class Api {
         this.viewMode = false;
         // view mode true = sidePanel enabled
         // view mode false = popup enabled
-
+        this.mnemonicParserInstances = {};
 
         await this.init(this);
         await this.sentry();
@@ -430,6 +433,8 @@ class Api {
 
   async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
     const out = {name, props, list, args, proto, lvl};
+    const methodsToDontWarn = ['LookupAddress'];
+    const propsToDontWrap = ['DecodeEntropy']
     const myself = this;
     if(!obj) return out;
     let methods = Object.getOwnPropertyNames(obj).filter((n) => n[0]!== '_');
@@ -447,7 +452,8 @@ class Api {
         out.lvl
       );
     }
-    for (let m of methods){
+    for (let m of methods) {
+      if (propsToDontWrap.includes(m)) continue;
       if((typeof obj[m]) === 'function' &&
         m.indexOf('dynCall') === -1 &&
         m.indexOf('constructor') === -1 &&
@@ -467,7 +473,7 @@ class Api {
               }
               return o;
             }catch(e){
-              if(m!=='LookupAddress') myself.sendWarningMessage(m, e);
+              if (!methodsToDontWarn.includes(m)) myself.sendWarningMessage(m, e);
               return null;
             }
         };
@@ -849,22 +855,53 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     }).join('');
   }
 
-  async generateMnemonic(length: number = 12){
-    const strength = length / 3 * 32;
-    const mnemonic = await WebBip39.generateMnemonic(wordlist, strength);
-    return mnemonic;
+  getMnemonicParserFor(language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    if (!this.mnemonicParserInstances[language]) {
+      this.mnemonicParserInstances[language] = new this.utxord.MnemonicParser(`["${bip39.getWordlistFor(language).join('","')}"]`);
+    }
+    return this.mnemonicParserInstances[language];
   }
 
-  async validateMnemonic(mnemonic){
-     const valid = await WebBip39.validateMnemonic(mnemonic, wordlist);
-     return valid;
+  randomBytes(bytesLength = 32): Uint8Array {
+    if (crypto && typeof crypto.getRandomValues === 'function') {
+      return crypto.getRandomValues(new Uint8Array(bytesLength));
+    }
+    throw new Error('crypto.getRandomValues must be defined');
   }
 
-  async setUpSeed(mnemonic, passphrase = ''){
-    const buffer_seed = await WebBip39.mnemonicToSeed(mnemonic, passphrase);
-    const valid = this.validateMnemonic(mnemonic);
+  async generateMnemonic(length: number = bip39.MNEMONIC_DEFAULT_LENGTH, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    // console.info('===== generateMnemonic:', arguments);
+    let strength = length / 3 * 32;
+    if (strength === void 0) {
+      strength = 128;
+    }
+    if (!(Number.isSafeInteger(strength) &&
+        strength > 0 &&
+        strength <= 256 &&
+        strength % 32 === 0)) {
+      throw new TypeError('Invalid strength');
+    }
+    const random_hex = this.bytesToHexString(this.randomBytes(strength / 8));
+    const parser = this.getMnemonicParserFor(language);
+    return await parser.EncodeEntropy(random_hex);
+  }
+
+  async validateMnemonic(mnemonic: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    console.info('===== validateMnemonic:', arguments);
+    try {
+    const parser = this.getMnemonicParserFor(language);
+      return await parser.DecodeEntropy(mnemonic);
+    } catch (ex) {
+      return false;
+    }
+  }
+
+  // [Const] DOMString MakeSeed([Const] DOMString phrase, [Const] DOMString passphrase);
+  async setUpSeed(mnemonic, passphrase = '', language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+    const valid = this.validateMnemonic(mnemonic, language);
     if(!valid) return 'Invalid checksum';
-    const seed = this.bytesToHexString(buffer_seed);
+    const parser = this.getMnemonicParserFor(language);
+    const seed = await parser.MakeSeed(mnemonic, passphrase);
     chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
@@ -1922,24 +1959,18 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
 
       if (payload.owner_fee?.amount) {
-        const ownerOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.owner_fee?.address
         );
-        tx.AddOutput(ownerOutput);
-        myself.utxord.destroy(ownerOutput);
       }
 
 
       if (payload.market_fee?.amount) {
-        const marketOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.market_fee?.address
         );
-        tx.AddOutput(marketOutput);
-        myself.utxord.destroy(marketOutput);
       }
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
@@ -2009,6 +2040,133 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     } catch (e) {
       outData.errorMessage = await myself.sendExceptionMessage(BUY_PRODUCT, e);
       setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
+      return outData;
+    }
+  }
+
+  //------------------------------------------------------------------------------
+  async sendToAddressContract(payload, estimate: boolean = false) {
+    const myself = this;
+
+    const outData = {
+      data: null,
+      change_amount: null,
+      inputs_sum: 0,
+      utxo_list: [],
+      amount: Number(payload.amount),
+      expect_amount: Number(payload.amount),
+      fee_rate: payload.fee_rate,
+      address: payload.address,
+      fund: myself.wallet.fund,
+      raw: [],
+      total_mining_fee: 0,
+      errorMessage: null as string | null
+    };
+    try {
+      console.log('sendToAddressContract payload: ', {...payload || {}});
+
+      let tx = new myself.utxord.SimpleTransaction(myself.network);
+
+      const protocol_version = Number(payload?.protocol_version);
+      if (protocol_version) {
+        const versions = await myself.getSupportedVersions(tx);
+        if(versions.indexOf(protocol_version) === -1) {
+          outData.errorMessage = 'Please update the plugin to latest version.';
+          outData.raw = [];
+          return outData;
+        }
+      }
+
+      tx.MiningFeeRate(myself.satToBtc(payload.fee_rate).toFixed(8));
+
+
+        const sendOutput = new myself.utxord.P2TR(
+            myself.network,
+            myself.satToBtc(outData.amount).toFixed(8),
+            payload.address
+        );
+        tx.AddOutput(sendOutput);
+        myself.utxord.destroy(sendOutput);
+
+
+
+      if (payload.market_fee?.amount) {
+        const marketOutput = new myself.utxord.P2TR(
+            myself.network,
+            myself.satToBtc(payload.market_fee?.amount).toFixed(8),
+            payload.market_fee?.address
+        );
+        tx.AddOutput(marketOutput);
+        myself.utxord.destroy(marketOutput);
+      }
+
+      let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
+      min_fund_amount += myself.btcToSat(tx.GetNewOutputMiningFee());  // to take in account a change output
+      outData.amount = min_fund_amount;
+
+      if (!myself.fundings.length && !estimate) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // outData.raw = [];
+        return outData;
+      }
+
+      const input_mining_fee = myself.btcToSat(tx.GetNewInputMiningFee());
+      const utxo_list = await myself.smartSelectFundsByAmount(min_fund_amount, input_mining_fee);
+      outData.utxo_list = utxo_list;
+
+      console.log("min_fund_amount:", min_fund_amount);
+      console.log("utxo_list:", utxo_list);
+
+      if (utxo_list?.length < 1 && !estimate) {
+        outData.errorMessage = "Insufficient funds. Please add.";
+        // outData.raw = [];
+        return outData;
+      }
+
+      outData.inputs_sum = await myself.sumAllFunds(utxo_list);
+
+      for(const fund of utxo_list) {
+        const utxo = new myself.utxord.UTXO(myself.network,
+            fund.txid,
+            fund.nout,
+            myself.satToBtc(fund.amount).toFixed(8),
+            fund.address
+        );
+        tx.AddInput(utxo);
+        myself.utxord.destroy(utxo);
+      }
+
+      tx.AddChangeOutput(myself.wallet.fund.address);  // should be last in/out definition
+
+      if (!estimate) {
+        tx.Sign(myself.wallet.root.key, "fund");
+        outData.raw = await myself.getRawTransactions(tx);
+
+        // TODO: core API needs to be refactored to make change-related stuff more usable
+        const changeOutput = tx.ChangeOutput();
+        if (changeOutput.ptr != 0) {
+          const changeDestination = changeOutput.Destination();
+          if (changeDestination.ptr != 0) {
+            outData.change_amount = myself.btcToSat(changeDestination.Amount()) || null;
+            myself.destroy(changeDestination);
+          }
+          myself.destroy(changeOutput);
+        }
+        console.debug('change_amount: ', outData.change_amount);
+
+        outData.data = tx.Serialize(SIMPLE_TX_PROTOCOL_VERSION, myself.utxord.TX_SIGNATURE);
+
+        const contractData = JSON.parse(outData.data);
+        console.debug('sendToAddressContract: contractData:', contractData);
+      }
+
+      outData.total_mining_fee = myself.btcToSat(tx.GetTotalMiningFee(""));
+      myself.utxord.destroy(tx);
+
+      return outData;
+    } catch (e) {
+      outData.errorMessage = await myself.sendExceptionMessage(SEND_TO_ADDRESS, e);
+      //setTimeout(() => myself.WinHelpers.closeCurrentWindow(), closeWindowAfter);
       return outData;
     }
   }
@@ -2088,22 +2246,16 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       tx.AddInput(collectionUtxo);
       myself.utxord.destroy(collectionUtxo);
 
-      const transferOutput = new myself.utxord.P2TR(
-          this.network,
+      tx.AddOutput(
           myself.satToBtc(collection.amount).toFixed(8),
           payload.transfer_address
       );
-      tx.AddOutput(transferOutput);
-      myself.utxord.destroy(transferOutput);
 
       if (payload.market_fee?.amount) {
-        const marketOutput = new myself.utxord.P2TR(
-            myself.network,
+        tx.AddOutput(
             myself.satToBtc(payload.market_fee?.amount).toFixed(8),
             payload.market_fee?.address
         );
-        tx.AddOutput(marketOutput);
-        myself.utxord.destroy(marketOutput);
       }
 
       let min_fund_amount = myself.btcToSat(tx.GetMinFundingAmount("")); // empty string for now
@@ -2273,7 +2425,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       );
 
       const dst_address = payload.inscription_destination_address || myself.wallet.ord.address;
-      await newOrd.OrdDestination((myself.satToBtc(payload.expect_amount)).toFixed(8), dst_address);
+      await newOrd.OrdOutput((myself.satToBtc(payload.expect_amount)).toFixed(8), dst_address);
 
       // For now it's just a support for title and description
       if (payload.metadata) {
@@ -2299,7 +2451,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
           outData.raw = [];
           return outData;
         }
-        newOrd.AddToCollection(
+        newOrd.AddCollectionUTXO(
             `${payload.collection.genesis_txid}i0`,  // inscription ID = <genesis_txid>i<envelope(inscription)_number>
             payload.collection.owner_txid,  // current collection utxo
             payload.collection.owner_nout,  // current collection nout

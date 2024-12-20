@@ -46,6 +46,28 @@
           data-testid="connect-to-site"
         >Connect to site</Button>
         </template>
+
+      <div>
+  <!--
+        <span
+           v-if="Number(balance?.confirmed) > 0"
+          class=" w-2/4"
+          data-testid="send"
+          @click="sendTo"
+          style="cursor: pointer;font-size: 20px;margin-top: 5px;"
+          >
+          &#9658;
+        </span>
+-->
+        <span
+          class=" w-2/4"
+          data-testid="addresses"
+          @click="addressesList"
+          style="cursor: pointer;font-size: 20px;margin-top: 5px;"
+          >
+          &#8801;
+        </span>
+        </div>
       </div>
 
       <!-- Balance -->
@@ -150,14 +172,14 @@
 
 <script setup lang="ts">
 import { toRefs, computed } from 'vue'
-import { sendMessage } from 'webext-bridge'
 import { useStore } from '~/popup/store/index'
 import RefreshIcon from '~/components/Icons/RefreshIcon.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
-import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
 import {BALANCE_CHANGE_PRESUMED, NEW_FUND_ADDRESS, CHANGE_TYPE_FUND_ADDRESS, STATUS_DERIVATION, CONNECT_TO_SITE} from '~/config/events'
 import useWallet from '~/popup/modules/useWallet'
-
+import { useRouter } from 'vue-router'
+const { back, push } = useRouter()
 
 const store = useStore()
 const { balance, fundAddress, typeAddress, useDerivation } = toRefs(store)
@@ -180,6 +202,14 @@ async function newFundAddress() {
   store.setFundAddress(addr)
 }
 
+function sendTo(){
+  return push('/send-to')
+}
+
+function addressesList(){
+  return push('/addresses')
+}
+
 function refreshBalance() {
   store.setSyncToFalse()
   fetchUSDRate()
@@ -193,7 +223,7 @@ function refreshBalance() {
     )?.address
     store.setFundAddress(addr)
     await getBalance(fundAddress.value);
-  }, 1000)
+  }, 500)
 }
 
 const isSynchronized = computed(() => balance?.value?.sync)

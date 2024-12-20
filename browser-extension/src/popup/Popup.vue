@@ -7,7 +7,8 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage, onMessage } from 'webext-bridge'
+import { sendMessage } from '~/helpers/index'
+import { onMessage } from 'webext-bridge'
 import { onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 import NotifySuccess from '~/components/NotifySuccess.vue'
@@ -70,7 +71,7 @@ async function checkAuth(): Promise<boolean> {
 function runHeartbeat() {
   setInterval(async () => {
     await sendMessage(POPUP_HEARTBEAT, {}, 'background')
-  }, 10000)
+  }, 6000)
 }
 
 
@@ -78,7 +79,7 @@ function refreshBalance() {
   store.setSyncToFalse();
   setTimeout(async () => {
     await getBalance(fundAddress.value)
-  }, 1000)
+  }, 500)
 }
 
 async function init() {
@@ -156,7 +157,7 @@ onMessage(SAVE_DATA_FOR_EXPORT_KEY_PAIR, (payload) => {
 })
 
 onBeforeMount(() => {
-  console.log('===== onBeforeMount')
+  // console.info('===== onBeforeMount')
   init()
 })
 </script>

@@ -6,6 +6,9 @@
 namespace utxord {
 
 class InscriptionError : public l15::Error {
+protected:
+    InscriptionError() : l15::Error() {}
+
 public:
     explicit InscriptionError(std::string&& details) : l15::Error(move(details)) {}
     ~InscriptionError() override = default;

@@ -42,13 +42,12 @@
 
 <script setup lang="ts">
 import { toRefs } from 'vue'
-import { sendMessage } from 'webext-bridge'
 import { useRouter } from 'vue-router'
 import {UNLOAD_SEED, SET_UP_PASSWORD } from '~/config/events'
 import Modal from '~/components/Modal.vue'
 import ThemeBtn from '~/components/ThemeBtn.vue'
 import { useStore } from '~/popup/store'
-import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
 
 const { push } = useRouter()
 const store = useStore()

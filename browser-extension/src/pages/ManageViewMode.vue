@@ -36,7 +36,7 @@
         <Button
           second
           class="w-full px-0 flex items-center justify-center gap-2"
-          @click="back"
+          @click="push('/manage')"
           data-testid="go-back"
         >
           Go Back
@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
+import { sendMessage } from '~/helpers/index'
 import { toRefs} from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '~/popup/store/index'

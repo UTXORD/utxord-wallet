@@ -2,7 +2,6 @@
 
 #include <string>
 #include <optional>
-#include <list>
 
 #include "script_merkle_tree.hpp"
 
@@ -24,6 +23,7 @@ enum SwapPhase {
 class SwapInscriptionBuilder : public utxord::ContractBuilder<utxord::SwapPhase>
 {
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_p2address;
     static const char* s_versions;
 
     std::optional<CAmount> m_ord_price;
@@ -129,7 +129,8 @@ public:
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
 
     const std::string& GetContractName() const override;
-    void CheckContractTerms(SwapPhase phase) const override;
+    uint32_t GetVersion() const override { return s_protocol_version; }
+    void CheckContractTerms(uint32_t version, SwapPhase phase) const override;
     UniValue MakeJson(uint32_t version, SwapPhase phase) const override;
     void ReadJson(const UniValue& json, SwapPhase phase) override;
 
@@ -142,16 +143,10 @@ public:
     void AddFundsUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
 
     void OrdPayoffAddress(std::string addr)
-    {
-        bech32().Decode(addr);
-        m_ord_payoff_addr = move(addr);
-    }
+    { m_ord_payoff_addr = move(addr); }
 
     void FundsPayoffAddress(std::string addr)
-    {
-        bech32().Decode(addr);
-        m_funds_payoff_addr = move(addr);
-    }
+    { m_funds_payoff_addr = move(addr); }
 
     void SwapScriptPubKeyB(xonly_pubkey v) { m_swap_script_pk_B = move(v); }
 

@@ -111,7 +111,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="goToBack"
           data-testid="go-back"
         >
           <ArrowLeftIcon />
@@ -163,9 +163,10 @@ const minutesStart = computed(
 const normalText = computed(() => handleText(NORMAL_FEE_VAL));
 const priorityText = computed(() => handleText(PRIORITY_FEE_VAL));
 const customText = computed(() => {
-  if (selectedStep.value < 3) return 'days';
-  if (selectedStep.value > 7) return 'minutes';
-  return 'hours';
+  return '';
+  // if (selectedStep.value < 3) return 'days';
+  // if (selectedStep.value > 7) return 'minutes';
+  // return 'hours';
 });
 const FEES_TABS = computed(() => [
   {
@@ -220,9 +221,10 @@ const transaction_fee = computed(() => ({
 }));
 
 function handleText(value: number) {
-  if (hoursStart.value >= value) return 'days';
-  if (minutesStart.value <= value) return 'minutes';
-  return 'hours';
+  return '';
+  // if (hoursStart.value >= value) return 'days';
+  // if (minutesStart.value <= value) return 'minutes';
+  // return 'hours';
 }
 
 function calculateStep(
@@ -258,14 +260,40 @@ function bytesToVb(bytes: number): number {
 }
 
 async function onConfirm() {
-    dataForSign.value = {...dataForSign.value, ...{ selectedMiningFee: 0 }};
-    await push(`//sign-commit-buy`)
+       dataForSign.value = {
+       ...dataForSign.value,
+       ...{
+       fee_rate: selectedFeeRate.value,
+        },
+       };
+
+console.log(
+  'selectedStep:',selectedStep.value,
+  ' selectedType:',selectedType.value,
+  ' selectedFeeRate:',selectedFeeRate.value
+)
+
+    console.log('onConfirm()->dataForSign:', dataForSign.value);
+    if(!dataForSign.value?.location){
+      await push(`/sign-commit-buy`)
+    }else{
+      await push(dataForSign.value?.location)
+    }
+}
+
+async function goToBack(){
+  if(!dataForSign.value?.back){
+    back()
+  }else{
+    await push(dataForSign.value?.back)
+  }
 }
 
 onMounted(() => {
+console.log('dataForSign:', dataForSign.value);
   setTimeout(() => {
     loading.value = false
-  }, 1000)
+  }, 500)
 })
 </script>
 
@@ -390,7 +418,7 @@ onMounted(() => {
         transform: translateY(-50%);
         position: absolute;
       }
-      
+
       :deep(.track-filled) {
         height: 2px;
         background: transparent;

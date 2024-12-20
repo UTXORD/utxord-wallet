@@ -32,6 +32,12 @@
         :class="{ 'custom-input--error': errors?.length }"
       />
       <div class="absolute inset-y-0 right-0 flex items-center px-2">
+      <label
+        v-if="props.after === SAT"
+        for="toggle"
+        data-testid="show-password-icon"
+        class="select-none rounded px-2 py-2 text-sm text-gray-600 font-mono cursor-pointer js-password-label"
+        >SAT</label>
         <label
           v-if="props.type === TYPE_PASSWORD"
           @click="togglePassword"
@@ -60,6 +66,7 @@ import { defineProps, defineEmits, ref, onMounted } from 'vue'
 
 const TYPE_PASSWORD = 'password'
 const TYPE_TEXT = 'text'
+const SAT = 'sat'
 
 const props = defineProps({
   modelValue: {
@@ -73,6 +80,10 @@ const props = defineProps({
   type: {
     type: String,
     default: 'text'
+  },
+  after: {
+    type: String,
+    default: null
   },
   placeholder: {
     type: String,
@@ -124,5 +135,14 @@ textarea {
     outline: none;
     box-shadow: 0 0 0 2px red;
   }
+}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance:textfield;
 }
 </style>

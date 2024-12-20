@@ -12,15 +12,27 @@
       <div
         class="generate-screen_form w-full flex flex-col bg-[var(--section)] rounded-xl p-3"
       >
+
         <div class="flex flex-col items-center">
-          <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s length</span>
+          <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s language:</span>
           <Dropdown
-            :model-value="passphraseLength"
-            @update:model-value="onChangePhraseLength"
-            :options="PHRASE_LENGTH_OPTIONS"
+            :model-value="mnemonicLanguage"
+            @update:model-value="onChangeMnemonicLanguage"
+            :options="bip39.MNEMONIC_LANGUAGE_OPTIONS"
+            data-testid="phrase-language"
+          />
+        </div>
+
+        <div class="flex flex-col items-center">
+          <span class="w-full text-[var(--text-grey-color)] mb-2">Phrase’s length:</span>
+          <Dropdown
+            :model-value="mnemonicLength"
+            @update:model-value="onChangeMnemonicLength"
+            :options="bip39.MNEMONIC_LENGTH_OPTIONS"
             data-testid="phrase-length"
           />
         </div>
+
       </div>
 
       <div
@@ -49,7 +61,7 @@
           class="w-full"
           :rows="3"
           v-model="textarea"
-          readonly
+          readonly="readonly"
           :rules="[
           (val) => isASCII(val) || 'Please enter only Latin characters'
           ]"
@@ -66,24 +78,23 @@
         <NotifyInBody/>
         <table style="width: 100%;" v-if="picked == 'list'">
           <!-- for 12 words -->
-          <tbody v-if="passphraseLength == 12" v-for="n in 4">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[0]" v-for=" n in 4">
             <tr class="flex">
               <td class="w-full"><input :placeholder="n" class="w-full  bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n-1]"/></td>
               <td class="w-full"><input :placeholder="n+4" class="w-full  bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n+3]"/></td>
               <td class="w-full"><input :placeholder="n+8" class="w-full  bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n+7]"/></td>
             </tr>
           </tbody>
-          <!-- for 1s5 words -->
-          <tbody v-if="passphraseLength == 15" v-for="n in 5">
+          <!-- for 15 words -->
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[1]" v-for="n in 5">
             <tr class="flex">
               <td class="w-full"><input :placeholder="n" class="w-full  bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n-1]"/></td>
               <td class="w-full"><input :placeholder="n+5" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n+4]"/></td>
               <td class="w-full"><input :placeholder="n+10" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n+9]"/></td>
             </tr>
           </tbody>
-
           <!-- for 18 words -->
-          <tbody v-if="passphraseLength == 18" v-for="n in 6">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[2]" v-for="n in 6">
             <tr class="flex">
               <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n-1]"/></td>
               <td class="w-full"><input :placeholder="n+6" class="w-full  bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n+5]"/></td>
@@ -91,7 +102,7 @@
             </tr>
           </tbody>
           <!-- for 21 words -->
-          <tbody v-if="passphraseLength == 21" v-for="n in 7">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[3]" v-for="n in 7">
             <tr class="flex">
               <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n-1]"/></td>
               <td class="w-full"><input :placeholder="n+7" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n+6]"/></td>
@@ -99,7 +110,7 @@
             </tr>
           </tbody>
           <!-- for 24 words -->
-          <tbody v-if="passphraseLength == 24" v-for="n in 8">
+          <tbody v-if="mnemonicLength == bip39.MNEMONIC_LENGTHS[4]" v-for="n in 8">
             <tr class="flex">
               <td class="w-full"><input :placeholder="n" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n-1]"/></td>
               <td class="w-full"><input :placeholder="n+8" class="w-full bg-[var(--bg-color)] text-[var(--text-color)] noselect pl-2.5 min-h-[33px]" size="10" type="text" data-testid="mnemonic-word" :value="list[n+7]"/></td>
@@ -192,43 +203,39 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
 import { computed, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
-import { SET_UP_PASSWORD } from '~/config/events'
-import { isASCII, isLength, isContains, copyToClipboard, isMnemonicValid } from '~/helpers/index'
+import {
+  isASCII,
+  copyToClipboard,
+  generateMnemonic,
+  isMnemonicValid,
+  } from '~/helpers/index'
 import NotifyInBody from '~/components/NotifyInBody.vue'
+import * as bip39 from "~/config/bip39";
+
+const MNEMONIC_KEY = 'temp-mnemonic'
+const MNEMONIC_LANGUAGE_KEY = 'temp-mnemonic-language'
+const MNEMONIC_LENGTH_KEY = 'temp-mnemonic-length'
+const PASSPHRASE_KEY = 'temp-passphrase'
 
 const WORDS_COUNT = 'temp-words-count'
 const ROW_POSITION= 'temp-row-position'
 
-const LENGTH_12 = { label: '12', value: 12 }
-const LENGTH_15 = { label: '15', value: 15 }
-const LENGTH_18 = { label: '18', value: 18 }
-const LENGTH_21 = { label: '21', value: 21 }
-const LENGTH_24 = { label: '24', value: 24 }
-
-const PHRASE_LENGTH_OPTIONS = [
-  LENGTH_12,
-  LENGTH_15,
-  LENGTH_18,
-  LENGTH_21,
-  LENGTH_24
-]
-
-const MNEMONIC_KEY = 'temp-mnemonic'
-const PASSPHRASE_LENGTH_KEY = 'temp-passphrase-length'
-const PASSPHRASE_KEY = 'temp-passphrase'
-
 const { back, push } = useRouter()
+
 const textarea = ref('')
 const usePassphrase = ref(
   Boolean(localStorage?.getItem(PASSPHRASE_KEY)) || false
 )
 const passphrase = ref('')
-const passphraseLength = ref(
-  Number(localStorage?.getItem(PASSPHRASE_LENGTH_KEY)) || LENGTH_12.value
+const mnemonicLength = ref(
+  Number(localStorage?.getItem(MNEMONIC_LENGTH_KEY) || bip39.MNEMONIC_DEFAULT_LENGTH)
 )
+const mnemonicLanguage = ref(
+  String(localStorage?.getItem(MNEMONIC_LANGUAGE_KEY) || bip39.MNEMONIC_DEFAULT_LANGUAGE)
+)
+
 const picked = ref('list')
 const showInfo = ref(false)
 const mnemonicIsSaved = ref(false)
@@ -238,7 +245,7 @@ const valid = ref(false)
 
 const isDisabled = computed(() => {
   (async ()=>{
-    valid.value = await isMnemonicValid(textarea.value.trim())
+    valid.value = await isMnemonicValid(textarea.value.trim(), mnemonicLanguage.value);
   })()
   if (!textarea.value) return true
   if (!valid.value) return true
@@ -253,54 +260,61 @@ function viewShowInfo() {
 
 function removeTempDataFromLocalStorage() {
   localStorage.removeItem(MNEMONIC_KEY)
-  localStorage.removeItem(PASSPHRASE_LENGTH_KEY)
+  localStorage.removeItem(MNEMONIC_LENGTH_KEY)
   localStorage.removeItem(PASSPHRASE_KEY)
+  localStorage.removeItem(MNEMONIC_LANGUAGE_KEY)
 }
 
 function saveTempDataToLocalStorage(){
-  localStorage?.setItem(PASSPHRASE_LENGTH_KEY, passphraseLength.value)
+  localStorage?.setItem(MNEMONIC_LENGTH_KEY, mnemonicLength.value)
   localStorage?.setItem(MNEMONIC_KEY, textarea.value)
   localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)
+  localStorage?.setItem(MNEMONIC_LANGUAGE_KEY, mnemonicLanguage.value)
   localStorage?.removeItem(WORDS_COUNT)
   localStorage?.removeItem(ROW_POSITION)
-
 }
 
 async function onStore() {
-
     saveTempDataToLocalStorage()
     push('/check-user-mnemonic')
 }
 
 function goToBack() {
   removeTempDataFromLocalStorage()
-
-    return push('/start')
+  return push('/start')
 }
 
 function refreshMnemonic() {
-  removeTempDataFromLocalStorage()
+  removeTempDataFromLocalStorage();
   getMnemonic()
 }
 
-function onChangePhraseLength(option) {
-  passphraseLength.value = option;
+function onChangeMnemonicLength(option) {
+  mnemonicLength.value = option;
+  saveTempDataToLocalStorage();
+  refreshMnemonic();
+}
+
+function onChangeMnemonicLanguage(option) {
+  mnemonicLanguage.value = option;
   saveTempDataToLocalStorage();
   refreshMnemonic();
 }
 
 async function getMnemonic() {
   const tempMnemonic = localStorage?.getItem(MNEMONIC_KEY)
-  const tempLength = localStorage?.getItem(PASSPHRASE_LENGTH_KEY)
+  const tempLength = localStorage?.getItem(MNEMONIC_LENGTH_KEY)
   const tempPassphrase = localStorage?.getItem(PASSPHRASE_KEY)
+  const tempLanguage = localStorage?.getItem(MNEMONIC_LANGUAGE_KEY)
   if (tempMnemonic) {
+    console.debug('=== tempMnemonic, tempLanguage:', tempLanguage);
     textarea.value = tempMnemonic
-    passphraseLength.value = tempLength
+    mnemonicLength.value = tempLength
     passphrase.value = tempPassphrase
+    mnemonicLanguage.value = tempLanguage
   } else {
-    const mnemonic = await sendMessage('GENERATE_MNEMONIC', {
-      length: passphraseLength.value
-    }, 'background')
+    console.debug('=== !tempMnemonic');
+    const mnemonic = await generateMnemonic(mnemonicLength.value, mnemonicLanguage.value);
     textarea.value = mnemonic
     saveTempDataToLocalStorage()
   }

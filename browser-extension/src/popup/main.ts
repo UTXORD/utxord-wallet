@@ -25,7 +25,7 @@ import {
  } from '~/config/index';
  import {version} from '~/../package.json';
  import { STATUS_VIEW_MODE  } from '~/config/events';
- import { sendMessage } from 'webext-bridge'
+ import { sendMessage } from '~/helpers/index'
 
 
 const pinia = createPinia()
@@ -64,7 +64,7 @@ Sentry.init({
     }
   },
   plugin: version,
-  dsn: "https://9b55ac2faadbc147285ed63295e018ea@sntry.l15.co/4",
+  dsn: "https://9b55ac2faadbc147285ed63295e018ea@sntry.utxord.com/4",
   integrations: [
     Sentry.browserTracingIntegration({ router }),
     Sentry.replayIntegration(),

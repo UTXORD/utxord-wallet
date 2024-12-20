@@ -11,9 +11,8 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/debug_adaptor.hpp>
 
-#include "safe_ptr.hpp"
-
 #include "univalue.h"
+#include "base58.hpp"
 
 #include "utils.hpp"
 #include "contract_error.hpp"
@@ -67,8 +66,6 @@ struct IJsonSerializable
 {
     static const std::string name_type;
 
-    mutable std::string buf;
-
     virtual ~IJsonSerializable() = default;
     virtual UniValue MakeJson() const = 0;
     virtual void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) = 0;
@@ -111,13 +108,15 @@ struct IContractDestination: IJsonSerializable
     static const std::string name_amount;
     static const std::string name_addr;
 
+    virtual const char* Type() const = 0;
     virtual CAmount Amount() const = 0;
     virtual void Amount(CAmount amount) = 0;
     virtual std::string Address() const = 0;
     virtual CScript PubKeyScript() const = 0;
+    CTxOut TxOutput() const
+    { return {Amount(), PubKeyScript()}; };
     virtual std::vector<bytevector> DummyWitness() const = 0;
     virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const = 0;
-
 };
 
 
@@ -126,8 +125,9 @@ struct ZeroDestination: IContractDestination
 {
     ZeroDestination() = default;
     explicit ZeroDestination(const UniValue &json, const std::function<std::string()>& lazy_name);
+    const char* Type() const override { return ""; }
     CAmount Amount() const override { return 0; }
-    void Amount(CAmount amount) override { if (amount) throw std::invalid_argument("Non zero amount cannot be assigned to zero destination"); }
+    void Amount(CAmount amount) override { if (amount) throw l15::IllegalArgument("Non zero amount cannot be assigned to zero destination"); }
     std::string Address() const override { return {}; }
     CScript PubKeyScript() const override { throw std::domain_error("zero destination cannot has a witness"); }
     std::vector<bytevector> DummyWitness() const override { throw std::domain_error("zero destination cannot has a witness"); }
@@ -138,28 +138,26 @@ struct ZeroDestination: IContractDestination
 };
 
 
-class P2Witness: public IContractDestination
+class P2Address : public IContractDestination
 {
 public:
     static const char* type;
-
 protected:
-    Bech32 mBech;
+    ChainMode m_chain;
     CAmount m_amount = 0;
     std::string m_addr;
+
 private:
-    friend IContractDestination;
-    explicit P2Witness(Bech32 bech) : mBech(bech) {}
+    P2Address(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
+
 public:
-    P2Witness() = delete;//default;
-    P2Witness(const P2Witness&) = default;
-    P2Witness(P2Witness&&) noexcept = default;
+    P2Address() = delete;
+    P2Address(const P2Address&) = default;
+    P2Address(P2Address&&) noexcept = default;
+    P2Address(ChainMode m, CAmount amount, std::string addr) : m_chain(m), m_amount(amount), m_addr(move(addr)) {}
 
-    P2Witness(ChainMode chain, CAmount amount, std::string addr) : mBech(BTC, chain), m_amount(amount), m_addr(move(addr)) {}
-
-    explicit P2Witness(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
-
-    ~P2Witness() override = default;
+    const char* Type() const override
+    { return type; };
 
     CAmount Amount() const final
     { return m_amount; }
@@ -170,8 +168,42 @@ public:
     std::string Address() const override
     { return m_addr; }
 
+    CScript PubKeyScript() const override { throw std::logic_error("P2Address abstract call"); }
+    std::vector<bytevector> DummyWitness() const override { throw std::logic_error("P2Address abstract call"); }
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
+    { throw std::logic_error("P2Address abstract call"); }
+
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
+
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, CAmount amount, std::string addr);
+};
+
+class P2Witness: public P2Address
+{
+public:
+    static const char* type;
+
+private:
+    friend IContractDestination;
+    //explicit P2Witness(ChainMode chain) : P2Address(chain) {}
+public:
+    P2Witness() = delete;//default;
+    P2Witness(const P2Witness&) = default;
+    P2Witness(P2Witness&&) noexcept = default;
+
+    P2Witness(ChainMode chain, CAmount amount, std::string addr): P2Address(chain, amount, move(addr)) {}
+
+    ~P2Witness() override = default;
+
+    Bech32 Bech() const { return Bech32(BTC, m_chain); }
+
+    const char* Type() const override
+    { return type; }
+
     CScript PubKeyScript() const override
-    { return mBech.PubKeyScript(m_addr); }
+    { return Bech32(BTC, m_chain).PubKeyScript(m_addr); }
 
     std::vector<bytevector> DummyWitness() const override
     { throw std::logic_error("generic winness structure is unknown"); } // Should never be called directly
@@ -179,11 +211,8 @@ public:
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw ContractTermMissing("key"); }
 
-    UniValue MakeJson() const override;
-    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
-
-    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
-    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, CAmount amount, std::string addr);
+    // static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
+    // static std::shared_ptr<IContractDestination> Construct(ChainMode chain, CAmount amount, std::string addr);
 };
 
 class P2WPKH: public P2Witness
@@ -210,6 +239,80 @@ public:
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
 };
+
+class P2PKH: public P2Address
+{
+public:
+    P2PKH() = delete;
+    P2PKH(const P2PKH&) = default;
+    P2PKH(P2PKH&&) noexcept = default;
+    P2PKH(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
+
+    CScript PubKeyScript() const override;
+
+    std::vector<bytevector> DummyWitness() const override
+    { throw std::logic_error("P2PKH has no segregated witness"); }
+
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
+    { throw std::logic_error("P2PKH signing is not implemented yet"); }
+};
+
+class P2SH: public P2Address
+{
+public:
+    P2SH() = delete;
+    P2SH(const P2SH&) = default;
+    P2SH(P2SH&&) noexcept = default;
+    P2SH(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
+
+    CScript PubKeyScript() const override;
+
+    std::vector<bytevector> DummyWitness() const override
+    { throw std::logic_error("P2SH has no segregated witness"); }
+
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
+    { throw std::logic_error("P2SH signing is not implemented yet"); }
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+class OpReturnDestination final: public IContractDestination
+{
+    CAmount m_amount = 0;
+    bytevector m_data {};
+public:
+    static const char* type;
+
+    static const char* name_data;
+
+    OpReturnDestination() = default;
+    OpReturnDestination(const OpReturnDestination&) = default;
+    OpReturnDestination(OpReturnDestination&&) noexcept = default;
+
+    explicit OpReturnDestination(bytevector data, CAmount amount=0) : m_amount(amount), m_data(move(data)) {}
+
+    explicit OpReturnDestination(const UniValue& json, const std::function<std::string()>& lazy_name);
+
+    const char* Type() const override { return type; }
+    void Amount(CAmount amount) override { m_amount = amount; }
+    CAmount Amount() const final { return m_amount; }
+
+    void Data(bytevector data);
+    const bytevector& Data() const { return m_data; }
+
+    std::string Address() const override { return {}; }
+    CScript PubKeyScript() const override;
+    std::vector<bytevector> DummyWitness() const override { throw std::domain_error("OP_RETURN destination cannot have a witness"); }
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
+    { throw std::domain_error("OP_RETURN destination cannot provide a signer"); }
+
+    UniValue MakeJson() const override;
+    void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
+
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
+
+};
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 class IContractMultiOutput {
@@ -262,7 +365,7 @@ private:
 public:
     //UTXO() = default;
     UTXO(ChainMode chain, std::string txid, uint32_t nout, CAmount amount, std::string addr)
-        : m_chain(chain), m_txid(move(txid)), m_nout(nout), m_destination(P2Witness::Construct(chain, amount, move(addr))) {}
+        : m_chain(chain), m_txid(move(txid)), m_nout(nout), m_destination(P2Address::Construct(chain, amount, move(addr))) {}
 
     UTXO(ChainMode chain, std::string txid, uint32_t nout, std::shared_ptr<IContractDestination> destination)
         : m_chain(chain), m_txid(move(txid)), m_nout(nout), m_destination(move(destination)) {}
@@ -324,7 +427,7 @@ struct TxInput : public IJsonSerializable
     std::shared_ptr<IContractOutput> output;
     WitnessStack witness;
 
-    explicit TxInput(Bech32 bech, uint32_t n, std::shared_ptr<IContractOutput> prevout) : chain(bech.GetChainMode()), nin(n), output(move(prevout)) {}
+    explicit TxInput(ChainMode ch, uint32_t n, std::shared_ptr<IContractOutput> prevout) : chain(ch), nin(n), output(move(prevout)) {}
     explicit TxInput(ChainMode ch, uint32_t n, const UniValue& json, const std::function<std::string()>& lazy_name) : chain(ch), nin(n)
     { TxInput::ReadJson(json, lazy_name); }
 
@@ -340,12 +443,14 @@ class IContractBuilder
 {
 public:
     static const std::string name_contract_type;
+    static const std::string name_contract_phase;
     static const std::string name_params;
     static const std::string name_version;
     static const std::string name_mining_fee_rate;
     static const std::string name_market_fee;
+    static const std::string name_custom_fee;
 
-    static const char* name_utxo;
+    static const std::string name_utxo;
     static const std::string name_txid;
     static const std::string name_nout;
     static const std::string name_pk;
@@ -369,6 +474,7 @@ protected:
 
     std::optional<CAmount> m_mining_fee_rate;
     std::shared_ptr<IContractDestination> m_market_fee;
+    std::list<std::shared_ptr<IContractDestination>> m_custom_fees;
     std::optional<std::string> m_change_addr;
 
     virtual CAmount CalculateWholeFee(const std::string &params) const;
@@ -394,25 +500,24 @@ public:
     ChainMode chain() const
     { return m_chain; }
 
-    Bech32 bech32() const
-    { return Bech32(BTC, m_chain); }
-
     void MarketFee(CAmount amount, std::string addr)
     {
         if (amount > 0) {
-            m_market_fee = P2Witness::Construct(chain(), amount, move(addr));
+            m_market_fee = P2Address::Construct(chain(), amount, move(addr));
         }
         else {
             m_market_fee = std::make_shared<ZeroDestination>();
         }
     }
 
+    void AddCustomFee(CAmount amount, std::string addr)
+    { m_custom_fees.emplace_back(P2Address::Construct(chain(), amount, move(addr))); }
+
     void MiningFeeRate(CAmount rate)
     { m_mining_fee_rate = rate; }
 
     void ChangeAddress(std::string addr)
     {
-        bech32().Decode(addr);
         m_change_addr = move(addr);
     }
 
@@ -467,7 +572,7 @@ public:
 
     std::string Serialize(uint32_t version, PHASE phase) const
     {
-        CheckContractTerms(phase);
+        CheckContractTerms(version, phase);
 
         UniValue dataRoot(UniValue::VOBJ);
         dataRoot.pushKV(name_contract_type, GetContractName());
@@ -489,11 +594,12 @@ public:
 
         ReadJson(root[name_params], phase);
 
-        CheckContractTerms(phase);
+        CheckContractTerms(GetVersion(), phase);
     }
 
     virtual const std::string& GetContractName() const = 0;
-    virtual void CheckContractTerms(PHASE phase) const = 0;
+    virtual uint32_t GetVersion() const = 0;
+    virtual void CheckContractTerms(uint32_t version, PHASE phase) const = 0;
     virtual UniValue MakeJson(uint32_t version, PHASE phase) const = 0;
     virtual void ReadJson(const UniValue& json, PHASE phase) = 0;
 

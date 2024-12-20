@@ -65,7 +65,7 @@
         <Button
           second
           class="min-w-[40px] mr-3 px-0 flex items-center justify-center"
-          @click="back"
+          @click="push('/manage')"
           data-testid="go-back"
         >
           <ArrowLeftIcon />
@@ -77,10 +77,9 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from 'webext-bridge'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { isASCII, isLength, isContains } from '~/helpers/index'
+import { isASCII, isLength, isContains, sendMessage } from '~/helpers/index'
 
 const { back, push } = useRouter()
 

@@ -1,12 +1,14 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
-import {sendMessage} from "webext-bridge";
-import {ADDRESS_COPIED} from "~/config/events";
-import * as WebBip39 from 'web-bip39';
-import wordlist from 'web-bip39/wordlists/english';
+import * as webext from "webext-bridge";
+import {ADDRESS_COPIED, GENERATE_MNEMONIC, SAVE_GENERATED_SEED, VALIDATE_MNEMONIC} from '~/config/events'
+import { validate, getAddressInfo } from 'bitcoin-address-validation';
+import * as bip39 from "~/config/bip39";
 
 export const isDark = useDark()
 export const toggleDark = useToggle(isDark)
+const sendMessageLimit = 5
+const sendMessageTimeout = 100
 
 export function showSuccess(title: string, text: string, duration: number = 4000) { // 4s
   notify({
@@ -38,6 +40,27 @@ export function formatAddress(address: string, start?: number, end?: number) {
   return '-';
 }
 
+export async function sendMessage(type, message, destination, index?: number){
+  let output = null;
+  if(!index){
+    index = 0;
+  }
+  try {
+    output = await webext.sendMessage(type, message, destination)
+  } catch (error) {
+    console.log('sendMessageError:', error)
+    if(index >=  sendMessageLimit){
+       console.warn('sendMessageError: limit has expired');
+       return output;
+     }
+    return setTimeout(() => {
+      index += 1
+      return sendMessage(type, message, destination, index);
+    }, sendMessageTimeout);
+  }
+  return output;
+}
+
 export function copyToClipboard(text: string, message?: string) {
   if (text) {
     const tempInput = document.createElement('input');
@@ -50,7 +73,6 @@ export function copyToClipboard(text: string, message?: string) {
     tempInput.setSelectionRange(0, 99999); /* For mobile devices */
     document.execCommand('copy');
     document.body.removeChild(tempInput);
-
     sendMessage(ADDRESS_COPIED, {}, 'background')
     showSuccess('Success', message || 'Address was copied!');
     return text;
@@ -62,9 +84,20 @@ export function isASCII(str: string) {
   return /^[\x00-\x7F]*$/.test(str);
 }
 
-export async function isMnemonicValid(val: string){
- const valid = await WebBip39.validateMnemonic(val, wordlist)
- return valid
+export async function generateMnemonic(length: number, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  const mnemonic = await sendMessage(GENERATE_MNEMONIC, {length, language}, 'background');
+  // console.log('helpers.generateMnemonic: mnemonic:', mnemonic)
+  return mnemonic;
+}
+
+export async function isMnemonicValid(mnemonic: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  const isValid = await sendMessage(VALIDATE_MNEMONIC, {mnemonic, language}, 'background');
+  // console.log('helpers.isMnemonicValid: isValid:', isValid);
+  return isValid;
+}
+
+export async function saveGeneratedSeed(seed: string, passphrase: string, language: string = bip39.MNEMONIC_DEFAULT_LANGUAGE) {
+  return await sendMessage(SAVE_GENERATED_SEED,  {seed, passphrase, language},  'background');
 }
 
 export function isContains(str: string) {
@@ -85,4 +118,48 @@ export function isLength(str: string) {
 
 export function convertSatsToUSD(sats: number, usdRate: number): number {
   return (sats || 0) * (1 / 100000000) * (usdRate || 0);
+}
+
+export function toNumberFormat(num: number){
+  return new Intl.NumberFormat(/* format || */ 'en-US', {
+    style: 'decimal',
+  }).format(num);
+}
+
+export function validateBtcAddress(address: string){
+  let addressInfo = {}
+  try {
+    addressInfo = getAddressInfo(address)
+  } catch (e) {
+
+  }
+  // Taproot, Native Segwit and Legacy only
+  if(
+    addressInfo.type!=='p2tr' &&
+    addressInfo.type!=='p2wpkh' &&
+    addressInfo.type!=='p2pkh'){
+    return false;
+  }
+  return validate(address)
+}
+
+export function validateBtcAddressInfo(address: string){
+  let addressInfo = {}
+  let error = {}
+  try {
+    addressInfo = getAddressInfo(address)
+  } catch (e) {
+    error = e
+  }
+  // Taproot, Native Segwit and Legacy only
+  if(
+    addressInfo.type!=='p2tr' &&
+    addressInfo.type!=='p2wpkh' &&
+    addressInfo.type!=='p2pkh'){
+    return `We are temporarily not supporting ${addressInfo.type}, please use p2tr or p2wpkh or p2pkh types`;
+  }
+  if(!validate(address)){
+    console.log(error)
+    return `Address is incorrect`
+  }
 }
