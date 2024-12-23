@@ -5,8 +5,8 @@ import winHelpers from '~/helpers/winHelpers';
 import rest from '~/background/rest';
 import { sendMessage } from 'webext-bridge';
 import * as cbor from 'cbor-js';
-import * as Sentry from "@sentry/browser";
-import { wasmIntegration } from "@sentry/wasm";
+// import * as Sentry from "@sentry/browser";
+// import { wasmIntegration } from "@sentry/wasm";
 import {version} from '~/../package.json';
 import {
   EXCEPTION,
@@ -55,20 +55,20 @@ function GetEnvironment(){
   }
 }
 
-Sentry.init({
-  environment: GetEnvironment(),
-  dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.utxord.com/6",
-  // Performance Monitoring
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
-  integrations: [wasmIntegration()],
-  ignoreErrors: [
-    'Frame with ID 0',
-    'Cannot access contents',
-    'No tab with id:',
-    'Cannot access a chrome://',
-    'Failed to fetch'
-  ]
-});
+// Sentry.init({
+//   environment: GetEnvironment(),
+//   dsn: "https://da707e11afdae2f98c9bcd1b39ab9c16@sntry.utxord.com/6",
+//   // Performance Monitoring
+//   tracesSampleRate: 1.0, //  Capture 100% of the transactions
+//   integrations: [wasmIntegration()],
+//   ignoreErrors: [
+//     'Frame with ID 0',
+//     'Cannot access contents',
+//     'No tab with id:',
+//     'Cannot access a chrome://',
+//     'Failed to fetch'
+//   ]
+// });
 
 // import tabId = chrome.devtools.inspectedWindow.tabId;
 
@@ -339,10 +339,10 @@ class Api {
         this.mnemonicParserInstances = {};
 
         await this.init(this);
-        await this.sentry();
+        // await this.sentry();
         return this;
       } catch(e) {
-        this.sentry(e);
+        // this.sentry(e);
         console.log('constructor->error:',e);
         this.removePublicKeyToWebPage();
         chrome.runtime.reload();
@@ -396,40 +396,40 @@ class Api {
     }
   }
 
-  sentry(e = undefined){
-    const myself = this;
-    if(this.error_reporting){
-      Sentry.configureScope( async (scope) => {
-        scope.setTag('environment', GetEnvironment())
-        scope.setTag('system_state', myself.error_reporting)
-        scope.setTag('network', myself.getCurrentNetWorkText())
-        scope.setTag('base_url', BASE_URL_PATTERN)
-        scope.setTag('plugin', version)
-
-        if(myself.wallet.auth?.key) {
-          scope.setUser({
-            othKey: myself.wallet.oth?.key?.PubKey(),
-            fundKey: myself.wallet.fund?.key?.PubKey(),
-            authKey: myself.wallet.auth?.key?.PubKey()
-          })
-         }
-        const check = await myself.checkSeed();
-        const system_state = {
-          check_auth: check,
-          addresses: JSON.stringify(myself.addresses),
-          filtred_addresses: JSON.stringify(myself.getAddressForSave()),
-          balances: JSON.stringify(myself.balances),
-          fundings: JSON.stringify(myself.fundings),
-          inscriptions: JSON.stringify(myself.inscriptions),
-          connect: myself.connect,
-          sync: myself.sync,
-          derivate: myself.derivate,
-        }
-        scope.setExtra('system',  system_state);
-      });
-      if(e) Sentry.captureException(e);
-    }
-  }
+  // sentry(e = undefined) {
+  //   const myself = this;
+  //   if(this.error_reporting){
+  //     Sentry.configureScope( async (scope) => {
+  //       scope.setTag('environment', GetEnvironment())
+  //       scope.setTag('system_state', myself.error_reporting)
+  //       scope.setTag('network', myself.getCurrentNetWorkText())
+  //       scope.setTag('base_url', BASE_URL_PATTERN)
+  //       scope.setTag('plugin', version)
+  //
+  //       if(myself.wallet.auth?.key) {
+  //         scope.setUser({
+  //           othKey: myself.wallet.oth?.key?.PubKey(),
+  //           fundKey: myself.wallet.fund?.key?.PubKey(),
+  //           authKey: myself.wallet.auth?.key?.PubKey()
+  //         })
+  //        }
+  //       const check = await myself.checkSeed();
+  //       const system_state = {
+  //         check_auth: check,
+  //         addresses: JSON.stringify(myself.addresses),
+  //         filtred_addresses: JSON.stringify(myself.getAddressForSave()),
+  //         balances: JSON.stringify(myself.balances),
+  //         fundings: JSON.stringify(myself.fundings),
+  //         inscriptions: JSON.stringify(myself.inscriptions),
+  //         connect: myself.connect,
+  //         sync: myself.sync,
+  //         derivate: myself.derivate,
+  //       }
+  //       scope.setExtra('system',  system_state);
+  //     });
+  //     if(e) Sentry.captureException(e);
+  //   }
+  // }
 
   async upgradeProps(obj, name = '', props = {}, list = [], args = 0, proto = false, lvl = 0){
     const out = {name, props, list, args, proto, lvl};
@@ -1577,9 +1577,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       sendMessage(WARNING, errorMessage, `popup@${currentWindow.id}`);
       setTimeout(() =>this.warning_count = 0, 3000);
     }
-    if (reportToSentry) {
-      this.sentry(warning);
-    }
+    // if (reportToSentry) {
+    //   this.sentry(warning);
+    // }
     console.warn(type, errorMessage, errorStack);
 
 
@@ -1599,7 +1599,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       sendMessage(EXCEPTION, errorMessage, `popup@${currentWindow.id}`)
       setTimeout(() =>this.exception_count = 0, 3000);
     }
-    this.sentry(exception);
+    // this.sentry(exception);
     console.error(type, errorMessage, errorStack);
 
     return `${type} ${errorMessage} ${errorStack}`;

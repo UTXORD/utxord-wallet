@@ -201,7 +201,7 @@ interface ICollectionTransferResult {
   try {
     let store = HashedStore.getInstance();
     const Api = await new self.Api(NETWORK);
-    Api.sentry();
+    // Api.sentry();
     // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
     let popupPort: Port | null = null;
@@ -327,7 +327,7 @@ interface ICollectionTransferResult {
           await Api.sendMessageToWebPage(GET_BALANCES, addresses);
         }, 1000);
       }
-      Api.sentry();
+      // Api.sentry();
       return true;
     });
 
