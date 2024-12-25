@@ -1832,7 +1832,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
   }
 
-  async sendMessageToWebPage(type, args, tabId: number | undefined = undefined): Promise<void> {
+  async sendMessageToWebPage(type, args, tabId: number | object | undefined = undefined): Promise<void> {
     const myself = this;
     const base_url = BASE_URL_PATTERN.replace('*', '');
     if(!args){
@@ -1841,7 +1841,18 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
     }
     let tabs: Tab[];
     if (tabId !== undefined) {
-      tabs = [await browser.tabs.get(tabId)]
+      let curedTabId = tabId;
+      if ('object' == typeof(tabId) && tabId.hasOwnProperty('tabIds') && 0 < tabId.tabIds.length) {
+        curedTabId = tabId.tabIds[0];
+      }
+
+      try {
+        console.debug('sendMessageToWebPage curedTabId:', curedTabId);
+        tabs = [await browser.tabs.get(curedTabId)];
+      } catch(ex) {
+        console.error("sendMessageToWebPage ERROR: browser.tabs.get:", ex);
+        console.debug("sendMessageToWebPage arguments:", arguments);
+      }
     } else {
       tabs = await browser.tabs.query({
         windowType: 'normal',
