@@ -54,7 +54,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     },
     content_scripts: [
       {
-        matches: permissions,
+        matches: BROWSER === 'firefox' ? ['<all_urls>', ...permissions] : permissions,
         js: ['./content/index.global.js']
       }
     ],

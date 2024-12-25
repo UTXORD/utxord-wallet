@@ -950,21 +950,22 @@ interface ICollectionTransferResult {
       return true;
     });
 
-    onMessage(OPEN_START_PAGE, async () => {
-      console.log('OPEN_START_PAGE->run')
-        winManager.openWindow('start', undefined, Api.viewMode);
-      return true;
-    });
-
-
-    async function siteMessage (payload, sender){
-
+    async function siteMessage (payload, sender) {
           let tabId = sender?.tab?.id;
           if (typeof payload?.data === 'object' && payload?.data !== null) {
             payload.data._tabId = tabId;
           }
 
           console.debug(`----- message from frontend(tabId:${tabId}): ${payload?.type}, data: `, {...payload?.data || {}});
+
+          if (payload.type === OPEN_START_PAGE) {
+            // setTimeout(((payload) => {
+            //   return async () => {
+                console.log('OPEN_START_PAGE->run');
+                winManager.openWindow('start', undefined, Api.viewMode);
+            //   };
+            // })(payload), 0);
+          }
 
           if (payload.type === SEND_CONNECT_STATUS) {
             console.log('SEND_CONNECT_STATUS->run')
@@ -1270,7 +1271,7 @@ interface ICollectionTransferResult {
               Api.wallet.tmp = ''
             }
           }
-
+          return true;
     }
 
   browser.runtime.onMessageExternal.addListener(siteMessage);
