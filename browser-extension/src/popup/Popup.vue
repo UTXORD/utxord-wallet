@@ -44,14 +44,21 @@ const store = useStore()
 const { balance, fundAddress } = toRefs(store)
 
 function redirectByQuery() {
-  const pageHref = window.location.search
-  const searchParams = new URLSearchParams(
-    pageHref.substring(pageHref.indexOf('?'))
-  )
-  const page = searchParams.get('page')
-  if (page) {
-    push(page)
-  }
+  return setTimeout(()=>{
+  /**
+    * Important: Make the transition to the signature page the last one in the timeout,
+    * otherwise the page restore will work and you will lose the signature page
+  */
+    const pageHref = window.location.search
+    const searchParams = new URLSearchParams(
+      pageHref.substring(pageHref.indexOf('?'))
+    )
+    const page = searchParams.get('page')
+    if (page) {
+      return push(page);
+    }
+  },1);
+
 }
 
 async function checkAuth(): Promise<boolean> {

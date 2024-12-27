@@ -531,9 +531,15 @@ getKey(type: string, typeAddress: number | undefined = undefined, index: number 
   }
 
   getAddress(type: string, key: object | undefined = undefined, typeAddress: number | undefined = undefined){
-    if(key===undefined){ key = this.wallet[type].key;}
-    if(typeAddress===undefined){ typeAddress = this.wallet[type].typeAddress;}
-    return (typeAddress === 1)? key.GetP2WPKHAddress(this.network) : key.GetP2TRAddress(this.network);
+    try{
+      if(key===undefined){ key = this.wallet[type].key;}
+      if(typeAddress===undefined){ typeAddress = this.wallet[type].typeAddress;}
+      return (typeAddress === 1)? key?.GetP2WPKHAddress(this.network) : key?.GetP2TRAddress(this.network);
+    }catch(e){
+      console.log(e.type, e.message);
+      return null;
+    }
+
   }
 
 getChallengeFromType(type: string, typeAddress: number | undefined = undefined ){
@@ -902,7 +908,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     if(!valid) return 'Invalid checksum';
     const parser = this.getMnemonicParserFor(language);
     const seed = await parser.MakeSeed(mnemonic, passphrase);
-    browser.storage.local.set({ seed: seed });
+    chrome.storage.local.set({ seed: seed });
     this.wallet.root.seed = seed;
     return 'success';
   }
