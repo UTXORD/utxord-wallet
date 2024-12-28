@@ -8,7 +8,6 @@
 #include "contract_builder_factory.hpp"
 #include "trustless_swap_inscription.hpp"
 
-
 namespace utxord {
 
 using l15::core::SchnorrKeyPair;
@@ -16,7 +15,6 @@ using l15::ScriptMerkleTree;
 using l15::TreeBalanceType;
 using l15::ParseAmount;
 using l15::FormatAmount;
-using l15::CalculateOutputAmount;
 using l15::EncodeHexTx;
 
 namespace {
@@ -91,7 +89,7 @@ CMutableTransaction TrustlessSwapInscriptionBuilder::MakeSwapTx() const
             swap_tx.vout[0].scriptPubKey = m_market_fee->PubKeyScript();
         }
         else {
-            swap_tx.vout[0].scriptPubKey = P2Address::Construct(chain(), 0, *m_change_addr)->PubKeyScript();
+            swap_tx.vout[0].scriptPubKey = P2Address::Construct(chain(), {}, *m_change_addr)->PubKeyScript();
             if (m_market_fee->Amount() > 0) {
                 swap_tx.vout.emplace_back(m_market_fee->TxOutput());
             }
@@ -100,16 +98,20 @@ CMutableTransaction TrustlessSwapInscriptionBuilder::MakeSwapTx() const
         swap_tx.vout[2] = P2Address::Construct(chain(), *m_ord_price, *m_funds_payoff_addr)->TxOutput();
 
         // Check if we need to add separate output for change if presented
-        CAmount tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
+        //CAmount tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
+
+        swap_tx.vout.emplace_back(P2Address::Construct(chain(), {}, *m_change_addr)->TxOutput());
+
         CAmount total_in = std::accumulate(m_swap_inputs.begin(), m_swap_inputs.end(), 0, [](CAmount part_sum, const auto &input) { return part_sum + input.output->Destination()->Amount(); });
         CAmount total_out = std::accumulate(swap_tx.vout.begin(), swap_tx.vout.end(), 0, [](CAmount part_sum, const auto &out) { return part_sum + out.nValue; });
-        if (total_in - (tx_fee + TAPROOT_VOUT_VSIZE) - total_out >= l15::Dust()) {
-            swap_tx.vout.emplace_back(P2Address::Construct(chain(), 0, *m_change_addr)->TxOutput());
 
-            tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
-            swap_tx.vout.back().nValue = total_in - total_out - tx_fee;
+        CAmount tx_fee = l15::CalculateTxFee(*m_mining_fee_rate, swap_tx);
 
-            assert(swap_tx.vout.back().nValue >= l15::Dust());
+        if (total_in - tx_fee >= total_out ) {
+            swap_tx.vout.back().nValue += (total_in - total_out - tx_fee);
+        }
+        else {
+            swap_tx.vout.pop_back();
         }
     }
 
@@ -146,7 +148,7 @@ const CMutableTransaction &TrustlessSwapInscriptionBuilder::GetFundsCommitTx() c
     if (!m_ord_price) throw ContractStateError(name_ord_price + " not defined");
 
     if (!mFundsCommitTx) {
-        CAmount funds_required = CalculateWholeFee((m_market_fee->Amount() == 0 || m_market_fee->Amount() >= l15::Dust(DUST_RELAY_TX_FEE) * 2) ? "" : "change") + *m_ord_price + m_market_fee->Amount();
+        CAmount funds_required = CalculateWholeFee((m_market_fee->Amount() == 0 || m_market_fee->Amount() >= l15::Dust(DUST_RELAY_TX_FEE) * 2) ? "" : FEE_OPT_HAS_CHANGE) + *m_ord_price + m_market_fee->Amount();
         CAmount funds_provided = 0;
         for (const auto &input: mCommitBuilder->Inputs()) {
             funds_provided += input.output->Destination()->Amount();
@@ -175,7 +177,8 @@ void TrustlessSwapInscriptionBuilder::SignFundsCommitment(const KeyRegistry &mas
 
     if (!mCommitBuilder) throw ContractStateError("Funds were committed outside of the swap contract builder");
 
-    CAmount funds_required = CalculateWholeFee((m_market_fee->Amount() == 0 || m_market_fee->Amount() >= l15::Dust(DUST_RELAY_TX_FEE) * 2) ? "" : "change") + *m_ord_price + m_market_fee->Amount();
+    CAmount brick1 = mCommitBuilder->Outputs().front()->Amount();
+    CAmount funds_required = CalculateWholeFee((m_market_fee->Amount() == 0 || m_market_fee->Amount() >= brick1 * 2) ? "" : "change") + *m_ord_price + m_market_fee->Amount();
     CAmount funds_provided = 0;
     for (const auto &input: mCommitBuilder->Inputs()) {
         funds_provided += input.output->Destination()->Amount();
@@ -341,7 +344,6 @@ UniValue TrustlessSwapInscriptionBuilder::MakeJson(uint32_t version, TrustlessSw
 void TrustlessSwapInscriptionBuilder::CheckContractTerms(uint32_t version, TrustlessSwapPhase phase) const
 {
     if (!m_ord_price) throw ContractTermMissing(std::string(name_ord_price));
-    if (*m_ord_price < l15::Dust(DUST_RELAY_TX_FEE)) throw ContractTermWrongValue(move((name_ord_price + ": ") += std::to_string(*m_ord_price)));
 
     switch (phase) {
     case TRUSTLESS_ORD_SWAP_SIG:
@@ -518,19 +520,20 @@ void TrustlessSwapInscriptionBuilder::CommitFunds(std::string txid, uint32_t nou
     if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
     if (!m_ord_price) throw ContractStateError(name_ord_price + " not defined");
 
-    const CAmount dust = l15::Dust(DUST_RELAY_TX_FEE);
-
     if (!mCommitBuilder) {
         mCommitBuilder = std::make_shared<SimpleTransaction>(chain());
         mCommitBuilder->MiningFeeRate(GetMiningFeeRate());
 
-        mCommitBuilder->AddOutput(dust, addr);
+        mCommitBuilder->AddOutputDestination(P2Address::Construct(chain(), {} , addr));
 
-        if (m_market_fee->Amount() >= dust * 2) {
+        CAmount dust = mCommitBuilder->Destinations().front()->Amount();
+
+        if (m_market_fee->Amount() >= dust * 2)
+        {
             mCommitBuilder->AddOutput(m_market_fee->Amount() - dust, addr);
         }
         else {
-            mCommitBuilder->AddOutput(dust, addr);
+            mCommitBuilder->AddOutputDestination(P2Address::Construct(chain(), {} , addr));
         }
     }
 
@@ -552,11 +555,13 @@ void TrustlessSwapInscriptionBuilder::CommitFunds(std::string txid, uint32_t nou
         if (funds_provided >= output_required + commit_fee) {
             CAmount change = funds_provided - output_required - commit_fee;
 
-            if (m_market_fee->Amount() >= dust * 2) {
-                mCommitBuilder->Outputs()[1]->Amount(m_market_fee->Amount() - dust);
+            CAmount brick1 = mCommitBuilder->Destinations().front()->Amount();
+
+            if (m_market_fee->Amount() >= brick1 * 2) {
+                mCommitBuilder->Outputs()[1]->Amount(m_market_fee->Amount() - brick1);
             }
-            else if (change >= dust * 2) {
-                mCommitBuilder->Outputs()[1]->Amount(change - dust);
+            else if (change >= brick1 * 2) {
+                mCommitBuilder->Outputs()[1]->Amount(change - brick1);
             }
 
             mCommitBuilder->AddChangeOutput(move(addr));
@@ -757,7 +762,8 @@ CAmount TrustlessSwapInscriptionBuilder::GetMinSwapFundingAmount() const
     if (!m_market_fee) throw ContractStateError(name_market_fee + " not defined");
 
     CAmount res = *m_ord_price + CalculateSwapTxFee(false);
-    if (m_market_fee->Amount() < l15::Dust() * 2)
+    CAmount dust = P2Address::Construct(chain(), {}, m_market_fee->Address())->Amount();
+    if (m_market_fee->Amount() < dust * 2)
         res += m_market_fee->Amount();
 
     return res;

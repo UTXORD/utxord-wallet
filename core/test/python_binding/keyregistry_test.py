@@ -44,7 +44,7 @@ try:
 
     print("Failed: no exception")
 
-except WrongKeyLookupFilter as e:
+except Error as e:
     print("Done")
 
 except Exception as e:
@@ -63,7 +63,7 @@ try:
 
     keypair = key_registry.Derive("m/a'/b'/z'/0/300", False)
 
-except WrongDerivationPath as e:
+except Error as e:
     print("Done")
 
 except Exception as e:

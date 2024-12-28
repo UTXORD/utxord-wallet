@@ -101,7 +101,7 @@ CAmount SwapInscriptionBuilder::CalculateWholeFee(const std::string& params) con
 
     CAmount fee =  l15::CalculateTxFee(*m_mining_fee_rate, GetFundsCommitTxTemplate(p2wpkh_utxo))
          + l15::CalculateTxFee(*m_mining_fee_rate, GetSwapTxTemplate())
-         + l15::CalculateTxFee(*m_ord_mining_fee_rate, GetFundsCommitTxTemplate());
+         + l15::CalculateTxFee(*m_ord_mining_fee_rate, CreatePayoffTxTemplate());
 
     if (change) fee += CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE);
 
@@ -173,7 +173,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx(bool with_funds_in) const
 {
     if (!m_ord_input) throw ContractStateError(name_ord_input + " not defined");
     if (!m_funds_payoff_addr) throw ContractStateError(name_funds_payoff_addr + " not defined");
-    if (!m_funds_unspendable_key_factor) throw ContractStateError(name_funds_unspendable_key + " not defined");
+    if (with_funds_in && !m_funds_unspendable_key_factor) throw ContractStateError(name_funds_unspendable_key + " not defined");
 
     CMutableTransaction swap_tx = GetSwapTxTemplate();
 
@@ -184,7 +184,7 @@ CMutableTransaction SwapInscriptionBuilder::MakeSwapTx(bool with_funds_in) const
 
     swap_tx.vout[0].nValue = m_ord_input->output->Destination()->Amount() + CFeeRate(*m_ord_mining_fee_rate).GetFee(MIN_TAPROOT_TX_VSIZE);
 
-    swap_tx.vout[1].scriptPubKey = P2Address::Construct(chain(), 0, *m_funds_payoff_addr)->PubKeyScript();
+    swap_tx.vout[1].scriptPubKey = P2Address::Construct(chain(), {}, *m_funds_payoff_addr)->PubKeyScript();
 
     if (with_funds_in) {
         auto funds_commit_taproot = FundsCommitTapRoot();
@@ -237,7 +237,10 @@ CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit
     auto commit_pubkeyscript = CScript() << 1 << get<0>(FundsCommitTemplateTapRoot());
     auto change_pubkeyscript = CScript() << 1 << xonly_pubkey();
 
-    commitTpl.vout = {CTxOut(0, commit_pubkeyscript), CTxOut(0, change_pubkeyscript)};
+    commitTpl.vout = {CTxOut(0, commit_pubkeyscript)};
+    if (mChange) {
+        commitTpl.vout.emplace_back(mChange->TxOutput());
+    }
 
     commitTpl.vin.reserve(m_fund_inputs.size());
 
@@ -275,7 +278,9 @@ CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit
 
 CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
 {
-    CMutableTransaction commit_tx = GetFundsCommitTxTemplate();
+    if (m_change_addr) {
+        mChange = P2Address::Construct(chain(), {}, *m_change_addr);
+    }
 
     CAmount funds_required = GetMinFundingAmount("");
     CAmount funds_provided = 0;
@@ -283,20 +288,20 @@ CMutableTransaction SwapInscriptionBuilder::MakeFundsCommitTx() const
         funds_provided += utxo.output->Destination()->Amount();
     }
 
-    CAmount change = funds_provided - funds_required;
-
-    if(change > l15::Dust(3000) && m_change_addr) {
-        commit_tx.vout[1] = P2Address::Construct(chain(), change, *m_change_addr)->TxOutput();
-    } else {
-        commit_tx.vout.pop_back();
-
-        funds_required = GetMinFundingAmount(""); // Calculate again since one output was removed
+    if (mChange) {
+        try {
+            mChange->Amount(funds_provided - funds_required);
+        } catch (ContractTermWrongValue& ) {
+            mChange.reset();
+            funds_required = GetMinFundingAmount(""); // Calculate again since one output was removed
+        }
     }
 
     if(funds_provided < funds_required) {
-        throw ContractFundsNotEnough("funds");
+        throw ContractFundsNotEnough(FormatAmount(funds_provided) + ", required: " + FormatAmount(funds_required));
     }
 
+    CMutableTransaction commit_tx = GetFundsCommitTxTemplate();
     commit_tx.vout[0].scriptPubKey = CScript() << 1 << get<0>(FundsCommitTapRoot());
     if (commit_tx.vout.size() == 2) { //has a change: commit just what required
         commit_tx.vout[0].nValue = CalculateOutputAmount(funds_required, *m_mining_fee_rate, commit_tx);
@@ -565,17 +570,13 @@ void SwapInscriptionBuilder::CheckContractTerms(uint32_t version, SwapPhase phas
     case FUNDS_COMMIT_SIG:
         if (m_fund_inputs.empty()) throw ContractTermMissing(std::string(name_funds));
         {
-            CAmount funds_amount = 0;
             for (const auto& utxo: m_fund_inputs) {
                 if (!utxo.witness) throw ContractTermMissing(move(((name_funds + '[') += std::to_string(utxo.nin) += "].") += TxInput::name_witness));
-                funds_amount += utxo.output->Destination()->Amount();
             }
-            CAmount req_amount = GetMinFundingAmount("");
-            if (funds_amount < req_amount) throw ContractFundsNotEnough(FormatAmount(funds_amount) + ", required: " + FormatAmount(req_amount));
         }
         if (!m_swap_script_pk_B) throw ContractTermMissing(std::string(name_swap_script_pk_B));
         if (m_ord_payoff_addr) {
-            auto fakePayOff = P2Address::Construct(chain(), 546, *m_ord_payoff_addr);
+            auto fakePayOff = P2Address::Construct(chain(), {}, *m_ord_payoff_addr);
             if (fakePayOff->Type() == P2Address::type && version <= s_protocol_version_no_p2address)
                 throw ContractProtocolError(name_ord_payoff_addr + ": " + *m_ord_payoff_addr + " is not supported with v. " + std::to_string(version));
 
@@ -648,6 +649,9 @@ void SwapInscriptionBuilder::ReadJson(const UniValue& contract, SwapPhase phase)
     }
     DeserializeContractAmount(contract[name_ord_mining_fee_rate], m_ord_mining_fee_rate, [](){ return name_ord_mining_fee_rate; });
     DeserializeContractString(contract[name_change_addr], m_change_addr, [&](){ return name_change_addr; });
+    if (m_change_addr)
+        mChange = P2Address::Construct(chain(), {}, *m_change_addr);
+
     DeserializeContractString(contract[name_funds_payoff_addr], m_funds_payoff_addr, [](){ return name_funds_payoff_addr; });
     DeserializeContractHexData(contract[name_swap_script_pk_B], m_swap_script_pk_B, [](){ return name_swap_script_pk_B; });
     DeserializeContractHexData(contract[name_swap_script_pk_M], m_swap_script_pk_M, [](){ return name_swap_script_pk_M; });
@@ -724,7 +728,6 @@ void SwapInscriptionBuilder::OrdUTXO(string txid, uint32_t nout, CAmount amount,
 
 void SwapInscriptionBuilder::AddFundsUTXO(string txid, uint32_t nout, CAmount amount, std::string addr)
 {
-    uint32_t i = m_fund_inputs.size();
     m_fund_inputs.emplace_back(chain(), m_fund_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr)));
 }
 
@@ -888,10 +891,10 @@ std::shared_ptr<IContractOutput> SwapInscriptionBuilder::FundsOutput() const
 std::shared_ptr<IContractOutput> SwapInscriptionBuilder::ChangeOutput() const
 {
     std::shared_ptr<IContractOutput> res;
-    if (m_change_addr) {
+    if (mChange) {
         auto commitTx = GetFundsCommitTx();
         if (commitTx.vout.size() > 1) {
-            res = std::make_shared<UTXO>(chain(), commitTx.GetHash().GetHex(), 1, commitTx.vout[1].nValue, *m_change_addr);
+            res = std::make_shared<UTXO>(chain(), commitTx.GetHash().GetHex(), 1, mChange);
         }
     }
     return res;
