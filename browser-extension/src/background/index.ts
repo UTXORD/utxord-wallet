@@ -83,10 +83,12 @@ import {bookmarks} from "webextension-polyfill";
 
 if (NETWORK === MAINNET){
   if(self){
+    self['console'] = {};
     self['console']['debug'] =
     self['console']['log'] =
     self['console']['error'] =
     self['console']['warn'] =
+    self['console']['table'] =
     self['console']['info']= () => {};
   }
 }
