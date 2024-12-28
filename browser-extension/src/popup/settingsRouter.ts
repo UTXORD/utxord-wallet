@@ -6,7 +6,8 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
     name: 'ManagePage',
     component: () => import('~/pages/ManagePage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -14,7 +15,8 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
     name: 'ManagePasswordPage',
     component: () => import('~/pages/ManagePasswordPage.vue'),
         meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -22,7 +24,8 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
     name: 'ManageAddressPage',
     component: () => import('~/pages/ManageAddressPage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -30,7 +33,8 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
     name: 'ManageErrors',
     component: () => import('~/pages/ManageErrors.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
   {
@@ -38,7 +42,8 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
     name: 'ManageViewMode',
     component: () => import('~/pages/ManageViewMode.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: true
     }
   },
 ];

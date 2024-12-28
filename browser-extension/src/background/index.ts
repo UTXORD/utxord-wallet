@@ -368,12 +368,18 @@ interface ICollectionTransferResult {
 
     onMessage(CHECK_AUTH, async() => {
       console.log('CHECK_AUTH->run')
-      await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
-      if(Api.wallet?.auth?.key?.ptr){
-        await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet?.auth?.key?.PubKey());
+      try{
+        await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
+        if(Api.wallet?.auth?.key?.ptr){
+          await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet?.auth?.key?.PubKey());
+        }
+        const success = await Api.checkSeed();
+        return success;
+      }catch(e){
+        console.log(e.type, e.message);
+        return false;
       }
-      const success = await Api.checkSeed();
-      return success;
+
     });
 
     onMessage(GET_NETWORK, () => {

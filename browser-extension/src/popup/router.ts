@@ -8,7 +8,8 @@ const START_ROUTE = {
   name: 'StartPage',
   component: () => import('~/pages/StartPage.vue')
 }
-
+let refreshIndex = 0;
+let redirectIndex = 0;
 const routes: Array<RouteRecordRaw> = [
   START_ROUTE,
   {
@@ -17,7 +18,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('~/pages/HomePage.vue'),
     meta: {
       requiresAuth: true,
-      restore: true
+      restore: false
     }
   },
   {
@@ -59,7 +60,9 @@ const routes: Array<RouteRecordRaw> = [
     name: 'SignCreatePage',
     component: () => import('~/pages/SignCreatePage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: false,
+      type: 'popup'
     }
   },
   {
@@ -67,7 +70,9 @@ const routes: Array<RouteRecordRaw> = [
     name: 'SignBuyProductPage',
     component: () => import('~/pages/SignBuyProductPage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: false,
+      type: 'popup'
     }
   },
   {
@@ -75,7 +80,9 @@ const routes: Array<RouteRecordRaw> = [
     name: 'SignSellPage',
     component: () => import('~/pages/SignSellPage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: false,
+      type: 'popup'
     }
   },
   {
@@ -110,7 +117,9 @@ const routes: Array<RouteRecordRaw> = [
     name: 'SignCommitPage',
     component: () => import('~/pages/SignCommitPage.vue'),
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      restore: false,
+      type: 'popup'
     }
   },
   {
@@ -119,38 +128,57 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('~/pages/SignBuyPage.vue'),
     meta: {
       requiresAuth: true,
-      restore: true
+      restore: false,
+      type: 'popup'
     }
   },
   {
     path: '/create-password-screen',
     name: 'CreatePasswordPage',
-    component: () => import('~/pages/CreatePasswordPage.vue')
+    component: () => import('~/pages/CreatePasswordPage.vue'),
+    meta: {
+      restore: true
+    }
 },
   {
     path: '/generate',
     name: 'GeneratePage',
-    component: () => import('~/pages/GeneratePage.vue')
+    component: () => import('~/pages/GeneratePage.vue'),
+    meta: {
+      restore: true
+    }
   },
   {
     path: '/check-user-mnemonic',
     name: 'checkUserMnemonic',
-    component: () => import('~/pages/checkUserMnemonic.vue')
+    component: () => import('~/pages/checkUserMnemonic.vue'),
+    meta: {
+      restore: true
+    }
   },
   {
     path: '/load',
     name: 'LoadPage',
-    component: () => import('~/pages/LoadPage.vue')
+    component: () => import('~/pages/LoadPage.vue'),
+    meta: {
+      restore: false
+    }
   },
   {
     path: '/alert-mnemonic',
     name: 'AlertMnemonicPage',
-    component: () => import('~/pages/AlertMnemonicPage.vue')
+    component: () => import('~/pages/AlertMnemonicPage.vue'),
+    meta: {
+      restore: true
+    }
   },
   {
     path: '/wallet-created',
     name: 'WalletCreatedPage',
-    component: () => import('~/pages/WalletCreatedPage.vue')
+    component: () => import('~/pages/WalletCreatedPage.vue'),
+    meta: {
+      restore: true
+    }
   },
   {
     path: '/loading',
@@ -166,34 +194,85 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const authenticated = await sendMessage(CHECK_AUTH, {}, 'background');
-  const currentPage = await localStorage?.getItem(CURRENT_PAGE)
-  const pageMatched = to.matched.some(record => record.meta.requiresAuth)
-  const restorePage = to.matched.some(record => record.meta.restore)
-  console.log('authenticated:', authenticated, ' to.path:', to.path);
-  console.log('currentPage:', currentPage,' restorePage:',restorePage);
-  console.log('to:', to,' from:',from);
 
-  if (!authenticated && pageMatched) {
-    if(!currentPage) next({ path: START_ROUTE.path });
-    if(to.path === '/' && currentPage === START_ROUTE.path) next({ path: START_ROUTE.path });
-    if(currentPage === '/') next({ path: START_ROUTE.path });
-    if(currentPage !=='/' && currentPage !== START_ROUTE.path){
-      next({ path: currentPage });
+  const authRequest = await sendMessage(CHECK_AUTH, {}, 'background');
+  console.log('authRequest:',authRequest);
+  const authenticated = Number.isInteger(authRequest)?false:authRequest;
+
+  const storePage = await localStorage?.getItem(CURRENT_PAGE);
+  const currentPage = to.path;
+
+  const currentRecord = await routes.find((record) => record.path === currentPage)
+  const storeRecord = await routes.find((record) => record.path === storePage)
+
+  const currentTypePage = currentRecord?.meta?.type;
+  const storeTypePage = storeRecord?.meta?.type;
+
+  const currentRequiresAuth = Boolean(currentRecord?.meta?.requiresAuth)
+  const currentRestore = Boolean(currentRecord?.meta?.restore)
+
+  const storeRequiresAuth = Boolean(storeRecord?.meta?.requiresAuth)
+  const storeRestore = Boolean(storeRecord?.meta?.restore)
+
+  if(currentPage === storePage){
+    refreshIndex += 1;
+    redirectIndex = 0;
+  }else{
+    refreshIndex = 0;
+    redirectIndex +=1;
+  }
+  console.log('------------------------------------------------------------------');
+  console.log('currentPage:',currentPage, ' currentRecord:',currentRecord)
+  console.log('storePage:',storePage, ' storeRecord:',storeRecord)
+  console.log('authenticated:', authenticated, ' refreshIndex:', refreshIndex,' redirectIndex:', redirectIndex);
+  console.log('currentPage:', currentPage,' currentRestore:',currentRestore,' currentTypePage:',currentTypePage);
+  console.log('storePage:', storePage,' storeRestore:',storeRestore,' storeTypePage:',storeTypePage);
+  console.log('to:',to, ' from:',from)
+
+  if(refreshIndex >= 10){
+    console.log('refresh limit');
+    return next();
+  }
+  if(currentPage === storePage && storePage !=='/' && storePage !== START_ROUTE.path){
+    console.log('Cyclic page refresh detected');
+    return next();
+  }
+  if (authenticated && currentTypePage === 'popup') {
+    console.log('skip steps');
+    return next();
+  }
+  if(currentTypePage!=='popup'){ await localStorage?.setItem(CURRENT_PAGE, to.path);}
+  if(storePage !== '/' &&
+    storePage !== START_ROUTE.path &&
+    storePage !== currentPage &&
+    storeRestore &&
+    !from?.name &&
+    currentTypePage !== 'popup'){
+     if(!storeRequiresAuth){
+       console.log('step 0#1');
+       return next({ path: storePage });
+     }else{
+        if (!authenticated) {
+         console.log('step 0#2');
+         return next({ path: START_ROUTE.path });
+       }else{
+         console.log('step 0#3');
+         return next({ path: storePage });
+       }
+     }
+   }
+
+  if (!authenticated) {
+    if(currentRequiresAuth){
+      console.log('step 1#1');
+      return next({ path: START_ROUTE.path });
+    }else{
+      console.log('step 1#2');
+      return next();
     }
   }
-  if(authenticated && pageMatched){
-    if(currentPage !=='/' &&
-    currentPage !== START_ROUTE.path &&
-    restorePage &&
-    !from.name
-
-  ){
-      next({ path: currentPage });
-    }
-  }
-  await localStorage?.setItem(CURRENT_PAGE, to.path);
-  next();
+  console.log('step 4');
+  return next();
 })
 
 export default router
