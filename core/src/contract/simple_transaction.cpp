@@ -125,17 +125,14 @@ void SimpleTransaction::AddChangeOutput(std::string addr)
         m_change_nout.reset();
     }
 
-    AddOutputDestination(P2Address::Construct(chain(), 0, move(addr)));
+    AddOutputDestination(P2Address::Construct(chain(), {}, move(addr)));
 
     CAmount required = GetMinFundingAmount("");
 
     CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
-    //if (required > total) throw ContractStateError("inputs too small");
-    CAmount change = total - required;
-
-    if (change >= l15::Dust(DUST_RELAY_TX_FEE)) {
-        m_outputs.back()->Amount(change);
+    if (total >= required) {
+        m_outputs.back()->Amount(m_outputs.back()->Amount() + total - required);
         m_change_nout = m_outputs.size() - 1;
     }
     else {

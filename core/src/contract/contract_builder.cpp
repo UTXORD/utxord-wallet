@@ -183,27 +183,50 @@ std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, cons
     }
 }
 
-std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, CAmount amount, std::string addr)
+std::shared_ptr<IContractDestination> P2Address::Construct(ChainMode chain, std::optional<CAmount> amount, std::string addr)
 {
     Bech32 bech(BTC, chain);
     if (addr.starts_with(bech.GetHrp())) {
         auto [witver, data] = bech.Decode(addr);
 
         if (witver == 0)
-            return std::make_shared<P2WPKH>(chain, amount, move(addr));
+            return std::make_shared<P2WPKH>(chain, amount.value_or(330), move(addr));
         if (witver == 1)
-            return std::make_shared<P2TR>(chain, amount, move(addr));
+            return std::make_shared<P2TR>(chain, amount.value_or(330), move(addr));
 
         throw ContractTermWrongValue((std::ostringstream() << addr << " wrong witness ver: " << witver).str());
     }
 
     auto [addrtype, hash] = Base58(chain).Decode(addr);
     if (addrtype == PUB_KEY_HASH)
-        return std::make_shared<P2PKH>(chain, amount, move(addr));
+        return std::make_shared<P2PKH>(chain, amount.value_or(546), move(addr));
     if (addrtype == SCRIPT_HASH)
-        return std::make_shared<P2SH>(chain, amount, move(addr));
+        return std::make_shared<P2SH>(chain, amount.value_or(540), move(addr));
 
     throw ContractTermWrongValue(move(addr));
+}
+
+void P2Witness::CheckDust() const
+{
+    // A typical spendable segwit P2WPKH txout is 31 bytes big, and will
+    // need a CTxIn of at least 67 bytes to spend:
+    // so dust is a spendable txout less than
+    // 98*dustRelayFee/1000 (in satoshis).
+    // 294 satoshis at the default rate of 3000 sat/kvB.
+    // Note this computation is for spending a Segwit v0 P2WPKH output (a 33 bytes
+    // public key + an ECDSA signature). For Segwit v1 Taproot outputs the minimum
+    // satisfaction is lower (a single BIP340 signature) but this computation was
+    // kept to not further reduce the dust level.
+    // See discussion in https://github.com/bitcoin/bitcoin/pull/22779 for details.
+
+    size_t nSize = GetSerializeSize(TxOutput());
+    // sum the sizes of the parts of a transaction input
+    // with 75% segwit discount applied to the script size.
+    nSize += (32 + 4 + 1 + (107 / WITNESS_SCALE_FACTOR) + 4);
+
+    const CAmount dust = CFeeRate(DUST_RELAY_TX_FEE).GetFee(nSize);
+    if (m_amount < dust)
+        throw ContractTermWrongValue("Dust");
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -213,6 +236,20 @@ CScript P2PKH::PubKeyScript() const
     auto [addrtype, keyhash] = l15::Base58(m_chain).Decode(m_addr);
     if (addrtype != l15::PUB_KEY_HASH) throw ContractTermWrongValue("Not P2PKH: " + m_addr);
     return CScript() << OP_DUP << OP_HASH160 << keyhash << OP_EQUALVERIFY << OP_CHECKSIG;
+}
+
+
+void P2Legacy::CheckDust() const
+{
+    // A typical spendable non-segwit txout is 34 bytes big, and will
+    // need a CTxIn of at least 148 bytes to spend:
+    // so dust is a spendable txout less than
+    // 182*dustRelayFee/1000 (in satoshis).
+    // 546 satoshis at the default rate of 3000 sat/kvB.
+    size_t nSize = GetSerializeSize(TxOutput());
+    nSize += (32 + 4 + 1 + 107 + 4); // the 148 mentioned above
+    if (m_amount < CFeeRate(DUST_RELAY_TX_FEE).GetFee(nSize))
+        throw ContractTermWrongValue("Dust");
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -242,7 +279,7 @@ OpReturnDestination::OpReturnDestination(const UniValue &json, const std::functi
         if(!json[name_data].isStr()) throw ContractTermWrongFormat(lazy_name() + '.' + name_data);
         try {
             m_data = unhex<bytevector>(json[name_data].getValStr());
-        } catch(std::logic_error& e) {
+        } catch(l15::IllegalArgument& ) {
             std::throw_with_nested(ContractTermWrongFormat(lazy_name() + '.' + name_data));
         }
         if (m_data.size() > 80)
@@ -530,7 +567,7 @@ void IContractBuilder::DeserializeContractScriptPubkey(const UniValue &val, std:
         try {
             new_pk = unhex<xonly_pubkey>(val.get_str());
         }
-        catch (std::logic_error& e) {
+        catch (l15::IllegalArgument& ) {
             std::throw_with_nested(ContractTermWrongFormat(lazy_name()));
         }
 
