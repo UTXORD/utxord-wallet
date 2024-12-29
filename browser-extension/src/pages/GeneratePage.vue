@@ -29,7 +29,7 @@
             :model-value="mnemonicLength"
             @update:model-value="onChangeMnemonicLength"
             :options="bip39.MNEMONIC_LENGTH_OPTIONS"
-            data-testid="phrase-length"
+            data-testid="mnemonic-length"
           />
         </div>
 
