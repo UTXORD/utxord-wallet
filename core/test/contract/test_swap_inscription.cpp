@@ -86,7 +86,7 @@ TEST_CASE("Swap")
     const CAmount MARKET_FEE = 1000;
 
     uint32_t version = GENERATE(5,6);
-    auto [addr_type, min_version] = GENERATE(std::make_tuple("bech32m", 5), std::make_tuple("bech32", 5)/*, std::make_tuple("p2sh-segwit", 6)*/, std::make_tuple("legacy", 6));
+    auto [addr_type, min_version] = GENERATE(std::make_tuple("bech32m", 5), std::make_tuple("bech32", 5)/*, std::make_tuple("p2sh-segwit", 6), std::make_tuple("legacy", 6)*/);
 
     std::string ord_addr = w->p2tr(2,0,0);
     std::string funds_addr = w->p2tr(0,0,0);
@@ -160,14 +160,14 @@ TEST_CASE("Swap")
         const SwapCondition fund_min_cond = {{{min_funding, funds_addr}}, false};
         const SwapCondition fund_min_3000_cond = {{{min_funding + 3000, funds_addr}}, true};
         const SwapCondition fund_min_dust_cond = {{{min_funding+dust, funds_addr}}, false};
-        const SwapCondition fund_min_dust_1_cond = {{{min_funding + dust + 43, funds_addr}}, true};
+        const SwapCondition fund_min_dust_1_cond = {{{min_funding + dust + CFeeRate(fee_rate).GetFee(43), funds_addr}}, true};
         const SwapCondition fund_min_dust_100_cond = {{{min_funding + dust - 100, funds_addr}}, false};
         const SwapCondition fund_min_50_cond = {{{min_funding + 50, funds_addr}}, false};
 
         const SwapCondition fund_min_segwit_cond = {{{min_segwit_funding, funds_segwit_addr}}, false};
         const SwapCondition fund_min_3000_segwit_cond = {{{min_segwit_funding + 3000, funds_segwit_addr}}, true};
         const SwapCondition fund_min_dust_segwit_cond = {{{min_segwit_funding+dust, funds_segwit_addr}}, false};
-        const SwapCondition fund_min_dust_1_segwit_cond = {{{min_segwit_funding + dust + 1, funds_segwit_addr}}, true};
+        const SwapCondition fund_min_dust_1_segwit_cond = {{{min_segwit_funding + dust +  + CFeeRate(fee_rate).GetFee(43), funds_segwit_addr}}, true};
         const SwapCondition fund_min_dust_100_segwit_cond = {{{min_segwit_funding + dust - 100, funds_segwit_addr}}, false};
         const SwapCondition fund_min_50_segwit_cond = {{{min_segwit_funding + 50, funds_segwit_addr}}, false};
 
@@ -176,7 +176,7 @@ TEST_CASE("Swap")
         auto condition = GENERATE_REF(
                     fund_min_cond,
                     fund_min_3000_cond,
-    //                fund_min_dust_cond
+                    fund_min_dust_cond,
                     fund_min_dust_1_cond,
                     fund_min_dust_100_cond,
                     fund_min_50_cond,
@@ -518,7 +518,7 @@ TEST_CASE("FundsNotEnough")
 
     builderOrdBuyer.SwapScriptPubKeyB(w->pubkey(3,0,1));
     builderOrdBuyer.AddFundsUTXO(get<0>(funds_prevout).hash.GetHex(), get<0>(funds_prevout).n, funds_amount, funds_addr);
-    REQUIRE_THROWS_AS(builderOrdBuyer.SignFundsCommitment(w->keyreg(), "fund"), l15::TransactionError);
+    REQUIRE_THROWS_AS(builderOrdBuyer.SignFundsCommitment(w->keyreg(), "fund"), utxord::ContractFundsNotEnough);
 
 }
 

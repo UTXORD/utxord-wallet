@@ -748,12 +748,13 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
 
     if (m_change_addr) {
         try {
-            auto changeDest = P2Address::Construct(chain(), 0, *m_change_addr);
+            auto changeDest = P2Address::Construct(chain(), {}, *m_change_addr);
             tx.vout.emplace_back(changeDest->TxOutput());
-            CAmount change_amount = CalculateOutputAmount(total_funds - m_ord_destination->Amount() - fixed_change_amount - genesis_sum_fee, *m_mining_fee_rate, tx);
-            tx.vout.back().nValue = change_amount;
+            CAmount change_amount = total_funds - m_ord_destination->Amount() - fixed_change_amount - genesis_sum_fee - CalculateTxFee(*m_mining_fee_rate, tx);
+            changeDest->Amount(change_amount);
+            tx.vout.back().nValue = changeDest->Amount();
         }
-        catch (const TransactionError &) {
+        catch (const ContractTermWrongValue &) {
             // If less than dust then spend all the excessive funds to inscription, or collection, or add to "fixed" change
             tx.vout.pop_back();
             CAmount mining_fee = CalculateTxFee(*m_mining_fee_rate, tx);
@@ -870,18 +871,13 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
     }
 
     if (!m_parent_collection_id) {
-        tx.vout.front().nValue = CalculateOutputAmount(commit_tx.vout.front().nValue, *m_mining_fee_rate, tx) - m_market_fee->Amount();
-        if (m_author_fee)
-            tx.vout.front().nValue -= m_author_fee->Amount();
-        for (const auto& fee: m_custom_fees)
-            tx.vout.front().nValue -= fee->Amount();
-        if (m_rune_stone)
-            tx.vout.front().nValue -= m_rune_stone->Amount();
-    }
-
-    for (const auto& out: tx.vout) {
-        if (out.nValue && out.nValue < Dust(DUST_RELAY_TX_FEE))
-            throw ContractStateError(move((std::string("Funds not enough: out[") += std::to_string(&out - tx.vout.data()) += "]: ") += std::to_string(out.nValue)));
+        auto mining_fee = CalculateTxFee(*m_mining_fee_rate, tx);
+        try {
+            auto fakeOrdDest = P2Address::Construct(chain(), commit_tx.vout.front().nValue - mining_fee, m_ord_destination->Address());
+        }
+        catch (ContractTermWrongValue& ) {
+            std::throw_with_nested(ContractFundsNotEnough("Ord output too small: " + std::to_string(commit_tx.vout.front().nValue - mining_fee)));
+        }
     }
 
     return tx;

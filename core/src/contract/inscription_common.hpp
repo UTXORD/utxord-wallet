@@ -5,6 +5,28 @@
 
 namespace utxord {
 
+class InscriptionError : public l15::Error {
+protected:
+    InscriptionError() : l15::Error() {}
+
+public:
+    explicit InscriptionError(std::string&& details) : l15::Error(move(details)) {}
+    ~InscriptionError() override = default;
+
+    const char* what() const noexcept override
+    { return "InscriptionError"; }
+};
+
+class InscriptionFormatError : public InscriptionError {
+public:
+    explicit InscriptionFormatError(std::string&& details) : InscriptionError(move(details)) {}
+    ~InscriptionFormatError() override = default;
+
+    const char* what() const noexcept override
+    { return "InscriptionFormatError"; }
+};
+
+
 using namespace l15;
 
 const size_t MAX_PUSH = 520;
@@ -28,24 +50,24 @@ const bytevector RUNE_TAG {'\x0d'};
 
 inline void CheckInscriptionId(const std::string& inscription_id)
 {
-    if (inscription_id.length() < 66) throw ContractTermWrongValue("inscription id: " + inscription_id);
-    if (inscription_id[64] != 'i') throw ContractTermWrongValue("inscription id: " + inscription_id);
+    if (inscription_id.length() < 66) throw InscriptionFormatError("inscription id: " + inscription_id);
+    if (inscription_id[64] != 'i') throw InscriptionFormatError("inscription id: " + inscription_id);
     try {
         unhex<bytevector>(inscription_id.substr(0, 64));
         std::stoul(inscription_id.substr(65));
     }
     catch (const std::exception& e) {
-        std::throw_with_nested(ContractTermWrongValue("inscription id: " + inscription_id));
+        std::throw_with_nested(InscriptionError("inscription id: " + inscription_id));
     }
 }
 
 inline bytevector SerializeInscriptionId(const std::string& inscription_id)
 {
-    if (inscription_id.length() < 66) throw ContractTermWrongValue("inscription id: " + inscription_id);
-    if (inscription_id[64] != 'i') throw ContractTermWrongValue("inscription id: " + inscription_id);
+    if (inscription_id.length() < 66) throw InscriptionFormatError("inscription id: " + inscription_id);
+    if (inscription_id[64] != 'i') throw InscriptionFormatError("inscription id: " + inscription_id);
     try {
         uint32_t in = std::stoul(inscription_id.substr(65));
-        if (in > 255) throw ContractTermWrongValue("inscription id input > 255");
+        if (in > 255) throw InscriptionFormatError("inscription id input > 255");
 
         uint256 txid = uint256S(inscription_id.substr(0, 64));
         bytevector res;
@@ -58,11 +80,11 @@ inline bytevector SerializeInscriptionId(const std::string& inscription_id)
         }
         return res;
     }
-    catch (const ContractTermWrongValue& e) {
+    catch (const InscriptionError& e) {
         std::rethrow_exception(std::current_exception());
     }
     catch (const std::exception& e) {
-        std::throw_with_nested(ContractTermWrongValue("inscription id: " + inscription_id));
+        std::throw_with_nested(InscriptionError("inscription id: " + inscription_id));
     }
 }
 
@@ -74,7 +96,7 @@ inline std::string DeserializeInscriptionId(const bytevector& data)
         return id;
     }
 
-    if (data.size() < 32 || data.size() > 33) throw ContractTermWrongFormat("inscription id binary: " + hex(data));
+    if (data.size() < 32 || data.size() > 33) throw InscriptionFormatError("inscription id binary: " + hex(data));
     try {
         uint32_t in = 0;
         if (data.size() == 33) in = static_cast<uint32_t>(data.back()) & 0x0ff;
@@ -83,7 +105,7 @@ inline std::string DeserializeInscriptionId(const bytevector& data)
         return txid.GetHex() + 'i' + std::to_string(in);
     }
     catch (const std::exception& e) {
-        std::throw_with_nested(ContractTermWrongFormat("inscription id binary: " + hex(data)));
+        std::throw_with_nested(InscriptionError("inscription id binary: " + hex(data)));
     }
 }
 

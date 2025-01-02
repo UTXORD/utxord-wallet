@@ -96,8 +96,13 @@ public:
 
     static const char* SupportedVersions() { return s_versions; }
 
-    void OrdPrice(CAmount price)
-    { m_ord_price = price; }
+    void FundsPayoffOutputDestination(std::shared_ptr<IContractDestination> dest)
+    {
+        m_ord_price = dest->Amount();
+        m_funds_payoff_addr = dest->Address();
+    }
+    void FundsPayoffOutput(CAmount price, std::string addr)
+    { FundsPayoffOutputDestination(P2Address::Construct(chain(), price, move(addr))); }
 
     void MarketScriptPubKey(xonly_pubkey pk)
     { m_market_script_pk = move(pk); }
@@ -113,10 +118,9 @@ public:
     void AddMainSwapUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr);
 
     void OrdPayoffAddress(std::string addr)
-    { m_ord_payoff_addr = move(addr); }
-
-    void FundsPayoffAddress(std::string addr)
-    { m_funds_payoff_addr = move(addr); }
+    {
+        m_ord_payoff_addr = move(addr);
+    }
 
     void SignOrdSwap(const KeyRegistry &masterKey, const std::string& key_filter);
     void SignMarketSwap(const KeyRegistry &masterKey, const std::string& key_filter);

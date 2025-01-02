@@ -545,7 +545,7 @@ void RuneStoneDestination::ReadJson(const UniValue &json, const std::function<st
     }
     {   const UniValue& val = json[name_op_dictionary];
         if (!val.isNull()) {
-            if (!val.isArray()) throw ContractFormatError(name_op_dictionary);
+            if (!val.isArray()) throw ContractTermWrongFormat(name_op_dictionary);
             if (!op_dictionary.empty() && (op_dictionary.size() != val.size())) throw ContractTermMismatch(move((lazy_name() += '.') += name_op_dictionary));
 
             ReadOpDictionaryJson(val, op_dictionary, [=]{ return (lazy_name() += '.') += name_op_dictionary; });

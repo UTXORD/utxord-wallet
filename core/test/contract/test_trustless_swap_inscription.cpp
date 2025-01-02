@@ -121,7 +121,7 @@ TEST_CASE("Swap")
     TrustlessSwapInscriptionBuilder builderMarket(w->chain());
 
     CHECK_NOTHROW(builderMarket.MiningFeeRate(fee_rate));
-    CHECK_NOTHROW(builderMarket.OrdPrice(ORD_PRICE));
+    CHECK_NOTHROW(builderMarket.FundsPayoffOutput(ORD_PRICE, funds_payoff_key.GetP2TRAddress(Bech32(BTC, w->chain()))));
     CHECK_NOTHROW(builderMarket.MarketScriptPubKey(market_script_key.PubKey()));
 
     //Create ord utxo
@@ -130,7 +130,6 @@ TEST_CASE("Swap")
     auto ord_prevout = w->btc().CheckOutput(ord_txid, ord_addr);
 
     CHECK_NOTHROW(builderMarket.CommitOrdinal(get<0>(ord_prevout).hash.GetHex(), get<0>(ord_prevout).n, get<1>(ord_prevout).nValue, ord_addr));
-    CHECK_NOTHROW(builderMarket.FundsPayoffAddress(funds_payoff_key.GetP2TRAddress(Bech32(BTC, w->chain()))));
 
     //Create ord balance
     string free_balance_addr = free_balance_key.GetP2TRAddress(Bech32(BTC, w->chain()));

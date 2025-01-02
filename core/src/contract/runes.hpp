@@ -160,7 +160,7 @@ public:
     RuneStoneDestination& operator= (RuneStoneDestination&& ) noexcept = default;
 
     explicit RuneStoneDestination(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name) : m_chain(chain)
-    { ReadJson(json, lazy_name); }
+    { RuneStoneDestination::ReadJson(json, lazy_name); }
 
     bytevector Commit() const;
 

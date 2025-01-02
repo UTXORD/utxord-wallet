@@ -4,30 +4,9 @@
 #include <string>
 
 #include "common.hpp"
-#include "common_error.hpp"
+#include "inscription_common.hpp"
 
 namespace utxord {
-
-class InscriptionError : public l15::Error {
-protected:
-    InscriptionError() : l15::Error() {}
-
-public:
-    explicit InscriptionError(std::string&& details) : l15::Error(move(details)) {}
-    ~InscriptionError() override = default;
-
-    const char* what() const noexcept override
-    { return "InscriptionError"; }
-};
-
-class InscriptionFormatError : public InscriptionError {
-public:
-    explicit InscriptionFormatError(std::string&& details) : InscriptionError(move(details)) {}
-    ~InscriptionFormatError() override = default;
-
-    const char* what() const noexcept override
-    { return "InscriptionFormatError"; }
-};
 
 class EnvelopeEnd : public InscriptionError {
 public:
