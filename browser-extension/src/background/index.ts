@@ -1246,7 +1246,7 @@ interface ICollectionTransferResult {
             payload.data.expects = Api.expects;
             console.log(COMMIT_BUY_INSCRIPTION+':',payload);
             //update balances before openWindow
-            winManager.openWindow('estimate-fee', async (id) => {
+            winManager.openWindow('sign-commit-buy', async (id) => {
               setTimeout(async () => {
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);
