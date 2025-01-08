@@ -42,30 +42,34 @@ Inscription::Inscription(std::string inscription_id, std::list<std::pair<bytevec
     bytevector metadata;
 
     while(!inscr_data.empty()) {
-        if (inscr_data.front().first == CONTENT_TYPE_TAG) {
-            m_content_type.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
-        }
-        else if (inscr_data.front().first == CONTENT_TAG) {
-            m_content = move(inscr_data.front().second);
-        }
-        else if (inscr_data.front().first == COLLECTION_ID_TAG) {
-            m_collection_id = DeserializeInscriptionId(inscr_data.front().second);
-        }
-        else if (inscr_data.front().first == ORD_SHIFT_TAG) {
-            m_ord_shift = CScriptNum(inscr_data.front().second, false, sizeof(CAmount)).GetInt64();
-            //if (!MoneyRange(ord_shift)) throw InscriptionFormatError("Ord shift is greater than whole Bitcoin supply")
-        }
-        else if (inscr_data.front().first == METADATA_TAG) {
-            metadata.insert(metadata.end(), inscr_data.front().second.begin(), inscr_data.front().second.end());
-        }
-        else if (inscr_data.front().first == CONTENT_ENCODING_TAG) {
-            m_content_encoding.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
-        }
-        else if (inscr_data.front().first == DELEGATE_ID_TAG) {
-            m_delegate_id = DeserializeInscriptionId(inscr_data.front().second);
-        }
-        else if (inscr_data.front().first == RUNE_TAG) {
-            m_rune_commitment = move(inscr_data.front().second);
+        try {
+            if (inscr_data.front().first == CONTENT_TYPE_TAG) {
+                m_content_type.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
+            }
+            else if (inscr_data.front().first == CONTENT_TAG) {
+                m_content = move(inscr_data.front().second);
+            }
+            else if (inscr_data.front().first == COLLECTION_ID_TAG) {
+                m_collection_id = DeserializeInscriptionId(inscr_data.front().second);
+            }
+            else if (inscr_data.front().first == ORD_SHIFT_TAG) {
+                m_ord_shift = CScriptNum(inscr_data.front().second, false, sizeof(CAmount)).GetInt64();
+                //if (!MoneyRange(ord_shift)) throw InscriptionFormatError("Ord shift is greater than whole Bitcoin supply")
+            }
+            else if (inscr_data.front().first == METADATA_TAG) {
+                metadata.insert(metadata.end(), inscr_data.front().second.begin(), inscr_data.front().second.end());
+            }
+            else if (inscr_data.front().first == CONTENT_ENCODING_TAG) {
+                m_content_encoding.assign(inscr_data.front().second.begin(), inscr_data.front().second.end());
+            }
+            else if (inscr_data.front().first == DELEGATE_ID_TAG) {
+                m_delegate_id = DeserializeInscriptionId(inscr_data.front().second);
+            }
+            else if (inscr_data.front().first == RUNE_TAG) {
+                m_rune_commitment = move(inscr_data.front().second);
+            }
+        } catch (...) {
+            // Just skip a tag data if the data are wrong
         }
 
         inscr_data.pop_front();
