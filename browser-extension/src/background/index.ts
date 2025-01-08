@@ -1310,7 +1310,6 @@ interface ICollectionTransferResult {
             },
             args: [],
           });
-          console.log('tab->',url,'|result:',result);
           if(result){
             const queue  = JSON.parse(result);
             for(let q of queue){

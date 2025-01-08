@@ -1851,6 +1851,9 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       if ('object' == typeof(tabId) && tabId.hasOwnProperty('tabIds') && 0 < tabId.tabIds.length) {
         curedTabId = tabId.tabIds[0];
       }
+      if ('object' == typeof(curedTabId) && curedTabId.hasOwnProperty('tabId')){
+        curedTabId = curedTabId.tabId;
+      }
 
       try {
         console.debug('sendMessageToWebPage curedTabId:', curedTabId);
