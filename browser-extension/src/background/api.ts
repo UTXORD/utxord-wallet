@@ -1879,7 +1879,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       const url = tab?.url || tab?.pendingUrl;
       if(tab?.id &&
          url?.startsWith(base_url) &&
-         !url?.startsWith('browser-extension://') &&
+         !url?.startsWith('chrome-extension://') &&
          !url?.startsWith('chrome://')) {
         await browser.scripting.executeScript({
           target: { tabId: tab?.id },

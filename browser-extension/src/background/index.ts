@@ -1298,7 +1298,7 @@ interface ICollectionTransferResult {
         if(tab?.id &&
            url?.startsWith(base_url) &&
            !url?.startsWith('about:') &&
-           !url?.startsWith('browser-extension://') &&
+           !url?.startsWith('chrome-extension://') &&
            !url?.startsWith('chrome://')) {
              console.log('executeScript->',url)
           const [{result}] = await browser.scripting.executeScript({
