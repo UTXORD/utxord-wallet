@@ -52,6 +52,7 @@ class SwapInscriptionBuilder : public utxord::ContractBuilder<utxord::SwapPhase>
     mutable std::optional<CMutableTransaction> mSwapTpl;
     mutable std::optional<CMutableTransaction> mOrdPayoffTpl;
 
+    mutable std::shared_ptr<IContractDestination> mChange;
     mutable std::optional<CMutableTransaction> mFundsCommitTx;
     mutable std::optional<CMutableTransaction> mFundsPaybackTx;
 
@@ -127,6 +128,12 @@ public:
 
     SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
+
+    void ChangeAddress(std::string addr) override
+    {
+        IContractBuilder::ChangeAddress(std::move(addr));
+        mChange = P2Address::Construct(chain(), {}, *m_change_addr);
+    }
 
     const std::string& GetContractName() const override;
     uint32_t GetVersion() const override { return s_protocol_version; }
