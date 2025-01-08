@@ -85,10 +85,12 @@ import {bookmarks} from "webextension-polyfill";
 
 if (NETWORK === MAINNET){
   if(self){
+    self['console'] = {};
     self['console']['debug'] =
     self['console']['log'] =
     self['console']['error'] =
     self['console']['warn'] =
+    self['console']['table'] =
     self['console']['info']= () => {};
   }
 }
@@ -203,8 +205,8 @@ interface ICollectionTransferResult {
   try {
     let store = HashedStore.getInstance();
     const Api = await new self.Api(NETWORK);
-    Api.sentry();
-    // We have to use browser API instead of webext-bridge module due to following issue
+    // Api.sentry();
+    // We have to use chrome API instead of webext-bridge module due to following issue
     // https://github.com/zikaari/webext-bridge/issues/37
     let popupPort: Port | null = null;
     function postMessageToPopupIfOpen(msg: any) {
@@ -331,7 +333,7 @@ interface ICollectionTransferResult {
           await Api.sendMessageToWebPage(GET_BALANCES, addresses);
         }, 1000);
       }
-      Api.sentry();
+      // Api.sentry();
       return true;
     });
 
@@ -370,12 +372,18 @@ interface ICollectionTransferResult {
 
     onMessage(CHECK_AUTH, async() => {
       console.log('CHECK_AUTH->run')
-      await Api.sendMessageToWebPage(PLUGIN_ID, browser.runtime.id);
-      if(Api.wallet?.auth?.key?.ptr){
-        await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet?.auth?.key?.PubKey());
+      try{
+        await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
+        if(Api.wallet?.auth?.key?.ptr){
+          await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, Api.wallet?.auth?.key?.PubKey());
+        }
+        const success = await Api.checkSeed();
+        return success;
+      }catch(e){
+        console.log(e.type, e.message);
+        return false;
       }
-      const success = await Api.checkSeed();
-      return success;
+
     });
 
     onMessage(GET_NETWORK, () => {
@@ -1249,7 +1257,7 @@ interface ICollectionTransferResult {
             payload.data.expects = Api.expects;
             console.log(COMMIT_BUY_INSCRIPTION+':',payload);
             //update balances before openWindow
-            winManager.openWindow('estimate-fee', async (id) => {
+            winManager.openWindow('sign-commit-buy', async (id) => {
               setTimeout(async () => {
                 await sendMessage(SAVE_DATA_FOR_SIGN, payload, `popup@${id}`);
               }, 1000);

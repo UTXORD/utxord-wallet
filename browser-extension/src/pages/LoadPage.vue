@@ -272,7 +272,7 @@ async function inputWords(e) {
 }
 
 function saveTempDataToLocalStorage(){
-  localStorage?.setItem(MNEMONIC_LANGUAGE_KEY, mnemonicLength.value)
+  localStorage?.setItem(MNEMONIC_LANGUAGE_KEY, mnemonicLanguage.value)
   localStorage?.setItem(MNEMONIC_LENGTH_KEY, mnemonicLength.value)
   localStorage?.setItem(MNEMONIC_KEY, list.value.join(' '))
   localStorage?.setItem(PASSPHRASE_KEY, passphrase.value)

@@ -1,5 +1,5 @@
 import { BACKEND_URL } from '~/config/index'
-import * as Sentry from "@sentry/browser"
+// import * as Sentry from "@sentry/browser"
 class Rest {
   constructor() {}
 
