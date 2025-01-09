@@ -22,6 +22,16 @@ namespace {
 
 const std::string val_swap_inscription("SwapInscription");
 
+const char* ORD_TERMS_STR = "ORD_TERMS";
+const char* FUNDS_TERMS_STR = "FUNDS_TERMS";
+const char* FUNDS_COMMIT_SIG_STR = "FUNDS_COMMIT_SIG";
+const char* MARKET_PAYOFF_TERMS_STR = "MARKET_PAYOFF_TERMS";
+const char* MARKET_PAYOFF_SIG_STR = "MARKET_PAYOFF_SIG";
+const char* ORD_SWAP_SIG_STR = "ORD_SWAP_SIG";
+const char* FUNDS_SWAP_SIG_STR = "FUNDS_SWAP_SIG";
+const char* MARKET_SWAP_SIG_STR = "MARKET_SWAP_SIG";
+
+
 const uint32_t COMMIT_TIMEOUT = 12;
 
 
@@ -81,6 +91,34 @@ const std::string SwapInscriptionBuilder::name_funds_swap_sig_M = "funds_swap_si
 const std::string SwapInscriptionBuilder::name_ordpayoff_unspendable_key_factor = "ordpayoff_unspendable_key_factor";
 const std::string SwapInscriptionBuilder::name_ord_payoff_sig = "ordpayoff_sig";
 
+
+const char * SwapInscriptionBuilder::PhaseString(SwapPhase phase)
+{
+    switch (phase) {
+    case ORD_TERMS: return ORD_TERMS_STR;
+    case FUNDS_TERMS: return FUNDS_TERMS_STR;
+    case FUNDS_COMMIT_SIG: return FUNDS_COMMIT_SIG_STR;
+    case MARKET_PAYOFF_TERMS: return MARKET_PAYOFF_TERMS_STR;
+    case MARKET_PAYOFF_SIG: return MARKET_PAYOFF_SIG_STR;
+    case ORD_SWAP_SIG: return ORD_SWAP_SIG_STR;
+    case FUNDS_SWAP_SIG: return FUNDS_SWAP_SIG_STR;
+    case MARKET_SWAP_SIG: return MARKET_SWAP_SIG_STR;
+    }
+    throw ContractTermWrongValue("SwapPhase: " + std::to_string(phase));
+}
+
+SwapPhase SwapInscriptionBuilder::ParsePhase(const std::string &p)
+{
+    if (p == ORD_TERMS_STR) return ORD_TERMS;
+    if (p == FUNDS_TERMS_STR) return FUNDS_TERMS;
+    if (p == FUNDS_COMMIT_SIG_STR) return FUNDS_COMMIT_SIG;
+    if (p == MARKET_PAYOFF_TERMS_STR) return MARKET_PAYOFF_TERMS;
+    if (p == MARKET_PAYOFF_SIG_STR) return MARKET_PAYOFF_SIG;
+    if (p == ORD_SWAP_SIG_STR) return ORD_SWAP_SIG;
+    if (p == FUNDS_SWAP_SIG_STR) return FUNDS_SWAP_SIG;
+    if (p == MARKET_SWAP_SIG_STR) return MARKET_SWAP_SIG;
+    throw ContractTermWrongValue(std::string(p));
+}
 
 const std::string& SwapInscriptionBuilder::GetContractName() const
 { return val_swap_inscription; }
@@ -487,6 +525,7 @@ UniValue SwapInscriptionBuilder::MakeJson(uint32_t version, SwapPhase phase) con
     UniValue contract(UniValue::VOBJ);
 
     contract.pushKV(name_version, version);
+    contract.pushKV(name_contract_phase, PhaseString(phase));
     contract.pushKV(name_ord_price, *m_ord_price);
     contract.pushKV(name_market_fee, m_market_fee->MakeJson());
     contract.pushKV(name_swap_script_pk_M, hex(*m_swap_script_pk_M));
