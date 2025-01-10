@@ -73,7 +73,8 @@ import { toRefs, computed, ref } from 'vue'
 import { GET_ADDRESSES, GET_ALL_BALANCES } from '~/config/events'
 import { useRouter } from 'vue-router'
 import LoadingPage from '~/pages/LoadingPage.vue'
-import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
+import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import NotifyInBody from '~/components/NotifyInBody.vue'
 const { back, push } = useRouter()
 

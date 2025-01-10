@@ -1,4 +1,4 @@
-.PHONY: clean all core-clean core ext-clean ext-build-clean ext-core-lib ext-deps ext-dev ext-qa ext-e2e ext-utxord ext
+.PHONY: clean all core-clean core ext-clean ext-build-clean ext-core-lib ext-deps ext-dev ext-qa-firefox ext-e2e-firefox ext-utxord-firefox ext-qa ext-e2e ext-utxord ext
 
 ROOT_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -57,6 +57,15 @@ ext-test-deps: ext-test-core-lib
 ext-dev: ext-deps
 	(cd $(EXT_DIR) ; npm run dev)
 
+ext-qa-firefox: ext-deps
+	(cd $(EXT_DIR) ; npm run build-qa-firefox)
+
+ext-e2e-firefox: ext-deps
+	(cd $(EXT_DIR) ; npm run build-e2e-firefox)
+
+ext-utxord-firefox: ext-deps
+	(cd $(EXT_DIR) ; npm run build-utxord-firefox)
+
 ext-qa: ext-deps
 	(cd $(EXT_DIR) ; npm run build-qa)
 
@@ -72,4 +81,3 @@ ext-test: ext-test-deps
 ext: ext-utxord
 
 all: ext
-

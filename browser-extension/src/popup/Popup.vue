@@ -7,7 +7,8 @@
 </template>
 
 <script setup lang="ts">
-import { sendMessage } from '~/helpers/index'
+import browser from 'webextension-polyfill'
+import { sendMessage } from '~/helpers/messenger'
 import { onMessage } from 'webext-bridge'
 import { onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
@@ -101,9 +102,9 @@ async function init() {
 
 
 
-// We have to use chrome API instead of webext-bridge module due to following issue
+// We have to use browser API instead of webext-bridge module due to following issue
 // https://github.com/zikaari/webext-bridge/issues/37
-let port = chrome.runtime.connect({
+let port = browser.runtime.connect({
   name: 'POPUP_MESSAGING_CHANNEL'
 });
 port.postMessage({id: 'POPUP_MESSAGING_CHANNEL_OPEN'});

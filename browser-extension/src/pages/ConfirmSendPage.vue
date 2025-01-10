@@ -96,7 +96,8 @@
 
 <script setup lang="ts">
 import {toRefs, ref, computed, onMounted, onBeforeMount} from 'vue'
-import { formatAddress, copyToClipboard, sendMessage } from '~/helpers/index'
+import { formatAddress, copyToClipboard } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import { useStore } from '~/popup/store/index'
 import SignWrapperForSend from '~/components/SignWrapperForSend.vue'
 import CopyIcon from '~/components/Icons/CopyIcon.vue'
@@ -134,7 +135,6 @@ console.log('2');
   totalNeed.value = (Number(dataForSign.value?.amount) + Number(miningFee.value));
   console.log('totalNeed.value:', totalNeed.value)
   console.log('miningFee.value:', miningFee.value)
-  console.log(JSON.parse(payload.data.costs.data))
 
   if(dataForSign.value?.location) dataForSign.value.location = undefined;
   if(dataForSign.value?.back) dataForSign.value.back = undefined;

@@ -1,7 +1,9 @@
 import {MAINNET, NETWORK, TESTNET, SIGNET, BASE_URL_PATTERN} from '~/config/index';
-import {onMessage, sendMessage} from 'webext-bridge'
+import {onMessage} from 'webext-bridge'
+import {sendMessage} from '~/helpers/messenger'
 import '~/background/api'
 import WinManager from '~/background/winManager';
+import browser from 'webextension-polyfill';
 import {
   ADDRESS_COPIED,
   ADDRESSES_TO_SAVE,
@@ -77,7 +79,7 @@ import {
   COMMIT_BUY_INSCRIBE_RESULT,
 } from '~/config/events';
 import {debugSchedule, defaultSchedule, Scheduler, ScheduleName, Watchdog} from "~/background/scheduler";
-import Port = chrome.runtime.Port;
+import Port = browser.runtime.Port;
 import {HashedStore} from "~/background/hashedStore";
 import {bookmarks} from "webextension-polyfill";
 
@@ -214,7 +216,7 @@ interface ICollectionTransferResult {
     }
 
     async function checkPossibleTabsAndTimeConflict() {
-      const tabs = await chrome.tabs.query({
+      const tabs = await browser.tabs.query({
         windowType: 'normal',
         url: BASE_URL_PATTERN,
       });
@@ -238,7 +240,7 @@ interface ICollectionTransferResult {
 
     async function helloSite(tabId: number | undefined = undefined){
       console.log('helloSite->run')
-      await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id, tabId);
+      await Api.sendMessageToWebPage(PLUGIN_ID, browser.runtime.id, tabId);
       const user = await Api.wallet?.auth?.key?.PubKey();
       if(user){
         await Api.sendMessageToWebPage(PLUGIN_PUBLIC_KEY, user, tabId);
@@ -247,11 +249,12 @@ interface ICollectionTransferResult {
       // if(success){
       //   await Api.sendMessageToWebPage(CONNECT_TO_SITE, true, tabId);
       // }
+      checkMessage();
     }
 
     async function reConnectSession(unload = false){
       console.log('reConnectSession->run')
-      await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
+      await Api.sendMessageToWebPage(PLUGIN_ID, browser.runtime.id);
       const pubkey = await Api.getPublicKeyFromWebPage();
       const user = await Api.wallet?.auth?.key?.PubKey();
       if(user){
@@ -261,7 +264,7 @@ interface ICollectionTransferResult {
         if(unload){
           if(pubkey !== user && pubkey !== undefined){
               await Api.removePublicKeyToWebPage();
-              await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
+              await Api.sendMessageToWebPage(UNLOAD, browser.runtime.id);
           }
           setTimeout(async () => {
               if(!pubkey){
@@ -280,7 +283,7 @@ interface ICollectionTransferResult {
 
     helloSite();
 
-    chrome.runtime.onConnect.addListener(async (port) => {
+    browser.runtime.onConnect.addListener(async (port) => {
       if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
 
       popupPort = port;
@@ -299,6 +302,7 @@ interface ICollectionTransferResult {
             postMessageToPopupIfOpen({id: DO_REFRESH_BALANCE, connect: connect });
           }
       });
+      checkMessage();
     });
 
     if(NETWORK === SIGNET){
@@ -421,7 +425,7 @@ interface ICollectionTransferResult {
     onMessage(UNLOAD_SEED, async () => {
       console.log('UNLOAD_SEED->run')
       await Api.removePublicKeyToWebPage();
-      await Api.sendMessageToWebPage(UNLOAD, chrome.runtime.id);
+      await Api.sendMessageToWebPage(UNLOAD, browser.runtime.id);
       const success = await Api.unload();
       return success;
     });
@@ -934,7 +938,8 @@ interface ICollectionTransferResult {
     });
 
     onMessage(POPUP_HEARTBEAT, async (payload) => {
-      console.log('POPUP_HEARTBEAT->run')
+      console.log('POPUP_HEARTBEAT->run');
+      checkMessage();
           Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG).reset();
           Scheduler.getInstance().activate();
       return true;
@@ -942,6 +947,7 @@ interface ICollectionTransferResult {
 
     onMessage(BALANCE_CHANGE_PRESUMED, async (payload) => {
       console.log('BALANCE_CHANGE_PRESUMED->run')
+      checkMessage();
           Scheduler.getInstance().changeScheduleTo(ScheduleName.BalanceChangePresumed);
       return true;
     });
@@ -952,11 +958,8 @@ interface ICollectionTransferResult {
       return true;
     });
 
-    chrome.runtime.onConnect.addListener(port => {
-      port.onDisconnect.addListener(() => {})
-    })
 
-    chrome.runtime.onMessageExternal.addListener(async (payload, sender) => {
+    async function siteMessage (payload, sender) {
 
           let tabId = sender?.tab?.id;
           if (typeof payload?.data === 'object' && payload?.data !== null) {
@@ -965,11 +968,20 @@ interface ICollectionTransferResult {
 
           console.debug(`----- message from frontend(tabId:${tabId}): ${payload?.type}, data: `, {...payload?.data || {}});
 
+          if (payload.type === OPEN_START_PAGE) {
+            // setTimeout(((payload) => {
+            //   return async () => {
+                console.log('OPEN_START_PAGE->run');
+                winManager.openWindow('start', undefined, Api.viewMode);
+            //   };
+            // })(payload), 0);
+          }
+
           if (payload.type === SEND_CONNECT_STATUS) {
             console.log('SEND_CONNECT_STATUS->run')
             // setTimeout(((payload)=>{
             //   return async()=>{
-                await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id);
+                await Api.sendMessageToWebPage(PLUGIN_ID, browser.runtime.id);
                 Api.connect = payload?.data?.connected;
                 postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: Api.connect});
             //   };
@@ -980,7 +992,7 @@ interface ICollectionTransferResult {
             console.log('CONNECT_TO_PLUGIN->run')
             // setTimeout(((payload, tabId)=>{
             //   return async()=>{
-                await Api.sendMessageToWebPage(PLUGIN_ID, chrome.runtime.id, tabId);
+                await Api.sendMessageToWebPage(PLUGIN_ID, browser.runtime.id, tabId);
                 let success = await Api.signToChallenge(payload.data, tabId);
                 if (success) {
                   await postMessageToPopupIfOpen({id: UPDATE_PLUGIN_CONNECT, connect: true});
@@ -1062,35 +1074,34 @@ interface ICollectionTransferResult {
             }, tabId);
           }
 
-          function _fixChunkInscriptionPayload(data: IChunkInscription) {
-            for (let inscrData of Array.from(data?.inscriptions || [])) {
-              inscrData.expect_amount = data.expect_amount;  // per item amount
-              inscrData.fee_rate = data.fee_rate;  // per item mining fee rate
-              inscrData.fee = data.fee;   // per item platform/market fee (if any)
-            }
-            return data;
-          }
-
-          function _prepareInscriptionForPopup(data: object) {
-            // console.debug('_prepareInscriptionForPopup data:', {...data || {}});
-            data.market_fee = data.platform_fee || 0;  // total platform/market fee
-            data.costs = {
-              expect_amount: data.total_expect_amount,  // total expect_amount
-              amount: data.total_amount,  // total amount (including all total fees)
-              fee_rate: data.fee_rate,  // per item mining fee rate
-              mining_fee: data.total_mining_fee || 0,  // total mining fee
-              fee: data.fee, // per item platform/market fee (if any)
-              metadata: data.metadata,
-              raw: []
-            };
-            // console.debug('_prepareInscriptionForPopup result:', {...data || {}});
-            return data;
-          }
-
           if (payload.type === CREATE_CHUNK_INSCRIPTION) {
             console.debug(`${CREATE_CHUNK_INSCRIPTION}: payload?.data:`, {...payload?.data || {}});
             // console.log('payload?.data?.type:', payload?.data?.type);
             // console.log('payload?.data?.collection?.genesis_txid:', payload?.data?.collection?.genesis_txid);
+            function _fixChunkInscriptionPayload(data: IChunkInscription) {
+              for (let inscrData of Array.from(data?.inscriptions || [])) {
+                inscrData.expect_amount = data.expect_amount;  // per item amount
+                inscrData.fee_rate = data.fee_rate;  // per item mining fee rate
+                inscrData.fee = data.fee;   // per item platform/market fee (if any)
+              }
+              return data;
+            }
+
+            function _prepareInscriptionForPopup(data: object) {
+              // console.debug('_prepareInscriptionForPopup data:', {...data || {}});
+              data.market_fee = data.platform_fee || 0;  // total platform/market fee
+              data.costs = {
+                expect_amount: data.total_expect_amount,  // total expect_amount
+                amount: data.total_amount,  // total amount (including all total fees)
+                fee_rate: data.fee_rate,  // per item mining fee rate
+                mining_fee: data.total_mining_fee || 0,  // total mining fee
+                fee: data.fee, // per item platform/market fee (if any)
+                metadata: data.metadata,
+                raw: []
+              };
+              // console.debug('_prepareInscriptionForPopup result:', {...data || {}});
+              return data;
+            }
 
             Api.balances = await Api.updateBalancesFrom(payload.type, payload?.data?.addresses);
 
@@ -1270,48 +1281,117 @@ interface ICollectionTransferResult {
               Api.wallet.tmp = ''
             }
           }
+          return true;
+    }
 
-          if (payload.type === OPEN_START_PAGE) {
-            console.log('OPEN_START_PAGE->run')
-            winManager.openWindow('start',null, Api.viewMode);
+  browser.runtime.onMessageExternal.addListener(siteMessage);
+
+  // for firefox:
+  browser.runtime.onMessage.addListener(siteMessage);
+
+
+    async function checkMessage(){
+      const base_url = BASE_URL_PATTERN.replace('*', '');
+      const tabs = await browser.tabs.query({ currentWindow: true });
+      for (let tab of tabs) {
+        const url = tab?.url || tab?.pendingUrl;
+        if(tab?.id &&
+           url?.startsWith(base_url) &&
+           !url?.startsWith('about:') &&
+           !url?.startsWith('chrome-extension://') &&
+           !url?.startsWith('chrome://')) {
+             console.log('executeScript->',url)
+          const [{result}] = await browser.scripting.executeScript({
+            target: { tabId: tab?.id },
+            func: () => {
+              const out = window.localStorage.getItem('MESSAGE_FROM_WEB');
+              window.localStorage.removeItem('MESSAGE_FROM_WEB');
+              return out;
+            },
+            args: [],
+          });
+          if(result){
+            const queue  = JSON.parse(result);
+            for(let q of queue){
+              await siteMessage (q, {'tab': tab});
+            }
           }
 
-    });
+        }
+      }
+    }
 
     // SET PLUGIN ID TO WEB PAGE
     async function sendhello(tabId: number | undefined = undefined) {
-      // console.log('sendhello->run')
+       console.log('sendhello->run')
+       checkMessage();
       helloSite(tabId);
       const versions = await Api.getSupportedVersions();
       await Api.sendMessageToWebPage(PLUGIN_SUPPORTED_VERSIONS, versions, tabId);
       return true;
     }
 
-    chrome.tabs.onActivated.addListener(async (activeInfo) => {
-        //console.log('chrome.tabs.onActivated')
+    browser.tabs.onActivated.addListener(async (activeInfo) => {
+        //console.log('browser.tabs.onActivated')
         await sendhello(activeInfo.tabId);
     });
 
-    chrome.tabs.onCreated.addListener(async (tab) => {
-      //console.log('chrome.tabs.onCreated')
+    browser.tabs.onCreated.addListener(async (tab) => {
+      //console.log('browser.tabs.onCreated')
         await sendhello(tab.id);
     });
 
-    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-      //console.log('chrome.tabs.onUpdated')
+    browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+      //console.log('browser.tabs.onUpdated')
         await sendhello(tabId);
     });
 
-    chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
-      //console.log('chrome.tabs.onReplaced')
+    browser.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
+      //console.log('browser.tabs.onReplaced')
         await sendhello(addedTabId);
     });
 
+    // browser.tabs.onActiveChanged.addListener(async (tabId, changeInfo) => {
+    //     await sendhello(tabId);
+    // });
+
+    browser.tabs.onAttached.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    browser.tabs.onDetached.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    // browser.tabs.onHighlightChanged.addListener(async (tabId, changeInfo) => {
+    //     await sendhello(tabId);
+    // });
+
+    browser.tabs.onHighlighted.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    browser.tabs.onMoved.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    browser.tabs.onRemoved.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
+
+    // browser.tabs.onSelectionChanged.addListener(async (tabId, changeInfo) => {
+    //     await sendhello(tabId);
+    // });
+
+    browser.tabs.onZoomChange.addListener(async (tabId, changeInfo) => {
+        await sendhello(tabId);
+    });
 
     let alarmName = "utxord_wallet.alarm.balance_refresh_main_schedule";
-    await chrome.alarms.clear(alarmName);
-    await chrome.alarms.create(alarmName, { periodInMinutes: 10 });
-    chrome.alarms.onAlarm.addListener(async (alarm) => {
+    await browser.alarms.clear(alarmName);
+    await browser.alarms.create(alarmName, { periodInMinutes: 10 });
+    browser.alarms.onAlarm.addListener(async (alarm) => {
+      checkMessage();
       if (alarm.name == alarmName) {
         const success = await Api.checkSeed();
         await Api.sendMessageToWebPage(AUTH_STATUS, success);
@@ -1333,6 +1413,7 @@ interface ICollectionTransferResult {
 
     let watchdog = Watchdog.getNamedInstance(Watchdog.names.POPUP_WATCHDOG);
     watchdog.onTimeoutAction = () => {
+      checkMessage();
       scheduler.deactivate();
     };
     await scheduler.run();

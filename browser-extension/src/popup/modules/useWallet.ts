@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { useStore } from '~/popup/store/index'
-import { sendMessage } from '~/helpers/index'
+import { sendMessage } from '~/helpers/messenger'
 import { GET_BALANCE, GET_USD_RATE, GET_ADDRESSES, GET_NETWORK } from '~/config/events'
 
 const useWallet = () => {
