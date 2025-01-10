@@ -135,7 +135,6 @@ console.log('2');
   totalNeed.value = (Number(dataForSign.value?.amount) + Number(miningFee.value));
   console.log('totalNeed.value:', totalNeed.value)
   console.log('miningFee.value:', miningFee.value)
-  console.log(JSON.parse(payload.data.costs.data))
 
   if(dataForSign.value?.location) dataForSign.value.location = undefined;
   if(dataForSign.value?.back) dataForSign.value.back = undefined;
