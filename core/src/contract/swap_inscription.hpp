@@ -128,6 +128,9 @@ public:
     SwapInscriptionBuilder& operator=(const SwapInscriptionBuilder& ) = default;
     SwapInscriptionBuilder& operator=(SwapInscriptionBuilder&& ) noexcept = default;
 
+    static const char* PhaseString(SwapPhase phase);
+    static SwapPhase ParsePhase(const std::string& p);
+
     const std::string& GetContractName() const override;
     uint32_t GetVersion() const override { return s_protocol_version; }
     void CheckContractTerms(uint32_t version, SwapPhase phase) const override;

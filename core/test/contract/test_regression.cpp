@@ -11,6 +11,7 @@
 
 #include "simple_transaction.hpp"
 #include "create_inscription.hpp"
+#include "swap_inscription.hpp"
 
 using namespace l15;
 using namespace l15::core;
@@ -64,6 +65,7 @@ int main(int argc, char* argv[])
 
 TEST_CASE("regression")
 {
+    std::string market_contract_cache;
 
     std::ifstream s("regression.json");
     auto regression_data = nlohmann::json::parse(s);
@@ -90,6 +92,26 @@ TEST_CASE("regression")
 
             std::string contract_string2;
             CHECK_NOTHROW( contract_string2 = contract.Serialize(json["params"]["protocol_version"], CreateInscriptionBuilder::ParsePhase(json["params"]["phase"])) );
+
+            auto json2 = nlohmann::json::parse(contract_string2);
+
+            CHECK(json == json2);
+        }
+        else if (json["contract_type"] == "SwapInscription") {
+            SwapInscriptionBuilder contract(REGTEST);
+
+            SwapPhase phase = SwapInscriptionBuilder::ParsePhase(json["params"]["phase"]);
+
+            if (phase == MARKET_PAYOFF_SIG) market_contract_cache = contract_string;
+
+            if (phase == FUNDS_SWAP_SIG) {
+                REQUIRE_NOTHROW(contract.Deserialize(market_contract_cache, MARKET_PAYOFF_SIG));
+            }
+            REQUIRE_NOTHROW(contract.Deserialize(contract_string, phase));
+
+            std::string contract_string2;
+            REQUIRE_NOTHROW( contract_string2 = contract.Serialize(json["params"]["protocol_version"], phase));
+
 
             auto json2 = nlohmann::json::parse(contract_string2);
 
