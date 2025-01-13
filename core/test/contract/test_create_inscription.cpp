@@ -88,7 +88,6 @@ struct CreateCondition
     CAmount market_fee;
     CAmount fixed_change;
     bool has_change;
-    bool is_parent;
     bool has_parent;
     bool return_collection;
     uint32_t ext_fee_count;
@@ -110,6 +109,60 @@ static const auto no_content = std::tuple<std::string, bytevector>("", {});
 static const char* svg_text = "<svg width=\"440\" height=\"101\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" overflow=\"hidden\"><g transform=\"translate(-82 -206)\"><g><text fill=\"#777777\" fill-opacity=\"1\" font-family=\"Arial,Arial_MSFontService,sans-serif\" font-style=\"normal\" font-variant=\"normal\" font-weight=\"400\" font-stretch=\"normal\" font-size=\"37\" text-anchor=\"start\" direction=\"ltr\" writing-mode=\"lr-tb\" unicode-bidi=\"normal\" text-decoration=\"none\" transform=\"matrix(1 0 0 1 191.984 275)\">sample collection</text></g></g></svg>";
 static const bytevector svg_bytes = bytevector(svg_text, svg_text + strlen(svg_text));
 static const auto svg = std::tuple<std::string, bytevector>("image/svg+xml", svg_bytes);
+
+
+TEST_CASE("simple_inscribe")
+{
+    std::string change_addr = w->btc().GetNewAddress();
+    std::string market_fee_addr = w->btc().GetNewAddress();
+    std::string author_fee_addr = w->btc().GetNewAddress();
+
+    fee_rate = 3000;
+
+    CreateInscriptionBuilder inscription(w->chain(), INSCRIPTION);
+    REQUIRE_NOTHROW(inscription.MarketFee(0, market_fee_addr));
+    REQUIRE_NOTHROW(inscription.MiningFeeRate(fee_rate));
+    REQUIRE_NOTHROW(inscription.OrdOutput(546, w->p2tr(2,0,1)));
+    REQUIRE_NOTHROW(inscription.ChangeAddress(change_addr));
+    REQUIRE_NOTHROW(inscription.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
+    REQUIRE_NOTHROW(inscription.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
+    REQUIRE_NOTHROW(inscription.AddInput(w->fund(10000, w->p2tr(0,0,0))));
+
+    REQUIRE_NOTHROW(inscription.SignCommit(w->keyreg(), "fund"));
+    REQUIRE_NOTHROW(inscription.SignInscription(w->keyreg(), "inscribe"));
+
+    stringvector rawtxs;
+    REQUIRE_NOTHROW(rawtxs = inscription.RawTransactions());
+
+    CMutableTransaction commitTx, genesisTx;
+
+    REQUIRE(rawtxs.size() == 2);
+    REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
+    REQUIRE(DecodeHexTx(genesisTx, rawtxs[1]));
+
+
+    std::clog << "\nCommitTX:\n";
+    LogTx(w->chain(), commitTx);
+    std::clog << "\nGenesisTX:\n";
+    LogTx(w->chain(), genesisTx);
+
+    CHECK(commitTx.vin.size() == 1);
+    CHECK(commitTx.vout.size() == 2);
+
+    CHECK(genesisTx.vin.size() == 1);
+    CHECK(genesisTx.vout.size() == 1);
+
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
+    REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(genesisTx)));
+
+    w->confirm(1, genesisTx.GetHash().GetHex());
+
+    collection_id = genesisTx.GetHash().GetHex() + "i0";
+    collection_utxo = {genesisTx.GetHash().GetHex(), 0, genesisTx.vout[0].nValue, w->p2tr(2,0,1)};
+
+}
+
+
 
 TEST_CASE("inscribe")
 {
@@ -166,28 +219,28 @@ TEST_CASE("inscribe")
     CAmount lazy_add_amount = test_lazy_inscription.GetMinFundingAmount("collection") - child_amount;
 
 //    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->p2wpkh(0,0,1) }}, 0, false, true, false};
-    CreateCondition inscription {{{ inscription_amount, w->p2tr(0,0,1) }}, 0, 0, false, true, false, false, 0, 8, "inscription"};
-    CreateCondition inscription_w_change {{{ 10000, w->p2tr(0,0,2) }}, 0, 0, true, false, false, false, 0, 8, "inscription_w_change"};
-    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,3) }}, 1000, 0, false, false, false, false, 0, 8, "inscription_w_fee"};
-    CreateCondition inscription_w_change_fee {{{ 8000, w->p2tr(0, 0, 4) }, { 20000, w->p2tr(0, 1, 4) }}, 1000, 0, true, false, false, false, 0, 8, "inscription_w_change_fee"};
-    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, w->p2tr(0, 0,5) }}, 0, 1000, false, true, false, false, 0, 9, "inscription_w_fix_change"};
+    CreateCondition inscription {{{ inscription_amount, w->p2tr(0,0,1) }}, 0, 0, false, false, false, 0, 8, "inscription"};
+    CreateCondition inscription_w_change {{{ 10000, w->p2tr(0,0,2) }}, 0, 0, true, false, false, 0, 8, "inscription_w_change"};
+    CreateCondition inscription_w_fee {{{ inscription_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,3) }}, 1000, 0, false, false, false, 0, 8, "inscription_w_fee"};
+    CreateCondition inscription_w_change_fee {{{ 8000, w->p2tr(0, 0, 4) }, { 20000, w->p2tr(0, 1, 4) }}, 1000, 0, true, false, false, 0, 8, "inscription_w_change_fee"};
+    CreateCondition inscription_w_fix_change {{{ inscription_amount + 1043, w->p2tr(0, 0,5) }}, 0, 1000, false, false, false, 0, 9, "inscription_w_fix_change"};
 
-    CreateCondition child {{{child_amount, w->p2tr(0, 0, 6) }}, 0, 0, false, false, true, false, 0, 8, "child"};
-    CreateCondition child_w_change {{{10000, w->p2tr(0, 0, 7) }}, 0, 0, true, false, true, false, 0, 8, "child_w_change"};
-    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0, 0, 8) }}, 1000, 0, false, false, true, false, 0, 8, "child_w_fee"};
-    CreateCondition child_w_change_fee {{{10000, w->p2tr(0, 0, 9) }}, 1000, 0, true, false, true, false, 0, 8, "child_w_change_fee"};
-    CreateCondition child_w_change_fixed_change {{{10000, w->p2tr(0, 0, 10) }}, 0, 5000, true, false, true, false, 0, 9, "child_w_change_fixed_change"};
+    CreateCondition child {{{child_amount, w->p2tr(0, 0, 6) }}, 0, 0, false, true, false, 0, 8, "child"};
+    CreateCondition child_w_change {{{10000, w->p2tr(0, 0, 7) }}, 0, 0, true,  true, false, 0, 8, "child_w_change"};
+    CreateCondition child_w_fee {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0, 0, 8) }}, 1000, 0, false, true, false, 0, 8, "child_w_fee"};
+    CreateCondition child_w_change_fee {{{10000, w->p2tr(0, 0, 9) }}, 1000, 0, true, true, false, 0, 8, "child_w_change_fee"};
+    CreateCondition child_w_change_fixed_change {{{10000, w->p2tr(0, 0, 10) }}, 0, 5000, true, true, false, 0, 9, "child_w_change_fixed_change"};
 
-    CreateCondition segwit_child {{{ segwit_child_amount, w->p2wpkh(0,0,11) }}, 0, 0, false, false, true, false, 0, 8, "segwit_child"};
-    CreateCondition segwit_child_w_change {{{10000, w->p2wpkh(0,0,12) }}, 0, 0, true, false, true, false, 0, 8, "segwit_child_w_change"};
-    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, w->p2wpkh(0,0,13) }}, 1000, 0, false, false, true, false, 0, 8, "segwit_child_w_fee"};
-    CreateCondition segwit_child_w_change_fee {{{15000, w->p2wpkh(0,0,14) }}, 1000, 0, true, false, true, false, 0, 8, "segwit_child_w_change_fee"};
+    CreateCondition segwit_child {{{ segwit_child_amount, w->p2wpkh(0,0,11) }}, 0, 0, false, true, false, 0, 8, "segwit_child"};
+    CreateCondition segwit_child_w_change {{{10000, w->p2wpkh(0,0,12) }}, 0, 0, true, true, false, 0, 8, "segwit_child_w_change"};
+    CreateCondition segwit_child_w_fee {{{ segwit_child_amount + (43 * fee_rate / 1000) + 1000, w->p2wpkh(0,0,13) }}, 1000, 0, false, true, false, 0, 8, "segwit_child_w_fee"};
+    CreateCondition segwit_child_w_change_fee {{{15000, w->p2wpkh(0,0,14) }}, 1000, 0, true, true, false, 0, 8, "segwit_child_w_change_fee"};
 
-    // CreateCondition child_extfee_1 {{{20000, w->p2tr(0,0,15) }}, 0, 0, false, false, true, false, 11, 1, "child_extfee_1"};
-    CreateCondition child_w_change_extfee_1 {{{20000, w->p2tr(0,0,16) }}, 0, 0, true, false, true, false, 1, 11, "child_w_change_extfee_1"};
-    // CreateCondition child_w_fee_extfee_1 {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,17) }}, 1000, 0, false, false, true, false, 11, 1, "child_w_fee_extfee_1"};
-    CreateCondition child_w_change_fee_extfee_1 {{{20000, w->p2tr(0,0,18) }}, 1000, 0, true, false, true, false, 1, 11, "child_w_change_fee_extfee_1"};
-    CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,19) }}, 0, 5000, true, false, true, true, 2, 11, "child_w_change_fixed_change_extfee_2"};
+    // CreateCondition child_extfee_1 {{{20000, w->p2tr(0,0,15) }}, 0, 0, false, true, false, 11, 1, "child_extfee_1"};
+    CreateCondition child_w_change_extfee_1 {{{20000, w->p2tr(0,0,16) }}, 0, 0, true, true, false, 1, 11, "child_w_change_extfee_1"};
+    // CreateCondition child_w_fee_extfee_1 {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,17) }}, 1000, 0, false, true, false, 11, 1, "child_w_fee_extfee_1"};
+    CreateCondition child_w_change_fee_extfee_1 {{{20000, w->p2tr(0,0,18) }}, 1000, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
+    CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,19) }}, 0, 5000, true, true, false, 2, 11, "child_w_change_fixed_change_extfee_2"};
 
     auto version = GENERATE(8,9,10,11);
     auto condition = GENERATE_COPY(inscription,
@@ -222,7 +275,7 @@ TEST_CASE("inscribe")
             CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
             REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
-            CHECK_NOTHROW(builder.OrdOutput(546, condition.is_parent ? w->p2tr(2,0,1) : destination_addr));
+            CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
             if (get<1>(content).empty()) {
                 if (delegate_id.empty()) {
@@ -324,7 +377,7 @@ TEST_CASE("inscribe")
                 else {
                     REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
                 }
-                CHECK_NOTHROW(builder.OrdOutput(546, condition.is_parent ? w->p2tr(2,0,1) : destination_addr));
+                CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
                 CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
                 CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
                 CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
@@ -457,11 +510,7 @@ TEST_CASE("inscribe")
                 }
             }
 
-            if (condition.is_parent) {
-                collection_id = revealTx.GetHash().GetHex() + "i0";
-                collection_utxo = {revealTx.GetHash().GetHex(), 0, revealTx.vout[0].nValue, w->p2tr(2,0,1)};
-            }
-            else if (condition.has_parent) {
+            if (condition.has_parent) {
                 collection_utxo.m_txid = revealTx.GetHash().GetHex();
                 collection_utxo.m_nout = 1;
                 collection_utxo.m_amount = revealTx.vout[1].nValue;

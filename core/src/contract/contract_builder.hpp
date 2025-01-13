@@ -16,7 +16,6 @@
 
 #include "utils.hpp"
 #include "contract_error.hpp"
-#include "univalue.h"
 #include "keyregistry.hpp"
 
 #include "ecdsa.hpp"
@@ -74,6 +73,7 @@ struct IJsonSerializable
 class ISigner
 {
 public:
+    virtual ~ISigner() = default;
     virtual std::vector<bytevector> Sign(const CMutableTransaction &tx, uint32_t nin, std::vector<CTxOut> spent_outputs, int hashtype) const = 0;
 };
 
@@ -163,21 +163,21 @@ public:
     { return m_amount; }
 
     void Amount(CAmount amount) override
-    { m_amount = amount; }
+    { throw std::logic_error("P2Address::Amount(amount) abstract call"); }
 
     std::string Address() const override
     { return m_addr; }
 
-    CScript PubKeyScript() const override { throw std::logic_error("P2Address abstract call"); }
-    std::vector<bytevector> DummyWitness() const override { throw std::logic_error("P2Address abstract call"); }
+    CScript PubKeyScript() const override { throw std::logic_error("P2Address::PubKeyScript() abstract call"); }
+    std::vector<bytevector> DummyWitness() const override { throw std::logic_error("P2Address::DummyWitness() abstract call"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
-    { throw std::logic_error("P2Address abstract call"); }
+    { throw std::logic_error("P2Address::LookupKey(...) abstract call"); }
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
 
     static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
-    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, CAmount amount, std::string addr);
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, std::optional<CAmount> amount, std::string addr);
 };
 
 class P2Witness: public P2Address
@@ -187,13 +187,16 @@ public:
 
 private:
     friend IContractDestination;
-    //explicit P2Witness(ChainMode chain) : P2Address(chain) {}
+
+protected:
+    void CheckDust() const;
 public:
     P2Witness() = delete;//default;
     P2Witness(const P2Witness&) = default;
     P2Witness(P2Witness&&) noexcept = default;
 
-    P2Witness(ChainMode chain, CAmount amount, std::string addr): P2Address(chain, amount, move(addr)) {}
+    P2Witness(ChainMode chain, CAmount amount, std::string addr): P2Address(chain, amount, move(addr))
+    { CheckDust(); }
 
     ~P2Witness() override = default;
 
@@ -201,6 +204,12 @@ public:
 
     const char* Type() const override
     { return type; }
+
+    void Amount(CAmount amount) override
+    {
+        m_amount = amount;
+        CheckDust();
+    }
 
     CScript PubKeyScript() const override
     { return Bech32(BTC, m_chain).PubKeyScript(m_addr); }
@@ -240,35 +249,52 @@ public:
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
 };
 
-class P2PKH: public P2Address
+
+class P2Legacy: public P2Address
+{
+protected:
+    void CheckDust() const;
+public:
+    P2Legacy() = delete;
+    P2Legacy(const P2Legacy&) = default;
+    P2Legacy(P2Legacy&&) noexcept = default;
+    P2Legacy(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
+
+    void Amount(CAmount amount) override
+    {
+        m_amount = amount;
+        CheckDust();
+    }
+    std::vector<bytevector> DummyWitness() const override
+    { throw std::logic_error("Legacy address has no segregated witness"); }
+
+};
+
+class P2PKH: public P2Legacy
 {
 public:
     P2PKH() = delete;
     P2PKH(const P2PKH&) = default;
     P2PKH(P2PKH&&) noexcept = default;
-    P2PKH(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
+    P2PKH(ChainMode chain, CAmount amount, std::string addr) : P2Legacy(chain, amount, move(addr))
+    { CheckDust(); }
 
     CScript PubKeyScript() const override;
-
-    std::vector<bytevector> DummyWitness() const override
-    { throw std::logic_error("P2PKH has no segregated witness"); }
 
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::logic_error("P2PKH signing is not implemented yet"); }
 };
 
-class P2SH: public P2Address
+class P2SH: public P2Legacy
 {
 public:
     P2SH() = delete;
     P2SH(const P2SH&) = default;
     P2SH(P2SH&&) noexcept = default;
-    P2SH(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
+    P2SH(ChainMode chain, CAmount amount, std::string addr) : P2Legacy(chain, amount, move(addr))
+    { CheckDust(); }
 
     CScript PubKeyScript() const override;
-
-    std::vector<bytevector> DummyWitness() const override
-    { throw std::logic_error("P2SH has no segregated witness"); }
 
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::logic_error("P2SH signing is not implemented yet"); }
@@ -317,6 +343,7 @@ public:
 
 class IContractMultiOutput {
 public:
+    virtual ~IContractMultiOutput() = default;
     virtual std::string TxID() const = 0;
     virtual const std::vector<std::shared_ptr<IContractDestination>>& Destinations() const = 0;
     virtual uint32_t CountDestinations() const = 0;
@@ -325,6 +352,7 @@ public:
 
 class IContractOutput {
 public:
+    virtual ~IContractOutput() = default;
     virtual std::string TxID() const = 0;
     virtual uint32_t NOut() const = 0;
     virtual CAmount Amount() const { return Destination()->Amount(); }
@@ -516,10 +544,8 @@ public:
     void MiningFeeRate(CAmount rate)
     { m_mining_fee_rate = rate; }
 
-    void ChangeAddress(std::string addr)
-    {
-        m_change_addr = move(addr);
-    }
+    virtual void ChangeAddress(std::string addr)
+    { m_change_addr = move(addr); }
 
     CAmount GetTotalMiningFee(const std::string& params) const
     { return CalculateWholeFee(params); }
@@ -570,7 +596,7 @@ public:
     ContractBuilder& operator=(const ContractBuilder&) = default;
     ContractBuilder& operator=(ContractBuilder&&) = default;
 
-    std::string Serialize(uint32_t version, PHASE phase)
+    std::string Serialize(uint32_t version, PHASE phase) const
     {
         CheckContractTerms(version, phase);
 

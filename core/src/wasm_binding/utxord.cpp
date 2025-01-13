@@ -34,6 +34,7 @@ secp256k1_context * CreateSecp256k1() {
         memory_cleanse(vseed, sizeof(vseed));
         std::rethrow_exception(std::current_exception());
     }
+    l15::core::KeyPairBase::SetStaticSecp256k1ContextInt(ctx);
     return ctx;
 }
 

@@ -125,17 +125,14 @@ void SimpleTransaction::AddChangeOutput(std::string addr)
         m_change_nout.reset();
     }
 
-    AddOutputDestination(P2Address::Construct(chain(), 0, move(addr)));
+    AddOutputDestination(P2Address::Construct(chain(), {}, move(addr)));
 
     CAmount required = GetMinFundingAmount("");
 
     CAmount total = std::accumulate(m_inputs.begin(), m_inputs.end(), 0, [](CAmount s, const auto& in) { return s + in.output->Destination()->Amount(); });
 
-    //if (required > total) throw ContractStateError("inputs too small");
-    CAmount change = total - required;
-
-    if (change >= l15::Dust(DUST_RELAY_TX_FEE)) {
-        m_outputs.back()->Amount(change);
+    if (total >= required) {
+        m_outputs.back()->Amount(m_outputs.back()->Amount() + total - required);
         m_change_nout = m_outputs.size() - 1;
     }
     else {
@@ -176,6 +173,9 @@ void SimpleTransaction::PartialSign(const KeyRegistry &master_key, const string 
 
 void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
 {
+    if (m_inputs.empty()) throw ContractStateError(std::string(name_utxo) + " not defined");
+    if (m_outputs.empty()) throw ContractStateError(name_outputs + " not defined");
+
     CMutableTransaction tx = MakeTx("");
 
     std::vector<CTxOut> spent_outs;
@@ -298,6 +298,8 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 
 CAmount SimpleTransaction::GetMinFundingAmount(const std::string& params) const
 {
+    if (!m_mining_fee_rate) throw ContractStateError(name_mining_fee_rate + " not defined");
+
     CAmount total_out = std::accumulate(m_outputs.begin(), m_outputs.end(), 0, [](CAmount s, const auto& d) { return s + d->Amount(); });
     return l15::CalculateTxFee(*m_mining_fee_rate, MakeTx(params)) + total_out;
 }
