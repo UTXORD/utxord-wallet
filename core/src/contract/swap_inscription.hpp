@@ -131,8 +131,8 @@ public:
 
     void ChangeAddress(std::string addr) override
     {
+        mChange = P2Address::Construct(chain(), {}, addr);
         IContractBuilder::ChangeAddress(std::move(addr));
-        mChange = P2Address::Construct(chain(), {}, *m_change_addr);
     }
 
     static const char* PhaseString(SwapPhase phase);

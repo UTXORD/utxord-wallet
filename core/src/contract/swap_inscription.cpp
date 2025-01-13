@@ -139,7 +139,7 @@ CAmount SwapInscriptionBuilder::CalculateWholeFee(const std::string& params) con
 
     CAmount fee =  l15::CalculateTxFee(*m_mining_fee_rate, GetFundsCommitTxTemplate(p2wpkh_utxo))
          + l15::CalculateTxFee(*m_mining_fee_rate, GetSwapTxTemplate())
-         + l15::CalculateTxFee(*m_ord_mining_fee_rate, CreatePayoffTxTemplate());
+         + l15::CalculateTxFee(*m_ord_mining_fee_rate, GetFundsCommitTxTemplate());
 
     if (change) fee += CFeeRate(*m_mining_fee_rate).GetFee(TAPROOT_VOUT_VSIZE);
 
