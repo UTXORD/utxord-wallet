@@ -1,15 +1,21 @@
 
 #include <exception>
+#include <ranges>
 
 #include "nlohmann/json.hpp"
-
+#include "wrapstream.hpp"
+#include "base64.hpp"
 #include "univalue.h"
 
 #include "interpreter.h"
 #include "feerate.h"
 #include "policy.h"
+#include "psbt.hpp"
 
 #include "create_inscription.hpp"
+
+#include <deque>
+
 #include "contract_builder_factory.hpp"
 #include "runes.hpp"
 
@@ -312,6 +318,39 @@ std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
     std::string genesis_tx_hex = EncodeHexTx(*mGenesisTx);
 
     return {move(funding_tx_hex), move(genesis_tx_hex)};
+}
+
+std::vector<std::string> CreateInscriptionBuilder::TransactionsPSBT() const
+{
+    if (!mCommitTx || !mGenesisTx) {
+        RestoreTransactions();
+    }
+
+    l15::core::PartiallySignedTransaction commitPsbt(*mCommitTx);
+    std::ranges::transform(m_inputs, commitPsbt.inputs.begin(), [](const auto& in) {
+        l15::core::PSBTInput res;
+        res.witness_utxo = CTxOut(in.output->Amount(), in.output->Destination()->PubKeyScript());
+        return res;
+    });
+
+    l15::core::PartiallySignedTransaction genesisPsbt(*mGenesisTx);
+
+    auto genSpends = GetGenesisTxSpends();
+    std::ranges::transform(genSpends, genesisPsbt.inputs.begin(), [](const auto& in) {
+        l15::core::PSBTInput res;
+        res.witness_utxo = in;
+        return res;
+    });
+    auto genTapRoot = GetInscriptionTapRoot();
+    genesisPsbt.inputs.front().m_tap_internal_key = *m_inscribe_int_pk;
+    genesisPsbt.inputs.front().m_tap_merkle_root = get<2>(genTapRoot).CalculateRoot();
+    genesisPsbt.inputs.front().m_tap_scripts.emplace(get<2>(genTapRoot).GetScripts().front(), InscribeScriptControlBlock(genTapRoot));
+
+    std::vector<std::string> res;
+    res.emplace_back(base64::encode(commitPsbt.Serialize<std::deque<std::byte>>()));
+    res.emplace_back(base64::encode(genesisPsbt.Serialize<std::deque<std::byte>>()));
+
+    return res;
 }
 
 void CreateInscriptionBuilder::CheckContractTerms(uint32_t version, InscribePhase phase) const
@@ -792,6 +831,18 @@ std::vector<CTxOut> CreateInscriptionBuilder::GetGenesisTxSpends() const
     return spending_outs;
 }
 
+l15::bytevector CreateInscriptionBuilder::InscribeScriptControlBlock(const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>& tr) const
+{
+    std::vector<uint256> genesis_scriptpath = get<2>(tr).CalculateScriptPath(get<2>(tr).GetScripts().front());
+    bytevector control_block;
+    control_block.reserve(1 + m_inscribe_int_pk->size() + genesis_scriptpath.size() * uint256::size());
+    control_block.emplace_back(static_cast<uint8_t>(0xc0 | get<1>(tr)));
+    control_block.insert(control_block.end(), m_inscribe_int_pk->begin(), m_inscribe_int_pk->end());
+    for (uint256 &branch_hash: genesis_scriptpath)
+        control_block.insert(control_block.end(), branch_hash.begin(), branch_hash.end());
+    return control_block;
+}
+
 CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
 {
     const CMutableTransaction& commit_tx = CommitTx();
@@ -799,17 +850,9 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
     CMutableTransaction tx;
 
     tx.vin.emplace_back(commit_tx.GetHash(), 0);
-    tx.vout.emplace_back(m_ord_destination->TxOutput());
+    tx.vout.emplace_back(m_ord_destination->Amount(), m_ord_destination->PubKeyScript());
 
     const auto &tr = GetInscriptionTapRoot();
-    std::vector<uint256> genesis_scriptpath = get<2>(tr).CalculateScriptPath(get<2>(tr).GetScripts().front());
-
-    bytevector control_block;
-    control_block.reserve(1 + m_inscribe_int_pk->size() + genesis_scriptpath.size() * uint256::size());
-    control_block.emplace_back(static_cast<uint8_t>(0xc0 | get<1>(tr)));
-    control_block.insert(control_block.end(), m_inscribe_int_pk->begin(), m_inscribe_int_pk->end());
-    for (uint256 &branch_hash: genesis_scriptpath)
-        control_block.insert(control_block.end(), branch_hash.begin(), branch_hash.end());
 
     if (m_type == LAZY_INSCRIPTION) {
         tx.vin.front().scriptWitness.stack.emplace_back(m_inscribe_market_sig.value_or(signature()));
@@ -820,7 +863,7 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
         tx.vin.front().scriptWitness.stack.emplace_back(m_inscribe_sig.value_or(signature()));
     }
     tx.vin.front().scriptWitness.stack.emplace_back(get<2>(tr).GetScripts().front().begin(), get<2>(tr).GetScripts().front().end());
-    tx.vin.front().scriptWitness.stack.emplace_back(move(control_block));
+    tx.vin.front().scriptWitness.stack.emplace_back(InscribeScriptControlBlock(tr));
 
     if (m_parent_collection_id) {
         if (m_collection_input) {
@@ -883,10 +926,8 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
     return tx;
 }
 
-CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const {
-//    if (!m_content_type) throw ContractStateError(std::string(name_content_type) + " undefined");
-//    if (!m_content) throw ContractStateError(std::string(name_content) + " undefined");
-
+CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const
+{
     CMutableTransaction tx;
 
     tx.vin = {{Txid(), 0}};
@@ -941,10 +982,10 @@ std::string CreateInscriptionBuilder::MakeInscriptionId() const
 
 CAmount CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
     if(!m_ord_destination) throw ContractStateError(std::string(name_ord_amount));
-    if (!m_delegate) {
-        if (!m_content_type) throw ContractTermMissing(std::string(name_content_type));
-        if (!m_content) throw ContractTermMissing(std::string(name_content));
-    }
+    // if (!m_delegate) {
+    //     if (!m_content_type) throw ContractTermMissing(std::string(name_content_type));
+    //     if (!m_content) throw ContractTermMissing(std::string(name_content));
+    // }
     if(!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
     if(m_type == LAZY_INSCRIPTION && !m_author_fee) throw ContractTermMissing(std::string(name_author_fee));
 
