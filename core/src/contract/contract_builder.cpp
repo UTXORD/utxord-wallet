@@ -467,9 +467,9 @@ void IContractBuilder::VerifyTxSignature(const xonly_pubkey& pk, const signature
     }
 }
 
-void IContractBuilder::VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const
+void IContractBuilder::VerifyTxSignature(ChainMode chain, const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs)
 {
-    auto [witver, keyid] = Bech32(BTC, chain()).Decode(addr);
+    auto [witver, keyid] = Bech32(BTC, chain).Decode(addr);
     if (witver == 1) {
         if (witness.size() != 1) throw SignatureError("witness stack size: " + std::to_string(witness.size()));
         if (witness[0].size() != 64 && witness[0].size() != 65) throw SignatureError("sig size");

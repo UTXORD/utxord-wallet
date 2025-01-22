@@ -558,7 +558,7 @@ public:
     CAmount GetMiningFeeRate() const { return m_mining_fee_rate.value(); }
 
     static void VerifyTxSignature(const xonly_pubkey& pk, const signature& sig, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs, const CScript& spend_script);
-    void VerifyTxSignature(const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs) const;
+    static void VerifyTxSignature(ChainMode chain, const std::string& addr, const std::vector<bytevector>& witness, const CMutableTransaction& tx, uint32_t nin, std::vector<CTxOut> spent_outputs);
 
     static void DeserializeContractAmount(const UniValue& val, std::optional<CAmount> &target, const std::function<std::string()> &lazy_name);
     static void DeserializeContractString(const UniValue& val, std::optional<std::string> &target, const std::function<std::string()> &lazy_name);

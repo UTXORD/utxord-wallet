@@ -792,11 +792,11 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
     }
 
     if (mSwapTx) {
-        VerifyTxSignature(m_ord_input->output->Destination()->Address(), m_ord_input->witness, *mSwapTx, 0, move(spent_outs));
+        VerifyTxSignature(chain(), m_ord_input->output->Destination()->Address(), m_ord_input->witness, *mSwapTx, 0, move(spent_outs));
     }
     else {
         CMutableTransaction swap_tx(MakeSwapTx(has_funds_sig));
-        VerifyTxSignature(m_ord_input->output->Destination()->Address(), m_ord_input->witness, swap_tx, 0, move(spent_outs));
+        VerifyTxSignature(chain(), m_ord_input->output->Destination()->Address(), m_ord_input->witness, swap_tx, 0, move(spent_outs));
     }
 }
 
@@ -815,13 +815,13 @@ void SwapInscriptionBuilder::CheckFundsCommitSig() const
 
     if (mFundsCommitTx) {
         for (const auto& in: m_fund_inputs) {
-            VerifyTxSignature(in.output->Destination()->Address(), in.witness, *mFundsCommitTx, in.nin, std::vector<CTxOut>(spent_outs));
+            VerifyTxSignature(chain(), in.output->Destination()->Address(), in.witness, *mFundsCommitTx, in.nin, std::vector<CTxOut>(spent_outs));
         }
     }
     else {
         CMutableTransaction swap_tx(MakeFundsCommitTx());
         for (const auto& in: m_fund_inputs) {
-            VerifyTxSignature(in.output->Destination()->Address(), in.witness, swap_tx, in.nin, std::vector<CTxOut>(spent_outs));
+            VerifyTxSignature(chain(), in.output->Destination()->Address(), in.witness, swap_tx, in.nin, std::vector<CTxOut>(spent_outs));
         }
     }
 }

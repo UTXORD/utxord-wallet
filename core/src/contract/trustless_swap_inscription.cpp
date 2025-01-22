@@ -677,7 +677,7 @@ void TrustlessSwapInscriptionBuilder::CheckOrdSwapSig() const
                 }
             } else {
                 if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
-                    VerifyTxSignature(input.output->Destination()->Address(), input.witness, *mSwapTx, input.nin, spent_outs);
+                    VerifyTxSignature(chain(), input.output->Destination()->Address(), input.witness, *mSwapTx, input.nin, spent_outs);
                 }
             }
         }
@@ -694,7 +694,7 @@ void TrustlessSwapInscriptionBuilder::CheckOrdSwapSig() const
                 }
             } else {
                 if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
-                    VerifyTxSignature(input.output->Destination()->Address(), input.witness, swap_tx, input.nin, spent_outs);
+                    VerifyTxSignature(chain(), input.output->Destination()->Address(), input.witness, swap_tx, input.nin, spent_outs);
                 }
             }
         }

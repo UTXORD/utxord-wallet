@@ -364,7 +364,7 @@ void SimpleTransaction::CheckSig() const
 
     CMutableTransaction tx = MakeTx("");
     for (const auto &input: m_inputs) {
-        VerifyTxSignature(input.output->Destination()->Address(), input.witness, tx, input.nin, spent_outs);
+        VerifyTxSignature(chain(), input.output->Destination()->Address(), input.witness, tx, input.nin, spent_outs);
     }
 }
 

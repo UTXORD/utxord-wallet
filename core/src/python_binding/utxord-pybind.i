@@ -28,6 +28,7 @@ static PyObject* pError;
 #include "keypair.hpp"
 #include "keyregistry.hpp"
 #include "mnemonic.hpp"
+#include "bip322.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "trustless_swap_inscription.hpp"
@@ -221,6 +222,19 @@ using namespace l15::core;
     $1 = &param;
 }
 
+%typemap(in) const l15::bytevector& (bytevector param, const char *begin) {
+    if (!PyBytes_Check($input)) {
+        SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
+    }
+    begin = PyBytes_AsString($input);
+    try {
+        param.assign(begin, begin+PyBytes_Size($input));
+    } catch (...) {
+        SWIG_exception_fail(SWIG_TypeError, "cannot convert bytes argument");
+    }
+    $1 = &param;
+}
+
 %typemap(in) bytevector (bytevector param, const char *begin) {
     if (!PyBytes_Check($input)) {
         SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
@@ -384,6 +398,7 @@ using namespace l15::core;
 %include "master_key.hpp"
 %include "keyregistry.hpp"
 %include "mnemonic.hpp"
+%include "bip322.hpp"
 
 %template(MnemonicParser) l15::core::MnemonicParser<std::vector<std::string>>;
 

@@ -43,7 +43,8 @@ test_trustless_swap_inscription \
 test_inscription \
 test_simple_tx \
 test_runes \
-test_regression
+test_regression \
+test_bip322
 
 
 test_contract_builder_SOURCES = test_contract_builder.cpp
@@ -69,3 +70,6 @@ test_runes_LDADD = $(L15_LIBS)
 
 test_regression_SOURCES = test_regression.cpp
 test_regression_LDADD = $(L15_LIBS)
+
+test_bip322_SOURCES = test_bip322.cpp
+test_bip322_LDADD = $(L15_LIBS)

@@ -244,7 +244,7 @@ TEST_CASE("psbt_sign")
 
     const std::string addr = tr_keypair.GetP2TRAddress(Bech32(BTC, TESTNET));
 
-    REQUIRE_NOTHROW(test_inscription.OrdDestination(546, addr));
+    REQUIRE_NOTHROW(test_inscription.OrdOutput(546, addr));
     REQUIRE_NOTHROW(test_inscription.MarketFee(0, addr));
     REQUIRE_NOTHROW(test_inscription.AuthorFee(0, addr));
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(3000));
