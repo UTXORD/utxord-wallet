@@ -28,7 +28,7 @@
               :disabled="isDisabled"
               style="white-space: nowrap"
               @click="onClick"
-              data-testid="close"
+              :data-testid="isDisabled ? 'close-button' : 'sign-button'"
               >{{ isDisabledMessage }}</Button
             >
           </template>
@@ -49,7 +49,7 @@
                     (val) =>
                       isASCII(val) || 'Please enter only Latin characters'
                   ]"
-                  data-testid="password"
+                  data-testid="password-input"
                 />
               </div>
             </div>
@@ -96,7 +96,7 @@ const total = computed(() => {
     out += dataForSign.value?.data?.market_fee || 0
     out += dataForSign.value?.data?.expect_amount || 0
     out += dataForSign.value?.data?.market_fee || 0
-  }else {
+  } else {
     out += dataForSign.value?.data?.ord_price || 0
     out += dataForSign.value?.data?.market_fee || 0
     out += dataForSign.value?.data?.expect_amount || 0
@@ -108,11 +108,11 @@ const total = computed(() => {
 const isInsufficientBalance = computed(() => {
   if (dataForSign.value?.type === SELL_INSCRIPTION) return false
   if (Number(total.value) > Number(balance.value?.confirmed)) return true
-  return false
+    return false
 })
 
 const message = computed(() => {
- return dataForSign.value?.data?.costs?.errorMessage || dataForSign.value?.data?.errorMessage
+  return dataForSign.value?.data?.costs?.errorMessage || dataForSign.value?.data?.errorMessage
 })
 
 const isDisabled = computed(() => {
