@@ -939,8 +939,8 @@ public:
     : ContractBuilder(std::make_shared<utxord::TrustlessSwapInscriptionBuilder>(mode))
     {}
 
-    void OrdPrice(const std::string& price)
-    { m_ptr->OrdPrice(ParseAmount(price)); }
+    void FundsPayoffOutput(const std::string& price, std::string addr)
+    { m_ptr->FundsPayoffOutput(ParseAmount(price), move(addr)); }
 
     void CommitOrdinal(std::string txid, uint32_t nout, const std::string& amount, std::string addr)
     { m_ptr->CommitOrdinal(move(txid), nout, ParseAmount(amount), move(addr)); }
@@ -962,9 +962,6 @@ public:
 
     void OrdPayoffAddress(std::string addr)
     { m_ptr->OrdPayoffAddress(move(addr)); }
-
-    void FundsPayoffAddress(std::string addr)
-    { m_ptr->FundsPayoffAddress(move(addr)); }
 
     void OrdScriptPubKey(const std::string pk)
     { m_ptr->OrdScriptPubKey(unhex<xonly_pubkey>(pk)); }
