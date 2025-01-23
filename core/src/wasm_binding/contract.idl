@@ -272,7 +272,7 @@ interface TrustlessSwapInscriptionBuilder
 {
     void TrustlessSwapInscriptionBuilder(ChainMode mode);
 
-    void OrdPrice([Const] DOMString price);
+    void FundsPayoffOutput([Const] DOMString price, [Const] DOMString addr);
     void MarketFee([Const] DOMString amount, [Const] DOMString addr);
 
     void CommitOrdinal([Const] DOMString txid, long nout, [Const] DOMString amount, [Const] DOMString addr);
@@ -286,7 +286,6 @@ interface TrustlessSwapInscriptionBuilder
     void ChangeAddress([Const] DOMString changeAddr);
 
     void OrdPayoffAddress([Const] DOMString addr);
-    void FundsPayoffAddress([Const] DOMString addr);
 
 //    void MarketScriptPubKey([Const] DOMString v);
 
