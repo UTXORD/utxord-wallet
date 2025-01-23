@@ -29,6 +29,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
   default:
     permissions = [
       'http://e2e.utxord.com:9000/*',
+      'http://api.e2e.utxord.com:8000/*',
       'http://localhost/*',
       'http://127.0.0.1/*',
       'https://sntry.utxord.com/*',

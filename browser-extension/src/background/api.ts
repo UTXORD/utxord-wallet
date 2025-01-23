@@ -5,6 +5,7 @@ import winHelpers from '~/helpers/winHelpers';
 import rest from '~/background/rest';
 import { sendMessage } from 'webext-bridge';
 import * as cbor from 'cbor-js';
+import * as messages from '~/config/messages'
 // import * as Sentry from "@sentry/browser";
 // import { wasmIntegration } from "@sentry/wasm";
 import {version} from '~/../package.json';
@@ -1692,7 +1693,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
 
     const my = this.inscriptions;
     const all_funds = this.fundings;
-    console.log('all_funds:',all_funds);
+    console.log('all_funds:', [...all_funds || []]);
 
     const funds_in_queue = await this.selectFundsByFlags(all_funds, false, true);
     const available_funds = await this.selectFundsByFlags(all_funds, false, false);
@@ -1984,7 +1985,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       outData.amount = min_fund_amount;
 
       if (!myself.fundings.length && !estimate) {
-        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         // outData.raw = [];
         return outData;
       }
@@ -1997,7 +1998,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       console.log("utxo_list:", utxo_list);
 
       if (utxo_list?.length < 1 && !estimate) {
-        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         // outData.raw = [];
         return outData;
       }
@@ -2111,7 +2112,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       outData.amount = min_fund_amount;
 
       if (!myself.fundings.length && !estimate) {
-        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         // outData.raw = [];
         return outData;
       }
@@ -2124,7 +2125,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       console.log("utxo_list:", utxo_list);
 
       if (utxo_list?.length < 1 && !estimate) {
-        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         // outData.raw = [];
         return outData;
       }
@@ -2269,7 +2270,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       outData.amount = min_fund_amount;
 
       if (!myself.fundings.length && !estimate) {
-        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         // outData.raw = [];
         return outData;
       }
@@ -2282,7 +2283,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       console.log("utxo_list:", utxo_list);
 
       if (utxo_list?.length < 1 && !estimate) {
-        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         // outData.raw = [];
         return outData;
       }
@@ -2420,7 +2421,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       if (protocol_version) {
         const versions = await myself.getSupportedVersions(newOrd);
         if (versions.indexOf(protocol_version) === -1) {
-          outData.errorMessage = 'Please update the plugin to latest version.';
+          outData.errorMessage = messages.PLEASE_UPDATE_PLUGIN;
           outData.raw = [];
           return outData;
         }
@@ -2453,7 +2454,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
           // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
           // FIXME: l2xl response: it shouldn't work until SignCommit get executed
           // outData.raw = await myself.getRawTransactions(newOrd);
-          outData.errorMessage = "Collection is not found in balances.";
+          outData.errorMessage = messages.COLLECTION_NOT_FOUND;
           outData.raw = [];
           return outData;
         }
@@ -2494,10 +2495,10 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         // outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
         //     "wait for several conformations or wait update on the server.";
-        outData.errorMessage = "Insufficient funds. Please add.";
         // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
         // FIXME: l2xl response: it shouldn't work until SignCommit get executed
         // outData.raw = await myself.getRawTransactions(newOrd);
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         outData.raw = [];
         return outData;
       }
@@ -2514,10 +2515,10 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         //   `${min_fund_amount} sat`
         // );
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
-        outData.errorMessage = "Insufficient funds. Please add.";
         // FIXME: it produces "ContractTermMissing: inscribe_script_pk" error in case there is no PK provided.
         // FIXME: l2xl response: it shouldn't work until SignCommit get executed
         // outData.raw = await myself.getRawTransactions(newOrd);
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         outData.raw = [];
         return outData;
       }
@@ -2528,7 +2529,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
       }
 
       console.log("min_fund_amount:", min_fund_amount);
-      console.log("utxo_list:", utxo_list);
+      console.log("utxo_list:", [...utxo_list || []]);
 
       for (const fund of utxo_list) {
         await newOrd.AddUTXO(
@@ -2878,7 +2879,7 @@ hasAddressKeyRegistry(address: string, type = undefined, path = undefined){
         // setTimeout(()=>myself.WinHelpers.closeCurrentWindow(),closeWindowAfter);
         // outData.errorMessage = "Insufficient funds, if you have replenish the balance, " +
         //     "wait for several conformations or wait update on the server";
-        outData.errorMessage = "Insufficient funds. Please add.";
+        outData.errorMessage = messages.INSUFFICIENT_FUNDS;
         outData.min_fund_amount = min_fund_amount;
         outData.mining_fee = Number(min_fund_amount) - Number(payload.market_fee) - Number(payload.ord_price);
         // outData.raw = await myself.getRawTransactions(swapSim, myself.utxord.FUNDS_TERMS);

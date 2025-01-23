@@ -1,7 +1,7 @@
 import { notify } from 'notiwind'
 import { useDark, useToggle } from '@vueuse/core'
 import * as webext from "webext-bridge";
-import {ADDRESS_COPIED, GENERATE_MNEMONIC, SAVE_GENERATED_SEED, VALIDATE_MNEMONIC} from '~/config/events'
+import { ADDRESS_COPIED, GENERATE_MNEMONIC, SAVE_GENERATED_SEED, VALIDATE_MNEMONIC } from '~/config/events'
 import { validate, getAddressInfo } from 'bitcoin-address-validation';
 import * as bip39 from "~/config/bip39";
 
