@@ -94,7 +94,8 @@ const WALLET_TYPES = [
   'intsk',
   'intsk2',
   'scrsk',
-  'auth'
+  'auth',
+  'user'
 ];
 
 const WALLET = {
@@ -277,7 +278,24 @@ const WALLET = {
       change: ["214748364"],
       index_range: "0-1"
     }
-  }
+  },
+  user: {
+      index: 0,
+      change: 0,
+      account: 0,
+      coin_type: 0,
+      key: null,
+      p2tr: null,
+      address: null,
+      typeAddress: 0,
+      filter: {
+        look_cache: true,
+        key_type: "DEFAULT",
+        accounts: ["0'", "1'", "2'"],
+        change: ["0"],
+        index_range: "0-16384"
+      }
+    }
 };
 
 const STATUS_DEFAULT = {
@@ -320,6 +338,7 @@ class Api {
         this.wallet = WALLET;
         this.wallet_types = WALLET_TYPES;
         this.addresses = [];
+        this.userPathList = [];
         this.all_addresses = [];
         this.keyCache = [];
         this.skipAddresses = [];
@@ -603,6 +622,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
 
   async setIndexToStorage(type, value) {
     if(type==='ext') return;
+    if(type==='user') return;
     const Obj = {};
     Obj[`${type}Index`] = Number(value);
     return setTimeout(() => {
@@ -613,6 +633,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
 
   async getIndexFromStorage(type) {
     if(type==='ext') return;
+    if(type==='user') return;
     return (await chrome.storage.local.get([`${type}Index`]))[`${type}Index`] || 0
   }
 
@@ -653,6 +674,38 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     return true;
   }
 
+  async restoreUserAddress(path){
+    let x = 0;
+    if(path.split("'/")[0] ==='m/84'){x = 1;}else{x = 0;}
+    let key = this.wallet.root.key.Derive(path, false);
+    let address = await this.getAddress('user', key, x);
+    console.log('restoreUserAddress:',address)
+    if (!this.hasAddress(address)) {
+         const newAddress = {
+           address: address,
+           type: 'user',
+           typeAddress: 0,
+           index: path,
+           ...this.getChallengeFromAddress(address, 'user', path)
+         };
+         console.log('newAddress:',newAddress)
+         this.addresses.push(newAddress);
+       }
+
+  }
+
+  async setUserPath(list = []){
+    this.userPathList = list
+
+    for(const path of list){
+      restoreUserAddress(path);
+    }
+    setTimeout(() => {
+      chrome.storage.local.set({userPathList: this.userPathList});
+    }, 2000);
+    return true;
+  }
+
   async setViewMode(value){
     this.viewMode = Boolean(value);
     setTimeout(() => {
@@ -671,6 +724,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     if (!this.wallet_types.includes(type)) return false;
     if (!this.checkSeed()) return false;
     if (type === 'ext') return false;
+    if (type === 'user') return false;
     this.wallet[type].typeAddress = Number(value);
     return true;
   }
@@ -686,9 +740,10 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
   }
 
   async generateNewIndex(type) {
-    if(!this.wallet_types.includes(type)) return false;
-    if(!this.checkSeed()) return false;
-    if(type==='ext') return false;
+    if (!this.wallet_types.includes(type)) return false;
+    if (!this.checkSeed()) return false;
+    if (type === 'ext') return false;
+    if (type === 'user') return false;
     this.wallet[type].index += 1;
     await this.setIndexToStorage(type, this.wallet[type].index);
     await this.setIndexRange(this.wallet[type].index);
@@ -697,12 +752,14 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
 
   getIndex(type) {
     if(type==='ext') return 0;
+    if(type==='user') return 0;
     if (this.wallet[type]) return this.wallet[type].index;
     return 0;
   }
 
   setIndex(type, index) {
-    if(type==='ext') return false;
+    if (type === 'ext') return false;
+    if (type === 'user') return false;
     this.wallet[type].index = index;
     this.setIndexRange(index);
     return true;
@@ -711,6 +768,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
   getNexIndex(type) {
     if(!this.derivate) return false;
     if(type==='ext') return 0;
+    if(type==='user') return 0;
     const index = this.wallet[type].index + 1;
     this.setIndexRange(index);
     return index;
@@ -790,7 +848,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     const myself = this;
     for(let i=0; i < index; i += 1 ){
       for(let x = 0; x < 2; x += 1){
-        if (type !== 'auth' && type !== 'ext') {
+        if (type !== 'auth' && type !== 'ext' && type !== 'user') {
           let address = await myself.getAddress(type, myself.getKey(type, x, index), x);
           if (!myself.hasAddress(address)) {
             if (!myself.hasAddressType(type)) {
@@ -813,7 +871,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
   async restoreTypeIndexFromServer(type, addresses) {
     let store_index = 0;
     let wallet_index = 0;
-    if (type !== 'ext') {
+    if (type !== 'ext' && type !== 'user') {
       store_index = Number(await this.getIndexFromStorage(type));
       wallet_index = Number(this.getIndex(type));
       if (store_index > wallet_index) {
@@ -829,7 +887,7 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
     }
     if (addresses) {
       for (const addr of addresses) {
-        if (addr.type === type && type !== 'ext') {
+        if (addr.type === type && type !== 'ext' && type !== 'user') {
           const currind = Number(addr.index.split('/').pop())
           if (currind > wallet_index) {
             //  console.log(`currind for type - ${type}:`,currind)
@@ -843,6 +901,10 @@ getChallengeFromAddress(address: striong, type = undefined, path = undefined){
             let p = addr?.index?.split('/')[0];
             let ext = addr?.index?.split('/')[1];
             this.addToExternalKey(ext);
+          }
+          if (type === 'user') {
+            this.restoreUserAddress(addr?.index);
+            if(this.userPathList.indexOf(addr?.index)===-1){this.userPathList.push(addr?.index)}
           }
         }
       }
