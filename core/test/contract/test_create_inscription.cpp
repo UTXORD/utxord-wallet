@@ -550,11 +550,6 @@ TEST_CASE("inscribe")
 
 TEST_CASE("server_side_fill_inscribe")
 {
-    // std::string destination_addr = w->btc().GetNewAddress();
-    // std::string market_fee_addr = w->btc().GetNewAddress();
-    // std::string author_fee_addr = w->btc().GetNewAddress();
-    // std::string extra_fee_addr = w->btc().GetNewAddress();
-    // std::string return_addr = w->btc().GetNewAddress();
     std::string defaddr = w->p2wpkh(0,0,0);
     std::string destination_addr = defaddr;
     std::string market_fee_addr = defaddr;
@@ -671,8 +666,8 @@ TEST_CASE("server_side_fill_inscribe")
             stringvector psbts = builder.TransactionsPSBT();
             std::clog << "Commit PSBT:\n" << psbts[0] << "\nGenesis PSBT:\n" << psbts[1] << std::endl;
 
-            PartiallySignedTransaction commitPsbt(base64::decode<bytevector>(psbts[0]));
-            PartiallySignedTransaction genesisPsbt(base64::decode<bytevector>(psbts[1]));
+            PSBT commitPsbt(base64::decode<bytevector>(psbts[0]));
+            PSBT genesisPsbt(base64::decode<bytevector>(psbts[1]));
 
             std::string commitBase64 = base64::encode(commitPsbt.Serialize<bytevector>());
             std::string genesisBase64 = base64::encode(genesisPsbt.Serialize<bytevector>());

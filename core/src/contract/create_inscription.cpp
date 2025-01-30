@@ -327,14 +327,14 @@ l15::stringvector CreateInscriptionBuilder::TransactionsPSBT() const
         RestoreTransactions();
     }
 
-    l15::core::PartiallySignedTransaction commitPsbt(*mCommitTx);
+    l15::core::PSBT commitPsbt(*mCommitTx);
     std::ranges::transform(m_inputs, commitPsbt.inputs.begin(), [](const auto& in) {
         l15::core::PSBTInput res;
         res.witness_utxo = CTxOut(in.output->Amount(), in.output->Destination()->PubKeyScript());
         return res;
     });
 
-    l15::core::PartiallySignedTransaction genesisPsbt(*mGenesisTx);
+    l15::core::PSBT genesisPsbt(*mGenesisTx);
 
     auto genSpends = GetGenesisTxSpends();
     std::ranges::transform(genSpends, genesisPsbt.inputs.begin(), [](const auto& in) {
@@ -369,7 +369,7 @@ void CreateInscriptionBuilder::ApplyPSBTSignature(const l15::stringvector& psbts
 
     const CMutableTransaction& commit_tx = CommitTx();
 
-    core::PartiallySignedTransaction commitPsbt(base64::decode<bytevector>(psbts.front()));
+    core::PSBT commitPsbt(base64::decode<bytevector>(psbts.front()));
 
     if (commitPsbt.inputs.size() != m_inputs.size()) throw ContractTermMismatch(name_utxo + " count mismatch: " + std::to_string(commitPsbt.inputs.size()));
     for (auto [psbtInput, input, i]: std::ranges::zip_view(commitPsbt.inputs, m_inputs, std::ranges::iota_view(0))) {
@@ -386,7 +386,7 @@ void CreateInscriptionBuilder::ApplyPSBTSignature(const l15::stringvector& psbts
         }
     }
 
-    core::PartiallySignedTransaction genesisPsbt(base64::decode<bytevector>(psbts.back()));
+    core::PSBT genesisPsbt(base64::decode<bytevector>(psbts.back()));
 
     auto ordTaproot = GetInscriptionTapRoot();
 

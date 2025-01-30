@@ -215,7 +215,7 @@ TEST_CASE("psbt")
     tx.vin.emplace_back(Txid::FromUint256(uint256S("91f0f7925c77e4e94066803a62293daafd247e8ee1d75ade662712e169be4c57")), 0);
     tx.vout.emplace_back(3000, CScript() << 1 << tr_keypair.GetSchnorrKeyPair().GetPubKey());
 
-    PartiallySignedTransaction psbt(tx);
+    PSBT psbt(tx);
     psbt.inputs[0].witness_utxo = {3990, CScript() << 1 << tr_keypair.GetSchnorrKeyPair().GetPubKey()};
     psbt.inputs[0].m_tap_internal_key = script_keypair.GetSchnorrKeyPair().GetPubKey();
 
