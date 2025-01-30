@@ -375,7 +375,7 @@ using namespace l15::core;
                 Py_XDECREF(scriptpubkey);
 
                 if (witversion == 1) {
-                    PyObject *scriptpubkey = PyString_FromString(l15::core::GetTaprootPubKey($1.vout[i]).c_str());
+                    PyObject *scriptpubkey = PyString_FromString(l15::GetTaprootPubKey($1.vout[i]).c_str());
                     PyDict_SetItemString(out, "pubKey", scriptpubkey);
                     Py_XDECREF(scriptpubkey);
                 }
