@@ -8,6 +8,7 @@
 #include "policy.h"
 
 #include "utils.hpp"
+#include "transaction.hpp"
 
 #include "simple_transaction.hpp"
 #include "contract_builder_factory.hpp"

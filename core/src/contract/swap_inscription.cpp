@@ -5,6 +5,8 @@
 #include "policy.h"
 #include "feerate.h"
 
+#include "transaction.hpp"
+
 #include "contract_builder_factory.hpp"
 #include "swap_inscription.hpp"
 

@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 
     w = std::make_unique<TestcaseWrapper>(configpath);
     w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
-    w->keyreg().AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
+    w->keyreg().AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
 
     int res = session.run();
 
@@ -101,7 +101,7 @@ TEST_CASE("singleinout")
     REQUIRE_NOTHROW(tx_contract.AddInput(w->fund(10000, cond.address)));
     REQUIRE_NOTHROW(tx_contract.AddOutput(7000, destination_addr));
 
-    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
+    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "fund"));
 
     std::string data;
     REQUIRE_NOTHROW(data = tx_contract.Serialize(version, TX_SIGNATURE));
@@ -177,7 +177,7 @@ TEST_CASE("2ins2outs")
     REQUIRE_NOTHROW(tx_contract.AddOutput(546, destination_addr));
     REQUIRE_NOTHROW(tx_contract.AddChangeOutput(destination_addr1));
 
-    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
+    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "fund"));
 
     std::string data;
     REQUIRE_NOTHROW(data = tx_contract.Serialize(2, TX_SIGNATURE));
@@ -229,11 +229,11 @@ TEST_CASE("txchain")
     REQUIRE_NOTHROW(tx1_contract->AddInput(make_shared<ContractOutput>(tx_contract, 0)));
     REQUIRE_NOTHROW(tx1_contract->AddOutput(546, destination_addr));
 
-    REQUIRE_NOTHROW(tx_contract->Outputs().back()->Amount(tx1_contract->GetMinFundingAmount("")));
+    REQUIRE_NOTHROW(tx_contract->Destinations().back()->Amount(tx1_contract->GetMinFundingAmount("")));
     REQUIRE_NOTHROW(tx_contract->AddChangeOutput(change_addr));
 
-    REQUIRE_NOTHROW(tx_contract->Sign(w->keyreg(), "funds"));
-    REQUIRE_NOTHROW(tx1_contract->Sign(w->keyreg(), "funds"));
+    REQUIRE_NOTHROW(tx_contract->Sign(w->keyreg(), "fund"));
+    REQUIRE_NOTHROW(tx1_contract->Sign(w->keyreg(), "fund"));
 
     std::string data, data1;
     REQUIRE_NOTHROW(data = tx_contract->Serialize(2, TX_SIGNATURE));
@@ -300,7 +300,7 @@ TEST_CASE("legacyaddr")
     REQUIRE_NOTHROW(tx_contract.AddInput(w->fund(10000, w->p2tr(0, 0, 255))));
     REQUIRE_NOTHROW(tx_contract.AddOutput(7000, destination_addr));
 
-    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "funds"));
+    REQUIRE_NOTHROW(tx_contract.Sign(w->keyreg(), "fund"));
 
     std::string data;
     REQUIRE_NOTHROW(data = tx_contract.Serialize(version, TX_SIGNATURE));

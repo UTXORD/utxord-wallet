@@ -102,7 +102,7 @@ TEST_CASE("listtags")
     //
     // CTransaction tx = w->btc().GetTx(txid);
 
-    CMutableTransaction tx = l15::core::Deserialize(txhex);
+    CMutableTransaction tx = l15::DecodeHexTx(txhex);
 
     if (tx.vin[0].scriptWitness.stack.size() < 3) throw InscriptionFormatError("no witness script");
 

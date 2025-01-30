@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     //
     // w = std::make_unique<TestcaseWrapper>(configpath);
     // w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
-    // w->keyreg().AddKeyType("funds", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
+    // w->keyreg().AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
 
     int res = session.run();
 

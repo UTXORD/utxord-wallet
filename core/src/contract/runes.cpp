@@ -603,7 +603,7 @@ void RuneStoneDestination::ReadOpDictionaryJson(const UniValue &val, std::multim
 std::optional<RuneStone> ParseRuneStone(const string &hex_tx, ChainMode chain)
 {
     std::optional<RuneStone> res;
-    auto tx = l15::core::Deserialize(hex_tx);
+    auto tx = l15::DecodeHexTx(hex_tx);
 
     for (const auto& out: tx.vout) {
         if (out.scriptPubKey.front() != OP_RETURN) continue;

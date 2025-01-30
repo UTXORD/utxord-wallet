@@ -1,19 +1,20 @@
 
-#include <exception>
-#include <ranges>
-
 #include "nlohmann/json.hpp"
 #include "wrapstream.hpp"
 #include "base64.hpp"
-#include "univalue.h"
 
+#include "univalue.h"
 #include "interpreter.h"
 #include "feerate.h"
 #include "policy.h"
+
+#include "transaction.hpp"
 #include "psbt.hpp"
 
 #include "create_inscription.hpp"
 
+#include <exception>
+#include <ranges>
 #include <deque>
 
 #include "contract_builder_factory.hpp"
@@ -253,7 +254,7 @@ void CreateInscriptionBuilder::SignCollection(const KeyRegistry &master_key, con
     if (!m_collection_input) throw ContractStateError(name_collection + " undefined");
     if (!m_collection_input->output) throw ContractStateError(name_collection + '.' + name_pk + " undefined");
 
-    CMutableTransaction genesis_tx = MakeGenesisTx();
+    CMutableTransaction genesis_tx = MakeGenesisTx(MakeCommitTx());
 
     auto script_signer = m_collection_input->output->Destination()->LookupKey(master_key, key_filter);
     auto stack = script_signer->Sign(genesis_tx, m_collection_input->nin, GetGenesisTxSpends(), SIGHASH_ALL);
@@ -273,7 +274,7 @@ void CreateInscriptionBuilder::SignInscription(const KeyRegistry &master_key, co
     core::SchnorrKeyPair script_keypair(inscribe_script_keypair.PrivKey());
     if (*m_inscribe_script_pk != script_keypair.GetPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_pk));
 
-    CMutableTransaction genesis_tx = MakeGenesisTx();
+    CMutableTransaction genesis_tx = MakeGenesisTx(MakeCommitTx());
 
     m_inscribe_sig = script_keypair.SignTaprootTx(genesis_tx, 0, GetGenesisTxSpends(),
                                                   get<2>(GetInscriptionTapRoot()).GetScripts().front(),
@@ -299,7 +300,7 @@ void CreateInscriptionBuilder::MarketSignInscription(const KeyRegistry &master_k
     core::SchnorrKeyPair script_keypair(inscribe_script_keypair.PrivKey());
     if (*m_inscribe_script_market_pk != script_keypair.GetPubKey()) throw ContractTermMismatch(std::string(name_inscribe_script_market_pk));
 
-    CMutableTransaction genesis_tx = MakeGenesisTx();
+    CMutableTransaction genesis_tx = MakeGenesisTx(MakeCommitTx());
 
     m_inscribe_market_sig = script_keypair.SignTaprootTx(genesis_tx, 0, GetGenesisTxSpends(), get<2>(GetInscriptionTapRoot()).GetScripts().front());
     if (m_parent_collection_id) {
@@ -308,7 +309,7 @@ void CreateInscriptionBuilder::MarketSignInscription(const KeyRegistry &master_k
     }
 }
 
-std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
+l15::stringvector CreateInscriptionBuilder::RawTransactions() const
 {
     if (!mCommitTx || !mGenesisTx) {
         RestoreTransactions();
@@ -320,7 +321,7 @@ std::vector<std::string> CreateInscriptionBuilder::RawTransactions() const
     return {move(funding_tx_hex), move(genesis_tx_hex)};
 }
 
-std::vector<std::string> CreateInscriptionBuilder::TransactionsPSBT() const
+l15::stringvector CreateInscriptionBuilder::TransactionsPSBT() const
 {
     if (!mCommitTx || !mGenesisTx) {
         RestoreTransactions();
@@ -345,12 +346,81 @@ std::vector<std::string> CreateInscriptionBuilder::TransactionsPSBT() const
     genesisPsbt.inputs.front().m_tap_internal_key = *m_inscribe_int_pk;
     genesisPsbt.inputs.front().m_tap_merkle_root = get<2>(genTapRoot).CalculateRoot();
     genesisPsbt.inputs.front().m_tap_scripts.emplace(get<2>(genTapRoot).GetScripts().front(), InscribeScriptControlBlock(genTapRoot));
+    if (m_collection_input) {
+        if (m_type == LAZY_INSCRIPTION) {
+            genesisPsbt.inputs.front().sighash_type = SIGHASH_ANYONECANPAY | SIGHASH_SINGLE;
+            auto fundFeeTapRoot = FundMiningFeeTapRoot();
+            genesisPsbt.inputs.back().m_tap_internal_key = *m_fund_mining_fee_int_pk;
+            genesisPsbt.inputs.back().m_tap_merkle_root = get<2>(fundFeeTapRoot).CalculateRoot();
+            genesisPsbt.inputs.back().m_tap_scripts.emplace(get<2>(fundFeeTapRoot).GetScripts().front(), FundMiningFeeControlBlock(fundFeeTapRoot));
+            genesisPsbt.inputs.back().sighash_type = SIGHASH_ANYONECANPAY | SIGHASH_NONE;
+        }
+    }
 
-    std::vector<std::string> res;
-    res.emplace_back(base64::encode(commitPsbt.Serialize<std::deque<std::byte>>()));
-    res.emplace_back(base64::encode(genesisPsbt.Serialize<std::deque<std::byte>>()));
+    return {
+        base64::encode(commitPsbt.Serialize<bytevector>()),
+        base64::encode(genesisPsbt.Serialize<bytevector>()),
+    };
+}
 
-    return res;
+void CreateInscriptionBuilder::ApplyPSBTSignature(const l15::stringvector& psbts)
+{
+    if (psbts.size() != 2) throw ContractTermWrongValue("psbt count: " + std::to_string(psbts.size()));
+
+    const CMutableTransaction& commit_tx = CommitTx();
+
+    core::PartiallySignedTransaction commitPsbt(base64::decode<bytevector>(psbts.front()));
+
+    if (commitPsbt.inputs.size() != m_inputs.size()) throw ContractTermMismatch(name_utxo + " count mismatch: " + std::to_string(commitPsbt.inputs.size()));
+    for (auto [psbtInput, input, i]: std::ranges::zip_view(commitPsbt.inputs, m_inputs, std::ranges::iota_view(0))) {
+        if (psbtInput.witness_utxo->nValue != input.output->Amount()) throw ContractTermMismatch(name_utxo + '[' + std::to_string(i) + "]." + IContractDestination::name_amount);
+        if (psbtInput.witness_utxo->scriptPubKey != input.output->Destination()->PubKeyScript()) throw ContractTermMismatch(name_utxo + '[' + std::to_string(i) + "]." + IContractDestination::name_addr);
+
+        if (psbtInput.final_script_witness) {
+            for (size_t j = 0; j < psbtInput.final_script_witness->stack.size(); ++j) {
+                input.witness.Set(j, move(psbtInput.final_script_witness->stack[j]));
+            }
+        }
+        else if (psbtInput.m_tap_key_sig) {
+            input.witness.Set(0, move(*psbtInput.m_tap_key_sig));
+        }
+    }
+
+    core::PartiallySignedTransaction genesisPsbt(base64::decode<bytevector>(psbts.back()));
+
+    auto ordTaproot = GetInscriptionTapRoot();
+
+    if (!genesisPsbt.inputs.empty()) {
+        const auto& psbtOrdInput = genesisPsbt.inputs.front();
+
+        if (psbtOrdInput.m_tap_internal_key != *m_inscribe_int_pk) throw ContractTermMismatch(std::string(name_inscribe_int_pk));
+        if (psbtOrdInput.m_tap_merkle_root != get<2>(ordTaproot).CalculateRoot()) throw ContractTermMismatch(std::string(name_inscribe_int_pk));
+
+        if (psbtOrdInput.m_tap_scripts.size() != 1 ||
+            psbtOrdInput.m_tap_scripts.begin()->first != get<2>(ordTaproot).GetScripts().front() ||
+            psbtOrdInput.m_tap_scripts.begin()->second != InscribeScriptControlBlock(ordTaproot)) {
+            throw ContractTermMismatch("Inscription script");
+        }
+
+    }
+
+    if (m_parent_collection_id) {
+        if (!m_collection_input) throw ContractStateError(name_collection + " not defined");
+
+        if (genesisPsbt.inputs.size() != 3) throw ContractTermWrongValue("genesis tx inputs: " + std::to_string(genesisPsbt.inputs.size()));
+
+        if (m_type == LAZY_INSCRIPTION) {
+
+        }
+    }
+    else {
+        if (genesisPsbt.inputs.size() != 1) throw ContractTermWrongValue("genesis tx inputs: " + std::to_string(genesisPsbt.inputs.size()));
+
+
+
+    }
+
+
 }
 
 void CreateInscriptionBuilder::CheckContractTerms(uint32_t version, InscribePhase phase) const
@@ -464,9 +534,10 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, InscribePhase phas
     contract.pushKV(name_version, version);
     contract.pushKV(name_contract_phase, PhaseString(phase));
 
-    switch (phase) {
-    case INSCRIPTION_SIGNATURE:
-    case LAZY_INSCRIPTION_SIGNATURE:
+    // switch (phase) {
+    // case INSCRIPTION_SIGNATURE:
+    // case LAZY_INSCRIPTION_SIGNATURE:
+    if (m_mining_fee_rate)
         contract.pushKV(name_mining_fee_rate, *m_mining_fee_rate);
         if (m_content_type)
             contract.pushKV(name_content_type, *m_content_type);
@@ -483,8 +554,11 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, InscribePhase phas
         }
         if (m_delegate)
             contract.pushKV(name_delegate, *m_delegate);
+    if (m_inscribe_script_pk)
         contract.pushKV(name_inscribe_script_pk, hex(*m_inscribe_script_pk));
+    if (m_inscribe_int_pk)
         contract.pushKV(name_inscribe_int_pk, hex(*m_inscribe_int_pk));
+    if (m_inscribe_sig)
         contract.pushKV(name_inscribe_sig, hex(*m_inscribe_sig));
         if (m_fund_mining_fee_int_pk)
             contract.pushKV(name_fund_mining_fee_int_pk, hex(*m_fund_mining_fee_int_pk));
@@ -493,21 +567,24 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, InscribePhase phas
         if (m_change_addr)
             contract.pushKV(name_change_addr, *m_change_addr);
 
-        if (version > s_protocol_version_no_runes) {
+    if (version > s_protocol_version_no_runes) {
+        if (m_ord_destination)
             contract.pushKV(name_ord, m_ord_destination->MakeJson());
             //if (m_collection_destination) contract.pushKV(name_collection_destination, m_collection_destination->MakeJson());
             if (m_rune_stone) contract.pushKV(name_rune_stone, m_rune_stone->MakeJson());
-        }
-        else {
-            if (m_rune_stone) throw ContractProtocolError(name_rune_stone + " is not supported with v. " + std::to_string(version));
+    }
+    else {
+        if (m_rune_stone) throw ContractProtocolError(name_rune_stone + " is not supported with v. " + std::to_string(version));
+        if (m_ord_destination) {
             contract.pushKV(name_ord_amount, m_ord_destination->Amount());
             contract.pushKV(name_destination_addr, m_ord_destination->Address());
         }
-       if (m_fixed_change)
+    }
+        if (m_fixed_change)
            contract.pushKV(name_fixed_change, m_fixed_change->MakeJson());
 
         //no break
-    case LAZY_INSCRIPTION_MARKET_TERMS:
+    //case LAZY_INSCRIPTION_MARKET_TERMS:
         if (m_author_fee)
             contract.pushKV(name_author_fee, m_author_fee->MakeJson());
         if (m_collection_destination) {
@@ -526,12 +603,15 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, InscribePhase phas
                 contract.pushKV(name_collection, move(collectionVal));
             }
         }
-        if (m_type == LAZY_INSCRIPTION)
-            contract.pushKV(name_inscribe_script_market_pk, hex(*m_inscribe_script_market_pk));
+        if (m_type == LAZY_INSCRIPTION) {
+            if (m_inscribe_script_market_pk)
+                contract.pushKV(name_inscribe_script_market_pk, hex(*m_inscribe_script_market_pk));
+        }
 
-    case MARKET_TERMS:
+    //case MARKET_TERMS:
+    if (m_market_fee)
         contract.pushKV(name_market_fee, m_market_fee->MakeJson());
-        if (!m_custom_fees.empty()) {
+    if (!m_custom_fees.empty()) {
             if (version > s_protocol_version_no_custom_fee) {
                 UniValue customFeesVal(UniValue::VARR);
                 for (const auto& fee: m_custom_fees) {
@@ -540,7 +620,7 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, InscribePhase phas
                 contract.pushKV(name_custom_fee, move(customFeesVal));
             }
         }
-    }
+    //}
 
     return contract;
 }
@@ -722,7 +802,7 @@ void CreateInscriptionBuilder::RestoreTransactions() const
     if (!m_parent_collection_id && m_collection_input) throw ContractTermMissing(std::string(name_collection_id));
     if (!m_collection_input && m_parent_collection_id) throw ContractTermMissing(std::string(name_collection));
 
-    mGenesisTx = MakeGenesisTx();
+    mGenesisTx = MakeGenesisTx(CommitTx());
 }
 
 const CMutableTransaction& CreateInscriptionBuilder::CommitTx() const
@@ -812,7 +892,7 @@ const CMutableTransaction& CreateInscriptionBuilder::GenesisTx() const
         if (m_collection_input && !m_collection_input->witness) throw ContractStateError(name_collection + '.' + TxInput::name_witness);
         if (m_collection_input && !m_fund_mining_fee_sig) throw ContractStateError(std::string(name_fund_mining_fee_sig));
 
-        mGenesisTx = MakeGenesisTx();
+        mGenesisTx = MakeGenesisTx(CommitTx());
     }
     return *mGenesisTx;
 }
@@ -843,10 +923,21 @@ l15::bytevector CreateInscriptionBuilder::InscribeScriptControlBlock(const std::
     return control_block;
 }
 
-CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
+l15::bytevector CreateInscriptionBuilder::FundMiningFeeControlBlock(const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>& tr) const
 {
-    const CMutableTransaction& commit_tx = CommitTx();
+    std::vector<uint256> scriptpath = get<2>(tr).CalculateScriptPath(get<2>(tr).GetScripts().front());
+    bytevector control_block;
+    control_block.reserve(1 + m_fund_mining_fee_int_pk->size() + scriptpath.size() * uint256::size());
+    control_block.emplace_back(static_cast<uint8_t>(0xc0 | get<1>(tr)));
+    control_block.insert(control_block.end(), m_fund_mining_fee_int_pk->begin(), m_fund_mining_fee_int_pk->end());
 
+    for (uint256 &branch_hash: scriptpath)
+        control_block.insert(control_block.end(), branch_hash.begin(), branch_hash.end());
+    return control_block;
+}
+
+CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx(const CMutableTransaction& commit_tx) const
+{
     CMutableTransaction tx;
 
     tx.vin.emplace_back(commit_tx.GetHash(), 0);
@@ -879,20 +970,11 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
 
         if (m_type == LAZY_INSCRIPTION) {
             auto tr = FundMiningFeeTapRoot();
-            std::vector<uint256> scriptpath = get<2>(tr).CalculateScriptPath(get<2>(tr).GetScripts().front());
-            bytevector fund_control_block;
-            fund_control_block.reserve(1 + m_fund_mining_fee_int_pk->size() + scriptpath.size() * uint256::size());
-            fund_control_block.emplace_back(static_cast<uint8_t>(0xc0 | get<1>(tr)));
-            fund_control_block.insert(fund_control_block.end(), m_fund_mining_fee_int_pk->begin(), m_fund_mining_fee_int_pk->end());
-
-            for (uint256 &branch_hash: scriptpath)
-                fund_control_block.insert(fund_control_block.end(), branch_hash.begin(), branch_hash.end());
-
             tx.vin.back().scriptWitness.stack.emplace_back(m_fund_mining_fee_market_sig.value_or(signature()));
             tx.vin.back().scriptWitness.stack.emplace_back(m_fund_mining_fee_sig.value_or(signature()));
             tx.vin.back().scriptWitness.stack.back().resize(65);
             tx.vin.back().scriptWitness.stack.emplace_back(get<2>(tr).GetScripts().front().begin(), get<2>(tr).GetScripts().front().end());
-            tx.vin.back().scriptWitness.stack.emplace_back(move(fund_control_block));
+            tx.vin.back().scriptWitness.stack.emplace_back(FundMiningFeeControlBlock(tr));
         }
         else {
             tx.vin.back().scriptWitness.stack.emplace_back(m_fund_mining_fee_sig.value_or(signature()));
@@ -913,15 +995,15 @@ CMutableTransaction CreateInscriptionBuilder::MakeGenesisTx() const
         tx.vout.emplace_back(m_rune_stone->TxOutput());
     }
 
-    if (!m_parent_collection_id) {
-        auto mining_fee = CalculateTxFee(*m_mining_fee_rate, tx);
-        try {
-            auto fakeOrdDest = P2Address::Construct(chain(), commit_tx.vout.front().nValue - mining_fee, m_ord_destination->Address());
-        }
-        catch (ContractTermWrongValue& ) {
-            std::throw_with_nested(ContractFundsNotEnough("Ord output too small: " + std::to_string(commit_tx.vout.front().nValue - mining_fee)));
-        }
-    }
+//    if (!m_parent_collection_id) {
+//        auto mining_fee = CalculateTxFee(*m_mining_fee_rate, tx);
+//        try {
+//            auto fakeOrdDest = P2Address::Construct(chain(), commit_tx.vout.front().nValue - mining_fee, m_ord_destination->Address());
+//        }
+//        catch (ContractTermWrongValue& ) {
+//            std::throw_with_nested(ContractFundsNotEnough("Ord output too small: " + std::to_string(commit_tx.vout.front().nValue - mining_fee)));
+//        }
+//    }
 
     return tx;
 }
@@ -977,15 +1059,72 @@ CMutableTransaction CreateInscriptionBuilder::CreateGenesisTxTemplate() const
 
 std::string CreateInscriptionBuilder::MakeInscriptionId() const
 {
-    return MakeGenesisTx().GetHash().GetHex() + "i0";
+    return MakeGenesisTx(MakeCommitTx()).GetHash().GetHex() + "i0";
 }
+
+CAmount CreateInscriptionBuilder::CalculateMissingAmount(std::string address)
+{
+    CAmount funds = 0;
+    funds = std::accumulate(m_inputs.begin(), m_inputs.end(), funds, [](CAmount prev, const auto& input) { return prev + input.output->Amount(); });
+
+    CAmount mining_fee = CalculateMiningFeeAmount();
+    CAmount required_amount = mining_fee + m_ord_destination->Amount();
+
+    // Do not need to take collection input/output amounts into this acccounting
+    // if (m_parent_collection_id) {
+    //     if (!m_collection_destination) throw ContractStateError(name_collection_destination + " not set");
+    //     required_amount += m_collection_destination->Amount();
+    // }
+
+    if (m_fixed_change)
+        required_amount += m_fixed_change->Amount();
+
+    if (m_market_fee)
+        required_amount += m_market_fee->Amount();
+
+    if (m_author_fee)
+        required_amount += m_market_fee->Amount();
+
+    for (const auto& fee: m_custom_fees)
+        required_amount += fee->Amount();
+
+    if (m_rune_stone)
+        required_amount += m_rune_stone->Amount();
+
+    if (required_amount > funds) {
+        if (address.empty())
+            return required_amount - funds;
+
+        auto add_source = P2Address::Construct(chain(), {}, address);
+        AddInput(std::make_shared<UTXO>(chain(), uint256::ZERO.GetHex(), 0, add_source));
+        required_amount += CalculateMiningFeeAmount() - mining_fee;
+        m_inputs.pop_back();
+
+        return std::max(required_amount - funds, add_source->Amount());
+    }
+    return 0;
+}
+
+CAmount CreateInscriptionBuilder::CalculateMiningFeeAmount() const
+{
+    if (!m_mining_fee_rate) throw ContractTermMissing(std::string(name_mining_fee_rate));
+    if (!m_ord_destination) throw ContractTermMissing(std::string(name_ord));
+    if (!m_inscribe_script_pk) throw ContractTermMissing(std::string(name_inscribe_script_pk));
+    if (!m_inscribe_int_pk) throw ContractTermMissing(std::string(name_inscribe_int_pk));
+
+    if (!m_parent_collection_id && m_collection_input) throw ContractTermMissing(std::string(name_collection_id));
+    if (!m_collection_input && m_parent_collection_id) throw ContractTermMissing(std::string(name_collection));
+
+    CMutableTransaction commitTx = MakeCommitTx();
+    CAmount commit_fee = CalculateTxFee(*m_mining_fee_rate, commitTx);
+    CAmount genesis_fee = CalculateTxFee(*m_mining_fee_rate, MakeGenesisTx(commitTx));
+
+    return commit_fee + genesis_fee;
+}
+
 
 CAmount CreateInscriptionBuilder::GetMinFundingAmount(const std::string& params) const {
     if(!m_ord_destination) throw ContractStateError(std::string(name_ord_amount));
-    // if (!m_delegate) {
-    //     if (!m_content_type) throw ContractTermMissing(std::string(name_content_type));
-    //     if (!m_content) throw ContractTermMissing(std::string(name_content));
-    // }
     if(!m_market_fee) throw ContractTermMissing(std::string(name_market_fee));
     if(m_type == LAZY_INSCRIPTION && !m_author_fee) throw ContractTermMissing(std::string(name_author_fee));
 
@@ -1089,7 +1228,7 @@ std::shared_ptr<IContractOutput> CreateInscriptionBuilder::ChangeOutput() const
 std::shared_ptr<IContractOutput> CreateInscriptionBuilder::FixedChangeOutput() const
 {
     if (m_fixed_change) {
-        return std::make_shared<UTXO>(chain(), CommitTx().GetHash().GetHex(), m_parent_collection_id ? 2 : 1, m_fixed_change);
+        return std::make_shared<UTXO>(chain(), MakeCommitTx().GetHash().GetHex(), m_parent_collection_id ? 2 : 1, m_fixed_change);
     }
     else
         return {};
@@ -1101,7 +1240,7 @@ std::string CreateInscriptionBuilder::RawTransaction(InscribePhase phase, uint32
         return EncodeHexTx(MakeCommitTx());
     }
     else if (n == 1) {
-        return EncodeHexTx(MakeGenesisTx());
+        return EncodeHexTx(MakeGenesisTx(MakeCommitTx()));
     }
     else return {};
 }

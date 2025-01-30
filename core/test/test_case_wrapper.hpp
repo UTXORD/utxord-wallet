@@ -8,6 +8,7 @@
 #include "nodehelper.hpp"
 
 #include "contract_builder.hpp"
+#include "simple_transaction.hpp"
 
 #include "nlohmann/json.hpp"
 
@@ -49,6 +50,7 @@ struct TestcaseWrapper
     l15::ExecHelper mCli;
     l15::ExecHelper mBtcd;
     l15::ExecHelper mOrd;
+    std::shared_ptr<IContractOutput> mUtxo;
 
     explicit TestcaseWrapper(const std::string& configpath) :
             mConfFactory(configpath),
@@ -178,6 +180,11 @@ struct TestcaseWrapper
         StopRegtestBitcoinNode();
     }
 
+    void set_utxo(const std::string& txid, unsigned nout, CAmount amount, std::string addr)
+    {
+        mUtxo = std::make_shared<UTXO>(chain(), txid, nout, amount, move(addr));
+    }
+
     std::tuple<uint64_t, uint32_t> confirm(uint32_t n, const std::string& txid, uint32_t nout = 0)
     {
         uint32_t confirmations = 0;
@@ -243,12 +250,26 @@ struct TestcaseWrapper
     std::string p2wpkh(uint32_t account, uint32_t change, uint32_t index)
     { return keyreg().Derive(keypath(84, account, change, index), false).GetP2WPKHAddress(l15::Bech32(l15::BTC, chain())); }
 
-    std::shared_ptr<IContractOutput> fund(CAmount amount, std::string addr)
+    std::shared_ptr<IContractOutput> fund(CAmount amount, std::string addr, std::optional<std::string> changeaddr = {})
     {
-        std::string txid = btc().SendToAddress(addr, l15::FormatAmount(amount));
-        auto prevout = btc().CheckOutput(txid, addr);
+        if (mUtxo) {
+            SimpleTransaction contract(chain());
+            contract.AddInput(mUtxo);
+            contract.AddOutput(amount, addr);
+            if (changeaddr) contract.AddChangeOutput(*changeaddr);
 
-        return std::make_shared<UTXO>(chain(), txid, get<0>(prevout).n, amount, move(addr));
+            contract.Sign(keyreg(), "fund");
+
+            btc().SpendTx(CTransaction(contract.MakeTx("")));
+
+            mUtxo = contract.ChangeOutput();
+            return contract.Outputs().front();
+        }
+        else {
+            std::string txid = btc().SendToAddress(addr, l15::FormatAmount(amount));
+            auto prevout = btc().CheckOutput(txid, addr);
+            return std::make_shared<UTXO>(chain(), txid, get<0>(prevout).n, amount, move(addr));
+        }
     }
 };
 

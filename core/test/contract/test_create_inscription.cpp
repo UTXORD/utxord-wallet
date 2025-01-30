@@ -3,13 +3,16 @@
 #include <algorithm>
 
 #define CATCH_CONFIG_RUNNER
+
 #include "catch/catch.hpp"
 
 #include "nlohmann/json.hpp"
 
 #include "util/translation.h"
 #include "core_io.h"
+#include "policy/policy.h"
 
+#include "transaction.hpp"
 #include "chain_api.hpp"
 #include "simple_transaction.hpp"
 #include "create_inscription.hpp"
@@ -17,7 +20,9 @@
 #include "inscription.hpp"
 
 #include "test_case_wrapper.hpp"
-#include "policy/policy.h"
+#include "mnemonic.hpp"
+#include "base64.hpp"
+#include "psbt.hpp"
 
 using namespace l15;
 using namespace l15::core;
@@ -27,6 +32,7 @@ const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 
 std::unique_ptr<TestcaseWrapper> w;
+extern const stringvector en_dict;
 
 
 int main(int argc, char* argv[])
@@ -61,7 +67,12 @@ int main(int argc, char* argv[])
         configpath = (std::filesystem::current_path() / p).string();
 
     w = std::make_unique<TestcaseWrapper>(configpath);
-    w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+    //w->set_utxo("065e9bda6831ad4732c92163c1e2693a638dbc1035db1acc402490765eea70cf", 21, 10000, "tb1q3l4wkhxtx95z6fzle4qd7mvxdn44z608d374pp");
+
+    auto mnemonic_parser = l15::core::make_mnemonic_parser(en_dict);
+    w->InitKeyRegistry(hex(mnemonic_parser.MakeSeed({"afford", "exhaust", "file", "kind", "vintage", "one", "snack", "neck", "mystery", "boost", "match", "home"}, {})));
+
+    //w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
     w->keyreg().AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
     w->keyreg().AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
     w->keyreg().AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'","4'"], "change":["0" , "1"], "index_range":"0-256"})");
@@ -161,7 +172,6 @@ TEST_CASE("simple_inscribe")
     collection_utxo = {genesisTx.GetHash().GetHex(), 0, genesisTx.vout[0].nValue, w->p2tr(2,0,1)};
 
 }
-
 
 
 TEST_CASE("inscribe")
@@ -524,6 +534,384 @@ TEST_CASE("inscribe")
         }
     }
 }
+
+// struct ServerCreateCondition
+// {
+//     std::vector<std::tuple<CAmount, std::string>> utxo;
+//     CAmount market_fee;
+//     CAmount fixed_change;
+//     bool has_change;
+//     bool has_parent;
+//     bool return_collection;
+//     uint32_t ext_fee_count;
+//     uint32_t min_version;
+//     const char* comment;
+// };
+
+TEST_CASE("server_side_fill_inscribe")
+{
+    // std::string destination_addr = w->btc().GetNewAddress();
+    // std::string market_fee_addr = w->btc().GetNewAddress();
+    // std::string author_fee_addr = w->btc().GetNewAddress();
+    // std::string extra_fee_addr = w->btc().GetNewAddress();
+    // std::string return_addr = w->btc().GetNewAddress();
+    std::string defaddr = w->p2wpkh(0,0,0);
+    std::string destination_addr = defaddr;
+    std::string market_fee_addr = defaddr;
+    std::string author_fee_addr = defaddr;
+    std::string extra_fee_addr = defaddr;
+    std::string return_addr = defaddr;
+
+    //CAmount fee_rate;
+    try {
+        fee_rate = ParseAmount(w->btc().EstimateSmartFee("1"));
+    }
+    catch(...) {
+        fee_rate = 1500;
+    }
+
+    auto content = GENERATE_COPY(pixel_avif/*, pixel_png, pixel_webp, simple_html, svg, no_content*/);
+
+    std::clog << "Fee rate: " << fee_rate << std::endl;
+
+    CreateInscriptionBuilder test_inscription(w->chain(), INSCRIPTION);
+
+//    CreateCondition inscription {{{ ParseAmount(inscription_amount), w->p2wpkh(0,0,1) }}, 0, false, true, false};
+    CreateCondition inscription {{{ 0, w->p2tr(0,0,0) }}, 0, 0, false, false, false, 0, 8, "inscription"};
+    CreateCondition inscription_w_change {{{ 10000, w->p2tr(0,0,0) }}, 0, 0, true, false, false, 0, 8, "inscription_w_change"};
+    CreateCondition inscription_w_fee {{{ 0 + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,0) }}, 1000, 0, false, false, false, 0, 8, "inscription_w_fee"};
+    CreateCondition inscription_w_change_fee {{{ 8000, w->p2tr(0, 0, 0) }, { 20000, w->p2tr(0, 0, 0) }}, 1000, 0, true, false, false, 0, 8, "inscription_w_change_fee"};
+    CreateCondition inscription_w_fix_change {{{ 0 + 1043, w->p2tr(0, 0,0) }}, 0, 1000, false, false, false, 0, 9, "inscription_w_fix_change"};
+
+    CreateCondition child {{{0, w->p2tr(0, 0,0) }}, 0, 0, false, true, false, 0, 8, "child"};
+    CreateCondition child_w_change {{{10000, w->p2tr(0, 0,0) }}, 0, 0, true,  true, false, 0, 8, "child_w_change"};
+    CreateCondition child_w_fee {{{ 0 + (43 * fee_rate / 1000) + 1000, w->p2tr(0, 0,0) }}, 1000, 0, false, true, false, 0, 8, "child_w_fee"};
+    CreateCondition child_w_change_fee {{{10000, w->p2tr(0, 0,0) }}, 1000, 0, true, true, false, 0, 8, "child_w_change_fee"};
+    CreateCondition child_w_change_fixed_change {{{10000, w->p2tr(0, 0,0) }}, 0, 5000, true, true, false, 0, 9, "child_w_change_fixed_change"};
+
+    CreateCondition segwit_child {{{ 0, w->p2wpkh(0,0,0) }}, 0, 0, false, true, false, 0, 8, "segwit_child"};
+    CreateCondition segwit_child_w_change {{{10000, w->p2wpkh(0,0,0) }}, 0, 0, true, true, false, 0, 8, "segwit_child_w_change"};
+    CreateCondition segwit_child_w_fee {{{ 0 + (43 * fee_rate / 1000) + 1000, w->p2wpkh(0,0,0) }}, 1000, 0, false, true, false, 0, 8, "segwit_child_w_fee"};
+    CreateCondition segwit_child_w_change_fee {{{15000, w->p2wpkh(0,0,0) }}, 1000, 0, true, true, false, 0, 8, "segwit_child_w_change_fee"};
+
+    // CreateCondition child_extfee_1 {{{20000, w->p2tr(0,0,15) }}, 0, 0, false, true, false, 11, 1, "child_extfee_1"};
+    CreateCondition child_w_change_extfee_1 {{{20000, w->p2tr(0,0,0) }}, 0, 0, true, true, false, 1, 11, "child_w_change_extfee_1"};
+    // CreateCondition child_w_fee_extfee_1 {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,17) }}, 1000, 0, false, true, false, 11, 1, "child_w_fee_extfee_1"};
+    CreateCondition child_w_change_fee_extfee_1 {{{20000, w->p2tr(0,0,0) }}, 1000, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
+    CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,0) }}, 0, 5000, true, true, false, 2, 11, "child_w_change_fixed_change_extfee_2"};
+
+    auto version = GENERATE(/*8,9,10,*/11);
+    auto condition = GENERATE_COPY(inscription/*,
+                                   inscription_w_change, inscription_w_fee, inscription_w_change_fee, inscription_w_fix_change,
+                                   child, child_w_change, child_w_fee, child_w_change_fee, child_w_change_fixed_change,
+                                   segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee,*/
+                                   /*child_extfee_1,*/ /*child_w_change_extfee_1,*/ /*child_w_fee_extfee_1,*/ /*child_w_change_fee_extfee_1, child_w_change_fixed_change_extfee_2*/
+    );
+
+    if (condition.min_version <= version) {
+        stringvector rawtxs;
+        std::vector<CTxOut> spends;
+        bool check_result = false;
+        bool lazy = false;
+
+        SECTION("Self inscribe") {
+            std::clog << "Self inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
+
+            check_result = true;
+
+            CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
+            CHECK_NOTHROW(builder.MarketFee(condition.market_fee, market_fee_addr));
+            for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
+                CHECK_NOTHROW(builder.AddCustomFee(1000, extra_fee_addr));
+            }
+
+            CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
+            CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+            if (get<1>(content).empty()) {
+                if (delegate_id.empty()) {
+                    REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
+                }
+                else {
+                    REQUIRE_NOTHROW(builder.Delegate(delegate_id));
+                }
+            }
+            else {
+                REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+            }
+            CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
+            CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
+            if (condition.fixed_change != 0) {
+                CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
+            }
+            CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
+
+            if (condition.has_parent) {
+                CHECK_NOTHROW(builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount,
+                                                      collection_utxo.m_addr));
+            }
+
+            CAmount clean_requred_fund = 0;
+
+            REQUIRE_NOTHROW(clean_requred_fund = builder.CalculateMissingAmount(""));
+            for (const auto &utxo: condition.utxo) {
+                CAmount requred_fund = 0;
+                REQUIRE_NOTHROW(requred_fund = builder.CalculateMissingAmount(get<1>(utxo)));
+
+                if (clean_requred_fund) {
+                    CHECK(clean_requred_fund < requred_fund);
+                    clean_requred_fund = 0; // reset in order to compare for just first UTXO
+                }
+                else {
+                    CHECK_FALSE(requred_fund); // since we always fully filled minimal with first UTXO
+                }
+
+                CHECK_NOTHROW(builder.AddInput(w->fund(requred_fund + get<0>(utxo), get<1>(utxo))));
+            }
+
+            stringvector psbts = builder.TransactionsPSBT();
+            std::clog << "Commit PSBT:\n" << psbts[0] << "\nGenesis PSBT:\n" << psbts[1] << std::endl;
+
+            PartiallySignedTransaction commitPsbt(base64::decode<bytevector>(psbts[0]));
+            PartiallySignedTransaction genesisPsbt(base64::decode<bytevector>(psbts[1]));
+
+            std::string commitBase64 = base64::encode(commitPsbt.Serialize<bytevector>());
+            std::string genesisBase64 = base64::encode(genesisPsbt.Serialize<bytevector>());
+
+            CHECK(psbts[0] ==commitBase64);
+            CHECK(psbts[1] ==genesisBase64);
+
+            std::string market_terms;
+            REQUIRE_NOTHROW(market_terms = builder.Serialize(version, MARKET_TERMS));
+
+            std::clog << "MARKET_TERMS:\n" << market_terms << std::endl;
+
+            CreateInscriptionBuilder final_contract(w->chain(), INSCRIPTION);
+            REQUIRE_NOTHROW(final_contract.Deserialize(market_terms, MARKET_TERMS));
+
+            // REQUIRE_NOTHROW(final_contract.ApplyPSBTSignature({}));
+            //
+            // CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+            // CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
+            // if (condition.has_parent) {
+            //     CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "ord"));
+            // }
+            //
+            // std::string contract;
+            // REQUIRE_NOTHROW(contract = builder.Serialize(version, INSCRIPTION_SIGNATURE));
+            // // std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
+            //
+            // CreateInscriptionBuilder fin_contract(w->chain(), INSCRIPTION);
+            // REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
+
+            REQUIRE_NOTHROW(rawtxs = final_contract.RawTransactions());
+
+
+//            spends = fin_contract.GetGenesisTxSpends();
+//        CMutableTransaction tx;
+//        REQUIRE(DecodeHexTx(tx, rawtxs[0]));
+//
+//        std::clog << "TX ============================================================" << '\n';
+//        LogTx(w->chain(), tx);
+//        std::clog << "===============================================================" << '\n';
+//
+//
+//        std::vector<CTxOut> prevouts;
+//        for (const auto& utxo: condition.utxo)
+//            prevouts.emplace_back(get<0>(utxo), bech->PubKeyScript(get<1>(utxo)));
+//
+//        PrecomputedTransactionData txdata;
+//        txdata.Init(tx, move(prevouts), /* force=*/ true);
+//
+//        for (size_t nin = 0; nin < condition.utxo.size(); ++nin) {
+//            MutableTransactionSignatureChecker TxOrdChecker(&tx, nin, get<0>(condition.utxo[nin]), txdata, MissingDataBehavior::FAIL);
+//            bool ok = VerifyScript(CScript(), bech->PubKeyScript(get<1>(condition.utxo[nin])), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
+//            //REQUIRE(ok);
+//        }
+        }
+
+//         SECTION("lazy inscribe") {
+//             if (condition.has_parent) {
+//                 std::clog << "Lazy inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
+//
+//                 check_result = true;
+//                 lazy = true;
+//
+//                 CreateInscriptionBuilder builder_terms(w->chain(), LAZY_INSCRIPTION);
+//                 CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
+//                 CHECK_NOTHROW(builder_terms.AuthorFee(1000, author_fee_addr));
+//                 for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
+//                     CHECK_NOTHROW(builder_terms.AddCustomFee(1000, extra_fee_addr));
+//                 }
+//                 CHECK_NOTHROW(builder_terms.MarketInscribeScriptPubKey(w->derive(86, 3, 0, 0).GetSchnorrKeyPair().GetPubKey()));
+//                 CHECK_NOTHROW(builder_terms.Collection(collection_id, collection_utxo.m_amount, collection_utxo.m_addr));
+//                 std::string market_terms;
+//                 REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(version, LAZY_INSCRIPTION_MARKET_TERMS));
+//
+//                 // std::clog << "{LASY_INSCRIPTION_MARKET_TERMS:\n" << market_terms << "\n}" << std::endl;
+//
+//                 CreateInscriptionBuilder builder(w->chain(), LAZY_INSCRIPTION);
+//                 REQUIRE_NOTHROW(builder.Deserialize(market_terms, LAZY_INSCRIPTION_MARKET_TERMS));
+//
+//                 if (get<1>(content).empty()) {
+//                     if (delegate_id.empty()) {
+//                         REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
+//                     }
+//                     else {
+//                         REQUIRE_NOTHROW(builder.Delegate(delegate_id));
+//                     }
+//                 }
+//                 else {
+//                     REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+//                 }
+//                 CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
+//                 CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+//                 CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
+//                 CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
+//                 CHECK_NOTHROW(builder.FundMiningFeeInternalPubKey(w->derive(86,4,0,1).GetSchnorrKeyPair().GetPubKey()));
+//                 if (condition.fixed_change != 0) {
+//                     CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
+//                 }
+//                 CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
+//
+//                 for (const auto &utxo: condition.utxo) {
+//                     CHECK_NOTHROW(builder.AddInput(w->fund(get<0>(utxo), get<1>(utxo))));
+//                 }
+//
+//                 uint32_t txcount = builder.TransactionCount(LAZY_INSCRIPTION_SIGNATURE);
+//                 for (uint32_t i = 0; i < txcount; ++i) {
+//                     std::string rawtx;
+//                     CHECK_NOTHROW(rawtx = builder.RawTransaction(LAZY_INSCRIPTION_SIGNATURE, i));
+//
+//                     CMutableTransaction tx;
+//                     CHECK(DecodeHexTx(tx, rawtx));
+//
+//                     //LogTx(w->chain(), tx);
+//                 }
+//
+//                 CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+//                 CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
+//
+//                 std::string contract;
+//                 REQUIRE_NOTHROW(contract = builder.Serialize(version, LAZY_INSCRIPTION_SIGNATURE));
+//                 // std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
+//
+//                 CreateInscriptionBuilder fin_builder(w->chain(), LAZY_INSCRIPTION);
+//                 REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LAZY_INSCRIPTION_SIGNATURE));
+//
+//                 CHECK_NOTHROW(fin_builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
+//                 if (condition.return_collection) {
+//                     CHECK_NOTHROW(fin_builder.OverrideCollectionAddress(return_addr));
+//                 }
+//                 CHECK_NOTHROW(fin_builder.MarketSignInscription(w->keyreg(), "inscribe"));
+//                 CHECK_NOTHROW(fin_builder.SignCollection(w->keyreg(), "ord"));
+//
+//                 REQUIRE_NOTHROW(rawtxs = fin_builder.RawTransactions());
+//
+//                 spends = fin_builder.GetGenesisTxSpends();
+//
+// //                CMutableTransaction tx;
+// //                REQUIRE(DecodeHexTx(tx, rawtxs[1]));
+// //
+// //                //size_t nin = 2;
+// //
+// //                for (size_t nin = 0; nin < spends.size(); ++nin) {
+// //                    CAmount amount = spends[nin].nValue;
+// //
+// //                    PrecomputedTransactionData txdata;
+// //                    txdata.Init(tx, fin_builder.GetGenesisTxSpends(), /* force=*/ true);
+// //
+// //                    MutableTransactionSignatureChecker TxChecker(&tx, nin, amount, txdata, MissingDataBehavior::FAIL);
+// //                    bool ok = VerifyScript(CScript(), spends[nin].scriptPubKey, &tx.vin[nin].scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxChecker);
+// //                    REQUIRE(ok);
+// //                }
+//             }
+//         }
+
+        if (check_result) {
+
+            CMutableTransaction commitTx, revealTx;
+
+            REQUIRE(rawtxs.size() == 2);
+            REQUIRE(DecodeHexTx(commitTx, rawtxs[0]));
+            REQUIRE(DecodeHexTx(revealTx, rawtxs[1]));
+
+            std::clog << condition.comment << " ^^^" << '\n';
+            std::clog << "Funding TX min fee: " << CalculateTxFee(fee_rate, commitTx) << " ============================================================" << '\n';
+            LogTx(w->chain(), commitTx);
+            std::clog << "Genesis TX min fee: " << CalculateTxFee(fee_rate, revealTx) << " ============================================================" << '\n';
+            LogTx(w->chain(), revealTx);
+            std::clog << "=======================================================================" << '\n';
+
+            if (condition.has_parent) {
+                CHECK(revealTx.vin.size() == 3);
+                CHECK(revealTx.vout[1].nValue == 546);
+            }
+
+            size_t vout_size = 1 + condition.ext_fee_count;
+            if (condition.has_parent) vout_size += 1;
+            if (condition.market_fee > 0) vout_size += 1;
+            if (lazy) vout_size += 1;
+
+            CHECK(revealTx.vout.size() == vout_size);
+
+            CHECK(revealTx.vout[0].nValue == 546);
+
+            if (condition.market_fee) {
+                CHECK(revealTx.vout.back().nValue == condition.market_fee);
+            }
+
+//             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
+// //            REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+//
+//             try {
+//                 w->btc().SpendTx(CTransaction(revealTx));
+//             }
+//             catch(...) {
+//                 bool ok = true;
+//
+//                 PrecomputedTransactionData txdata;
+//                 txdata.Init(revealTx, move(spends), /* force=*/ true);
+//
+//                 for (size_t nin = 0; nin < txdata.m_spent_outputs.size(); ++nin) {
+//                     std::clog << "Input " << nin << " signature ... ";
+//                     CAmount amount = txdata.m_spent_outputs[nin].nValue;
+//
+//                     MutableTransactionSignatureChecker txChecker(&revealTx, nin, amount, txdata, MissingDataBehavior::FAIL);
+//                     ScriptError err;
+//                     ok &= VerifyScript(CScript(), txdata.m_spent_outputs[nin].scriptPubKey, &revealTx.vin[nin].scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, txChecker, &err);
+//
+//                     if (!ok) {
+//                         std::clog << " FAIL: " << ScriptErrorString(err) << std::endl;
+//                         FAIL("Genesis TX error on input " + std::to_string(nin));
+//                     }
+//                     else {
+//                         std::clog << " ok" << std::endl;
+//                     }
+//                 }
+//                 if (ok) {
+//                     std::clog << w->btc().TestTxSequence({revealTx}) << std::endl;
+//
+//                     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
+//                 }
+//             }
+
+            if (condition.has_parent) {
+                collection_utxo.m_txid = revealTx.GetHash().GetHex();
+                collection_utxo.m_nout = 1;
+                collection_utxo.m_amount = revealTx.vout[1].nValue;
+            }
+
+            if (delegate_id.empty()) {
+                delegate_id = collection_id;
+            }
+
+//            w->confirm(1, revealTx.GetHash().GetHex());
+        }
+    }
+}
+
+
+
 
 struct InscribeWithMetadataCondition {
     bytevector metadata;
@@ -1122,3 +1510,133 @@ TEST_CASE("avatar")
     }
 
 }
+
+const stringvector en_dict = {
+"abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid",
+"acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance",
+"advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album",
+"alcohol", "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "amateur", "amazing", "among",
+"amount", "amused", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique",
+"anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor",
+"army", "around", "arrange", "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume",
+"asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado",
+"avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball",
+"bamboo", "banana", "banner", "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become",
+"beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray", "better", "between", "beyond", "bicycle",
+"bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood",
+"blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring",
+"borrow", "boss", "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge", "brief",
+"bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb",
+"bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz", "cabbage", "cabin", "cable",
+"cactus", "cage", "cake", "call", "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable",
+"capital", "captain", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual", "cat", "catalog",
+"catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain", "chair", "chalk",
+"champion", "change", "chaos", "chapter", "charge", "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief",
+"child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim", "clap",
+"clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth",
+"cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut", "code", "coffee", "coil", "coin", "collect", "color", "column",
+"combine", "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool",
+"copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin", "cover", "coyote", "crack",
+"cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit", "creek", "crew", "cricket", "crime", "crisp", "critic",
+"crop", "cross", "crouch", "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry", "crystal", "cube", "culture", "cup", "cupboard",
+"curious", "current", "curtain", "curve", "cushion", "custom", "cute", "cycle", "dad", "damage", "damp", "dance", "danger", "daring", "dash", "daughter",
+"dawn", "day", "deal", "debate", "debris", "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense", "define", "defy", "degree",
+"delay", "deliver", "demand", "demise", "denial", "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive", "describe", "desert", "design",
+"desk", "despair", "destroy", "detail", "detect", "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice", "diesel", "diet", "differ",
+"digital", "dignity", "dilemma", "dinner", "dinosaur", "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance", "divert",
+"divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose", "double", "dove",
+"draft", "dragon", "drama", "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck",
+"dumb", "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic", "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy",
+"echo", "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder", "electric", "elegant", "element", "elephant",
+"elevator", "elite", "else", "embark", "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless", "endorse",
+"enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope",
+"episode", "equal", "equip", "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate", "eternal", "ethics", "evidence",
+"evil", "evoke", "evolve", "exact", "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist",
+"exit", "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow", "fabric", "face", "faculty", "fade",
+"faint", "faith", "fall", "false", "fame", "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father", "fatigue",
+"fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber", "fiction",
+"field", "figure", "file", "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit",
+"fitness", "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush",
+"fly", "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget", "fork", "fortune", "forum", "forward",
+"fossil", "foster", "found", "fox", "fragile", "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen", "fruit",
+"fuel", "fun", "funny", "furnace", "fury", "future", "gadget", "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic",
+"garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift",
+"giggle", "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow",
+"glue", "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab", "grace", "grain", "grant", "grape",
+"grass", "gravity", "great", "green", "grid", "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt", "guitar",
+"gun", "gym", "habit", "hair", "half", "hammer", "hamster", "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk",
+"hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint",
+"hip", "hire", "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse",
+"hospital", "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt", "hurdle", "hurry", "hurt",
+"husband", "hybrid", "ice", "icon", "idea", "identify", "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense", "immune", "impact",
+"impose", "improve", "impulse", "inch", "include", "income", "increase", "index", "indicate", "indoor", "industry", "infant", "inflict", "inform", "inhale", "inherit",
+"initial", "inject", "injury", "inmate", "inner", "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install", "intact", "interest", "into",
+"invest", "invite", "involve", "iron", "island", "isolate", "issue", "item", "ivory", "jacket", "jaguar", "jar", "jazz", "jealous", "jeans", "jelly",
+"jewel", "job", "join", "joke", "journey", "joy", "judge", "juice", "jump", "jungle", "junior", "junk", "just", "kangaroo", "keen", "keep",
+"ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit", "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock",
+"know", "lab", "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large", "later", "latin", "laugh", "laundry", "lava",
+"law", "lawn", "lawsuit", "layer", "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal", "legend", "leisure", "lemon",
+"lend", "length", "lens", "leopard", "lesson", "letter", "level", "liar", "liberty", "library", "license", "life", "lift", "light", "like", "limb",
+"limit", "link", "lion", "liquid", "list", "little", "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely", "long",
+"loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage", "lumber", "lunar", "lunch", "luxury", "lyrics", "machine", "mad", "magic",
+"magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage", "mandate", "mango", "mansion", "manual", "maple", "marble", "march",
+"margin", "marine", "market", "marriage", "mask", "mass", "master", "match", "material", "math", "matrix", "matter", "maximum", "maze", "meadow", "mean",
+"measure", "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory", "mention", "menu", "mercy", "merge", "merit", "merry", "mesh",
+"message", "metal", "method", "middle", "midnight", "milk", "million", "mimic", "mind", "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss",
+"mistake", "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor", "monkey", "monster", "month", "moon", "moral", "more",
+"morning", "mosquito", "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin", "mule", "multiply", "muscle", "museum", "mushroom",
+"music", "must", "mutual", "myself", "mystery", "myth", "naive", "name", "napkin", "narrow", "nasty", "nation", "nature", "near", "neck", "need",
+"negative", "neglect", "neither", "nephew", "nerve", "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble", "noise",
+"nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing", "notice", "novel", "now", "nuclear", "number", "nurse", "nut", "oak",
+"obey", "object", "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor", "off", "offer", "office", "often", "oil",
+"okay", "old", "olive", "olympic", "omit", "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option", "orange",
+"orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan", "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven",
+"over", "own", "owner", "oxygen", "oyster", "ozone", "pact", "paddle", "page", "pair", "palace", "palm", "panda", "panel", "panic", "panther",
+"paper", "parade", "parent", "park", "parrot", "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment", "peace",
+"peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people", "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase",
+"physical", "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer", "pipe", "pistol", "pitch", "pizza", "place",
+"planet", "plastic", "plate", "play", "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole", "police", "pond",
+"pony", "pool", "popular", "portion", "position", "possible", "post", "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer",
+"prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority", "prison", "private", "prize", "problem", "process", "produce", "profit",
+"program", "project", "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding", "pull", "pulp", "pulse", "pumpkin", "punch",
+"pupil", "puppy", "purchase", "purity", "purpose", "purse", "push", "put", "puzzle", "pyramid", "quality", "quantum", "quarter", "question", "quick", "quit",
+"quiz", "quote", "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ramp", "ranch", "random", "range",
+"rapid", "rare", "rate", "rather", "raven", "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe", "record",
+"recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular", "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind",
+"remove", "render", "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble", "resist", "resource", "response", "result",
+"retire", "retreat", "return", "reunion", "reveal", "review", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle", "right",
+"rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast", "robot", "robust", "rocket", "romance", "roof", "rookie",
+"room", "rose", "rotate", "rough", "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural", "sad", "saddle",
+"sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample", "sand", "satisfy", "satoshi", "sauce", "sausage", "save",
+"say", "scale", "scan", "scare", "scatter", "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script", "scrub",
+"sea", "search", "season", "seat", "second", "secret", "section", "security", "seed", "seek", "segment", "select", "sell", "seminar", "senior", "sense",
+"sentence", "series", "service", "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff", "shield", "shift",
+"shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder", "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick",
+"side", "siege", "sight", "sign", "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate", "six",
+"size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep", "slender", "slice", "slide", "slight", "slim",
+"slogan", "slot", "slow", "slush", "small", "smart", "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer",
+"social", "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon", "sorry", "sort", "soul", "sound",
+"soup", "source", "south", "space", "spare", "spatial", "spawn", "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike",
+"spin", "spirit", "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square", "squeeze", "squirrel", "stable",
+"stadium", "staff", "stage", "stairs", "stamp", "stand", "start", "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still",
+"sting", "stock", "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle", "student", "stuff", "stumble", "style",
+"subject", "submit", "subway", "success", "such", "sudden", "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply",
+"supreme", "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp", "swap", "swarm", "swear", "sweet", "swift",
+"swim", "swing", "switch", "sword", "symbol", "symptom", "syrup", "system", "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target",
+"task", "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test", "text", "thank", "that",
+"theme", "then", "theory", "there", "they", "thing", "this", "thought", "three", "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger",
+"tilt", "timber", "time", "tiny", "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet", "token",
+"tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple", "torch", "tornado", "tortoise", "toss", "total", "tourist",
+"toward", "tower", "town", "toy", "track", "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree",
+"trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true", "truly", "trumpet", "trust", "truth", "try",
+"tube", "tuition", "tumble", "tuna", "tunnel", "turkey", "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical",
+"ugly", "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy", "uniform", "unique", "unit", "universe", "unknown",
+"unlock", "until", "unusual", "unveil", "update", "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful",
+"useless", "usual", "utility", "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish", "vapor", "various", "vast", "vault", "vehicle",
+"velvet", "vendor", "venture", "venue", "verb", "verify", "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view",
+"village", "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice", "void", "volcano", "volume", "vote",
+"voyage", "wage", "wagon", "wait", "walk", "wall", "walnut", "want", "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave",
+"way", "wealth", "weapon", "wear", "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat",
+"wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine", "wing", "wink", "winner",
+"winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world", "worry", "worth",
+"wrap", "wreck", "wrestle", "wrist", "write", "wrong", "yard", "year", "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"};

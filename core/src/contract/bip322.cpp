@@ -3,8 +3,9 @@
 
 #include <deque>
 
-#include "contract_builder.hpp"
+#include "streams.h"
 
+#include "contract_builder.hpp"
 #include "hash_helper.hpp"
 
 namespace utxord {

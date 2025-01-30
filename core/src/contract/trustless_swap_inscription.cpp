@@ -5,6 +5,7 @@
 #include "policy.h"
 #include "feerate.h"
 
+#include "transaction.hpp"
 #include "contract_builder_factory.hpp"
 #include "trustless_swap_inscription.hpp"
 
@@ -558,10 +559,10 @@ void TrustlessSwapInscriptionBuilder::CommitFunds(std::string txid, uint32_t nou
             CAmount brick1 = mCommitBuilder->Destinations().front()->Amount();
 
             if (m_market_fee->Amount() >= brick1 * 2) {
-                mCommitBuilder->Outputs()[1]->Amount(m_market_fee->Amount() - brick1);
+                mCommitBuilder->Destinations()[1]->Amount(m_market_fee->Amount() - brick1);
             }
             else if (change >= brick1 * 2) {
-                mCommitBuilder->Outputs()[1]->Amount(change - brick1);
+                mCommitBuilder->Destinations()[1]->Amount(change - brick1);
             }
 
             mCommitBuilder->AddChangeOutput(move(addr));

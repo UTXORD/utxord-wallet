@@ -6,6 +6,7 @@
 #include "catch/catch.hpp"
 
 #include "util/translation.h"
+#include "transaction.hpp"
 #include "config.hpp"
 #include "nodehelper.hpp"
 #include "chain_api.hpp"
