@@ -18,6 +18,7 @@ static PyObject* pError;
 %apply int64_t { CAmount }
 
 %template(StringVector) std::vector<std::string>;
+%apply std::vector<std::string> { l15::stringvector };
 
 %{
 
