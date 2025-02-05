@@ -264,10 +264,7 @@ void SwapInscriptionBuilder::SignOrdSwap(const KeyRegistry &master_key, const st
 
     CMutableTransaction swap_tx(MakeSwapTx(false));
 
-    auto stack = signer->Sign(swap_tx, 0, {m_ord_input->output->Destination()->TxOutput()}, SIGHASH_ALL|SIGHASH_ANYONECANPAY);
-
-    for (size_t i = 0; i < stack.size(); ++i)
-        m_ord_input->witness.Set(i, stack[i]);
+    signer->SignInput(*m_ord_input, swap_tx, {m_ord_input->output->Destination()->TxOutput()}, SIGHASH_ALL|SIGHASH_ANYONECANPAY);
 }
 
 CMutableTransaction SwapInscriptionBuilder::GetFundsCommitTxTemplate(bool segwit_in) const
@@ -376,11 +373,7 @@ void SwapInscriptionBuilder::SignFundsCommitment(const KeyRegistry &master_key, 
     }
 
     for (auto& utxo: m_fund_inputs) {
-        auto stack = utxo.output->Destination()->LookupKey(master_key, key_filter)->Sign(commit_tx, utxo.nin, spent_outs, SIGHASH_ALL);
-
-        for (size_t i = 0; i < stack.size(); ++i) {
-            utxo.witness.Set(i, move(stack[i]));
-        }
+        utxo.output->Destination()->LookupKey(master_key, key_filter)->SignInput(utxo, commit_tx, spent_outs, SIGHASH_ALL);
     }
 }
 
@@ -794,11 +787,11 @@ void SwapInscriptionBuilder::CheckOrdSwapSig() const
     }
 
     if (mSwapTx) {
-        VerifyTxSignature(chain(), m_ord_input->output->Destination()->Address(), m_ord_input->witness, *mSwapTx, 0, move(spent_outs));
+        VerifyTxSignature(chain(), m_ord_input->output->Destination()->Address(), *mSwapTx, 0, move(spent_outs));
     }
     else {
         CMutableTransaction swap_tx(MakeSwapTx(has_funds_sig));
-        VerifyTxSignature(chain(), m_ord_input->output->Destination()->Address(), m_ord_input->witness, swap_tx, 0, move(spent_outs));
+        VerifyTxSignature(chain(), m_ord_input->output->Destination()->Address(), swap_tx, 0, move(spent_outs));
     }
 }
 
@@ -817,13 +810,13 @@ void SwapInscriptionBuilder::CheckFundsCommitSig() const
 
     if (mFundsCommitTx) {
         for (const auto& in: m_fund_inputs) {
-            VerifyTxSignature(chain(), in.output->Destination()->Address(), in.witness, *mFundsCommitTx, in.nin, std::vector<CTxOut>(spent_outs));
+            VerifyTxSignature(chain(), in.output->Destination()->Address(), *mFundsCommitTx, in.nin, std::vector<CTxOut>(spent_outs));
         }
     }
     else {
         CMutableTransaction swap_tx(MakeFundsCommitTx());
         for (const auto& in: m_fund_inputs) {
-            VerifyTxSignature(chain(), in.output->Destination()->Address(), in.witness, swap_tx, in.nin, std::vector<CTxOut>(spent_outs));
+            VerifyTxSignature(chain(), in.output->Destination()->Address(), swap_tx, in.nin, std::vector<CTxOut>(spent_outs));
         }
     }
 }

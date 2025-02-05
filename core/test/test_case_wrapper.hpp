@@ -250,6 +250,9 @@ struct TestcaseWrapper
     std::string p2wpkh(uint32_t account, uint32_t change, uint32_t index)
     { return keyreg().Derive(keypath(84, account, change, index), false).GetP2WPKHAddress(l15::Bech32(l15::BTC, chain())); }
 
+    std::string p2pkh(uint32_t account, uint32_t change, uint32_t index)
+    { return keyreg().Derive(keypath(44, account, change, index), false).GetP2PKHAddress(chain()); }
+
     std::shared_ptr<IContractOutput> fund(CAmount amount, std::string addr, std::optional<std::string> changeaddr = {})
     {
         if (mUtxo) {

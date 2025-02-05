@@ -32,10 +32,10 @@ int main(int argc, char* argv[])
     session.cli(cli);
 
     // Let Catch (using Clara) parse the command line
-//    int returnCode = session.applyCommandLine(argc, argv);
-//    if(returnCode != 0) // Indicates a command line error
-//        return returnCode;
-//
+    int returnCode = session.applyCommandLine(argc, argv);
+    if(returnCode != 0) // Indicates a command line error
+        return returnCode;
+
 //    if(configpath.empty())
 //    {
 //        std::cerr << "Bitcoin config is not passed!" << std::endl;

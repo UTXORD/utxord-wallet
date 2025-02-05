@@ -28,10 +28,11 @@ const char* TX_SIGNATURE_STR = "TX_SIGNATURE";
 const  std::string SimpleTransaction::name_outputs = "outputs";
 const  std::string SimpleTransaction::name_rune_inputs = "rune_inputs";
 
-const uint32_t SimpleTransaction::s_protocol_version = 4;
+const uint32_t SimpleTransaction::s_protocol_version = 5;
+const uint32_t SimpleTransaction::s_protocol_version_no_p2address_sign = 4;
 const uint32_t SimpleTransaction::s_protocol_version_no_p2address = 3;
 const uint32_t SimpleTransaction::s_protocol_version_no_rune_transfer = 2;
-const char* SimpleTransaction::s_versions = "[2,3,4]";
+const char* SimpleTransaction::s_versions = "[2,3,4,5]";
 
 
 const std::string& SimpleTransaction::GetContractName() const
@@ -45,12 +46,14 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
         tx.vin.emplace_back(Txid(), 0);
         if (params.find("p2wpkh_utxo"))
             tx.vin.back().scriptWitness.stack = P2WPKH(chain(), 0, "").DummyWitness();
+        else if (params.find("p2pkh_utxo"))
+            tx.vin.back().scriptSig = P2PKH(chain(), 0, "").DummyScriptSig();
         else
             tx.vin.back().scriptWitness.stack = P2TR(chain(), 0, "").DummyWitness();
     }
     else {
         for (const auto &input: m_inputs) {
-            tx.vin.emplace_back(Txid::FromUint256(uint256S(input.output->TxID())), input.output->NOut());
+            tx.vin.emplace_back(Txid::FromUint256(uint256S(input.output->TxID())), input.output->NOut(), input.scriptSig);
             tx.vin.back().scriptWitness.stack = input.witness;
             if (tx.vin.back().scriptWitness.stack.empty()) {
                 tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
@@ -163,13 +166,9 @@ void SimpleTransaction::PartialSign(const KeyRegistry &master_key, const string 
     if (inputIt == m_inputs.end()) throw ContractTermMissing(name_utxo + '[' + std::to_string(nin) + ']');
 
     auto dest = inputIt->output->Destination();
-    auto keypair = dest->LookupKey(master_key, key_filter_tag);
+    auto signer = dest->LookupKey(master_key, key_filter_tag);
 
-    std::vector<bytevector> stack = keypair->Sign(tx, nin, spent_outs, SIGHASH_ALL);
-
-    for (size_t i = 0; i < stack.size(); ++i) {
-        inputIt->witness.Set(i, move(stack[i]));
-    }
+    signer->SignInput(*inputIt, tx, spent_outs, SIGHASH_ALL);
 }
 
 void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& key_filter_tag)
@@ -187,13 +186,8 @@ void SimpleTransaction::Sign(const KeyRegistry &master_key, const std::string& k
 
     for(auto& input: m_inputs) {
         auto dest = input.output->Destination();
-        auto keypair = dest->LookupKey(master_key, key_filter_tag);
-
-        std::vector<bytevector> stack = keypair->Sign(tx, input.nin, spent_outs, SIGHASH_ALL);
-
-        for (size_t i = 0; i < stack.size(); ++i) {
-            input.witness.Set(i, move(stack[i]));
-        }
+        auto signer = dest->LookupKey(master_key, key_filter_tag);
+        signer->SignInput(input, tx, spent_outs, SIGHASH_ALL);
     }
 }
 
@@ -205,6 +199,7 @@ std::vector<std::string> SimpleTransaction::RawTransactions() const
 UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 {
     if (version != s_protocol_version &&
+        version != s_protocol_version_no_p2address_sign &&
         version != s_protocol_version_no_p2address &&
         version != s_protocol_version_no_rune_transfer) throw ContractProtocolError("Wrong contract version: " + std::to_string(version) + ". Allowed are " + s_versions);
 
@@ -215,7 +210,7 @@ UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 
     UniValue utxo_arr(UniValue::VARR);
     for (const auto& input: m_inputs) {
-        if (input.output->Destination()->Type() == P2Address::type && version <= s_protocol_version_no_p2address)
+        if (input.output->Destination()->Type() == P2Address::type && version <= s_protocol_version_no_p2address_sign)
             throw ContractProtocolError(name_utxo + '[' + std::to_string(input.nin) + "]." + IContractDestination::name_addr + ": " + input.output->Destination()->Address() + " is not supported with v. " + std::to_string(version));
         UniValue spend = input.MakeJson();
         utxo_arr.push_back(move(spend));
@@ -242,6 +237,7 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 {
     uint32_t version = contract[name_version].getInt<uint32_t>();
     if (version != s_protocol_version &&
+        version != s_protocol_version_no_p2address_sign &&
         version != s_protocol_version_no_p2address &&
         version != s_protocol_version_no_rune_transfer)
         throw ContractProtocolError("Wrong " + val_simple_transaction + " contract version: " + contract[name_version].getValStr());
@@ -365,7 +361,7 @@ void SimpleTransaction::CheckSig() const
 
     CMutableTransaction tx = MakeTx("");
     for (const auto &input: m_inputs) {
-        VerifyTxSignature(chain(), input.output->Destination()->Address(), input.witness, tx, input.nin, spent_outs);
+        VerifyTxSignature(chain(), input.output->Destination()->Address(), tx, input.nin, spent_outs);
     }
 }
 

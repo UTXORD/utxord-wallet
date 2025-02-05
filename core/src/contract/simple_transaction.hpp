@@ -20,6 +20,7 @@ public:
     static const std::string name_rune_inputs;
 private:
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_p2address_sign;
     static const uint32_t s_protocol_version_no_p2address;
     static const uint32_t s_protocol_version_no_rune_transfer;
     static const char* s_versions;

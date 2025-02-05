@@ -230,11 +230,7 @@ void CreateInscriptionBuilder::SignCommit(const KeyRegistry& master_key, const s
 
     for (auto& utxo: m_inputs) {
         auto signer = utxo.output->Destination()->LookupKey(master_key, key_filter);
-        auto stack = signer->Sign(tx, utxo.nin, spent_outs, SIGHASH_ALL);
-
-        for (size_t i = 0; i < stack.size(); ++i) {
-            utxo.witness.Set(i, move(stack[i]));
-        }
+        signer->SignInput(utxo, tx, spent_outs, SIGHASH_ALL);
     }
 }
 
@@ -257,11 +253,7 @@ void CreateInscriptionBuilder::SignCollection(const KeyRegistry &master_key, con
     CMutableTransaction genesis_tx = MakeGenesisTx(MakeCommitTx());
 
     auto script_signer = m_collection_input->output->Destination()->LookupKey(master_key, key_filter);
-    auto stack = script_signer->Sign(genesis_tx, m_collection_input->nin, GetGenesisTxSpends(), SIGHASH_ALL);
-
-    for (size_t i = 0; i < stack.size(); ++i) {
-        m_collection_input->witness.Set(i, move(stack[i]));
-    }
+    script_signer->SignInput(*m_collection_input, genesis_tx, GetGenesisTxSpends(), SIGHASH_ALL);
 }
 
 void CreateInscriptionBuilder::SignInscription(const KeyRegistry &master_key, const std::string& key_filter)
@@ -580,8 +572,10 @@ UniValue CreateInscriptionBuilder::MakeJson(uint32_t version, InscribePhase phas
             contract.pushKV(name_destination_addr, m_ord_destination->Address());
         }
     }
-        if (m_fixed_change)
-           contract.pushKV(name_fixed_change, m_fixed_change->MakeJson());
+        if (version > s_protocol_version_no_fixed_change) {
+            if (m_fixed_change) contract.pushKV(name_fixed_change, m_fixed_change->MakeJson());
+        } else
+            if (m_fixed_change) throw ContractProtocolError(name_fixed_change + " is not supported with v. " + std::to_string(version));
 
         //no break
     //case LAZY_INSCRIPTION_MARKET_TERMS:

@@ -47,16 +47,19 @@ uint256 Bip322::ToSpendTxID(const l15::bytevector &m, std::string addr)
 
 l15::bytevector Bip322::Sign(l15::core::KeyRegistry &keyreg, std::string keyhint, const std::string &addr, const l15::bytevector &message)
 {
-    auto tx = ToSignTx(ToSpendTxID(message, addr));
+    uint256 tospend_txid = ToSpendTxID(message, addr);
+    auto tx = ToSignTx(tospend_txid);
 
     auto prevout = P2Address::Construct(m_chain, {}, addr);
+    prevout->Amount(0);
     std::vector<CTxOut> prevouts = { prevout->TxOutput()};
-    prevouts.front().nValue = 0;
 
     auto signer = prevout->LookupKey(keyreg, keyhint);
 
-    auto witness = signer->Sign(tx, 0, prevouts, SIGHASH_DEFAULT);
+    TxInput input(m_chain, 0, std::make_shared<UTXO>(m_chain, tospend_txid.GetHex(), 0, prevout));
+    signer->SignInput(input, tx, prevouts, SIGHASH_DEFAULT);
 
+    const std::vector<bytevector>& witness = input.witness;
     DataStream serdata;
     serdata << witness;
 
@@ -71,14 +74,14 @@ bool Bip322::Verify(const l15::bytevector &sig, const std::string &addr, const l
     auto tx = ToSignTx(ToSpendTxID(message, addr));
 
     auto prevout = P2Address::Construct(m_chain, {}, addr);
+    prevout->Amount(0);
     std::vector<CTxOut> prevouts = { prevout->TxOutput()};
-    prevouts.front().nValue = 0;
 
     DataStream serdata(sig);
     serdata >> tx.vin.front().scriptWitness.stack;
 
     try {
-        IContractBuilder::VerifyTxSignature(m_chain, addr, tx.vin.front().scriptWitness.stack, tx, 0, move(prevouts));
+        IContractBuilder::VerifyTxSignature(m_chain, addr, tx, 0, move(prevouts));
         return true;
     } catch (const SignatureError& e) {
         return false;
