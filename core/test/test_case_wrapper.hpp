@@ -257,6 +257,7 @@ struct TestcaseWrapper
     {
         if (mUtxo) {
             SimpleTransaction contract(chain());
+            contract.MiningFeeRate(2000);
             contract.AddInput(mUtxo);
             contract.AddOutput(amount, addr);
             if (changeaddr) contract.AddChangeOutput(*changeaddr);

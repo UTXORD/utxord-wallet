@@ -67,15 +67,15 @@ int main(int argc, char* argv[])
         configpath = (std::filesystem::current_path() / p).string();
 
     w = std::make_unique<TestcaseWrapper>(configpath);
-    //w->set_utxo("065e9bda6831ad4732c92163c1e2693a638dbc1035db1acc402490765eea70cf", 21, 10000, "tb1q3l4wkhxtx95z6fzle4qd7mvxdn44z608d374pp");
+    //w->set_utxo("2724ecc37e968e2a303b0cbcfdba8b53aea671b80c1760653433f05868d15127", 29, 10000, "tb1p7hccfqkwh7py684pzkudjpfgg492fhwqj0yy3a9kd9pu4zdd8w9qskcfzm");
 
     auto mnemonic_parser = l15::core::make_mnemonic_parser(en_dict);
     w->InitKeyRegistry(hex(mnemonic_parser.MakeSeed({"afford", "exhaust", "file", "kind", "vintage", "one", "snack", "neck", "mystery", "boost", "match", "home"}, {})));
 
     //w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
     w->keyreg().AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
-    w->keyreg().AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["2'"], "change":["0"], "index_range":"0-256"})");
-    w->keyreg().AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["3'","4'"], "change":["0" , "1"], "index_range":"0-256"})");
+    w->keyreg().AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0"], "index_range":"0-256"})");
+    w->keyreg().AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["0'"], "change":["0" , "1"], "index_range":"0-256"})");
 
     int res = session.run();
 
@@ -106,9 +106,9 @@ struct CreateCondition
     const char* comment;
 };
 
-std::string collection_id;
+std::string collection_id;// = "65c4f3a23bb980d1f685b2028f5103adbf0ff1614ef67592cee3bc88650ca0fai0";
 std::string delegate_id;
-Transfer collection_utxo;
+Transfer collection_utxo;// = {"65c4f3a23bb980d1f685b2028f5103adbf0ff1614ef67592cee3bc88650ca0fa", 0, 546, "tb1p7hccfqkwh7py684pzkudjpfgg492fhwqj0yy3a9kd9pu4zdd8w9qskcfzm"};
 CAmount fee_rate;
 
 static const auto pixel_avif = std::tuple<std::string, bytevector>("image/avif", unhex<bytevector>("0000001c667479706d696631000000006d696631617669666d696166000000f16d657461000000000000002168646c72000000000000000070696374000000000000000000000000000000000e7069746d0000000000010000001e696c6f630000000004400001000100000000011500010000001e0000002869696e660000000000010000001a696e6665020000000001000061763031496d616765000000007069707270000000516970636f0000001469737065000000000000000100000001000000107061737000000001000000010000001561763143812000000a073800069010d002000000107069786900000000030808080000001769706d61000000000000000100010401028384000000266d6461740a073800069010d0023213164000004800000c066e6b60fb175753a17aa0"));
@@ -124,20 +124,23 @@ static const auto svg = std::tuple<std::string, bytevector>("image/svg+xml", svg
 
 TEST_CASE("simple_inscribe")
 {
-    std::string change_addr = w->btc().GetNewAddress();
-    std::string market_fee_addr = w->btc().GetNewAddress();
-    std::string author_fee_addr = w->btc().GetNewAddress();
+    // std::string change_addr = w->btc().GetNewAddress();
+    // std::string market_fee_addr = w->btc().GetNewAddress();
+    // std::string author_fee_addr = w->btc().GetNewAddress();
+    std::string change_addr = w->p2wpkh(0,0,0);
+    std::string market_fee_addr = w->p2wpkh(0,0,0);
+    std::string author_fee_addr = w->p2wpkh(0,0,0);
 
-    fee_rate = 3000;
+    fee_rate = 1500;
 
     CreateInscriptionBuilder inscription(w->chain(), INSCRIPTION);
     REQUIRE_NOTHROW(inscription.MarketFee(0, market_fee_addr));
     REQUIRE_NOTHROW(inscription.MiningFeeRate(fee_rate));
-    REQUIRE_NOTHROW(inscription.OrdOutput(546, w->p2tr(2,0,1)));
+    REQUIRE_NOTHROW(inscription.OrdOutput(546, w->p2tr(0,0,0)));
     REQUIRE_NOTHROW(inscription.ChangeAddress(change_addr));
-    REQUIRE_NOTHROW(inscription.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
+    REQUIRE_NOTHROW(inscription.InscribeScriptPubKey(w->derive(86,0,0,0).GetSchnorrKeyPair().GetPubKey()));
     REQUIRE_NOTHROW(inscription.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
-    REQUIRE_NOTHROW(inscription.AddInput(w->fund(10000, w->p2tr(0,0,0))));
+    REQUIRE_NOTHROW(inscription.AddInput(w->fund(9650, w->p2wpkh(0,0,0))));
 
     REQUIRE_NOTHROW(inscription.SignCommit(w->keyreg(), "fund"));
     REQUIRE_NOTHROW(inscription.SignInscription(w->keyreg(), "inscribe"));
@@ -535,35 +538,18 @@ TEST_CASE("inscribe")
     }
 }
 
-// struct ServerCreateCondition
-// {
-//     std::vector<std::tuple<CAmount, std::string>> utxo;
-//     CAmount market_fee;
-//     CAmount fixed_change;
-//     bool has_change;
-//     bool has_parent;
-//     bool return_collection;
-//     uint32_t ext_fee_count;
-//     uint32_t min_version;
-//     const char* comment;
-// };
 
-TEST_CASE("server_side_fill_inscribe")
+TEST_CASE("psbt_inscribe")
 {
     std::string defaddr = w->p2wpkh(0,0,0);
-    std::string destination_addr = defaddr;
+    std::string destination_addr = w->p2tr(0,0,0);;
     std::string market_fee_addr = defaddr;
     std::string author_fee_addr = defaddr;
     std::string extra_fee_addr = defaddr;
     std::string return_addr = defaddr;
 
     //CAmount fee_rate;
-    try {
-        fee_rate = ParseAmount(w->btc().EstimateSmartFee("1"));
-    }
-    catch(...) {
-        fee_rate = 1500;
-    }
+    fee_rate = 2000;
 
     auto content = GENERATE_COPY(pixel_avif/*, pixel_png, pixel_webp, simple_html, svg, no_content*/);
 
@@ -592,15 +578,15 @@ TEST_CASE("server_side_fill_inscribe")
     // CreateCondition child_extfee_1 {{{20000, w->p2tr(0,0,15) }}, 0, 0, false, true, false, 11, 1, "child_extfee_1"};
     CreateCondition child_w_change_extfee_1 {{{20000, w->p2tr(0,0,0) }}, 0, 0, true, true, false, 1, 11, "child_w_change_extfee_1"};
     // CreateCondition child_w_fee_extfee_1 {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,17) }}, 1000, 0, false, true, false, 11, 1, "child_w_fee_extfee_1"};
-    CreateCondition child_w_change_fee_extfee_1 {{{20000, w->p2tr(0,0,0) }}, 1000, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
+    CreateCondition child_w_change_fee_extfee_1 {{{0, w->p2wpkh(0,0,0) }}, 600, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
     CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,0) }}, 0, 5000, true, true, false, 2, 11, "child_w_change_fixed_change_extfee_2"};
 
     auto version = GENERATE(/*8,9,10,*/11);
-    auto condition = GENERATE_COPY(inscription/*,
+    auto condition = GENERATE_COPY(/*inscription,
                                    inscription_w_change, inscription_w_fee, inscription_w_change_fee, inscription_w_fix_change,
                                    child, child_w_change, child_w_fee, child_w_change_fee, child_w_change_fixed_change,
                                    segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee,*/
-                                   /*child_extfee_1,*/ /*child_w_change_extfee_1,*/ /*child_w_fee_extfee_1,*/ /*child_w_change_fee_extfee_1, child_w_change_fixed_change_extfee_2*/
+                                   /*child_extfee_1, child_w_change_extfee_1, child_w_fee_extfee_1,*/ child_w_change_fee_extfee_1/*, child_w_change_fixed_change_extfee_2*/
     );
 
     if (condition.min_version <= version) {
@@ -609,218 +595,232 @@ TEST_CASE("server_side_fill_inscribe")
         bool check_result = false;
         bool lazy = false;
 
-        SECTION("Self inscribe") {
-            std::clog << "Self inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
-
-            check_result = true;
-
-            CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
-            CHECK_NOTHROW(builder.MarketFee(condition.market_fee, market_fee_addr));
-            for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
-                CHECK_NOTHROW(builder.AddCustomFee(1000, extra_fee_addr));
-            }
-
-            CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
-            CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-            if (get<1>(content).empty()) {
-                if (delegate_id.empty()) {
-                    REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
-                }
-                else {
-                    REQUIRE_NOTHROW(builder.Delegate(delegate_id));
-                }
-            }
-            else {
-                REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
-            }
-            CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
-            CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
-            if (condition.fixed_change != 0) {
-                CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
-            }
-            CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
-
-            if (condition.has_parent) {
-                CHECK_NOTHROW(builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount,
-                                                      collection_utxo.m_addr));
-            }
-
-            CAmount clean_requred_fund = 0;
-
-            REQUIRE_NOTHROW(clean_requred_fund = builder.CalculateMissingAmount(""));
-            for (const auto &utxo: condition.utxo) {
-                CAmount requred_fund = 0;
-                REQUIRE_NOTHROW(requred_fund = builder.CalculateMissingAmount(get<1>(utxo)));
-
-                if (clean_requred_fund) {
-                    CHECK(clean_requred_fund < requred_fund);
-                    clean_requred_fund = 0; // reset in order to compare for just first UTXO
-                }
-                else {
-                    CHECK_FALSE(requred_fund); // since we always fully filled minimal with first UTXO
-                }
-
-                CHECK_NOTHROW(builder.AddInput(w->fund(requred_fund + get<0>(utxo), get<1>(utxo))));
-            }
-
-            stringvector psbts = builder.TransactionsPSBT();
-            std::clog << "Commit PSBT:\n" << psbts[0] << "\nGenesis PSBT:\n" << psbts[1] << std::endl;
-
-            PSBT commitPsbt(base64::decode<bytevector>(psbts[0]));
-            PSBT genesisPsbt(base64::decode<bytevector>(psbts[1]));
-
-            std::string commitBase64 = base64::encode(commitPsbt.Serialize<bytevector>());
-            std::string genesisBase64 = base64::encode(genesisPsbt.Serialize<bytevector>());
-
-            CHECK(psbts[0] ==commitBase64);
-            CHECK(psbts[1] ==genesisBase64);
-
-            std::string market_terms;
-            REQUIRE_NOTHROW(market_terms = builder.Serialize(version, MARKET_TERMS));
-
-            std::clog << "MARKET_TERMS:\n" << market_terms << std::endl;
-
-            CreateInscriptionBuilder final_contract(w->chain(), INSCRIPTION);
-            REQUIRE_NOTHROW(final_contract.Deserialize(market_terms, MARKET_TERMS));
-
-            // REQUIRE_NOTHROW(final_contract.ApplyPSBTSignature({}));
-            //
-            // CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
-            // CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
-            // if (condition.has_parent) {
-            //     CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "ord"));
-            // }
-            //
-            // std::string contract;
-            // REQUIRE_NOTHROW(contract = builder.Serialize(version, INSCRIPTION_SIGNATURE));
-            // // std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
-            //
-            // CreateInscriptionBuilder fin_contract(w->chain(), INSCRIPTION);
-            // REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
-
-            REQUIRE_NOTHROW(rawtxs = final_contract.RawTransactions());
-
-
-//            spends = fin_contract.GetGenesisTxSpends();
-//        CMutableTransaction tx;
-//        REQUIRE(DecodeHexTx(tx, rawtxs[0]));
+//         SECTION("Self inscribe") {
+//             std::clog << "Self inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
 //
-//        std::clog << "TX ============================================================" << '\n';
-//        LogTx(w->chain(), tx);
-//        std::clog << "===============================================================" << '\n';
+//             check_result = true;
 //
+//             CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
+//             CHECK_NOTHROW(builder.MarketFee(condition.market_fee, market_fee_addr));
+//             for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
+//                 CHECK_NOTHROW(builder.AddCustomFee(1000, extra_fee_addr));
+//             }
 //
-//        std::vector<CTxOut> prevouts;
-//        for (const auto& utxo: condition.utxo)
-//            prevouts.emplace_back(get<0>(utxo), bech->PubKeyScript(get<1>(utxo)));
-//
-//        PrecomputedTransactionData txdata;
-//        txdata.Init(tx, move(prevouts), /* force=*/ true);
-//
-//        for (size_t nin = 0; nin < condition.utxo.size(); ++nin) {
-//            MutableTransactionSignatureChecker TxOrdChecker(&tx, nin, get<0>(condition.utxo[nin]), txdata, MissingDataBehavior::FAIL);
-//            bool ok = VerifyScript(CScript(), bech->PubKeyScript(get<1>(condition.utxo[nin])), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
-//            //REQUIRE(ok);
-//        }
-        }
-
-//         SECTION("lazy inscribe") {
-//             if (condition.has_parent) {
-//                 std::clog << "Lazy inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
-//
-//                 check_result = true;
-//                 lazy = true;
-//
-//                 CreateInscriptionBuilder builder_terms(w->chain(), LAZY_INSCRIPTION);
-//                 CHECK_NOTHROW(builder_terms.MarketFee(condition.market_fee, market_fee_addr));
-//                 CHECK_NOTHROW(builder_terms.AuthorFee(1000, author_fee_addr));
-//                 for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
-//                     CHECK_NOTHROW(builder_terms.AddCustomFee(1000, extra_fee_addr));
-//                 }
-//                 CHECK_NOTHROW(builder_terms.MarketInscribeScriptPubKey(w->derive(86, 3, 0, 0).GetSchnorrKeyPair().GetPubKey()));
-//                 CHECK_NOTHROW(builder_terms.Collection(collection_id, collection_utxo.m_amount, collection_utxo.m_addr));
-//                 std::string market_terms;
-//                 REQUIRE_NOTHROW(market_terms = builder_terms.Serialize(version, LAZY_INSCRIPTION_MARKET_TERMS));
-//
-//                 // std::clog << "{LASY_INSCRIPTION_MARKET_TERMS:\n" << market_terms << "\n}" << std::endl;
-//
-//                 CreateInscriptionBuilder builder(w->chain(), LAZY_INSCRIPTION);
-//                 REQUIRE_NOTHROW(builder.Deserialize(market_terms, LAZY_INSCRIPTION_MARKET_TERMS));
-//
-//                 if (get<1>(content).empty()) {
-//                     if (delegate_id.empty()) {
-//                         REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
-//                     }
-//                     else {
-//                         REQUIRE_NOTHROW(builder.Delegate(delegate_id));
-//                     }
+//             CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
+//             CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+//             if (get<1>(content).empty()) {
+//                 if (delegate_id.empty()) {
+//                     REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
 //                 }
 //                 else {
-//                     REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+//                     REQUIRE_NOTHROW(builder.Delegate(delegate_id));
 //                 }
-//                 CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
-//                 CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
-//                 CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
-//                 CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
-//                 CHECK_NOTHROW(builder.FundMiningFeeInternalPubKey(w->derive(86,4,0,1).GetSchnorrKeyPair().GetPubKey()));
-//                 if (condition.fixed_change != 0) {
-//                     CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
-//                 }
-//                 CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
-//
-//                 for (const auto &utxo: condition.utxo) {
-//                     CHECK_NOTHROW(builder.AddInput(w->fund(get<0>(utxo), get<1>(utxo))));
-//                 }
-//
-//                 uint32_t txcount = builder.TransactionCount(LAZY_INSCRIPTION_SIGNATURE);
-//                 for (uint32_t i = 0; i < txcount; ++i) {
-//                     std::string rawtx;
-//                     CHECK_NOTHROW(rawtx = builder.RawTransaction(LAZY_INSCRIPTION_SIGNATURE, i));
-//
-//                     CMutableTransaction tx;
-//                     CHECK(DecodeHexTx(tx, rawtx));
-//
-//                     //LogTx(w->chain(), tx);
-//                 }
-//
-//                 CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
-//                 CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
-//
-//                 std::string contract;
-//                 REQUIRE_NOTHROW(contract = builder.Serialize(version, LAZY_INSCRIPTION_SIGNATURE));
-//                 // std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
-//
-//                 CreateInscriptionBuilder fin_builder(w->chain(), LAZY_INSCRIPTION);
-//                 REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LAZY_INSCRIPTION_SIGNATURE));
-//
-//                 CHECK_NOTHROW(fin_builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
-//                 if (condition.return_collection) {
-//                     CHECK_NOTHROW(fin_builder.OverrideCollectionAddress(return_addr));
-//                 }
-//                 CHECK_NOTHROW(fin_builder.MarketSignInscription(w->keyreg(), "inscribe"));
-//                 CHECK_NOTHROW(fin_builder.SignCollection(w->keyreg(), "ord"));
-//
-//                 REQUIRE_NOTHROW(rawtxs = fin_builder.RawTransactions());
-//
-//                 spends = fin_builder.GetGenesisTxSpends();
-//
-// //                CMutableTransaction tx;
-// //                REQUIRE(DecodeHexTx(tx, rawtxs[1]));
-// //
-// //                //size_t nin = 2;
-// //
-// //                for (size_t nin = 0; nin < spends.size(); ++nin) {
-// //                    CAmount amount = spends[nin].nValue;
-// //
-// //                    PrecomputedTransactionData txdata;
-// //                    txdata.Init(tx, fin_builder.GetGenesisTxSpends(), /* force=*/ true);
-// //
-// //                    MutableTransactionSignatureChecker TxChecker(&tx, nin, amount, txdata, MissingDataBehavior::FAIL);
-// //                    bool ok = VerifyScript(CScript(), spends[nin].scriptPubKey, &tx.vin[nin].scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxChecker);
-// //                    REQUIRE(ok);
-// //                }
 //             }
+//             else {
+//                 REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+//             }
+//             CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,3,0,1).GetSchnorrKeyPair().GetPubKey()));
+//             CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,4,0,0).GetSchnorrKeyPair().GetPubKey()));
+//             if (condition.fixed_change != 0) {
+//                 CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
+//             }
+//             CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
+//
+//             if (condition.has_parent) {
+//                 CHECK_NOTHROW(builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount,
+//                                                       collection_utxo.m_addr));
+//             }
+//
+//             CAmount clean_requred_fund = 0;
+//
+//             REQUIRE_NOTHROW(clean_requred_fund = builder.CalculateMissingAmount(""));
+//             for (const auto &utxo: condition.utxo) {
+//                 CAmount requred_fund = 0;
+//                 REQUIRE_NOTHROW(requred_fund = builder.CalculateMissingAmount(get<1>(utxo)));
+//
+//                 if (clean_requred_fund) {
+//                     CHECK(clean_requred_fund < requred_fund);
+//                     clean_requred_fund = 0; // reset in order to compare for just first UTXO
+//                 }
+//                 else {
+//                     CHECK_FALSE(requred_fund); // since we always fully filled minimal with first UTXO
+//                 }
+//
+//                 CHECK_NOTHROW(builder.AddInput(w->fund(requred_fund + get<0>(utxo), get<1>(utxo))));
+//             }
+//
+//             stringvector psbts = builder.TransactionsPSBT();
+//             std::clog << "Commit PSBT:\n" << psbts[0] << "\nGenesis PSBT:\n" << psbts[1] << std::endl;
+//
+//             PSBT commitPsbt(base64::decode<bytevector>(psbts[0]));
+//             PSBT genesisPsbt(base64::decode<bytevector>(psbts[1]));
+//
+//             std::string commitBase64 = base64::encode(commitPsbt.Serialize<bytevector>());
+//             std::string genesisBase64 = base64::encode(genesisPsbt.Serialize<bytevector>());
+//
+//             CHECK(psbts[0] ==commitBase64);
+//             CHECK(psbts[1] ==genesisBase64);
+//
+//             std::string market_terms;
+//             REQUIRE_NOTHROW(market_terms = builder.Serialize(version, MARKET_TERMS));
+//
+//             std::clog << "MARKET_TERMS:\n" << market_terms << std::endl;
+//
+//             CreateInscriptionBuilder final_contract(w->chain(), INSCRIPTION);
+//             REQUIRE_NOTHROW(final_contract.Deserialize(market_terms, MARKET_TERMS));
+//
+//             // REQUIRE_NOTHROW(final_contract.ApplyPSBTSignature({}));
+//             //
+//             // CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+//             // CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
+//             // if (condition.has_parent) {
+//             //     CHECK_NOTHROW(builder.SignCollection(w->keyreg(), "ord"));
+//             // }
+//             //
+//             // std::string contract;
+//             // REQUIRE_NOTHROW(contract = builder.Serialize(version, INSCRIPTION_SIGNATURE));
+//             // // std::clog << "INSCRIPTION_SIGNATURE:\n" << contract << std::endl;
+//             //
+//             // CreateInscriptionBuilder fin_contract(w->chain(), INSCRIPTION);
+//             // REQUIRE_NOTHROW(fin_contract.Deserialize(contract, INSCRIPTION_SIGNATURE));
+//
+//             REQUIRE_NOTHROW(rawtxs = final_contract.RawTransactions());
+//
+//
+// //            spends = fin_contract.GetGenesisTxSpends();
+// //        CMutableTransaction tx;
+// //        REQUIRE(DecodeHexTx(tx, rawtxs[0]));
+// //
+// //        std::clog << "TX ============================================================" << '\n';
+// //        LogTx(w->chain(), tx);
+// //        std::clog << "===============================================================" << '\n';
+// //
+// //
+// //        std::vector<CTxOut> prevouts;
+// //        for (const auto& utxo: condition.utxo)
+// //            prevouts.emplace_back(get<0>(utxo), bech->PubKeyScript(get<1>(utxo)));
+// //
+// //        PrecomputedTransactionData txdata;
+// //        txdata.Init(tx, move(prevouts), /* force=*/ true);
+// //
+// //        for (size_t nin = 0; nin < condition.utxo.size(); ++nin) {
+// //            MutableTransactionSignatureChecker TxOrdChecker(&tx, nin, get<0>(condition.utxo[nin]), txdata, MissingDataBehavior::FAIL);
+// //            bool ok = VerifyScript(CScript(), bech->PubKeyScript(get<1>(condition.utxo[nin])), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
+// //            //REQUIRE(ok);
+// //        }
 //         }
+
+        SECTION("lazy inscribe") {
+            if (condition.has_parent) {
+                std::clog << "Lazy inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
+
+                check_result = true;
+                lazy = true;
+
+                CreateInscriptionBuilder builder(w->chain(), LAZY_INSCRIPTION);
+                CHECK_NOTHROW(builder.MarketFee(condition.market_fee, market_fee_addr));
+                CHECK_NOTHROW(builder.AuthorFee(1000, author_fee_addr));
+                for (uint32_t i = 0; i < condition.ext_fee_count; ++i) {
+                    CHECK_NOTHROW(builder.AddCustomFee(1000, extra_fee_addr));
+                }
+                CHECK_NOTHROW(builder.MarketInscribeScriptPubKey(w->derive(86, 0, 0, 0).GetSchnorrKeyPair().GetPubKey()));
+                CHECK_NOTHROW(builder.Collection(collection_id, collection_utxo.m_amount, collection_utxo.m_addr));
+
+                if (get<1>(content).empty()) {
+                    if (delegate_id.empty()) {
+                        REQUIRE_NOTHROW(builder.Data(get<0>(simple_html), get<1>(simple_html)));
+                    }
+                    else {
+                        REQUIRE_NOTHROW(builder.Delegate(delegate_id));
+                    }
+                }
+                else {
+                    REQUIRE_NOTHROW(builder.Data(get<0>(content), get<1>(content)));
+                }
+                CHECK_NOTHROW(builder.OrdOutput(546, destination_addr));
+                CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
+                CHECK_NOTHROW(builder.InscribeInternalPubKey(w->derive(86,1,0,0).GetSchnorrKeyPair().GetPubKey()));
+                CHECK_NOTHROW(builder.InscribeScriptPubKey(w->derive(86,0,0,0).GetSchnorrKeyPair().GetPubKey()));
+                CHECK_NOTHROW(builder.FundMiningFeeInternalPubKey(w->derive(86,4,0,1).GetSchnorrKeyPair().GetPubKey()));
+                if (condition.fixed_change != 0) {
+                    CHECK_NOTHROW(builder.FixedChange(condition.fixed_change, destination_addr));
+                }
+                CHECK_NOTHROW(builder.ChangeAddress(destination_addr));
+
+                CAmount clean_requred_fund;
+                REQUIRE_NOTHROW(clean_requred_fund = builder.CalculateMissingAmount(""));
+                for (const auto &utxo: condition.utxo) {
+                    CAmount requred_fund = 0;
+                    REQUIRE_NOTHROW(requred_fund = builder.CalculateMissingAmount(get<1>(utxo)));
+
+                    if (clean_requred_fund) {
+                        CHECK(clean_requred_fund < requred_fund);
+                        clean_requred_fund = 0; // reset in order to compare for just first UTXO
+                    }
+                    else {
+                        CHECK_FALSE(requred_fund); // since we always fully filled minimal with first UTXO
+                    }
+
+                    //CHECK_NOTHROW(builder.AddInput(w->fund(requred_fund + get<0>(utxo), get<1>(utxo))));
+                    builder.AddUTXO("4e6d0026192d4cd06f26b7abd14a58b3e87ea584565712fcfb7fcc8abf471359", 0, 4124, "tb1q3l4wkhxtx95z6fzle4qd7mvxdn44z608d374pp");
+                }
+
+                stringvector psbts = builder.TransactionsPSBT();
+                std::clog << "Commit PSBT:\n" << psbts[0] <<
+                           "\nGenesis PSBT:\n" << psbts[1] << std::endl;
+
+                PSBT commitPsbt(base64::decode<bytevector>(psbts[0]));
+                PSBT genesisPsbt(base64::decode<bytevector>(psbts[1]));
+
+                std::string commitBase64 = base64::encode(commitPsbt.Serialize<bytevector>());
+                std::string genesisBase64 = base64::encode(genesisPsbt.Serialize<bytevector>());
+
+                CHECK(psbts[0] ==commitBase64);
+                CHECK(psbts[1] ==genesisBase64);
+
+                uint32_t txcount = builder.TransactionCount(LAZY_INSCRIPTION_SIGNATURE);
+                for (uint32_t i = 0; i < txcount; ++i) {
+                    std::string rawtx;
+                    CHECK_NOTHROW(rawtx = builder.RawTransaction(LAZY_INSCRIPTION_SIGNATURE, i));
+
+                    CMutableTransaction tx;
+                    CHECK(DecodeHexTx(tx, rawtx));
+
+                    LogTx(w->chain(), tx);
+                }
+
+                std::string contract;
+                CHECK_NOTHROW(contract = builder.Serialize(version, MARKET_TERMS));
+
+                CreateInscriptionBuilder market_builder(w->chain(), LAZY_INSCRIPTION);
+
+                CHECK_NOTHROW(market_builder.Deserialize(contract, MARKET_TERMS));
+
+                CHECK_NOTHROW(market_builder.ApplyPSBTSignature({
+                    "cHNidP8BAIkCAAAAAUgM57B9JLj74h83r3hxyT292/RZJFCKgWb4W5mrQCcnAAAAAAD/////AiICAAAAAAAAIlEgLW1Vj2Vdv6jPJd9A2kF64SRvYCCMdwlUoPQ6eyZ3qH+wDAAAAAAAACJRIGSN0iJ1QZQxj+EqX/9dvM2lpukbHmqlhmQCo2JyH+1/AAAAAAABAR8cEAAAAAAAABYAFI/q61zLMWgtJF/NQN9thmzrUWnnIgICxkyTD75FKrFAyz4DI0VBykPmtwqd9adHS/RnnHpTi5dIMEUCIQD6R14t6DqEXFtM/YRhbtP9j48qJq4BdUQfMtPUS+ZGDwIgG2nnvKMulAkZO/L7jkeHjuCB8bazrkcrPtPSjOMOa40BAAAA",
+                    "cHNidP8BAP04AQIAAAADOt2lrP4YgvYBcKg5d2mO4X6PUefJ4Uim2LXNL9xsiaIAAAAAAP////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////zrdpaz+GIL2AXCoOXdpjuF+j1HnyeFIpti1zS/cbImiAQAAAAD/////BSICAAAAAAAAIlEg9fGEgs6/gk0eoRW42QUoRUqk3cCTyEj0tmlDyomtO4oiAgAAAAAAACJRIPXxhILOv4JNHqEVuNkFKEVKpN3Ak8hI9LZpQ8qJrTuKWAIAAAAAAAAWABSP6utcyzFoLSRfzUDfbYZs61Fp5+gDAAAAAAAAFgAUj+rrXMsxaC0kX81A322GbOtRaefoAwAAAAAAABYAFI/q61zLMWgtJF/NQN9thmzrUWnnAAAAAAABASsiAgAAAAAAACJRIC1tVY9lXb+ozyXfQNpBeuEkb2AgjHcJVKD0Onsmd6h/AQMEgwAAAEEUqCM3X2Qod3TO7tfioaYMuL8PHhdHGh+1kK45vSMsSvAnntOOfwCzFYjgyy0w3jOUMF0ePgSpNV/9sDPm0kp+c0GyA2Unz0uuNOeup+k7Rx5STuM3dJ86vau+L3bbLFOKZu1ycWIMwsMoUBCspEE4nSNv/8ZqZK8XM47NK7yCccGFgyIVwffuUlxGQZkNgX86Hbsryu4cCq2YfKKB+5XHxbRYKHwH/bUBIKgjN19kKHd0zu7X4qGmDLi/Dx4XRxoftZCuOb0jLErwrCCoIzdfZCh3dM7u1+Khpgy4vw8eF0caH7WQrjm9IyxK8LpSnABjA29yZAEDIPqgDGWIvOPOknX2TmHxD7+tA1GPArKF9tGAuTui88RlAQEKaW1hZ2UvYXZpZgBNMwEAAAAcZnR5cG1pZjEAAAAAbWlmMWF2aWZtaWFmAAAA8W1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAAAEQAABAAEAAAAAARUAAQAAAB4AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxSW1hZ2UAAAAAcGlwcnAAAABRaXBjbwAAABRpc3BlAAAAAAAAAAEAAAABAAAAEHBhc3AAAAABAAAAAQAAABVhdjFDgSAAAAoHOAAGkBDQAgAAABBwaXhpAAAAAAMICAgAAAAXaXBtYQAAAAAAAAABAAEEAQKDhAAAACZtZGF0Cgc4AAaQENACMhMWQAAASAAADAZua2D7F1dToXqgaMABFyD37lJcRkGZDYF/Oh27K8ruHAqtmHyigfuVx8W0WCh8BwEYICee045/ALMViODLLTDeM5QwXR4+BKk1X/2wM+bSSn5zAAEBKyICAAAAAAAAIlEg9fGEgs6/gk0eoRW42QUoRUqk3cCTyEj0tmlDyomtO4oAAQErsAwAAAAAAAAiUSBkjdIidUGUMY/hKl//XbzNpabpGx5qpYZkAqNich/tfwEDBIIAAABBFKgjN19kKHd0zu7X4qGmDLi/Dx4XRxoftZCuOb0jLErw3Dc2zLWTCFbSRVKi/Ve/Janm5w82QSFSTll2ORGHniNBZMWq89u0PjGwUzKdwAFDHpZbiOQk9S27h1bAm3R2c+qOblTlGlN3KRjD0x4Iy1Z3iA1iVkrHBsZKlkmEZDjsMYIiFcF5T3M8ZfP3JldHs+FndLFleyhfjkzoWOxUPrlYlN8mMkcgqCM3X2Qod3TO7tfioaYMuL8PHhdHGh+1kK45vSMsSvCsIKgjN19kKHd0zu7X4qGmDLi/Dx4XRxoftZCuOb0jLErwulKcwAEXIHlPczxl8/cmV0ez4Wd0sWV7KF+OTOhY7FQ+uViU3yYyARgg3Dc2zLWTCFbSRVKi/Ve/Janm5w82QSFSTll2ORGHniMAAAAAAAA="
+                }));
+
+                // CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
+                // CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
+                //
+                // std::string contract;
+                REQUIRE_NOTHROW(contract = market_builder.Serialize(version, LAZY_INSCRIPTION_SIGNATURE));
+                // // std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
+
+                CreateInscriptionBuilder fin_builder(w->chain(), LAZY_INSCRIPTION);
+                REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LAZY_INSCRIPTION_SIGNATURE));
+
+                CHECK_NOTHROW(fin_builder.AddCollectionUTXO(collection_id, collection_utxo.m_txid, collection_utxo.m_nout, collection_utxo.m_amount, collection_utxo.m_addr));
+                // if (condition.return_collection) {
+                //     CHECK_NOTHROW(fin_builder.OverrideCollectionAddress(return_addr));
+                // }
+                CHECK_NOTHROW(fin_builder.MarketSignInscription(w->keyreg(), "inscribe"));
+                CHECK_NOTHROW(fin_builder.SignCollection(w->keyreg(), "ord"));
+
+                REQUIRE_NOTHROW(rawtxs = fin_builder.RawTransactions());
+            }
+        }
 
         if (check_result) {
 
@@ -852,43 +852,12 @@ TEST_CASE("server_side_fill_inscribe")
             CHECK(revealTx.vout[0].nValue == 546);
 
             if (condition.market_fee) {
-                CHECK(revealTx.vout.back().nValue == condition.market_fee);
+                CHECK(revealTx.vout[condition.has_parent ? 2 : 1].nValue == condition.market_fee);
             }
 
-//             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
-// //            REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
-//
-//             try {
-//                 w->btc().SpendTx(CTransaction(revealTx));
-//             }
-//             catch(...) {
-//                 bool ok = true;
-//
-//                 PrecomputedTransactionData txdata;
-//                 txdata.Init(revealTx, move(spends), /* force=*/ true);
-//
-//                 for (size_t nin = 0; nin < txdata.m_spent_outputs.size(); ++nin) {
-//                     std::clog << "Input " << nin << " signature ... ";
-//                     CAmount amount = txdata.m_spent_outputs[nin].nValue;
-//
-//                     MutableTransactionSignatureChecker txChecker(&revealTx, nin, amount, txdata, MissingDataBehavior::FAIL);
-//                     ScriptError err;
-//                     ok &= VerifyScript(CScript(), txdata.m_spent_outputs[nin].scriptPubKey, &revealTx.vin[nin].scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, txChecker, &err);
-//
-//                     if (!ok) {
-//                         std::clog << " FAIL: " << ScriptErrorString(err) << std::endl;
-//                         FAIL("Genesis TX error on input " + std::to_string(nin));
-//                     }
-//                     else {
-//                         std::clog << " ok" << std::endl;
-//                     }
-//                 }
-//                 if (ok) {
-//                     std::clog << w->btc().TestTxSequence({revealTx}) << std::endl;
-//
-//                     REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
-//                 }
-//             }
+            REQUIRE_NOTHROW(w->btc().TestTxSequence({commitTx, revealTx}));
+            // REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
+            // REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(revealTx)));
 
             if (condition.has_parent) {
                 collection_utxo.m_txid = revealTx.GetHash().GetHex();

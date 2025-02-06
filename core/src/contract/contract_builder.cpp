@@ -287,6 +287,15 @@ std::shared_ptr<ISigner> P2PKH::LookupKey(const KeyRegistry &masterKey, const st
     return std::make_shared<P2PKHSigner>(masterKey.Lookup(m_addr, key_filter_tag).GetEcdsaKeyPair());
 }
 
+void P2PKH::SetSignature(TxInput &input, bytevector pk, bytevector sig)
+{
+    if (pk.size() != 33) throw ContractTermWrongValue("P2PKH public key size: " + std::to_string(pk.size()));
+    if (get<1>(l15::Base58(m_chain).Decode(m_addr)) != cryptohash<bytevector>(pk, CHash160())) throw ContractTermMismatch(std::string(name_addr));
+
+    input.scriptSig << sig;
+    input.scriptSig << pk;
+}
+
 bytevector P2SH::DecodeScriptHash() const
 {
     auto [addrtype, hash] = l15::Base58(m_chain).Decode(m_addr);
@@ -389,6 +398,24 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const s
     return std::make_shared<P2WPKHSigner>(masterKey.Lookup(m_addr, key_filter_tag).GetEcdsaKeyPair());
 }
 
+void P2WPKH::SetSignature(TxInput &input, bytevector pk, bytevector sig)
+{
+    if (pk.size() != 33) throw ContractTermWrongValue("P2WPKH public key size: " + pk.size());
+
+    secp256k1_pubkey pubkey;
+    secp256k1_ecdsa_signature signature;
+
+    if (!secp256k1_ec_pubkey_parse(KeyPair::GetStaticSecp256k1Context(), &pubkey, pk.data(), 33)) throw ContractTermWrongValue(std::string(IContractBuilder::name_pk));
+    if (!secp256k1_ecdsa_signature_parse_der(KeyPair::GetStaticSecp256k1Context(), &signature, sig.data(), sig.size() - 1)) throw ContractTermWrongValue(std::string(IContractBuilder::name_sig));
+
+    bytevector hash = cryptohash<bytevector>(pk, CHash160());
+
+    if (get<1>(Bech().Decode(m_addr)) != hash) throw ContractTermMismatch(std::string(name_addr));
+
+    input.witness.Set(0, move(sig));
+    input.witness.Set(1, move(pk));
+}
+
 std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const
 {
     unsigned witver;
@@ -397,6 +424,15 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std
     if (witver != 1) throw ContractTermWrongValue(std::string(name_addr));
 
     return std::make_shared<TaprootSigner>(masterKey.Lookup(m_addr, key_filter_tag).GetSchnorrKeyPair());
+}
+
+void P2TR::SetSignature(TxInput &input, bytevector pk, bytevector sig)
+{
+    if (pk.size() != xonly_pubkey::SIZE) throw ContractTermWrongValue("P2TR public key size: " + pk.size());
+    if (pk != get<1>(Bech().Decode(m_addr))) throw ContractTermMismatch(std::string(name_addr));
+    if (sig.size() < 64 || sig.size() > 65) throw ContractTermWrongValue("P2TR signature size: " + sig.size());
+
+    input.witness.Set(0, move(sig));
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/

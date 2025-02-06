@@ -73,6 +73,7 @@ struct IJsonSerializable
 };
 
 class ISigner;
+struct TxInput;
 
 struct IContractDestination: IJsonSerializable
 {
@@ -89,6 +90,7 @@ struct IContractDestination: IJsonSerializable
     virtual CScript DummyScriptSig() const = 0;
     virtual std::vector<bytevector> DummyWitness() const = 0;
     virtual std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const = 0;
+    virtual void SetSignature(TxInput& input, bytevector pk, bytevector sig) = 0;
 };
 
 struct ZeroDestination: IContractDestination
@@ -106,6 +108,7 @@ struct ZeroDestination: IContractDestination
     { throw std::domain_error("zero destination cannot provide a signer"); }
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override {throw std::domain_error("zero destination cannot have a signature"); }
 };
 
 class P2Address : public IContractDestination
@@ -143,6 +146,8 @@ public:
     std::vector<bytevector> DummyWitness() const override { throw std::logic_error("P2Address::DummyWitness() abstract call"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::logic_error("P2Address::LookupKey(...) abstract call"); }
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override
+    { throw std::logic_error("P2Address::SetSignature(...) abstract call"); }
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
@@ -190,9 +195,6 @@ public:
 
     std::vector<bytevector> DummyWitness() const override
     { throw std::logic_error("generic winness structure is unknown"); } // Should never be called directly
-
-    // static std::shared_ptr<IContractDestination> Construct(ChainMode chain, const UniValue& json, const std::function<std::string()>& lazy_name);
-    // static std::shared_ptr<IContractDestination> Construct(ChainMode chain, CAmount amount, std::string addr);
 };
 
 class P2WPKH: public P2Witness
@@ -206,6 +208,7 @@ public:
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override
     { return { bytevector(72), bytevector(33) }; }
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override;
 };
 
 class P2TR: public P2Witness
@@ -218,6 +221,7 @@ public:
     P2TR(Bech32 bech, CAmount amount, std::string addr) : P2Witness(bech.GetChainMode(), amount, move(addr)) {}
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     std::vector<bytevector> DummyWitness() const override { return { signature() }; }
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override;
 };
 
 
@@ -255,6 +259,7 @@ public:
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
     CScript DummyScriptSig() const override
     { return CScript() << signature() << compressed_pubkey().as_vector();}
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override;
 };
 
 class P2SH: public P2Legacy
@@ -275,6 +280,9 @@ public:
 
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::logic_error("P2SH signing is not implemented yet"); }
+
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override
+    { throw std::logic_error("P2SH signature is not implemented yet"); }
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -309,6 +317,8 @@ public:
     CScript DummyScriptSig() const override { return {}; }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::domain_error("OP_RETURN destination cannot provide a signer"); }
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override
+    { throw std::domain_error("OP_RETURN destination cannot have a signature"); }
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;
