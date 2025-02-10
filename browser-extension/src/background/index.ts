@@ -267,7 +267,7 @@ interface ICollectionTransferResult {
               if(!pubkey){
                   await Api.setPublicKeyToWebPage();
               }
-              helloSite();
+              await sendhello();
               const addresses = await Api.getAddressForSave();
               await Api.sendMessageToWebPage(GET_BALANCES, addresses);
           }, 2000);
@@ -278,7 +278,7 @@ interface ICollectionTransferResult {
       return false;
     }
 
-    helloSite();
+    await sendhello();
 
     chrome.runtime.onConnect.addListener(async (port) => {
       if ('POPUP_MESSAGING_CHANNEL' != port?.name) return;
