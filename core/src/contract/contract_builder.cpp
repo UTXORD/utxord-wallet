@@ -118,7 +118,7 @@ void P2PKHSigner::SignInput(TxInput &input, const CMutableTransaction &tx, std::
         && spent_outputs[input.nin].scriptPubKey[24] == OP_CHECKSIG) {
 
         input.scriptSig << m_keypair.SignNonSegwitTx(tx, input.nin, spent_outputs, spent_outputs[input.nin].scriptPubKey, hashtype);
-        input.scriptSig <<m_keypair.GetPubKey().as_vector();
+        input.scriptSig << m_keypair.GetPubKey().as_vector();
         return;
     }
 
@@ -160,7 +160,7 @@ void P2WPKH_P2SHSigner::SignInput(TxInput &input, const CMutableTransaction &tx,
         CScript scriptSig;
         scriptSig << 0 << pubkeyhash;
 
-        if (hash != cryptohash<bytevector>(scriptSig, CHash160())) throw ContractError("not P2WPKH-P2SH contract");
+        if (hash != cryptohash<bytevector>(scriptSig, CHash160())) throw ContractError("PubKey hash does not match");
 
         CScript witnessscript;
         witnessscript << OP_DUP << OP_HASH160 << pubkeyhash << OP_EQUALVERIFY << OP_CHECKSIG;
@@ -170,7 +170,7 @@ void P2WPKH_P2SHSigner::SignInput(TxInput &input, const CMutableTransaction &tx,
         input.scriptSig << bytevector(scriptSig.begin(), scriptSig.end());
 
     }
-    else throw ContractError("not P2WPKH-P2SH contract");
+    else throw ContractError("not P2WPKH-P2SH input");
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -333,6 +333,21 @@ std::shared_ptr<ISigner> P2SH::LookupKey(const KeyRegistry &keyReg, const std::s
     auto keyhash = DecodeScriptHash();
 
     return std::make_shared<P2WPKH_P2SHSigner>(keyReg.Lookup(m_addr, key_filter_tag).GetEcdsaKeyPair());
+}
+
+void P2SH::SetSignature(TxInput &input, bytevector pk, bytevector sig)
+{
+    if (pk.size() != compressed_pubkey::SIZE) throw ContractTermWrongValue("P2WPKH-P2SH public key size: " + std::to_string(pk.size()));
+
+    bytevector pubkeyhash = cryptohash<bytevector>(pk, CHash160());
+    CScript scriptSig;
+    scriptSig << 0 << pubkeyhash;
+
+    if (DecodeScriptHash() != cryptohash<bytevector>(scriptSig, CHash160())) throw ContractError("PubKey hash does not match or not P2WPKH-P2SH address");
+
+    input.witness.Set(0, move(sig));
+    input.witness.Set(1, move(pk));
+    input.scriptSig << bytevector(scriptSig.begin(), scriptSig.end());
 }
 
 void P2Legacy::CheckDust() const

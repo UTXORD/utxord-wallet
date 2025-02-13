@@ -280,8 +280,7 @@ public:
 
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
 
-    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override
-    { throw std::logic_error("P2SH signature is not implemented yet"); }
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override;
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
