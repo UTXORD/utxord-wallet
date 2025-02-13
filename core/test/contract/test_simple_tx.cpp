@@ -15,6 +15,7 @@
 #include "simple_transaction.hpp"
 
 #include "key.h"
+#include "transaction.hpp"
 #include "policy/policy.h"
 
 using namespace l15;
@@ -56,7 +57,8 @@ int main(int argc, char* argv[])
         configpath = (std::filesystem::current_path() / p).string();
 
     w = std::make_unique<TestcaseWrapper>(configpath);
-    w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+    // w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
+    w->InitKeyRegistry(w->mnemonic_parser.MakeSeed({"afford", "exhaust", "file", "kind", "vintage", "one", "snack", "neck", "mystery", "boost", "match", "home"}, {}));
     w->keyreg().AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'","1'"], "change":["0","1"], "index_range":"0-256"})");
 
     int res = session.run();
@@ -67,8 +69,6 @@ int main(int argc, char* argv[])
 }
 
 
-static const bytevector seed = unhex<bytevector>(
-        "b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
 
 struct TestCondition {
     KeyPair keypair;
@@ -87,14 +87,15 @@ TEST_CASE("singleinout")
     TestCondition p2tr_cond = {w->derive(86, 0, 0, 255, false), w->p2tr(0, 0, 255), 2};
     TestCondition p2wpkh_cond = {w->derive(84, 0, 0, 10), w->p2wpkh(0, 0, 10), 2};
     TestCondition p2pkh_cond = {w->derive(44, 0, 0, 15), w->p2pkh(0, 0, 15), 5};
+    TestCondition p2wpkh_p2sh_cond = {w->derive(49, 0, 0, 0), w->p2wpkh_p2sh(0, 0, 0), 6};
 
     OutputCondition p2tr_out = {"bech32m", 2};
     OutputCondition p2wpkh_out = {"bech32", 2};
     OutputCondition nestsegwit_out = {"p2sh-segwit", 4};
     OutputCondition p2pkh_out = {"legacy", 4};
 
-    auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond, p2pkh_cond);
-    auto version = GENERATE(2,3,4,5);
+    auto cond = GENERATE_COPY(p2tr_cond, p2wpkh_cond, p2pkh_cond, p2wpkh_p2sh_cond);
+    auto version = GENERATE(2,3,4,5,6);
     auto out_addr_cond = GENERATE_COPY(p2tr_out, p2wpkh_out, nestsegwit_out, p2pkh_out);
 
     if (version >= cond.min_version && version >= out_addr_cond.min_version) {
@@ -164,7 +165,7 @@ TEST_CASE("singleinout")
         //
         //    tx.vin.front().scriptWitness.stack.front() = sig;
 
-        CHECK_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
+        REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(tx)));
 
         w->confirm(1, tx.GetHash().GetHex());
     }

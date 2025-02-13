@@ -5,6 +5,7 @@
 #include "config.hpp"
 #include "exechelper.hpp"
 #include "keyregistry.hpp"
+#include "mnemonic.hpp"
 #include "nodehelper.hpp"
 
 #include "contract_builder.hpp"
@@ -42,6 +43,9 @@ struct TestConfigFactory
 
 struct TestcaseWrapper
 {
+    static const std::array<const char*, 2048> en_dict;
+    static const l15::core::MnemonicParser<const std::array<const char*, 2048>&> mnemonic_parser;
+
     TestConfigFactory mConfFactory;
     std::string mMode;
     std::optional<l15::core::KeyRegistry> mKeyRegistry;
@@ -82,7 +86,7 @@ struct TestcaseWrapper
             }
         }
         if (mMode == "regtest") {
-            btc().GenerateToAddress(btc().GetNewAddress(), "101");
+            btc().GenerateToAddress(btc().GetNewAddress("", "p2sh-segwit"), "101");
         }
         //        else if (mMode == "testnet") {
         //            btc().WalletPassPhrase("********", "30");
@@ -228,6 +232,9 @@ struct TestcaseWrapper
         throw std::runtime_error("Tx is not found: " + txid);
     }
 
+    void InitKeyRegistry(const l15::sensitive_bytevector& seed)
+    { mKeyRegistry.emplace(l15::core::KeyPair::GetStaticSecp256k1Context(), chain(), seed); }
+
     void InitKeyRegistry(const std::string& seedhex)
     { mKeyRegistry.emplace(chain(), seedhex); }
 
@@ -252,6 +259,9 @@ struct TestcaseWrapper
 
     std::string p2pkh(uint32_t account, uint32_t change, uint32_t index)
     { return keyreg().Derive(keypath(44, account, change, index), false).GetP2PKHAddress(chain()); }
+
+    std::string p2wpkh_p2sh(uint32_t account, uint32_t change, uint32_t index)
+    { return keyreg().Derive(keypath(49, account, change, index), false).GetP2WPKH_P2SHAddress(chain()); }
 
     std::shared_ptr<IContractOutput> fund(CAmount amount, std::string addr, std::optional<std::string> changeaddr = {})
     {

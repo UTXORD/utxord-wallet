@@ -276,10 +276,9 @@ public:
     { return CScript() << OP_HASH160 << DecodeScriptHash() << OP_EQUAL; }
 
     CScript DummyScriptSig() const override
-    { throw std::logic_error("generic script is unknown"); }
+    { return CScript() << bytevector(22); }
 
-    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
-    { throw std::logic_error("P2SH signing is not implemented yet"); }
+    std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
 
     void SetSignature(TxInput &input, bytevector pk, bytevector sig) override
     { throw std::logic_error("P2SH signature is not implemented yet"); }
@@ -440,6 +439,20 @@ public:
     TaprootSigner(TaprootSigner&&) noexcept = default;
     TaprootSigner& operator=(const TaprootSigner&) = default;
     TaprootSigner& operator=(TaprootSigner&&) noexcept = default;
+
+    void SignInput(TxInput &input, const CMutableTransaction &tx, std::vector<CTxOut> spent_outputs,
+                   int hashtype) const override;
+};
+
+class P2WPKH_P2SHSigner: public ISigner
+{
+    EcdsaKeyPair m_keypair;
+public:
+    explicit P2WPKH_P2SHSigner(EcdsaKeyPair keypair) : m_keypair(move(keypair)) {}
+    P2WPKH_P2SHSigner(const P2WPKH_P2SHSigner&) = default;
+    P2WPKH_P2SHSigner(P2WPKH_P2SHSigner&&) noexcept = default;
+    P2WPKH_P2SHSigner& operator=(const P2WPKH_P2SHSigner&) = default;
+    P2WPKH_P2SHSigner& operator=(P2WPKH_P2SHSigner&&) noexcept = default;
 
     void SignInput(TxInput &input, const CMutableTransaction &tx, std::vector<CTxOut> spent_outputs,
                    int hashtype) const override;

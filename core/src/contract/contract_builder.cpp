@@ -150,6 +150,29 @@ void TaprootSigner::SignInput(TxInput &input, const CMutableTransaction &tx, std
     input.witness.Set(0, m_keypair.SignTaprootTx(tx, input.nin, spent_outputs, {}, hashtype));
 }
 
+void P2WPKH_P2SHSigner::SignInput(TxInput &input, const CMutableTransaction &tx, std::vector<CTxOut> spent_outputs, int hashtype) const
+{
+    if (hashtype == SIGHASH_DEFAULT) hashtype = SIGHASH_ALL;
+
+    if (spent_outputs[input.nin].scriptPubKey.IsPayToScriptHash()) {
+        bytevector pubkeyhash = cryptohash<bytevector>(m_keypair.GetPubKey(), CHash160());
+        bytevector hash(spent_outputs[input.nin].scriptPubKey.begin()+2, spent_outputs[input.nin].scriptPubKey.begin()+22);
+        CScript scriptSig;
+        scriptSig << 0 << pubkeyhash;
+
+        if (hash != cryptohash<bytevector>(scriptSig, CHash160())) throw ContractError("not P2WPKH-P2SH contract");
+
+        CScript witnessscript;
+        witnessscript << OP_DUP << OP_HASH160 << pubkeyhash << OP_EQUALVERIFY << OP_CHECKSIG;
+
+        input.witness.Set(0, m_keypair.SignSegwitV0Tx(tx, input.nin, spent_outputs, witnessscript, hashtype));
+        input.witness.Set(1, m_keypair.GetPubKey().as_vector());
+        input.scriptSig << bytevector(scriptSig.begin(), scriptSig.end());
+
+    }
+    else throw ContractError("not P2WPKH-P2SH contract");
+}
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 ZeroDestination::ZeroDestination(const UniValue &json, const std::function<std::string()>& lazy_name)
@@ -301,6 +324,15 @@ bytevector P2SH::DecodeScriptHash() const
     auto [addrtype, hash] = l15::Base58(m_chain).Decode(m_addr);
     if (addrtype != l15::SCRIPT_HASH) throw ContractTermWrongValue("Not P2SH: " + m_addr);
     return hash;
+}
+
+std::shared_ptr<ISigner> P2SH::LookupKey(const KeyRegistry &keyReg, const std::string &key_filter_tag) const
+{
+    // Try to sign as P2WPKH-P2SH
+
+    auto keyhash = DecodeScriptHash();
+
+    return std::make_shared<P2WPKH_P2SHSigner>(keyReg.Lookup(m_addr, key_filter_tag).GetEcdsaKeyPair());
 }
 
 void P2Legacy::CheckDust() const
@@ -612,6 +644,39 @@ void IContractBuilder::VerifyTxSignature(ChainMode chain, const std::string& add
             if (!secp256k1_ec_pubkey_parse(KeyPair::GetStaticSecp256k1Context(), &pubkey, pk.data(), pk.size())) throw SignatureError("pubkey");
             if (!secp256k1_ecdsa_signature_parse_der(KeyPair::GetStaticSecp256k1Context(), &signature, sig.data(), sig.size() - 1)) throw SignatureError("signature format");
             if (!secp256k1_ecdsa_verify(KeyPair::GetStaticSecp256k1Context(), &signature, sighash.data(), &pubkey)) throw SignatureError("sig");
+        }
+        else if (type == SCRIPT_HASH) {
+            if (tx.vin[nin].scriptWitness.IsNull()) throw SignatureError("Unknown p2sh");
+
+            const auto& witness = tx.vin[nin].scriptWitness.stack;
+
+            if (witness.size() != 2) throw SignatureError("witness stack size: " + std::to_string(witness.size()));
+            if (witness[1].size() != 33) throw SignatureError("pubkey size: " + std::to_string(witness[0].size()));
+
+            bytevector keyid = cryptohash<bytevector>(witness[1], CHash160());
+
+            CScript redeemScript = CScript() << 0 << keyid;
+            CScript scriptSig = CScript() << bytevector(redeemScript.begin(), redeemScript.end());
+
+            if (scriptSig != tx.vin[nin].scriptSig) throw SignatureError("P2WPKH-P2SH script hash does not match pubkey hash");
+
+            PrecomputedTransactionData txdata;
+            txdata.Init(tx, std::move(spent_outputs), true);
+
+            CScript witnessscript;
+            witnessscript << OP_DUP << OP_HASH160 << keyid << OP_EQUALVERIFY << OP_CHECKSIG;
+
+            uint256 sighash = SignatureHash(witnessscript, tx, nin, witness[0].back(), txdata.m_spent_outputs[nin].nValue, SigVersion::WITNESS_V0, &txdata);
+
+            secp256k1_pubkey pubkey;
+            secp256k1_ecdsa_signature signature;
+
+            if (!secp256k1_ec_pubkey_parse(KeyPair::GetStaticSecp256k1Context(), &pubkey, witness[1].data(), 33)) throw SignatureError("pubkey");
+            if (!secp256k1_ecdsa_signature_parse_der(KeyPair::GetStaticSecp256k1Context(), &signature, witness[0].data(), witness[0].size() - 1)) throw SignatureError("signature format");
+            if (!secp256k1_ecdsa_verify(KeyPair::GetStaticSecp256k1Context(), &signature, sighash.data(), &pubkey)) throw SignatureError("sig");
+        }
+        else {
+            throw std::logic_error("unknown base58 encoded address type");
         }
     }
 }

@@ -1,2 +1,1 @@
-SUBDIRS = contract
-
+SUBDIRS = testlib contract

@@ -1122,7 +1122,7 @@ CAmount CreateInscriptionBuilder::CalculateMissingAmount(std::string address)
         required_amount += m_market_fee->Amount();
 
     if (m_author_fee)
-        required_amount += m_market_fee->Amount();
+        required_amount += m_author_fee->Amount();
 
     for (const auto& fee: m_custom_fees)
         required_amount += fee->Amount();

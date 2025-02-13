@@ -24,11 +24,12 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/l15/src/tools \
  -I$(top_srcdir)/l15/src/api \
  -I$(top_srcdir)/l15/src/core \
- -I$(top_srcdir)/test \
+ -I$(top_srcdir)/test/testlib \
  -I$(top_srcdir)/src/contract
 
 
 L15_LIBS = \
+$(top_builddir)/test/testlib/libutxord-test.la \
 $(top_builddir)/src/contract/libutxord-contract.la \
 $(top_builddir)/l15/libl15.la \
 $(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la \

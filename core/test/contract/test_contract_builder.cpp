@@ -18,7 +18,7 @@
 
 #include "policy/policy.h"
 
-#include "test_case_wrapper.hpp"
+//#include "test_case_wrapper.hpp"
 #include "univalue.h"
 #include "script_merkle_tree.hpp"
 
@@ -30,7 +30,7 @@ using std::get;
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 
-std::unique_ptr<TestcaseWrapper> w;
+//std::unique_ptr<TestcaseWrapper> w;
 
 
 int main(int argc, char* argv[])

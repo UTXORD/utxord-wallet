@@ -28,7 +28,8 @@ const char* TX_SIGNATURE_STR = "TX_SIGNATURE";
 const  std::string SimpleTransaction::name_outputs = "outputs";
 const  std::string SimpleTransaction::name_rune_inputs = "rune_inputs";
 
-const uint32_t SimpleTransaction::s_protocol_version = 5;
+const uint32_t SimpleTransaction::s_protocol_version = 6;
+const uint32_t SimpleTransaction::s_protocol_version_no_nested_segwit_sign = 5;
 const uint32_t SimpleTransaction::s_protocol_version_no_p2address_sign = 4;
 const uint32_t SimpleTransaction::s_protocol_version_no_p2address = 3;
 const uint32_t SimpleTransaction::s_protocol_version_no_rune_transfer = 2;
@@ -57,6 +58,10 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
             tx.vin.back().scriptWitness.stack = input.witness;
             if (tx.vin.back().scriptWitness.stack.empty()) {
                 tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
+            }
+            tx.vin.back().scriptSig = input.scriptSig;
+            if (tx.vin.back().scriptSig.empty()) {
+                tx.vin.back().scriptSig = input.output->Destination()->DummyScriptSig();
             }
         }
     }
@@ -199,6 +204,7 @@ std::vector<std::string> SimpleTransaction::RawTransactions() const
 UniValue SimpleTransaction::MakeJson(uint32_t version, TxPhase phase) const
 {
     if (version != s_protocol_version &&
+        version != s_protocol_version_no_nested_segwit_sign &&
         version != s_protocol_version_no_p2address_sign &&
         version != s_protocol_version_no_p2address &&
         version != s_protocol_version_no_rune_transfer) throw ContractProtocolError("Wrong contract version: " + std::to_string(version) + ". Allowed are " + s_versions);
@@ -237,6 +243,7 @@ void SimpleTransaction::ReadJson(const UniValue& contract, TxPhase phase)
 {
     uint32_t version = contract[name_version].getInt<uint32_t>();
     if (version != s_protocol_version &&
+        version != s_protocol_version_no_nested_segwit_sign &&
         version != s_protocol_version_no_p2address_sign &&
         version != s_protocol_version_no_p2address &&
         version != s_protocol_version_no_rune_transfer)
