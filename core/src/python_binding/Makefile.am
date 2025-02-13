@@ -31,7 +31,9 @@ SWIG_SRC_INCLUDES = \
  $(top_srcdir)/l15/src/core/schnorr.hpp \
  $(top_srcdir)/l15/src/core/ecdsa.hpp \
  $(top_srcdir)/l15/src/core/keypair.hpp \
- $(top_srcdir)/l15/src/core/keyregistry.hpp
+ $(top_srcdir)/l15/src/core/keyregistry.hpp \
+ $(top_srcdir)/l15/src/core/master_key.hpp \
+ $(top_srcdir)/l15/src/core/psbt.hpp
 
 
 AM_CPPFLAGS = $(COMMON_INCLUDES) $(PYTHON_CPPFLAGS) $(PYTHON_INCLUDES)

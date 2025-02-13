@@ -18,7 +18,9 @@ static PyObject* pError;
 %apply int64_t { CAmount }
 
 %template(StringVector) std::vector<std::string>;
+
 %apply std::vector<std::string> { l15::stringvector };
+%apply const std::vector<std::string>& { const l15::stringvector& };
 
 %{
 
@@ -90,6 +92,9 @@ using namespace l15::core;
          l15::KeyError) utxord::CreateInscriptionBuilder::SignCollection(const KeyRegistry &master_key, const std::string& key_filter);
 
 %catches(utxord::ContractFundsNotEnough, utxord::ContractError) utxord::CreateInscriptionBuilder::RawTransactions() const;
+%catches(utxord::ContractFundsNotEnough, utxord::ContractError) utxord::CreateInscriptionBuilder::TransactionsPSBT() const;
+%catches(utxord::ContractFundsNotEnough, utxord::ContractError) utxord::CreateInscriptionBuilder::ApplyPSBTSignature(const l15::stringvector&);
+
 %catches(utxord::ContractProtocolError, utxord::ContractError) utxord::ContractBuilder<utxord::InscribePhase>::Serialize(uint32_t version, utxord::InscribePhase phase) const;
 %catches(utxord::ContractProtocolError, utxord::ContractError) utxord::ContractBuilder<utxord::InscribePhase>::Deserialize(const std::string& data, utxord::InscribePhase phase);
 
