@@ -172,9 +172,12 @@ public:
 
     std::string Address() const override { return {}; }
     CScript PubKeyScript() const override;
+    CScript DummyScriptSig() const override { return {}; }
     std::vector<bytevector> DummyWitness() const override { throw std::domain_error("rune stone destination cannot have a witness"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::domain_error("rune stone destination cannot provide a signer"); }
+    void SetSignature(TxInput &input, bytevector pk, bytevector sig) override
+    { throw std::domain_error("rune stone destination cannot have a signature"); }
 
     UniValue MakeJson() const override;
     void ReadJson(const UniValue& json, const std::function<std::string()> &lazy_name) override;

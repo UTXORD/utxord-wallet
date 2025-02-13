@@ -5,6 +5,7 @@
 #include "policy.h"
 #include "feerate.h"
 
+#include "transaction.hpp"
 #include "contract_builder_factory.hpp"
 #include "trustless_swap_inscription.hpp"
 
@@ -255,11 +256,7 @@ void TrustlessSwapInscriptionBuilder::SignFundsSwap(const KeyRegistry &master_ke
         auto dest = input.output->Destination();
         auto keypair = dest->LookupKey(master_key, key_filter);
 
-        std::vector<bytevector> stack = keypair->Sign(swap_tx, input.nin, spent_outs, SIGHASH_ALL);
-
-        for (size_t i = 0; i < stack.size(); ++i) {
-            input.witness.Set(i, move(stack[i]));
-        }
+        keypair->SignInput(input, swap_tx, spent_outs, SIGHASH_ALL);
     }
 
     if (mSwapTx) mSwapTx.reset();
@@ -558,10 +555,10 @@ void TrustlessSwapInscriptionBuilder::CommitFunds(std::string txid, uint32_t nou
             CAmount brick1 = mCommitBuilder->Destinations().front()->Amount();
 
             if (m_market_fee->Amount() >= brick1 * 2) {
-                mCommitBuilder->Outputs()[1]->Amount(m_market_fee->Amount() - brick1);
+                mCommitBuilder->Destinations()[1]->Amount(m_market_fee->Amount() - brick1);
             }
             else if (change >= brick1 * 2) {
-                mCommitBuilder->Outputs()[1]->Amount(change - brick1);
+                mCommitBuilder->Destinations()[1]->Amount(change - brick1);
             }
 
             mCommitBuilder->AddChangeOutput(move(addr));
@@ -677,7 +674,7 @@ void TrustlessSwapInscriptionBuilder::CheckOrdSwapSig() const
                 }
             } else {
                 if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
-                    VerifyTxSignature(input.output->Destination()->Address(), input.witness, *mSwapTx, input.nin, spent_outs);
+                    VerifyTxSignature(chain(), input.output->Destination()->Address(), *mSwapTx, input.nin, spent_outs);
                 }
             }
         }
@@ -694,7 +691,7 @@ void TrustlessSwapInscriptionBuilder::CheckOrdSwapSig() const
                 }
             } else {
                 if (input.witness && !input.witness[0].empty() && !l15::IsZeroArray(input.witness[0])) {
-                    VerifyTxSignature(input.output->Destination()->Address(), input.witness, swap_tx, input.nin, spent_outs);
+                    VerifyTxSignature(chain(), input.output->Destination()->Address(), swap_tx, input.nin, spent_outs);
                 }
             }
         }

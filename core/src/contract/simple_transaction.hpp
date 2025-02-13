@@ -20,6 +20,8 @@ public:
     static const std::string name_rune_inputs;
 private:
     static const uint32_t s_protocol_version;
+    static const uint32_t s_protocol_version_no_nested_segwit_sign;
+    static const uint32_t s_protocol_version_no_p2address_sign;
     static const uint32_t s_protocol_version_no_p2address;
     static const uint32_t s_protocol_version_no_rune_transfer;
     static const char* s_versions;
@@ -83,8 +85,14 @@ public:
 
     const std::vector<TxInput>& Inputs() const { return m_inputs; }
     std::vector<TxInput>& Inputs() { return m_inputs; }
-    const std::vector<std::shared_ptr<IContractDestination>>& Outputs() const { return m_outputs; }
-    std::vector<std::shared_ptr<IContractDestination>>& Outputs() { return m_outputs; }
+    std::vector<std::shared_ptr<IContractOutput>> Outputs() const
+    {
+        std::vector<std::shared_ptr<IContractOutput>> outputs(m_outputs.size());
+        for (auto [dest, i]: std::ranges::views::zip(m_outputs, std::ranges::views::iota(0))) {
+            outputs[i] = std::make_shared<UTXO>(chain(), TxID(), i, dest);
+        }
+        return outputs;
+    }
 
     void AddChangeOutput(std::string addr);
     void DropChangeOutput();

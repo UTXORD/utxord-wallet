@@ -18,7 +18,8 @@ SWIG_SRC_INCLUDES = \
  $(top_srcdir)/l15/src/common/common_error.hpp \
  $(top_srcdir)/l15/src/common/bech32.hpp \
  $(top_srcdir)/l15/src/common/utils.hpp \
- $(top_srcdir)/l15/src/core/transaction.hpp \
+ $(top_srcdir)/l15/src/common/transaction.hpp \
+ $(top_srcdir)/src/contract/bip322.hpp \
  $(top_srcdir)/src/contract/inscription.hpp \
  $(top_srcdir)/src/contract/contract_error.hpp \
  $(top_srcdir)/src/contract/contract_builder.hpp \
@@ -30,7 +31,9 @@ SWIG_SRC_INCLUDES = \
  $(top_srcdir)/l15/src/core/schnorr.hpp \
  $(top_srcdir)/l15/src/core/ecdsa.hpp \
  $(top_srcdir)/l15/src/core/keypair.hpp \
- $(top_srcdir)/l15/src/core/keyregistry.hpp
+ $(top_srcdir)/l15/src/core/keyregistry.hpp \
+ $(top_srcdir)/l15/src/core/master_key.hpp \
+ $(top_srcdir)/l15/src/core/psbt.hpp
 
 
 AM_CPPFLAGS = $(COMMON_INCLUDES) $(PYTHON_CPPFLAGS) $(PYTHON_INCLUDES)

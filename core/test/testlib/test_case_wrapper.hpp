@@ -5,9 +5,11 @@
 #include "config.hpp"
 #include "exechelper.hpp"
 #include "keyregistry.hpp"
+#include "mnemonic.hpp"
 #include "nodehelper.hpp"
 
 #include "contract_builder.hpp"
+#include "simple_transaction.hpp"
 
 #include "nlohmann/json.hpp"
 
@@ -41,6 +43,9 @@ struct TestConfigFactory
 
 struct TestcaseWrapper
 {
+    static const std::array<const char*, 2048> en_dict;
+    static const l15::core::MnemonicParser<const std::array<const char*, 2048>&> mnemonic_parser;
+
     TestConfigFactory mConfFactory;
     std::string mMode;
     std::optional<l15::core::KeyRegistry> mKeyRegistry;
@@ -49,6 +54,7 @@ struct TestcaseWrapper
     l15::ExecHelper mCli;
     l15::ExecHelper mBtcd;
     l15::ExecHelper mOrd;
+    std::shared_ptr<IContractOutput> mUtxo;
 
     explicit TestcaseWrapper(const std::string& configpath) :
             mConfFactory(configpath),
@@ -80,7 +86,7 @@ struct TestcaseWrapper
             }
         }
         if (mMode == "regtest") {
-            btc().GenerateToAddress(btc().GetNewAddress(), "101");
+            btc().GenerateToAddress(btc().GetNewAddress("", "p2sh-segwit"), "101");
         }
         //        else if (mMode == "testnet") {
         //            btc().WalletPassPhrase("********", "30");
@@ -178,6 +184,11 @@ struct TestcaseWrapper
         StopRegtestBitcoinNode();
     }
 
+    void set_utxo(const std::string& txid, unsigned nout, CAmount amount, std::string addr)
+    {
+        mUtxo = std::make_shared<UTXO>(chain(), txid, nout, amount, move(addr));
+    }
+
     std::tuple<uint64_t, uint32_t> confirm(uint32_t n, const std::string& txid, uint32_t nout = 0)
     {
         uint32_t confirmations = 0;
@@ -221,6 +232,9 @@ struct TestcaseWrapper
         throw std::runtime_error("Tx is not found: " + txid);
     }
 
+    void InitKeyRegistry(const l15::sensitive_bytevector& seed)
+    { mKeyRegistry.emplace(l15::core::KeyPair::GetStaticSecp256k1Context(), chain(), seed); }
+
     void InitKeyRegistry(const std::string& seedhex)
     { mKeyRegistry.emplace(chain(), seedhex); }
 
@@ -243,12 +257,33 @@ struct TestcaseWrapper
     std::string p2wpkh(uint32_t account, uint32_t change, uint32_t index)
     { return keyreg().Derive(keypath(84, account, change, index), false).GetP2WPKHAddress(l15::Bech32(l15::BTC, chain())); }
 
-    std::shared_ptr<IContractOutput> fund(CAmount amount, std::string addr)
-    {
-        std::string txid = btc().SendToAddress(addr, l15::FormatAmount(amount));
-        auto prevout = btc().CheckOutput(txid, addr);
+    std::string p2pkh(uint32_t account, uint32_t change, uint32_t index)
+    { return keyreg().Derive(keypath(44, account, change, index), false).GetP2PKHAddress(chain()); }
 
-        return std::make_shared<UTXO>(chain(), txid, get<0>(prevout).n, amount, move(addr));
+    std::string p2wpkh_p2sh(uint32_t account, uint32_t change, uint32_t index)
+    { return keyreg().Derive(keypath(49, account, change, index), false).GetP2WPKH_P2SHAddress(chain()); }
+
+    std::shared_ptr<IContractOutput> fund(CAmount amount, std::string addr, std::optional<std::string> changeaddr = {})
+    {
+        if (mUtxo) {
+            SimpleTransaction contract(chain());
+            contract.MiningFeeRate(2000);
+            contract.AddInput(mUtxo);
+            contract.AddOutput(amount, addr);
+            if (changeaddr) contract.AddChangeOutput(*changeaddr);
+
+            contract.Sign(keyreg(), "fund");
+
+            btc().SpendTx(CTransaction(contract.MakeTx("")));
+
+            mUtxo = contract.ChangeOutput();
+            return contract.Outputs().front();
+        }
+        else {
+            std::string txid = btc().SendToAddress(addr, l15::FormatAmount(amount));
+            auto prevout = btc().CheckOutput(txid, addr);
+            return std::make_shared<UTXO>(chain(), txid, get<0>(prevout).n, amount, move(addr));
+        }
     }
 };
 

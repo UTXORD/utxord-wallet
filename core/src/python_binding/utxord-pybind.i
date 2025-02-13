@@ -19,6 +19,9 @@ static PyObject* pError;
 
 %template(StringVector) std::vector<std::string>;
 
+%apply std::vector<std::string> { l15::stringvector };
+%apply const std::vector<std::string>& { const l15::stringvector& };
+
 %{
 
 #include "common.hpp"
@@ -28,6 +31,7 @@ static PyObject* pError;
 #include "keypair.hpp"
 #include "keyregistry.hpp"
 #include "mnemonic.hpp"
+#include "bip322.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
 #include "trustless_swap_inscription.hpp"
@@ -88,6 +92,9 @@ using namespace l15::core;
          l15::KeyError) utxord::CreateInscriptionBuilder::SignCollection(const KeyRegistry &master_key, const std::string& key_filter);
 
 %catches(utxord::ContractFundsNotEnough, utxord::ContractError) utxord::CreateInscriptionBuilder::RawTransactions() const;
+%catches(utxord::ContractFundsNotEnough, utxord::ContractError) utxord::CreateInscriptionBuilder::TransactionsPSBT() const;
+%catches(utxord::ContractFundsNotEnough, utxord::ContractError) utxord::CreateInscriptionBuilder::ApplyPSBTSignature(const l15::stringvector&);
+
 %catches(utxord::ContractProtocolError, utxord::ContractError) utxord::ContractBuilder<utxord::InscribePhase>::Serialize(uint32_t version, utxord::InscribePhase phase) const;
 %catches(utxord::ContractProtocolError, utxord::ContractError) utxord::ContractBuilder<utxord::InscribePhase>::Deserialize(const std::string& data, utxord::InscribePhase phase);
 
@@ -209,6 +216,19 @@ using namespace l15::core;
 }
 
 %typemap(in) const bytevector& (bytevector param, const char *begin) {
+    if (!PyBytes_Check($input)) {
+        SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
+    }
+    begin = PyBytes_AsString($input);
+    try {
+        param.assign(begin, begin+PyBytes_Size($input));
+    } catch (...) {
+        SWIG_exception_fail(SWIG_TypeError, "cannot convert bytes argument");
+    }
+    $1 = &param;
+}
+
+%typemap(in) const l15::bytevector& (bytevector param, const char *begin) {
     if (!PyBytes_Check($input)) {
         SWIG_exception_fail(SWIG_TypeError, "argument is not bytes");
     }
@@ -361,7 +381,7 @@ using namespace l15::core;
                 Py_XDECREF(scriptpubkey);
 
                 if (witversion == 1) {
-                    PyObject *scriptpubkey = PyString_FromString(l15::core::GetTaprootPubKey($1.vout[i]).c_str());
+                    PyObject *scriptpubkey = PyString_FromString(l15::GetTaprootPubKey($1.vout[i]).c_str());
                     PyDict_SetItemString(out, "pubKey", scriptpubkey);
                     Py_XDECREF(scriptpubkey);
                 }
@@ -384,6 +404,7 @@ using namespace l15::core;
 %include "master_key.hpp"
 %include "keyregistry.hpp"
 %include "mnemonic.hpp"
+%include "bip322.hpp"
 
 %template(MnemonicParser) l15::core::MnemonicParser<std::vector<std::string>>;
 

@@ -12,7 +12,7 @@
 
 #include "util/translation.h"
 
-#include "test_case_wrapper.hpp"
+#include "../testlib/test_case_wrapper.hpp"
 #include "runes.hpp"
 using namespace l15;
 using namespace l15::core;

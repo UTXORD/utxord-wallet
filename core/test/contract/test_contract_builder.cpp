@@ -18,7 +18,7 @@
 
 #include "policy/policy.h"
 
-#include "test_case_wrapper.hpp"
+//#include "test_case_wrapper.hpp"
 #include "univalue.h"
 #include "script_merkle_tree.hpp"
 
@@ -30,7 +30,7 @@ using std::get;
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 
-std::unique_ptr<TestcaseWrapper> w;
+//std::unique_ptr<TestcaseWrapper> w;
 
 
 int main(int argc, char* argv[])
@@ -125,7 +125,7 @@ TEST_CASE("Fee")
 
     SchnorrKeyPair key;
     l15::ScriptMerkleTree tap_tree(TreeBalanceType::WEIGHTED, { IContractBuilder::MakeMultiSigScript(xonly_pubkey(), xonly_pubkey()) });
-    auto tr = core::SchnorrKeyPair::AddTapTweak(KeyPair::GetStaticSecp256k1Context(), key.GetPubKey(), tap_tree.CalculateRoot());
+    auto tr = core::SchnorrKeyPair::AddTapTweak(key.Secp256k1Context(), key.GetPubKey(), tap_tree.CalculateRoot());
 
     std::vector<uint256> scriptpath = tap_tree.CalculateScriptPath(tap_tree.GetScripts().front());
     bytevector control_block;
@@ -286,3 +286,23 @@ TEST_CASE("dust_limit")
     CHECK_THROWS_AS(P2Address::Construct(MAINNET, 330, p2sh_addr), ContractTermWrongValue);
     CHECK_THROWS_AS(P2Address::Construct(MAINNET, 329, p2sh_addr), ContractTermWrongValue);
 }
+
+TEST_CASE("p2address")
+{
+    std::string p2tr_addr = "bc1pp5t2a3j6fl8v7785szxeyhk8dpqksas7w5ta9j8caysn5ud8l68qcey6ak";
+    std::string p2wpkh_addr = "bc1q7g2ek6p3gjlp7j639mxk95tm7f3h839mhk9v97";
+    std::string p2pkh_addr = "1PC7E8JRBw5UY8xDQUKgWLUsdRJBDTqsRe";
+    std::string p2sh_addr = "34nr5Pbq53Uj2Sq5DaDw6mK63qhUgbovCf";
+
+    auto [addr, type] = GENERATE_REF(std::make_tuple(p2tr_addr, P2TR::type),
+                                     std::make_tuple(p2wpkh_addr, P2WPKH::type),
+                                     std::make_tuple(p2pkh_addr, P2PKH::type),
+                                     std::make_tuple(p2sh_addr, P2SH::type));
+
+    auto p2tr = utxord::P2Address::Construct(MAINNET, 546, addr);
+
+    CHECK(p2tr->Type() == type);
+    CHECK(p2tr->Amount() == 546);
+    CHECK(p2tr->Address() == addr);
+}
+

@@ -64,7 +64,6 @@ class CreateInscriptionBuilder: public utxord::ContractBuilder<utxord::InscribeP
     mutable std::optional<std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree>> mInscriptionTaproot;
     mutable std::optional<CMutableTransaction> mCommitTx;
     mutable std::optional<CMutableTransaction> mGenesisTx;
-    mutable std::optional<CMutableTransaction> mCollectionCommitTx;
 
 private:
     void CheckContractTerms(uint32_t version, InscribePhase phase) const override;
@@ -77,11 +76,13 @@ public:
 private:
     CScript MakeInscriptionScript() const;
 
+    l15::bytevector InscribeScriptControlBlock(const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> &tr) const;
+    l15::bytevector FundMiningFeeControlBlock(const std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> &tr) const;
     std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> GenesisTapRoot() const;
     std::tuple<xonly_pubkey, uint8_t, l15::ScriptMerkleTree> FundMiningFeeTapRoot() const;
 
     CMutableTransaction MakeCommitTx() const;
-    CMutableTransaction MakeGenesisTx() const;
+    CMutableTransaction MakeGenesisTx(const CMutableTransaction& commit_tx) const;
 
     CMutableTransaction CreateGenesisTxTemplate() const;
 
@@ -144,6 +145,13 @@ public:
 
     void AddInput(std::shared_ptr<IContractOutput> prevout)
     { m_inputs.emplace_back(chain(), m_inputs.size(), move(prevout)); }
+
+    void ClearInputs()
+    {
+        m_inputs.clear();
+        mCommitTx.reset();
+        mGenesisTx.reset();
+    }
 
     void Data(std::string content_type, bytevector data)
     {
@@ -214,7 +222,13 @@ public:
     CAmount CalculateWholeFee(const std::string& params) const override;
     CAmount GetMinFundingAmount(const std::string& params) const override;
 
-    std::vector<std::string> RawTransactions() const;
+    CAmount CalculateMissingAmount(std::string address);
+    CAmount CalculateMiningFeeAmount() const;
+
+    l15::stringvector RawTransactions() const;
+    l15::stringvector TransactionsPSBT() const;
+
+    void ApplyPSBTSignature(const l15::stringvector& );
 
     uint32_t TransactionCount(InscribePhase phase) const
     { return 2; }

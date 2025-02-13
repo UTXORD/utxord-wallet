@@ -166,7 +166,7 @@ std::list<std::pair<bytevector, bytevector>> ParseEnvelopeScript(const CScript& 
 std::list<Inscription> ParseInscriptions(const string &hex_tx)
 {
     std::list<Inscription> res;
-    auto tx = core::Deserialize(hex_tx);
+    auto tx = DecodeHexTx(hex_tx);
 
     for (const auto& in: tx.vin) {
         if (in.scriptWitness.stack.size() < 3) continue;

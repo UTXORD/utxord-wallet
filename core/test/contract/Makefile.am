@@ -15,6 +15,7 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/l15/node/src/univalue/include \
  -I$(top_srcdir)/l15/node/src/policy \
  -I$(top_srcdir)/l15/node/src/consensus \
+ -I$(top_srcdir)/l15/node/src/crypto \
  -I$(top_srcdir)/l15/node/src/policy \
  -I$(top_srcdir)/l15/node/src/primitives \
  -I$(top_srcdir)/l15/node/src/script \
@@ -23,11 +24,12 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/l15/src/tools \
  -I$(top_srcdir)/l15/src/api \
  -I$(top_srcdir)/l15/src/core \
- -I$(top_srcdir)/test \
+ -I$(top_srcdir)/test/testlib \
  -I$(top_srcdir)/src/contract
 
 
 L15_LIBS = \
+$(top_builddir)/test/testlib/libutxord-test.la \
 $(top_builddir)/src/contract/libutxord-contract.la \
 $(top_builddir)/l15/libl15.la \
 $(top_builddir)/l15/node/src/secp256k1/libsecp256k1.la \
@@ -42,7 +44,8 @@ test_trustless_swap_inscription \
 test_inscription \
 test_simple_tx \
 test_runes \
-test_regression
+test_regression \
+test_bip322
 
 
 test_contract_builder_SOURCES = test_contract_builder.cpp
@@ -68,3 +71,6 @@ test_runes_LDADD = $(L15_LIBS)
 
 test_regression_SOURCES = test_regression.cpp
 test_regression_LDADD = $(L15_LIBS)
+
+test_bip322_SOURCES = test_bip322.cpp
+test_bip322_LDADD = $(L15_LIBS)

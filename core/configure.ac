@@ -181,7 +181,7 @@ AC_CONFIG_FILES([Makefile
 
 if test "$enable_build_tests" = "yes"; then
     AC_MSG_NOTICE([Adding test makefiles])
-    AC_CONFIG_FILES([test/Makefile test/contract/Makefile])
+    AC_CONFIG_FILES([test/Makefile test/testlib/Makefile test/contract/Makefile])
 fi
 
 if test "$enable_python_binding" = "yes"; then

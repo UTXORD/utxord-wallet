@@ -27,7 +27,8 @@ libutxord_contract_la_SOURCES = \
 	swap_inscription.cpp \
 	trustless_swap_inscription.cpp \
 	simple_transaction.cpp \
-	runes.cpp
+	runes.cpp \
+	bip322.cpp
 
 if !BIND_WASM
 libutxord_contract_la_SOURCES += inscription.cpp
