@@ -58,7 +58,7 @@ $(SWIG_PYTHON_SCRIPT): $(SWIG_PYTHON_MODULE)
 
 lib_LTLIBRARIES = _libutxord_pybind.la
 
-_libutxord_pybind_la_SOURCES = $(SWIG_PYTHON_MODULE)
+_libutxord_pybind_la_SOURCES = $(SWIG_PYTHON_MODULE) tx_utils.cpp
 _libutxord_pybind_la_LDFLAGS = -shared -module -avoid-version $(PYTHON_LDFLAGS) -Wl,--no-undefined,--gc-sections
 
 _libutxord_pybind_la_LIBADD = $(PYTHON_LIBS) \

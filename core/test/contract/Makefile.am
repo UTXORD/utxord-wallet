@@ -25,7 +25,8 @@ AM_CPPFLAGS += \
  -I$(top_srcdir)/l15/src/api \
  -I$(top_srcdir)/l15/src/core \
  -I$(top_srcdir)/test/testlib \
- -I$(top_srcdir)/src/contract
+ -I$(top_srcdir)/src/contract \
+ -I$(top_srcdir)/src/python_binding
 
 
 L15_LIBS = \
@@ -60,7 +61,7 @@ test_swap_inscription_LDADD = $(L15_LIBS)
 test_trustless_swap_inscription_SOURCES = test_trustless_swap_inscription.cpp
 test_trustless_swap_inscription_LDADD = $(L15_LIBS)
 
-test_inscription_SOURCES = test_inscription.cpp
+test_inscription_SOURCES = test_inscription.cpp $(top_srcdir)/src/python_binding/tx_utils.cpp
 test_inscription_LDADD = $(L15_LIBS)
 
 test_simple_tx_SOURCES = test_simple_tx.cpp

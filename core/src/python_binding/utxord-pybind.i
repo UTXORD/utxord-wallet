@@ -26,6 +26,7 @@ static PyObject* pError;
 
 #include "common.hpp"
 #include "transaction.hpp"
+#include "tx_utils.hpp"
 #include "schnorr.hpp"
 #include "ecdsa.hpp"
 #include "keypair.hpp"
@@ -262,8 +263,10 @@ using namespace l15::core;
 %apply l15::seckey { seckey };
 %apply l15::bytevector { l15::xonly_pubkey };
 %apply l15::bytevector { l15::signature };
+%apply l15::bytevector { l15::compressed_pubkey };
 %apply bytevector { xonly_pubkey };
 %apply bytevector { signature };
+%apply bytevector { compressed_pubkey };
 
 %ignore l15::core::KeyPair::KeyPair(const KeyPair&);
 %ignore l15::core::KeyPair::KeyPair(KeyPair&&);
@@ -381,7 +384,7 @@ using namespace l15::core;
                 Py_XDECREF(scriptpubkey);
 
                 if (witversion == 1) {
-                    PyObject *scriptpubkey = PyString_FromString(l15::GetTaprootPubKey($1.vout[i]).c_str());
+                    PyObject *scriptpubkey = PyString_FromString(utxord::GetTaprootPubKey($1.vout[i]).c_str());
                     PyDict_SetItemString(out, "pubKey", scriptpubkey);
                     Py_XDECREF(scriptpubkey);
                 }
@@ -397,9 +400,12 @@ using namespace l15::core;
 %}
 
 %include "utils.hpp"
+%include "tx_utils.hpp"
 %include "bech32.hpp"
 %include "common_error.hpp"
 %include "contract_error.hpp"
+%include "schnorr.hpp"
+%include "ecdsa.hpp"
 %include "keypair.hpp"
 %include "master_key.hpp"
 %include "keyregistry.hpp"

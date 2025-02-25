@@ -17,7 +17,7 @@ except Exception:
     print("Failed")
 
 try:
-    tx = Deserialize(tx_hex)
+    tx = DecodeHexTx(tx_hex)
 
     scriptPubKey = tx["vout"][0]["scriptPubKey"]
 
@@ -27,7 +27,7 @@ except Exception:
     print("Failed")
 
 try:
-    tx = Deserialize(tx_hex)
+    tx = DecodeHexTx(tx_hex)
 
     scriptPubKey = tx["vout"][0]["scriptPubKey"]
 
