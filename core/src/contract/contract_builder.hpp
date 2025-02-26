@@ -85,6 +85,7 @@ struct IContractDestination: IJsonSerializable
     virtual void Amount(CAmount amount) = 0;
     virtual std::string Address() const = 0;
     virtual CScript PubKeyScript() const = 0;
+    virtual CScript ScriptSig() const = 0;
     CTxOut TxOutput() const
     { return {Amount(), PubKeyScript()}; };
     virtual CScript DummyScriptSig() const = 0;
@@ -102,6 +103,7 @@ struct ZeroDestination: IContractDestination
     void Amount(CAmount amount) override { if (amount) throw l15::IllegalArgument("Non zero amount cannot be assigned to zero destination"); }
     std::string Address() const override { return {}; }
     CScript PubKeyScript() const override { throw std::domain_error("zero destination cannot have a PubKeyScript"); }
+    CScript ScriptSig() const override { throw std::domain_error("zero destination cannot have a scriptSig"); }
     CScript DummyScriptSig() const override { throw std::domain_error("zero destination cannot have a scriptSig"); }
     std::vector<bytevector> DummyWitness() const override { throw std::domain_error("zero destination cannot have a witness"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
@@ -142,6 +144,7 @@ public:
     { return m_addr; }
 
     CScript PubKeyScript() const override { throw std::logic_error("P2Address::PubKeyScript() abstract call"); }
+    CScript ScriptSig() const override { throw std::logic_error("P2Address::ScriptSig() abstract call"); }
     CScript DummyScriptSig() const override { throw std::logic_error("P2Address::DummyScriptSig() abstract call"); }
     std::vector<bytevector> DummyWitness() const override { throw std::logic_error("P2Address::DummyWitness() abstract call"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
@@ -190,6 +193,9 @@ public:
     CScript PubKeyScript() const override
     { return Bech32(BTC, m_chain).PubKeyScript(m_addr); }
 
+    CScript ScriptSig() const override
+    { return {};}
+
     CScript DummyScriptSig() const override
     { return {};}
 
@@ -228,12 +234,16 @@ public:
 class P2Legacy: public P2Address
 {
 protected:
+    std::optional<compressed_pubkey> m_pubkey;
     void CheckDust() const;
 public:
     P2Legacy() = delete;
     P2Legacy(const P2Legacy&) = default;
     P2Legacy(P2Legacy&&) noexcept = default;
-    P2Legacy(ChainMode chain, CAmount amount, std::string addr) : P2Address(chain, amount, move(addr)) {}
+    P2Legacy(ChainMode chain, CAmount amount, std::string addr, std::optional<compressed_pubkey> pk = {})
+        : P2Address(chain, amount, move(addr))
+        , m_pubkey(move(pk))
+    { }
 
     void Amount(CAmount amount) override
     {
@@ -242,38 +252,57 @@ public:
     }
     std::vector<bytevector> DummyWitness() const override
     { return {}; }
+
+    static std::shared_ptr<IContractDestination> Construct(ChainMode chain, std::optional<CAmount> amount, std::string addr, compressed_pubkey pubkey);
 };
 
 class P2PKH: public P2Legacy
 {
     bytevector DecodePubKeyHash() const;
+    void CheckPubKey() const;
 public:
     P2PKH() = delete;
     P2PKH(const P2PKH&) = default;
     P2PKH(P2PKH&&) noexcept = default;
-    P2PKH(ChainMode chain, CAmount amount, std::string addr) : P2Legacy(chain, amount, move(addr))
-    { CheckDust(); }
+    P2PKH(ChainMode chain, CAmount amount, std::string addr, std::optional<compressed_pubkey> pk = {})
+        : P2Legacy(chain, amount, move(addr), move(pk))
+    {
+        CheckDust();
+        CheckPubKey();
+    }
 
     CScript PubKeyScript() const override;
 
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override;
+
+    CScript ScriptSig() const override
+    { return CScript() << signature() << m_pubkey.value_or(compressed_pubkey()).as_vector(); }
+
     CScript DummyScriptSig() const override
     { return CScript() << signature() << compressed_pubkey().as_vector();}
+
     void SetSignature(TxInput &input, bytevector pk, bytevector sig) override;
 };
 
 class P2SH: public P2Legacy
 {
     bytevector DecodeScriptHash() const;
+    void CheckPubKey() const;
 public:
     P2SH() = delete;
     P2SH(const P2SH&) = default;
     P2SH(P2SH&&) noexcept = default;
-    P2SH(ChainMode chain, CAmount amount, std::string addr) : P2Legacy(chain, amount, move(addr))
-    { CheckDust(); }
+    P2SH(ChainMode chain, CAmount amount, std::string addr, std::optional<compressed_pubkey> pk = {})
+        : P2Legacy(chain, amount, move(addr), move(pk))
+    {
+        CheckDust();
+        if (m_pubkey) CheckPubKey();
+    }
 
     CScript PubKeyScript() const override
     { return CScript() << OP_HASH160 << DecodeScriptHash() << OP_EQUAL; }
+
+    CScript ScriptSig() const override;
 
     CScript DummyScriptSig() const override
     { return CScript() << bytevector(22); }
@@ -312,6 +341,7 @@ public:
     std::string Address() const override { return {}; }
     CScript PubKeyScript() const override;
     std::vector<bytevector> DummyWitness() const override { throw std::domain_error("OP_RETURN destination cannot have a witness"); }
+    CScript ScriptSig() const override { return {}; }
     CScript DummyScriptSig() const override { return {}; }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
     { throw std::domain_error("OP_RETURN destination cannot provide a signer"); }

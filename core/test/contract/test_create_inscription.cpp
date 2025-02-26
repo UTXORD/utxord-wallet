@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
     //w->InitKeyRegistry("b37f263befa23efb352f0ba45a5e452363963fabc64c946a75df155244630ebaa1ac8056b873e79232486d5dd36809f8925c9c5ac8322f5380940badc64cc6fe");
     w->keyreg().AddKeyType("fund", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0","1"], "index_range":"0-256"})");
     w->keyreg().AddKeyType("ord", R"({"look_cache":true, "key_type":"DEFAULT", "accounts":["0'"], "change":["0"], "index_range":"0-256"})");
-    w->keyreg().AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["0'"], "change":["0" , "1"], "index_range":"0-256"})");
+    w->keyreg().AddKeyType("inscribe", R"({"look_cache":true, "key_type":"TAPSCRIPT", "accounts":["0'","3'","4'"], "change":["0" , "1"], "index_range":"0-256"})");
 
     int res = session.run();
 
@@ -122,12 +122,9 @@ static const auto svg = std::tuple<std::string, bytevector>("image/svg+xml", svg
 
 TEST_CASE("simple_inscribe")
 {
-    // std::string change_addr = w->btc().GetNewAddress();
-    // std::string market_fee_addr = w->btc().GetNewAddress();
-    // std::string author_fee_addr = w->btc().GetNewAddress();
-    std::string change_addr = w->p2wpkh(0,0,0);
-    std::string market_fee_addr = w->p2wpkh(0,0,0);
-    std::string author_fee_addr = w->p2wpkh(0,0,0);
+    std::string change_addr = w->btc().GetNewAddress();
+    std::string market_fee_addr = w->btc().GetNewAddress();
+    std::string author_fee_addr = w->btc().GetNewAddress();
 
     fee_rate = 1500;
 
@@ -170,7 +167,7 @@ TEST_CASE("simple_inscribe")
     w->confirm(1, genesisTx.GetHash().GetHex());
 
     collection_id = genesisTx.GetHash().GetHex() + "i0";
-    collection_utxo = {genesisTx.GetHash().GetHex(), 0, genesisTx.vout[0].nValue, w->p2tr(2,0,1)};
+    collection_utxo = {genesisTx.GetHash().GetHex(), 0, genesisTx.vout[0].nValue, w->p2tr(0,0,0)};
 
 }
 
@@ -252,13 +249,15 @@ TEST_CASE("inscribe")
     // CreateCondition child_w_fee_extfee_1 {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,17) }}, 1000, 0, false, true, false, 11, 1, "child_w_fee_extfee_1"};
     CreateCondition child_w_change_fee_extfee_1 {{{20000, w->p2tr(0,0,18) }}, 1000, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
     CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,19) }}, 0, 5000, true, true, false, 2, 11, "child_w_change_fixed_change_extfee_2"};
+    CreateCondition nested_child_w_change_fee_extfee {{{0, w->p2wpkh_p2sh(0,0,0) }}, 600, 0, true, true, false, 1, 12, "nested_child_w_change_fee_extfee_1"};
 
-    auto version = GENERATE(8,9,10,11);
+    auto version = GENERATE(8,9,10,11,12);
     auto condition = GENERATE_COPY(inscription,
                                    inscription_w_change, inscription_w_fee, inscription_w_change_fee, inscription_w_fix_change,
                                    child, child_w_change, child_w_fee, child_w_change_fee, child_w_change_fixed_change,
                                    segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee,
-                                   /*child_extfee_1,*/ child_w_change_extfee_1, /*child_w_fee_extfee_1,*/ child_w_change_fee_extfee_1, child_w_change_fixed_change_extfee_2
+                                   /*child_extfee_1,*/ child_w_change_extfee_1, /*child_w_fee_extfee_1,*/ child_w_change_fee_extfee_1, child_w_change_fixed_change_extfee_2,
+                                   nested_child_w_change_fee_extfee
     );
 
     if (condition.min_version <= version) {
@@ -579,12 +578,15 @@ TEST_CASE("psbt_inscribe")
     CreateCondition child_w_change_fee_extfee_1 {{{0, w->p2wpkh(0,0,0) }}, 600, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
     CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,0) }}, 0, 5000, true, true, false, 2, 11, "child_w_change_fixed_change_extfee_2"};
 
-    auto version = GENERATE(/*8,9,10,*/11);
+    CreateCondition nested_child_w_change_fee_extfee {{{0, w->p2wpkh_p2sh(0,0,0) }}, 600, 0, true, true, false, 1, 11, "nested_child_w_change_fee_extfee_1"};
+
+    auto version = GENERATE(/*8,9,10,*/12);
     auto condition = GENERATE_COPY(/*inscription,
                                    inscription_w_change, inscription_w_fee, inscription_w_change_fee, inscription_w_fix_change,
                                    child, child_w_change, child_w_fee, child_w_change_fee, child_w_change_fixed_change,
                                    segwit_child, segwit_child_w_change, segwit_child_w_fee, segwit_child_w_change_fee,*/
-                                   /*child_extfee_1, child_w_change_extfee_1, child_w_fee_extfee_1,*/ child_w_change_fee_extfee_1/*, child_w_change_fixed_change_extfee_2*/
+                                   /*child_extfee_1, child_w_change_extfee_1, child_w_fee_extfee_1, child_w_change_fee_extfee_1, child_w_change_fixed_change_extfee_2,*/
+                                   nested_child_w_change_fee_extfee
     );
 
     if (condition.min_version <= version) {
@@ -760,7 +762,7 @@ TEST_CASE("psbt_inscribe")
                     }
 
                     //CHECK_NOTHROW(builder.AddInput(w->fund(requred_fund + get<0>(utxo), get<1>(utxo))));
-                    builder.AddUTXO("4e6d0026192d4cd06f26b7abd14a58b3e87ea584565712fcfb7fcc8abf471359", 0, 4124, "tb1q3l4wkhxtx95z6fzle4qd7mvxdn44z608d374pp");
+                    CHECK_NOTHROW(builder.AddLegacyUTXO("4e6d0026192d4cd06f26b7abd14a58b3e87ea584565712fcfb7fcc8abf471359", 0, requred_fund + get<0>(utxo), get<1>(utxo), w->derive(49,0,0,0).GetEcdsaKeyPair().GetPubKey()));
                 }
 
                 stringvector psbts = builder.TransactionsPSBT();
@@ -915,7 +917,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     const auto& condition = GENERATE_REF(short_metadata, exact_520_metadata, long_metadata);
 
-    std::string destination_addr = condition.save_as_parent ? w->p2tr(2, 0, 0) : w->btc().GetNewAddress();
+    std::string destination_addr = condition.save_as_parent ? w->p2tr(0, 0, 0) : w->btc().GetNewAddress();
 
     CreateInscriptionBuilder builder_terms(w->chain(), INSCRIPTION);
     CHECK_NOTHROW(builder_terms.MarketFee(0, destination_addr));
@@ -990,7 +992,7 @@ c-1.5-0.7-1.8-3-0.7-5.4c1-2.2,3.2-3.5,4.7-2.7z"/></svg>)";
 
     if (condition.save_as_parent) {
         collection_id = revealTx.GetHash().GetHex() + "i0";
-        collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, w->p2tr(2, 0, 0)};
+        collection_utxo = {revealTx.GetHash().GetHex(), 0, 546, w->p2tr(0, 0, 0)};
     }
 
     w->confirm(1, revealTx.GetHash().GetHex());
@@ -1123,7 +1125,7 @@ TEST_CASE("etch")
 
     CreateInscriptionBuilder test_inscription(w->chain(), INSCRIPTION);
 
-    REQUIRE_NOTHROW(test_inscription.OrdOutput(10000, w->p2tr(2, 0, 1)));
+    REQUIRE_NOTHROW(test_inscription.OrdOutput(10000, w->p2tr(0, 0, 0)));
     REQUIRE_NOTHROW(test_inscription.MarketFee(0, market_fee_addr));
     REQUIRE_NOTHROW(test_inscription.AuthorFee(0, author_fee_addr));
     REQUIRE_NOTHROW(test_inscription.MiningFeeRate(fee_rate));
@@ -1141,7 +1143,7 @@ TEST_CASE("etch")
     CreateInscriptionBuilder builder(w->chain(), INSCRIPTION);
     REQUIRE_NOTHROW(builder.Deserialize(market_terms, MARKET_TERMS));
 
-    CHECK_NOTHROW(builder.OrdOutput(10000, w->p2tr(2, 0, 1)));
+    CHECK_NOTHROW(builder.OrdOutput(10000, w->p2tr(0, 0, 0)));
     CHECK_NOTHROW(builder.MiningFeeRate(fee_rate));
     CHECK_NOTHROW(builder.AuthorFee(0, author_fee_addr));
     CHECK_NOTHROW(builder.Data(get<0>(content), get<1>(content)));

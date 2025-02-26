@@ -143,6 +143,9 @@ public:
     void AddUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr)
     { m_inputs.emplace_back(chain(), m_inputs.size(), std::make_shared<UTXO>(chain(), move(txid), nout, amount, move(addr))); }
 
+    void AddLegacyUTXO(std::string txid, uint32_t nout, CAmount amount, std::string addr, compressed_pubkey pk)
+    { m_inputs.emplace_back(chain(), m_inputs.size(), std::make_shared<UTXO>(chain(), txid, nout, P2Legacy::Construct(chain(), amount, addr, pk))); }
+
     void AddInput(std::shared_ptr<IContractOutput> prevout)
     { m_inputs.emplace_back(chain(), m_inputs.size(), move(prevout)); }
 

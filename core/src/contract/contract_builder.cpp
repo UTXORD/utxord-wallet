@@ -286,6 +286,19 @@ void P2Witness::CheckDust() const
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+std::shared_ptr<IContractDestination> P2Legacy::Construct(ChainMode chain, std::optional<CAmount> amount, std::string addr, compressed_pubkey pubkey)
+{
+    auto [addrtype, hash] = Base58(chain).Decode(addr);
+    if (addrtype == PUB_KEY_HASH)
+        return std::make_shared<P2PKH>(chain, amount.value_or(546), move(addr), move(pubkey));
+    if (addrtype == SCRIPT_HASH)
+        return std::make_shared<P2SH>(chain, amount.value_or(540), move(addr), move(pubkey));
+
+    throw ContractTermWrongValue(move(addr));
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 CScript P2PKH::PubKeyScript() const
 {
     auto [addrtype, keyhash] = l15::Base58(m_chain).Decode(m_addr);
@@ -300,7 +313,12 @@ bytevector P2PKH::DecodePubKeyHash() const
     return hash;
 }
 
-/*--------------------------------------------------------------------------------------------------------------------*/
+void P2PKH::CheckPubKey() const
+{
+    if (m_pubkey && DecodePubKeyHash() != cryptohash<bytevector>(*m_pubkey, CHash160()))
+        throw ContractTermMismatch(IContractBuilder::name_pk.c_str());
+}
+
 
 std::shared_ptr<ISigner> P2PKH::LookupKey(const KeyRegistry &masterKey, const std::string &key_filter_tag) const
 {
@@ -314,16 +332,33 @@ void P2PKH::SetSignature(TxInput &input, bytevector pk, bytevector sig)
 {
     if (pk.size() != 33) throw ContractTermWrongValue("P2PKH public key size: " + std::to_string(pk.size()));
     if (get<1>(l15::Base58(m_chain).Decode(m_addr)) != cryptohash<bytevector>(pk, CHash160())) throw ContractTermMismatch(std::string(name_addr));
+    if (m_pubkey && *m_pubkey != pk) throw ContractTermMismatch(std::string(IContractBuilder::name_pk));
 
     input.scriptSig << sig;
     input.scriptSig << pk;
 }
+
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 bytevector P2SH::DecodeScriptHash() const
 {
     auto [addrtype, hash] = l15::Base58(m_chain).Decode(m_addr);
     if (addrtype != l15::SCRIPT_HASH) throw ContractTermWrongValue("Not P2SH: " + m_addr);
     return hash;
+}
+
+CScript P2SH::ScriptSig() const
+{
+    CScript res;
+    if (m_pubkey) {
+        res << 0 << cryptohash<bytevector>(*m_pubkey, CHash160());
+    }
+    return res;
+}
+
+void P2SH::CheckPubKey() const
+{
+    if (DecodeScriptHash() != cryptohash<bytevector>(ScriptSig(), CHash160())) throw ContractTermMismatch(IContractBuilder::name_pk.c_str());
 }
 
 std::shared_ptr<ISigner> P2SH::LookupKey(const KeyRegistry &keyReg, const std::string &key_filter_tag) const
@@ -338,10 +373,14 @@ std::shared_ptr<ISigner> P2SH::LookupKey(const KeyRegistry &keyReg, const std::s
 void P2SH::SetSignature(TxInput &input, bytevector pk, bytevector sig)
 {
     if (pk.size() != compressed_pubkey::SIZE) throw ContractTermWrongValue("P2WPKH-P2SH public key size: " + std::to_string(pk.size()));
+    if (m_pubkey) {
+        if (*m_pubkey != pk) throw ContractTermMismatch(std::string(IContractBuilder::name_pk));
+    }
+    else {
+        m_pubkey = move(pk);
+    }
 
-    bytevector pubkeyhash = cryptohash<bytevector>(pk, CHash160());
-    CScript scriptSig;
-    scriptSig << 0 << pubkeyhash;
+    CScript scriptSig = ScriptSig();
 
     if (DecodeScriptHash() != cryptohash<bytevector>(scriptSig, CHash160())) throw ContractError("PubKey hash does not match or not P2WPKH-P2SH address");
 

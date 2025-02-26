@@ -323,6 +323,10 @@ l15::stringvector CreateInscriptionBuilder::TransactionsPSBT() const
     std::ranges::transform(m_inputs, commitPsbt.inputs.begin(), [](const auto& in) {
         l15::core::PSBTInput res;
         res.witness_utxo = CTxOut(in.output->Amount(), in.output->Destination()->PubKeyScript());
+        CScript scriptSig = in.output->Destination()->ScriptSig();
+        if (!scriptSig.empty()) {
+            res.redeem_script = move(scriptSig);
+        }
         return res;
     });
 

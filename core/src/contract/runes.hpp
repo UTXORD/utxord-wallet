@@ -172,6 +172,7 @@ public:
 
     std::string Address() const override { return {}; }
     CScript PubKeyScript() const override;
+    CScript ScriptSig() const override { return {}; }
     CScript DummyScriptSig() const override { return {}; }
     std::vector<bytevector> DummyWitness() const override { throw std::domain_error("rune stone destination cannot have a witness"); }
     std::shared_ptr<ISigner> LookupKey(const KeyRegistry& masterKey, const std::string& key_filter_tag) const override
