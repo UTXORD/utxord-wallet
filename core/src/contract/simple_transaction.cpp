@@ -59,7 +59,6 @@ CMutableTransaction SimpleTransaction::MakeTx(const std::string& params) const
             if (tx.vin.back().scriptWitness.stack.empty()) {
                 tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
             }
-            tx.vin.back().scriptSig = input.scriptSig;
             if (tx.vin.back().scriptSig.empty()) {
                 tx.vin.back().scriptSig = input.output->Destination()->DummyScriptSig();
             }

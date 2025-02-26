@@ -363,8 +363,6 @@ void CreateInscriptionBuilder::ApplyPSBTSignature(const l15::stringvector& psbts
 {
     if (psbts.size() != 2) throw ContractTermWrongValue("psbt count: " + std::to_string(psbts.size()));
 
-    const CMutableTransaction& commit_tx = CommitTx();
-
     core::PSBT commitPsbt(base64::decode<bytevector>(psbts.front()));
 
     if (commitPsbt.inputs.size() != m_inputs.size()) throw ContractTermMismatch(name_utxo + " count mismatch: " + std::to_string(commitPsbt.inputs.size()));
@@ -852,14 +850,14 @@ const CMutableTransaction& CreateInscriptionBuilder::CommitTx() const
     return *mCommitTx;
 }
 
-CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const {
-
+CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const
+{
     CMutableTransaction tx;
 
     CAmount total_funds = 0;
     tx.vin.reserve(m_inputs.size());
     for(const auto& input: m_inputs) {
-        tx.vin.emplace_back(Txid::FromUint256(uint256S(input.output->TxID())), input.output->NOut());
+        tx.vin.emplace_back(Txid::FromUint256(uint256S(input.output->TxID())), input.output->NOut(), input.scriptSig);
         tx.vin.back().scriptWitness.stack = input.witness;
         if (tx.vin.back().scriptWitness.stack.empty()) {
             tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();

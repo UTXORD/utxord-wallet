@@ -377,7 +377,7 @@ void P2SH::SetSignature(TxInput &input, bytevector pk, bytevector sig)
         if (*m_pubkey != pk) throw ContractTermMismatch(std::string(IContractBuilder::name_pk));
     }
     else {
-        m_pubkey = move(pk);
+        m_pubkey = pk;
     }
 
     CScript scriptSig = ScriptSig();
