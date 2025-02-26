@@ -182,7 +182,7 @@ TEST_CASE("inscribe")
 
     fee_rate = 3000;
 
-    auto content = GENERATE_COPY(pixel_avif/*, pixel_png, pixel_webp, simple_html*/, svg, no_content);
+    auto content = GENERATE_COPY(/*pixel_avif,*/ pixel_png, pixel_webp, simple_html, svg, no_content);
 
     std::clog << "Fee rate: " << fee_rate << std::endl;
 
@@ -249,7 +249,7 @@ TEST_CASE("inscribe")
     // CreateCondition child_w_fee_extfee_1 {{{ child_amount + (43 * fee_rate / 1000) + 1000, w->p2tr(0,0,17) }}, 1000, 0, false, true, false, 11, 1, "child_w_fee_extfee_1"};
     CreateCondition child_w_change_fee_extfee_1 {{{20000, w->p2tr(0,0,18) }}, 1000, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
     CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,19) }}, 0, 5000, true, true, false, 2, 11, "child_w_change_fixed_change_extfee_2"};
-    CreateCondition nested_child_w_change_fee_extfee {{{0, w->p2wpkh_p2sh(0,0,0) }}, 600, 0, true, true, false, 1, 12, "nested_child_w_change_fee_extfee_1"};
+    CreateCondition nested_child_w_change_fee_extfee {{{20000, w->p2wpkh_p2sh(0,0,0) }}, 600, 0, true, true, false, 1, 12, "nested_child_w_change_fee_extfee_1"};
 
     auto version = GENERATE(8,9,10,11,12);
     auto condition = GENERATE_COPY(inscription,
@@ -266,7 +266,8 @@ TEST_CASE("inscribe")
         bool check_result = false;
         bool lazy = false;
 
-        SECTION("Self inscribe") {
+        SECTION("Self inscribe")
+        {
             std::clog << "Self inscribe v." << version << ": " << condition.comment << " ====================================================" << std::endl;
 
             check_result = true;
@@ -314,6 +315,10 @@ TEST_CASE("inscribe")
                                                       collection_utxo.m_addr));
             }
 
+            std::clog << "signing commit" << std::endl;
+
+            LogTx(w->chain(), DecodeHexTx(builder.RawTransaction(LAZY_INSCRIPTION_MARKET_TERMS, 0)));
+
             CHECK_NOTHROW(builder.SignCommit(w->keyreg(), "fund"));
             CHECK_NOTHROW(builder.SignInscription(w->keyreg(), "inscribe"));
             if (condition.has_parent) {
@@ -329,7 +334,6 @@ TEST_CASE("inscribe")
 
             REQUIRE_NOTHROW(rawtxs = fin_contract.RawTransactions());
 
-
             spends = fin_contract.GetGenesisTxSpends();
 //        CMutableTransaction tx;
 //        REQUIRE(DecodeHexTx(tx, rawtxs[0]));
@@ -338,18 +342,20 @@ TEST_CASE("inscribe")
 //        LogTx(w->chain(), tx);
 //        std::clog << "===============================================================" << '\n';
 //
-//
 //        std::vector<CTxOut> prevouts;
-//        for (const auto& utxo: condition.utxo)
-//            prevouts.emplace_back(get<0>(utxo), bech->PubKeyScript(get<1>(utxo)));
+//        for (const auto& utxo: fin_contract.Inputs())
+//            prevouts.emplace_back(utxo.output->Destination()->TxOutput());
 //
 //        PrecomputedTransactionData txdata;
 //        txdata.Init(tx, move(prevouts), /* force=*/ true);
 //
-//        for (size_t nin = 0; nin < condition.utxo.size(); ++nin) {
+//        std::clog << "verifying commit" << std::endl;
+//        unsigned nin = 0;
+//        for (const auto& utxo: builder.Inputs()) {
 //            MutableTransactionSignatureChecker TxOrdChecker(&tx, nin, get<0>(condition.utxo[nin]), txdata, MissingDataBehavior::FAIL);
-//            bool ok = VerifyScript(CScript(), bech->PubKeyScript(get<1>(condition.utxo[nin])), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
-//            //REQUIRE(ok);
+//            bool ok = VerifyScript(utxo.scriptSig, utxo.output->Destination()->PubKeyScript(), &tx.vin.front().scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TxOrdChecker);
+//            REQUIRE(ok);
+//            ++nin;
 //        }
         }
 
@@ -418,7 +424,7 @@ TEST_CASE("inscribe")
 
                 std::string contract;
                 REQUIRE_NOTHROW(contract = builder.Serialize(version, LAZY_INSCRIPTION_SIGNATURE));
-                // std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
+                std::clog << "{LASY_INSCRIPTION_SIGNATURE:" << contract << "\n}" << std::endl;
 
                 CreateInscriptionBuilder fin_builder(w->chain(), LAZY_INSCRIPTION);
                 REQUIRE_NOTHROW(fin_builder.Deserialize(contract, LAZY_INSCRIPTION_SIGNATURE));
@@ -482,7 +488,7 @@ TEST_CASE("inscribe")
             CHECK(revealTx.vout[0].nValue == 546);
 
             if (condition.market_fee) {
-                CHECK(revealTx.vout.back().nValue == condition.market_fee);
+                CHECK(revealTx.vout[1 + (condition.has_parent ? 1 : 0)].nValue == condition.market_fee);
             }
 
             REQUIRE_NOTHROW(w->btc().SpendTx(CTransaction(commitTx)));
@@ -578,7 +584,7 @@ TEST_CASE("psbt_inscribe")
     CreateCondition child_w_change_fee_extfee_1 {{{0, w->p2wpkh(0,0,0) }}, 600, 0, true, true, false, 1, 11, "child_w_change_fee_extfee_1"};
     CreateCondition child_w_change_fixed_change_extfee_2 {{{20000, w->p2tr(0,0,0) }}, 0, 5000, true, true, false, 2, 11, "child_w_change_fixed_change_extfee_2"};
 
-    CreateCondition nested_child_w_change_fee_extfee {{{0, w->p2wpkh_p2sh(0,0,0) }}, 600, 0, true, true, false, 1, 11, "nested_child_w_change_fee_extfee_1"};
+    CreateCondition nested_child_w_change_fee_extfee {{{0, w->p2wpkh_p2sh(0,0,0) }}, 600, 0, true, true, false, 1, 12, "nested_child_w_change_fee_extfee_1"};
 
     auto version = GENERATE(/*8,9,10,*/12);
     auto condition = GENERATE_COPY(/*inscription,
@@ -874,7 +880,77 @@ TEST_CASE("psbt_inscribe")
     }
 }
 
-
+TEST_CASE("psbt_sig")
+{
+    const std::string contract_json = R"({
+  "contract_type": "CreateInscription",
+  "params": {
+    "protocol_version": 12,
+    "phase": "MARKET_TERMS",
+    "mining_fee_rate": 1080,
+    "content_type": "image/png",
+    "content": "89504e470d0a1a0a0000000d49484452000000f0000000b4080200000025fe36bf0000016a4944415478daedd2311100300800b152510cf8d783063c30728984bf8fec7a70c597004383a1c1d060680c0d86064383a1c1d0181a0c0d86064383a13134181a0c0d86064363683034181a0c0d86c6d060683034181a0c8da1c1d060683034181a4383a1c1d060680c0d86064383a1c1d0181a0c0d86064383a13134181a0c0d86064363683034181a0c0d86c6d060683034181a0c8da1c1d060683034181a4383a1c1d06068303486064383a1c1d0181a0c0d86064383a13134181a0c0d86064363683034181a0c0d86c6d060683034181a0c8da1c1d060683034181a4383a1c1d06068303486064383a1c1d0181a0c0d86064383a13134181a0c0d86064363683034181a0c0d86c6d060683034181a0c8da1c1d060683034181a4383a1c1d06068303486064383a1c1d060680c0d86064383a13134181a0c0d86064363683034181a0c0d86c6d060683034181a0c8da1c1d060683034181a4383a1c1d06068303486064383a1616f00c2f102c6f19703fc0000000049454e44ae426082",
+    "metadata": "a2657469746c6565e2849631336b6465736372697074696f6e65e284963133",
+    "utxo": [
+      {
+        "type": "utxo",
+        "txid": "a77a89923127074850fbdaf707e186c2ab8b52c398423a6ab7f0d6718b3532ca",
+        "nout": 0,
+        "destination": {
+          "type": "p2address",
+          "amount": 10000,
+          "addr": "2NBskeVYRTABkn6i7dBkWkDtLHqxrikJjng"
+        }
+      }
+    ],
+    "inscribe_script_pk": "bfe8c1e87a5ad6916eca3ae8f5d380bbee8acc43dffda4bddda98c6bc8883ef2",
+    "inscribe_int_pk": "6e37c80a66d29ce0000866520e31465d1b442d188864d5165608ec0265cb1912",
+    "fund_mining_fee_int_pk": "e380665f1f06787ba4be63b3f9f435fefd0c3208db319d2d2e80e4f9754731d0",
+    "change_addr": "2NBskeVYRTABkn6i7dBkWkDtLHqxrikJjng",
+    "ord": {
+      "type": "p2witness",
+      "amount": 546,
+      "addr": "tb1pxhnrfyw72dxca6r2amk9cc87x07c5yl7w24s0dpngk48ncyr0q8qg5dz72"
+    },
+    "author_fee": {
+      "type": "p2witness",
+      "amount": 1110,
+      "addr": "tb1psvjlhrdpdzmpkjt6mvnctaq9lvy8s7aml33w03fhdk9w0swlt98q07avpj"
+    },
+    "collection_destination": {
+      "type": "p2witness",
+      "amount": 546,
+      "addr": "tb1pyqwhvehpsngtu5kuve33gfxcz2txv48z8cm49k6fxga0aj03pzgq53gnzv"
+    },
+    "collection": {
+      "type": "utxo",
+      "txid": "0000000000000000000000000000000000000000000000000000000000000000",
+      "nout": 0,
+      "destination": {
+        "type": "p2witness",
+        "amount": 546,
+        "addr": "tb1pyqwhvehpsngtu5kuve33gfxcz2txv48z8cm49k6fxga0aj03pzgq53gnzv"
+      },
+      "collection_id": "5aa9e1534ef357908c69c86c7992d79e4028f4c8ad52034764cb1eba6a96ada1i0"
+    },
+    "inscribe_script_market_pk": "58bc897e9fa0b16b6a0e28171cb39d41093646411166921e2744381f9846ba24",
+    "market_fee": {
+      "type": "p2witness",
+      "amount": 999,
+      "addr": "tb1pylg4s0nxehd2pt3zh9t2yfsk0sjm9dj54tkmjzw20v382xez598qcutnck"
+    }
+  }
+})";
+    const stringvector psbt_sigs{
+        "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"
+    };
+    CreateInscriptionBuilder lazy_contract = CreateInscriptionBuilder(TESTNET, LAZY_INSCRIPTION);
+    REQUIRE_NOTHROW(lazy_contract.Deserialize(contract_json, LAZY_INSCRIPTION_MARKET_TERMS));
+    REQUIRE_NOTHROW(lazy_contract.ApplyPSBTSignature(psbt_sigs));
+    std::string lazy_sig_json;
+    REQUIRE_NOTHROW(lazy_sig_json = lazy_contract.Serialize(12, LAZY_INSCRIPTION_SIGNATURE));
+}
 
 
 struct InscribeWithMetadataCondition {

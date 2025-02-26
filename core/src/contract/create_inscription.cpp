@@ -862,6 +862,9 @@ CMutableTransaction CreateInscriptionBuilder::MakeCommitTx() const
         if (tx.vin.back().scriptWitness.stack.empty()) {
             tx.vin.back().scriptWitness.stack = input.output->Destination()->DummyWitness();
         }
+        if (tx.vin.back().scriptSig.empty()) {
+            tx.vin.back().scriptSig = input.output->Destination()->DummyScriptSig();
+        }
         total_funds += input.output->Destination()->Amount();
     }
 

@@ -304,6 +304,9 @@ public:
 
     CScript ScriptSig() const override;
 
+    std::vector<bytevector> DummyWitness() const override
+    { return { bytevector(72), bytevector(33) }; }
+
     CScript DummyScriptSig() const override
     { return CScript() << bytevector(22); }
 
