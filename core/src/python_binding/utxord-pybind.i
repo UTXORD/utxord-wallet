@@ -375,13 +375,13 @@ using namespace l15::core;
                 Py_XDECREF(n);
             }
 
+            PyObject *scriptpubkey = PyBytes_FromStringAndSize((const char*)($1.vout[i].scriptPubKey.data()), $1.vout[i].scriptPubKey.size());
+            PyDict_SetItemString(out, "scriptPubKey", scriptpubkey);
+            Py_XDECREF(scriptpubkey);
+
             int witversion;
             l15::bytevector witnessprogram;
             if ($1.vout[i].scriptPubKey.IsWitnessProgram(witversion, witnessprogram)) {
-
-                PyObject *scriptpubkey = PyBytes_FromStringAndSize((const char*)($1.vout[i].scriptPubKey.data()), $1.vout[i].scriptPubKey.size());
-                PyDict_SetItemString(out, "scriptPubKey", scriptpubkey);
-                Py_XDECREF(scriptpubkey);
 
                 if (witversion == 1) {
                     PyObject *scriptpubkey = PyString_FromString(utxord::GetTaprootPubKey($1.vout[i]).c_str());
