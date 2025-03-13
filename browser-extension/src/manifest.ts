@@ -20,6 +20,7 @@ export async function getManifest(): Promise<Manifest.WebExtensionManifest> {
     break;
   case '_qa':
     permissions = [
+      'http://localhost:9000/*',
       'https://qa.utxord.com/*',
       'https://api.qa.utxord.com/*',
       'https://sntry.utxord.com/*',
