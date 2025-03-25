@@ -220,11 +220,6 @@ interface ICollectionTransferResult {
       });
 
       if (1 < tabs.length) {
-        await Api.sendWarningMessage(
-            'TABS',
-            "Don't use UTXORD market in multiple tabs/windows simultaneously!",
-            false
-        );
         console.log(`----- sendMessageToWebPage: there are ${tabs.length} tabs found with BASE_URL_PATTERN: ${BASE_URL_PATTERN}`);
       }
       if(!await Api.fetchTimeSystem()){
