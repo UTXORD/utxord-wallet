@@ -486,7 +486,7 @@ std::shared_ptr<ISigner> P2WPKH::LookupKey(const KeyRegistry& masterKey, const s
 
 void P2WPKH::SetSignature(TxInput &input, bytevector pk, bytevector sig)
 {
-    if (pk.size() != 33) throw ContractTermWrongValue("P2WPKH public key size: " + pk.size());
+    if (pk.size() != 33) throw ContractTermWrongValue("P2WPKH public key size: " + std::to_string(pk.size()));
 
     secp256k1_pubkey pubkey;
     secp256k1_ecdsa_signature signature;
@@ -514,9 +514,9 @@ std::shared_ptr<ISigner> P2TR::LookupKey(const KeyRegistry& masterKey, const std
 
 void P2TR::SetSignature(TxInput &input, bytevector pk, bytevector sig)
 {
-    if (pk.size() != xonly_pubkey::SIZE) throw ContractTermWrongValue("P2TR public key size: " + pk.size());
+    if (pk.size() != xonly_pubkey::SIZE) throw ContractTermWrongValue("P2TR public key size: " + std::to_string(pk.size()));
     if (pk != get<1>(Bech().Decode(m_addr))) throw ContractTermMismatch(std::string(name_addr));
-    if (sig.size() < 64 || sig.size() > 65) throw ContractTermWrongValue("P2TR signature size: " + sig.size());
+    if (sig.size() < 64 || sig.size() > 65) throw ContractTermWrongValue("P2TR signature size: " + std::to_string(sig.size()));
 
     input.witness.Set(0, move(sig));
 }

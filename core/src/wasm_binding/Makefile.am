@@ -12,6 +12,7 @@ AM_CPPFLAGS = -DWASM -DWASM_MODULE \
  -I$(top_srcdir)/l15/node/src/consensus \
  -I$(top_srcdir)/l15/node/src/crypto \
  -I$(top_srcdir)/l15/node/src/policy \
+ -I$(top_srcdir)/l15/node/src/primitives \
  -I$(top_srcdir)/l15/node/src/script \
  -I$(top_srcdir)/l15/node/src/support
 

@@ -10,6 +10,7 @@
 #include "schnorr.hpp"
 #include "keypair.hpp"
 #include "keyregistry.hpp"
+#include "transaction.hpp"
 #include "contract_builder.hpp"
 #include "create_inscription.hpp"
 #include "swap_inscription.hpp"
@@ -206,7 +207,7 @@ public:
 class KeyRegistry : private l15::core::KeyRegistry
 {
 public:
-    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), l15::Bech32(l15::BTC, mode), unhex<l15::sensitive_bytevector>(seed))
+    explicit KeyRegistry(ChainMode mode, const char *seed) : l15::core::KeyRegistry(GetSecp256k1(), mode, unhex<l15::sensitive_bytevector>(seed))
     {}
 
     void AddKeyType(const char* name, const char* filter_json)
