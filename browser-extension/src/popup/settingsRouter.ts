@@ -29,6 +29,15 @@ export const settingsRoutes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/user-address',
+    name: 'UserAddressPage',
+    component: () => import('~/pages/UserAddressPage.vue'),
+    meta: {
+      requiresAuth: true,
+      restore: true
+    }
+  },
+  {
     path: '/manage-errors',
     name: 'ManageErrors',
     component: () => import('~/pages/ManageErrors.vue'),
