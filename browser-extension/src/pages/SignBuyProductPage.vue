@@ -71,6 +71,11 @@
       class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
       v-if="balance?.unconfirmed > 0"
     >
+      <span class="mr-2 text-[var(--text-color)]">Your funds are still awaiting confirmation</span><hr />
+      </div><div
+        class="sign-screen_block w-full flex items-center bg-[var(--section)] rounded-lg p-3 mb-5"
+        v-if="balance?.unconfirmed > 0"
+      >
       <span class="mr-2 text-[var(--text-color)]">Unconfirmed:</span>
       <PriceComp
         class="ml-auto"
