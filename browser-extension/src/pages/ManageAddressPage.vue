@@ -164,14 +164,15 @@ async function onChangeUseDerivation(){
     {
       value: Boolean(useDerivation.value)
     },
-    'background')
-    store.setUseDerivation(Boolean(useDerivation.value))
+    'background');
+    store.setUseDerivation(Boolean(useDerivation.value));
     const ta = Number(typeAddress.value);
     const tl = Boolean(useDerivation.value)?'fund':'oth'
     const addr = res.keys?.addresses?.reverse()?.find(
       (item) => item.type === tl && item.typeAddress === ta
     )?.address
-    store.setFundAddress(addr)
+    await store.setFundAddress(addr);
+    await refreshBalance();
 }
 
 </script>

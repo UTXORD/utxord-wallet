@@ -219,7 +219,7 @@ function refreshBalance() {
     const addr = res.keys?.addresses?.reverse()?.find(
       (item) => item.type === tl && item.typeAddress === ta
     )?.address
-    store.setFundAddress(addr)
+    await store.setFundAddress(addr)
     await getBalance(fundAddress.value);
   }, 500)
 }
@@ -238,6 +238,7 @@ const status_message = computed(() => {
 onBeforeMount(async() => {
   console.log('onBeforeMount')
   await getFundAddress()
+  await refreshBalance();
   })
 </script>
 
