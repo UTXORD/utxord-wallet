@@ -48,7 +48,7 @@
         </template>
 
       <div>
-        <span
+  <!--      <span
            v-if="Number(balance?.confirmed) > 0"
           class=" w-2/4"
           data-testid="send"
@@ -56,7 +56,7 @@
           style="cursor: pointer;font-size: 20px;margin-top: 5px;"
           >
           &#9658;
-        </span>
+        </span>-->
         <span
           class=" w-2/4"
           data-testid="addresses"
