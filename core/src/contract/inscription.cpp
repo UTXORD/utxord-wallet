@@ -169,7 +169,7 @@ std::list<Inscription> ParseInscriptions(const string &hex_tx)
     auto tx = DecodeHexTx(hex_tx);
 
     for (const auto& in: tx.vin) {
-        if (in.scriptWitness.stack.size() < 3) continue;
+        if (in.scriptWitness.stack.size() < 2) continue;
 
         const auto& witness_stack = in.scriptWitness.stack;
         CScript script(witness_stack[witness_stack.size() - 2].begin(), witness_stack[witness_stack.size() - 2].end());
